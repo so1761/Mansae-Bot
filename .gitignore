@@ -1,0 +1,14 @@
+*.png
+*.log
+*.json
+*.out
+.env
+__pycache__/
+.cache/
+.conda/
+anaconda3/
+.bash*
+.gitconfig
+.profile
+.selected_editor
+musicbot.py
