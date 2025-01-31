@@ -300,7 +300,7 @@ def get_participant_id(match_info, puuid): # match정보와 puuid를 통해 그 
             return i
     return None
 
-async def check_jimo_points(): #지모의 솔로랭크 점수를 10초마다 확인하여 점수 변동이 있을 경우 알림
+async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확인하여 점수 변동이 있을 경우 알림
     await bot.wait_until_ready()
     id = JIMO_ID
     channel = bot.get_channel(int(CHANNEL_ID))
@@ -470,7 +470,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 10초마다 확
                             get_bet = round(betted_rate * loser_total_point)
 
                             # 가져올 수 있는 최대 점수
-                            get_bet_limit = BonusRate * winner['points']
+                            get_bet_limit = round(BonusRate * winner['points'])
 
                             # 가져올 수 있는 최대 점수보다 높으면 최대 점수로 고정
                             if get_bet >= get_bet_limit:
@@ -669,7 +669,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 10초마다 확
                             get_bet = round(betted_rate * loser_total_point)
 
                             # 가져올 수 있는 최대 점수
-                            get_bet_limit = BonusRate * winner['points']
+                            get_bet_limit = round(BonusRate * winner['points'])
 
                             # 가져올 수 있는 최대 점수보다 높으면 최대 점수로 고정
                             if get_bet >= get_bet_limit:
@@ -861,7 +861,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 10초마다 확
                     p.jimo_event.set() # check_game_status의 대기 상태를 해제
 
 
-        await asyncio.sleep(10)  # 10초마다 반복
+        await asyncio.sleep(20)  # 20초마다 반복
 
 async def check_miruem_points():
     await bot.wait_until_ready()
@@ -1078,7 +1078,7 @@ async def check_melon_points():
                             get_bet = round(betted_rate * loser_total_point)
 
                             # 가져올 수 있는 최대 점수
-                            get_bet_limit = BonusRate * winner['points']
+                            get_bet_limit = round(BonusRate * winner['points'])
 
                             # 가져올 수 있는 최대 점수보다 높으면 최대 점수로 고정
                             if get_bet >= get_bet_limit:
@@ -1266,7 +1266,7 @@ async def check_melon_points():
                             get_bet = round(betted_rate * loser_total_point)
 
                             # 가져올 수 있는 최대 점수
-                            get_bet_limit = BonusRate * winner['points']
+                            get_bet_limit = round(BonusRate * winner['points'])
 
                             # 가져올 수 있는 최대 점수보다 높으면 최대 점수로 고정
                             if get_bet >= get_bet_limit:
@@ -1455,9 +1455,9 @@ async def check_melon_points():
 
                     p.melon_event.set() # check_game_status2의 대기상태를 해제
 
-        await asyncio.sleep(10)  # 60초마다 반복
+        await asyncio.sleep(20)  # 20초마다 반복
 
-async def check_game_status(): #지모의 솔로랭크가 진행중인지 10초마다 확인
+async def check_game_status(): #지모의 솔로랭크가 진행중인지 20초마다 확인
     await bot.wait_until_ready()
     channel = bot.get_channel(int(CHANNEL_ID))
     notice_channel = bot.get_channel(int(NOTICE_CHANNEL_ID))
@@ -1817,9 +1817,9 @@ async def check_game_status(): #지모의 솔로랭크가 진행중인지 10초�
                 )
                 print("check_game_status 대기 종료")
 
-        await asyncio.sleep(10)  # 10초마다 반복
+        await asyncio.sleep(20)  # 20초마다 반복
 
-async def check_game_status2(): #동성의 솔로랭크가 진행중인지 10초마다 확인
+async def check_game_status2(): #동성의 솔로랭크가 진행중인지 20초마다 확인
     await bot.wait_until_ready()
     channel = bot.get_channel(int(CHANNEL_ID))
     notice_channel = bot.get_channel(int(NOTICE_CHANNEL_ID))
@@ -2167,7 +2167,7 @@ async def check_game_status2(): #동성의 솔로랭크가 진행중인지 10초
                     p.melon_event.wait()  # 이 작업은 melon_event가 set될 때까지 대기
                 )
 
-        await asyncio.sleep(10)  # 10초마다 반복
+        await asyncio.sleep(20)  # 20초마다 반복
 
 async def check_jimo_remake_status(): # 지모의 다시하기 여부를 확인!
     channel = bot.get_channel(int(CHANNEL_ID))
