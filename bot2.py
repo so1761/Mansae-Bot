@@ -122,7 +122,6 @@ async def get_summoner_id(puuid):
                 print('Error:', response.status)
                 return None
 
-
 async def get_summoner_ranks(summoner_id, type="솔랭"):
     url = f'https://kr.api.riotgames.com/lol/league/v4/entries/by-summoner/{summoner_id}'
     headers = {'X-Riot-Token': API_KEY}
@@ -167,7 +166,6 @@ async def get_summoner_recentmatch_id(puuid):
                 print('get_summoner_recentmatch_id Error:', response.status)
                 return None
 
-
 async def get_summoner_matchinfo(matchid):
     url = f'https://asia.api.riotgames.com/lol/match/v5/matches/{matchid}'
     headers = {'X-Riot-Token': API_KEY}
@@ -186,6 +184,7 @@ async def get_summoner_matchinfo(matchid):
         except Exception as e:
             print(f"[ERROR] Exception occurred while fetching match info in get_summoner_matchinfo: {e}")
     return None
+
 def tier_to_number(tier, rank, lp): # 티어를 레이팅 숫자로 변환
     tier_num = TIER_RANK_MAP.get(tier)
     rank_num = RANK_MAP.get(rank)
@@ -294,6 +293,7 @@ def save_lp_difference_to_file(lp_difference,current_rank,name): #지모의 점�
     else:
         ref2.update({"연패": lose_streak})
         ref2.update({"연승": 0})
+
 def get_participant_id(match_info, puuid): # match정보와 puuid를 통해 그 판에서 플레이어의 위치를 반환
     for i, participant in enumerate(match_info['info']['participants']):
         if participant['puuid'] == puuid:
@@ -863,57 +863,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
 
         await asyncio.sleep(20)  # 20초마다 반복
 
-async def check_miruem_points():
-    await bot.wait_until_ready()
-    puuid = await get_summoner_puuid("이미름","KR1")
-    id = await get_summoner_id(puuid)
-    try:
-        last_rank = await get_summoner_ranks(id)
-        if not last_rank:
-            last_total_match = 0
-        else:
-            last_win = last_rank['wins']
-            last_loss = last_rank['losses']
-            last_total_match = last_win + last_loss
-    except NotFoundError as e:
-        last_total_match = 0
-
-    while not bot.is_closed():
-        current_rank = await get_summoner_ranks(id)
-
-        curseasonref = db.reference("현재시즌")
-        current_season = curseasonref.get()
-        if not current_rank:
-            current_total_match = 0
-        else:
-            current_win = current_rank['wins']
-            current_loss = current_rank['losses']
-            current_total_match = current_win + current_loss
-            if current_total_match != last_total_match:
-                print(last_total_match, current_total_match)
-                save_lp_difference_to_file(last_rank, current_rank,"미름")
-
-                # 현재 날짜 및 시간 가져오기
-                current_datetime = datetime.now()
-
-                # 날짜만 추출하여 저장
-                current_date = current_datetime.strftime("%Y-%m-%d")
-
-                # 시간만 추출하여 저장
-                current_time = current_datetime.strftime("%H:%M:%S")
-
-                ref = db.reference(f'{current_season}/점수/미름/{current_date}/{current_time}')
-                ref.update({'티어': current_rank['tier']})
-                ref.update({'랭크': current_rank['rank']})
-                ref.update({'점수': current_rank['leaguePoints']})
-                ref.update({'승리': current_rank['wins']})
-                ref.update({'패배': current_rank['losses']})
-
-                last_rank = current_rank
-                last_total_match = current_total_match
-        await asyncio.sleep(60)  # 60초마다 반복
-
-async def check_melon_points():
+async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확인하여 점수 변동이 있을 경우 알림
     await bot.wait_until_ready()
     id = MELON_ID
     channel = bot.get_channel(int(CHANNEL_ID))
@@ -1819,7 +1769,7 @@ async def check_game_status(): #지모의 솔로랭크가 진행중인지 20초�
 
         await asyncio.sleep(20)  # 20초마다 반복
 
-async def check_game_status2(): #동성의 솔로랭크가 진행중인지 20초마다 확인
+async def check_game_status2(): #Melon의 솔로랭크가 진행중인지 20초마다 확인
     await bot.wait_until_ready()
     channel = bot.get_channel(int(CHANNEL_ID))
     notice_channel = bot.get_channel(int(NOTICE_CHANNEL_ID))
@@ -2216,7 +2166,7 @@ async def check_jimo_remake_status(): # 지모의 다시하기 여부를 확인!
                             p.prediction_votes['lose'].clear()
 
         # 일정 시간 간격으로 확인
-        await asyncio.sleep(10)  # 원하는 간격으로 설정
+        await asyncio.sleep(20)  # 원하는 간격으로 설정
 
 async def check_melon_remake_status(): # Melon의 다시하기 여부를 확인!
     channel = bot.get_channel(int(CHANNEL_ID))
@@ -2267,10 +2217,7 @@ async def check_melon_remake_status(): # Melon의 다시하기 여부를 확인!
                             p.prediction_votes2['lose'].clear()
 
         # 일정 시간 간격으로 확인
-        await asyncio.sleep(10)  # 원하는 간격으로 설정
-
-# 기본 상태의 embed 메시지를 위한 변수
-status_message = None
+        await asyncio.sleep(20)  # 원하는 간격으로 설정
 
 class MyBot(commands.Bot):
     def __init__(self):
@@ -2298,18 +2245,18 @@ class MyBot(commands.Bot):
             'databaseURL' : 'https://mansaebot-default-rtdb.firebaseio.com/'
         })
 
-        user = await bot.fetch_user("298068763335589899")  # toe_kyung의 디스코드 사용자 ID 입력
+        admin = await bot.fetch_user("298068763335589899")  # toe_kyung의 디스코드 사용자 ID 입력
 
         '''
-        if user:
+        if admin:
             try:
                 #DM 보내기
-                await user.send("ㅎㅇ")
-                print(f"DM sent to {user.name}")
+                await admin.send("ㅎㅇ")
+                print(f"{user.name}에게 DM 전송 완료")
             except Exception as e:
-                print(f"Failed to send DM: {e}")
+                print(f"DM 전송 실패: {e}")
         else:
-            print("User not found.")
+            print("관리자가 발견되지 않았습니다")
         '''
 
         bot.loop.create_task(check_jimo_points())
@@ -2319,14 +2266,9 @@ class MyBot(commands.Bot):
         bot.loop.create_task(check_jimo_remake_status())
         bot.loop.create_task(check_melon_remake_status())
 
-
-        global status_message
-
 bot = MyBot()
 @bot.event
 async def on_message(message):
-    global current_player
-    global A
 
     if message.author == bot.user:
         return
