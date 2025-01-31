@@ -32,8 +32,6 @@ MELON_ID = None
 
 SEASON_CHANGE_DATE = datetime(2024, 9, 11, 0, 0, 0)
 
-PREDICT_SEASON = "예측시즌3"
-CURRENT_SEASON = "시즌15"
 TIER_RANK_MAP = {
     'IRON': 1,
     'BRONZE': 2,
@@ -315,6 +313,9 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
     except NotFoundError as e:
         last_total_match = 0
 
+    cur_predict_seasonref = db.reference("현재예측시즌")
+    current_predict_season = cur_predict_seasonref.get()
+
     while not bot.is_closed():
         try:
           current_rank = await get_summoner_ranks(id)
@@ -423,7 +424,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
                             userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배!({winnerNum+loserNum}/{winnerNum} + 역배 배율 {streak_bonus_rate} + 0.1)", inline=False)
 
                         for winner in winners:
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             prediction_all = originr["총 예측 횟수"]
@@ -433,7 +434,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
                             lose_streak = originr["연패"]
                             bettingPoint = originr["베팅포인트"]
 
-                            ref3 = db.reference(f'{PREDICT_SEASON}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
+                            ref3 = db.reference(f'{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
                             ref3.update({"포인트" : point})
                             ref3.update({"총 예측 횟수": prediction_all})
                             ref3.update({"적중 횟수" : prediction_wins})
@@ -442,7 +443,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
                             ref3.update({"연패": lose_streak})
                             ref3.update({"베팅포인트" : 0})
 
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                             pointr = ref2.get()
                             point = pointr["포인트"]
                             streakr = ref2.get()
@@ -507,7 +508,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
 
 
                         for loser in losers:
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{loser["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             prediction_all = originr["총 예측 횟수"]
@@ -517,7 +518,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
                             lose_streak = originr["연패"]
                             bettingPoint = originr["베팅포인트"]
 
-                            ref3 = db.reference(f'{PREDICT_SEASON}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
+                            ref3 = db.reference(f'{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
                             ref3.update({"포인트" : point})
                             ref3.update({"총 예측 횟수": prediction_all})
                             ref3.update({"적중 횟수" : prediction_wins})
@@ -527,7 +528,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
                             ref3.update({"베팅포인트" : 0})
 
 
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{loser["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
                             pointr = ref2.get()
                             point = pointr["포인트"]
                             streakr = ref2.get()
@@ -610,7 +611,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
 
 
                         for winner in winners:
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             prediction_all = originr["총 예측 횟수"]
@@ -620,7 +621,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
                             lose_streak = originr["연패"]
                             bettingPoint = originr["베팅포인트"]
 
-                            ref3 = db.reference(f'{PREDICT_SEASON}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
+                            ref3 = db.reference(f'{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
                             ref3.update({"포인트" : point})
                             ref3.update({"총 예측 횟수": prediction_all})
                             ref3.update({"적중 횟수" : prediction_wins})
@@ -629,7 +630,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
                             ref3.update({"연패": lose_streak})
                             ref3.update({"베팅포인트" : 0})
 
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             prediction_all = originr["총 예측 횟수"]
@@ -640,7 +641,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
                             bettingPoint -= winner["points"]
 
 
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                             pointr = ref2.get()
                             point = pointr["포인트"]
                             streakr = ref2.get()
@@ -706,7 +707,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
 
                         losers = p.prediction_votes['win']
                         for loser in losers:
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{loser["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             prediction_all = originr["총 예측 횟수"]
@@ -717,7 +718,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
                             bettingPoint = originr["베팅포인트"]
 
 
-                            ref3 = db.reference(f'{PREDICT_SEASON}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
+                            ref3 = db.reference(f'{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
                             ref3.update({"포인트" : point})
                             ref3.update({"총 예측 횟수": prediction_all})
                             ref3.update({"적중 횟수" : prediction_wins})
@@ -726,7 +727,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
                             ref3.update({"연패": lose_streak})
                             ref3.update({"베팅포인트" : 0})
 
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{loser["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
                             pointr = ref2.get()
                             point = pointr["포인트"]
                             streakr = ref2.get()
@@ -813,13 +814,13 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
                             losers = p.kda_votes['down'] + p.kda_votes['perfect']
                             perfect_winners = []
                         for perfect_winner in perfect_winners:
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{perfect_winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{perfect_winner["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             ref2.update({"포인트": point + perfect_point})
                             kdaembed.add_field(name="",value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {perfect_point}점을 획득하셨습니다!", inline=False)
                         for winner in winners:
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             ref2.update({"포인트": point + 20})
@@ -830,7 +831,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
                         winners = p.kda_votes['down']
                         losers = p.kda_votes['up'] + p.kda_votes['perfect']
                         for winner in winners:
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             ref2.update({"포인트": point + 20})
@@ -841,7 +842,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
                         winners = p.kda_votes['up'] + p.kda_votes['down']
                         losers = p.kda_votes['perfect']
                         for winner in winners:
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             ref2.update({"포인트": point + 20})
@@ -877,6 +878,9 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
             last_total_match = last_win + last_loss
     except NotFoundError as e:
         last_total_match = 0
+
+    cur_predict_seasonref = db.reference("현재예측시즌")
+    current_predict_season = cur_predict_seasonref.get()
 
     while not bot.is_closed():
         try:
@@ -981,7 +985,7 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                             userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배!({winnerNum+loserNum}/{winnerNum} + 역배 배율 {streak_bonus_rate} + 0.1)", inline=False)
 
                         for winner in winners:
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             prediction_all = originr["총 예측 횟수"]
@@ -991,7 +995,7 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                             lose_streak = originr["연패"]
                             bettingPoint = originr["베팅포인트"]
 
-                            ref3 = db.reference(f'{PREDICT_SEASON}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
+                            ref3 = db.reference(f'{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
                             ref3.update({"포인트" : point})
                             ref3.update({"총 예측 횟수": prediction_all})
                             ref3.update({"적중 횟수" : prediction_wins})
@@ -1001,7 +1005,7 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                             ref3.update({"베팅포인트" : 0})
 
 
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                             pointr = ref2.get()
                             point = pointr["포인트"]
                             streakr = ref2.get()
@@ -1064,7 +1068,7 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                             ref2.update({"베팅포인트" : bettingPoint})
 
                         for loser in losers:
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{loser["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             prediction_all = originr["총 예측 횟수"]
@@ -1074,7 +1078,7 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                             lose_streak = originr["연패"]
                             bettingPoint = originr["베팅포인트"]
 
-                            ref3 = db.reference(f'{PREDICT_SEASON}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
+                            ref3 = db.reference(f'{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
                             ref3.update({"포인트" : point})
                             ref3.update({"총 예측 횟수": prediction_all})
                             ref3.update({"적중 횟수" : prediction_wins})
@@ -1083,7 +1087,7 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                             ref3.update({"연패": lose_streak})
                             ref3.update({"베팅포인트" : 0})
 
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{loser["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
                             pointr = ref2.get()
                             point = pointr["포인트"]
                             streakr = ref2.get()
@@ -1167,7 +1171,7 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                             userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배!({winnerNum+loserNum}/{winnerNum} + 역배 배율 {streak_bonus_rate} + 0.1)", inline=False)
 
                         for winner in winners:
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             prediction_all = originr["총 예측 횟수"]
@@ -1177,7 +1181,7 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                             lose_streak = originr["연패"]
                             bettingPoint = originr["베팅포인트"]
 
-                            ref3 = db.reference(f'{PREDICT_SEASON}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
+                            ref3 = db.reference(f'{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
                             ref3.update({"포인트" : point})
                             ref3.update({"총 예측 횟수": prediction_all})
                             ref3.update({"적중 횟수" : prediction_wins})
@@ -1186,7 +1190,7 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                             ref3.update({"연패": lose_streak})
                             ref3.update({"베팅포인트" : 0})
 
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                             pointr = ref2.get()
                             point = pointr["포인트"]
                             streakr = ref2.get()
@@ -1253,7 +1257,7 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
 
                         losers = p.prediction_votes2['win']
                         for loser in losers:
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{loser["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             prediction_all = originr["총 예측 횟수"]
@@ -1263,7 +1267,7 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                             lose_streak = originr["연패"]
                             bettingPoint = originr["베팅포인트"]
 
-                            ref3 = db.reference(f'{PREDICT_SEASON}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
+                            ref3 = db.reference(f'{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
                             ref3.update({"포인트" : point})
                             ref3.update({"총 예측 횟수": prediction_all})
                             ref3.update({"적중 횟수" : prediction_wins})
@@ -1272,7 +1276,7 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                             ref3.update({"연패": lose_streak})
                             ref3.update({"베팅포인트" : 0})
 
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{loser["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
                             pointr = ref2.get()
                             point = pointr["포인트"]
                             streakr = ref2.get()
@@ -1360,13 +1364,13 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                             losers = p.kda_votes2['down'] + p.kda_votes2['perfect']
                             perfect_winners = []
                         for perfect_winner in perfect_winners:
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{perfect_winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{perfect_winner["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             ref2.update({"포인트": point + perfect_point})
                             kdaembed.add_field(name="",value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {perfect_point}점을 획득하셨습니다!", inline=False)
                         for winner in winners:
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             ref2.update({"포인트": point + 20})
@@ -1377,7 +1381,7 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                         winners = p.kda_votes2['down']
                         losers = p.kda_votes2['up']
                         for winner in winners:
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             ref2.update({"포인트": point + 20})
@@ -1387,7 +1391,7 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                     else: # KDA == 3
                         winners = p.kda_votes2['up'] + p.kda_votes2['down']
                         for winner in winners:
-                            ref2 = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                            ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                             originr = ref2.get()
                             point = originr["포인트"]
                             ref2.update({"포인트": point + 20})
@@ -1411,6 +1415,9 @@ async def check_game_status(): #지모의 솔로랭크가 진행중인지 20초�
     await bot.wait_until_ready()
     channel = bot.get_channel(int(CHANNEL_ID))
     notice_channel = bot.get_channel(int(NOTICE_CHANNEL_ID))
+
+    cur_predict_seasonref = db.reference("현재예측시즌")
+    current_predict_season = cur_predict_seasonref.get()
 
     while not bot.is_closed():
         p.jimo_current_game_state = await nowgame(JIMO_PUUID)
@@ -1464,7 +1471,7 @@ async def check_game_status(): #지모의 솔로랭크가 진행중인지 20초�
                     nickname = interaction.user
                     if (nickname.name not in [winner["name"] for winner in p.prediction_votes['win']] and
                         nickname.name not in [loser["name"] for loser in p.prediction_votes['lose']]):
-                        refp = db.reference(f'{PREDICT_SEASON}/예측포인트/{nickname.name}')
+                        refp = db.reference(f'{current_predict_season}/예측포인트/{nickname.name}')
 
                         pointr = refp.get()
                         point = pointr["포인트"]
@@ -1529,7 +1536,7 @@ async def check_game_status(): #지모의 솔로랭크가 진행중인지 20초�
                     if (nickname.name not in [winner["name"] for winner in p.prediction_votes['win']] and
                         nickname.name not in [loser["name"] for loser in p.prediction_votes['lose']]):
 
-                        refp = db.reference(f'{PREDICT_SEASON}/예측포인트/{nickname.name}')
+                        refp = db.reference(f'{current_predict_season}/예측포인트/{nickname.name}')
 
                         pointr = refp.get()
                         point = pointr["포인트"]
@@ -1774,6 +1781,9 @@ async def check_game_status2(): #Melon의 솔로랭크가 진행중인지 20초�
     channel = bot.get_channel(int(CHANNEL_ID))
     notice_channel = bot.get_channel(int(NOTICE_CHANNEL_ID))
 
+    cur_predict_seasonref = db.reference("현재예측시즌")
+    current_predict_season = cur_predict_seasonref.get()
+
     while not bot.is_closed():
         p.melon_current_game_state = await nowgame(MELON_PUUID)
         if p.melon_current_game_state:
@@ -1824,7 +1834,7 @@ async def check_game_status2(): #Melon의 솔로랭크가 진행중인지 20초�
                     nickname = interaction.user
                     if (nickname.name not in [winner["name"] for winner in p.prediction_votes2['win']] and
                         nickname.name not in [loser["name"] for loser in p.prediction_votes2['lose']]):
-                        refp = db.reference(f'{PREDICT_SEASON}/예측포인트/{nickname.name}')
+                        refp = db.reference(f'{current_predict_season}/예측포인트/{nickname.name}')
 
                         pointr = refp.get()
                         point = pointr["포인트"]
@@ -1886,7 +1896,7 @@ async def check_game_status2(): #Melon의 솔로랭크가 진행중인지 20초�
                     nickname = interaction.user
                     if (nickname.name not in [winner["name"] for winner in p.prediction_votes2['win']] and
                         nickname.name not in [loser["name"] for loser in p.prediction_votes2['lose']]):
-                        refp = db.reference(f'{PREDICT_SEASON}/예측포인트/{nickname.name}')
+                        refp = db.reference(f'{current_predict_season}/예측포인트/{nickname.name}')
 
                         pointr = refp.get()
                         point = pointr["포인트"]
@@ -2122,6 +2132,10 @@ async def check_game_status2(): #Melon의 솔로랭크가 진행중인지 20초�
 async def check_jimo_remake_status(): # 지모의 다시하기 여부를 확인!
     channel = bot.get_channel(int(CHANNEL_ID))
     last_game_state = False
+
+    cur_predict_seasonref = db.reference("현재예측시즌")
+    current_predict_season = cur_predict_seasonref.get()
+
     while not bot.is_closed():
         current_game_state = await nowgame(JIMO_PUUID)
         # JIMO의 상태가 변했는지 확인
@@ -2149,13 +2163,13 @@ async def check_jimo_remake_status(): # 지모의 다시하기 여부를 확인!
                             winners = p.prediction_votes['win']
                             losers = p.prediction_votes['lose']
                             for winner in winners:
-                                ref = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                                ref = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                                 originr = ref.get()
                                 bettingPoint = originr["베팅포인트"]
                                 bettingPoint -= winner['points'] # 베팅 포인트 돌려줌
                                 ref.update({"베팅포인트" : bettingPoint})
                             for loser in losers:
-                                ref = db.reference(f'{PREDICT_SEASON}/예측포인트/{loser["name"]}')
+                                ref = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
                                 originr = ref.get()
                                 bettingPoint = originr["베팅포인트"]
                                 bettingPoint -= loser['points'] # 베팅 포인트 돌려줌
@@ -2171,6 +2185,10 @@ async def check_jimo_remake_status(): # 지모의 다시하기 여부를 확인!
 async def check_melon_remake_status(): # Melon의 다시하기 여부를 확인!
     channel = bot.get_channel(int(CHANNEL_ID))
     last_game_state = False
+
+    cur_predict_seasonref = db.reference("현재예측시즌")
+    current_predict_season = cur_predict_seasonref.get()
+
     while not bot.is_closed():
         current_game_state = await nowgame(MELON_PUUID)
         # Melon의 상태가 변했는지 확인
@@ -2199,13 +2217,13 @@ async def check_melon_remake_status(): # Melon의 다시하기 여부를 확인!
                             winners = p.prediction_votes2['win']
                             losers = p.prediction_votes2['lose']
                             for winner in winners:
-                                ref = db.reference(f'{PREDICT_SEASON}/예측포인트/{winner["name"]}')
+                                ref = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
                                 originr = ref.get()
                                 bettingPoint = originr["베팅포인트"]
                                 bettingPoint -= winner['points'] # 베팅 포인트 돌려줌
                                 ref.update({"베팅포인트" : bettingPoint})
                             for loser in losers:
-                                ref = db.reference(f'{PREDICT_SEASON}/예측포인트/{loser["name"]}')
+                                ref = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
                                 originr = ref.get()
                                 bettingPoint = originr["베팅포인트"]
                                 bettingPoint -= loser['points'] # 베팅 포인트 돌려줌
