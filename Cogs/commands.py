@@ -1676,55 +1676,56 @@ class hello(commands.Cog):
         current_predict_season = cur_predict_seasonref.get()
         if 시즌 == current_predict_season:
             today = datetime.today()
+            '''
             if today.weekday() != 6:
                 embed = discord.Embed(title=f'비공개', color = discord.Color.blue())
                 embed.add_field(name=f"", value=f"최신 시즌 순위표는 비공개입니다!", inline=False)
                 await interaction.response.send_message(embed=embed,ephemeral=True)
-            else:
-                embed = discord.Embed(title=f'비공개', color = discord.Color.blue())
-                embed.add_field(name=f"", value=f"최신 시즌 순위표는 비공개입니다!", inline=False)
-                pointref = db.reference("혼자보기포인트")
-                need_point = pointref.get()
-                see1button = discord.ui.Button(style=discord.ButtonStyle.success,label=f"순위표 혼자보기({need_point} 포인트)")
-                see2button = discord.ui.Button(style=discord.ButtonStyle.primary,label="순위표 같이보기(500 포인트)")
-                view = discord.ui.View()
-                view.add_item(see1button)
-                view.add_item(see2button)
-                async def see1button_callback(interaction:discord.Interaction): # 순위표 버튼을 눌렀을 때의 반응!
-                    refp = db.reference(f'{current_predict_season}/예측포인트/{interaction.user.name}')
-                    originr = refp.get()
-                    point = originr["포인트"]
-                    bettingPoint = originr["베팅포인트"]
-                    if point - bettingPoint < need_point:
-                        await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {point - bettingPoint} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
-                    else:
-                        refp.update({"포인트" : point - need_point})
-                        refhon = db.reference('/')
-                        refhon.update({"혼자보기포인트" : need_point + 50})
-                        ref = db.reference(f'{시즌}/예측포인트')
-                        points = ref.get()
+            '''
+            embed = discord.Embed(title=f'비공개', color = discord.Color.blue())
+            embed.add_field(name=f"", value=f"최신 시즌 순위표는 비공개입니다!", inline=False)
+            pointref = db.reference("혼자보기포인트")
+            need_point = pointref.get()
+            see1button = discord.ui.Button(style=discord.ButtonStyle.success,label=f"순위표 혼자보기({need_point} 포인트)")
+            see2button = discord.ui.Button(style=discord.ButtonStyle.primary,label="순위표 같이보기(500 포인트)")
+            view = discord.ui.View()
+            view.add_item(see1button)
+            view.add_item(see2button)
+            async def see1button_callback(interaction:discord.Interaction): # 순위표 버튼을 눌렀을 때의 반응!
+                refp = db.reference(f'{current_predict_season}/예측포인트/{interaction.user.name}')
+                originr = refp.get()
+                point = originr["포인트"]
+                bettingPoint = originr["베팅포인트"]
+                if point - bettingPoint < need_point:
+                    await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {point - bettingPoint} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
+                else:
+                    refp.update({"포인트" : point - need_point})
+                    refhon = db.reference('/')
+                    refhon.update({"혼자보기포인트" : need_point + 50})
+                    ref = db.reference(f'{시즌}/예측포인트')
+                    points = ref.get()
 
-                        # 점수를 기준으로 내림차순으로 정렬
-                        sorted_data = sorted(points.items(), key=lambda x: x[1]['포인트'], reverse=True)
+                    # 점수를 기준으로 내림차순으로 정렬
+                    sorted_data = sorted(points.items(), key=lambda x: x[1]['포인트'], reverse=True)
 
-                        # 상위 명을 추출하여 출력
-                        top = sorted_data[:]
+                    # 상위 명을 추출하여 출력
+                    top = sorted_data[:]
 
-                        embed = discord.Embed(title=f'승부예측 순위', color = discord.Color.blue())
+                    embed = discord.Embed(title=f'승부예측 순위', color = discord.Color.blue())
 
-                        for idx, (username, info) in enumerate(top, start=1):
-                            if info['연승'] > 0:
-                                embed.add_field(name=f"{idx}. {username}", value=f"연속적중 {info['연승']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
-                            elif info['연패'] > 0:
-                                embed.add_field(name=f"{idx}. {username}", value=f"연속비적중 {info['연패']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
-                            else:
-                                embed.add_field(name=f"{idx}. {username}", value=f"포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
+                    for idx, (username, info) in enumerate(top, start=1):
+                        if info['연승'] > 0:
+                            embed.add_field(name=f"{idx}. {username}", value=f"연속적중 {info['연승']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
+                        elif info['연패'] > 0:
+                            embed.add_field(name=f"{idx}. {username}", value=f"연속비적중 {info['연패']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
+                        else:
+                            embed.add_field(name=f"{idx}. {username}", value=f"포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
 
-                        channel = self.bot.get_channel(int(CHANNEL_ID))
-                        userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
-                        userembed.add_field(name="",value=f"{interaction.user.name}님이 {need_point}포인트를 소모하여 순위표를 열람했습니다! (현재 열람 포인트 : {need_point + 50}(+ 50))", inline=False)
-                        await channel.send(f"\n",embed = userembed)
-                        await interaction.response.send_message(embed=embed,ephemeral=True)
+                    channel = self.bot.get_channel(int(CHANNEL_ID))
+                    userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
+                    userembed.add_field(name="",value=f"{interaction.user.name}님이 {need_point}포인트를 소모하여 순위표를 열람했습니다! (현재 열람 포인트 : {need_point + 50}(+ 50))", inline=False)
+                    await channel.send(f"\n",embed = userembed)
+                    await interaction.response.send_message(embed=embed,ephemeral=True)
 
                 async def see2button_callback(interaction:discord.Interaction): # 순위표 버튼을 눌렀을 때의 반응!
                     refp = db.reference(f'{current_predict_season}/예측포인트/{interaction.user.name}')
