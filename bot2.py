@@ -682,17 +682,17 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
 
                             if win_streak > 1:
                               if streak_bonus == 0:
-                                add_points = -point_change + (win_streak * 2) + round(winner['points']*BonusRate)
+                                add_points = -point_change + (win_streak * 2) + round(winner['points']*BonusRate) + get_bet
                                 userembed.add_field(name="",value=f"{winner['name']}님이 {win_streak}연속 적중을 이루어내며 {add_points}(연속적중 보너스 + {win_streak * 2})(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
                               else:
-                                add_points = -point_change + (win_streak * 2) + round(winner['points']*BonusRate) + streak_bonus
+                                add_points = -point_change + (win_streak * 2) + round(winner['points']*BonusRate) + streak_bonus + get_bet
                                 userembed.add_field(name="",value=f"{winner['name']}님이 {win_streak}연속 적중을 이루어내며 {add_points}(연속적중 보너스 + {win_streak * 2})(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet})(역배 보너스 + {streak_bonus}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
                             else:
                               if streak_bonus == 0:
-                                add_points = -point_change + round(winner["points"]*BonusRate)
+                                add_points = -point_change + round(winner["points"]*BonusRate) + get_bet
                                 userembed.add_field(name="",value=f"{winner['name']}님이 {add_points}(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
                               else:
-                                add_points = -point_change + round(winner["points"]*BonusRate) + streak_bonus
+                                add_points = -point_change + round(winner["points"]*BonusRate) + streak_bonus + get_bet
                                 userembed.add_field(name="",value=f"{winner['name']}님이 {add_points}(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet})(역배 보너스 + {streak_bonus}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
 
                             point -= winner['points']
