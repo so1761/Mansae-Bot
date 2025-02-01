@@ -420,17 +420,15 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
 
                         # 연패 보너스
                         if game_lose_streak >= 1:
-                          streak_bonus = calculate_points(game_lose_streak)
                           streak_bonus_rate = calculate_bonus(game_lose_streak)
                         else:
-                          streak_bonus = 0
                           streak_bonus_rate = 0
 
 
                         if winnerNum == 0:
                             BonusRate = 0
                         else:
-                            BonusRate = round(((winnerNum+loserNum)/winnerNum) * 0.5,2) # 0.5배 배율 적용
+                            BonusRate = round((((winnerNum+loserNum)/winnerNum) - 1) * 0.5,2) + 1 # 0.5배 배율 적용
                             if BonusRate < 1:
                                 BonusRate = 1
                             BonusRate += streak_bonus_rate
@@ -450,10 +448,8 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
 
                         if BonusRate == 0:
                             userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배", inline=False)
-                        elif round({winnerNum+loserNum}/{winnerNum}) * 0.5 < 1:
-                            userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배!({winnerNum+loserNum}/{winnerNum} x 0.5 (1로 보정) + 역배 배율 {streak_bonus_rate} + 0.1)", inline=False)
                         else:
-                            userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배!({winnerNum+loserNum}/{winnerNum} x 0.5 + 역배 배율 {streak_bonus_rate} + 0.1)", inline=False)
+                            userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배!((({winnerNum+loserNum}/{winnerNum} - 1) x 0.5 + 1) + 역배 배율 {streak_bonus_rate} + 0.1)", inline=False)
 
                         for winner in winners:
                             ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
@@ -513,20 +509,11 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
 
                             prediction_win_rate = round(((prediction_wins * 100) / prediction_all), 2)
                             if win_streak > 1:
-                              if streak_bonus == 0:
                                 add_points = point_change + (calculate_points(win_streak)) + round(winner['points']*BonusRate) + get_bet
                                 userembed.add_field(name="",value=f"{winner['name']}님이 {win_streak}연속 적중을 이루어내며 {add_points}(연속적중 보너스 + {calculate_points(win_streak)})(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
-                              else:
-                                add_points = point_change + (win_streak * 2) + round(winner['points']*BonusRate) + streak_bonus + get_bet
-                                userembed.add_field(name="",value=f"{winner['name']}님이 {win_streak}연속 적중을 이루어내며 {add_points}(연속적중 보너스 + {calculate_points(win_streak)})(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet})(역배 보너스 + {streak_bonus}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
                             else:
-                              if streak_bonus == 0:
                                 add_points = point_change + round(winner["points"]*BonusRate) + get_bet
                                 userembed.add_field(name="",value=f"{winner['name']}님이 {add_points}(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
-                              else:
-                                add_points = point_change + round(winner["points"]*BonusRate) + streak_bonus + get_bet
-                                userembed.add_field(name="",value=f"{winner['name']}님이 {add_points}(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet})(역배 보너스 + {streak_bonus}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
-
                             point -= winner['points']
                             point += add_points
 
@@ -612,16 +599,14 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
 
                         # 연승 보너스
                         if game_win_streak >= 1:
-                          streak_bonus = calculate_points(game_win_streak)
                           streak_bonus_rate = calculate_bonus(game_win_streak)
                         else:
-                          streak_bonus = 0
                           streak_bonus_rate = 0
 
                         if winnerNum == 0:
                             BonusRate = 0
                         else:
-                            BonusRate = round(((winnerNum+loserNum)/winnerNum) * 0.5,2)  # 0.5배 배율 적용
+                            BonusRate = round((((winnerNum+loserNum)/winnerNum) - 1) * 0.5,2) + 1  # 0.5배 배율 적용
                             if BonusRate < 1:
                                 BonusRate = 1
                             BonusRate += streak_bonus_rate
@@ -640,10 +625,8 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
 
                         if BonusRate == 0:
                             userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배", inline=False)
-                        elif round({winnerNum+loserNum}/{winnerNum}) * 0.5 < 1:
-                            userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배!({winnerNum+loserNum}/{winnerNum} x 0.5 (1로 보정) + 역배 배율 {streak_bonus_rate} + 0.1)", inline=False)
                         else:
-                            userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배!({winnerNum+loserNum}/{winnerNum} x 0.5 + 역배 배율 {streak_bonus_rate} + 0.1)", inline=False)
+                            userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배!((({winnerNum+loserNum}/{winnerNum} - 1) x 0.5 + 1) + 역배 배율 {streak_bonus_rate} + 0.1)", inline=False)
 
 
                         for winner in winners:
@@ -717,19 +700,11 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
                             prediction_win_rate = round(((prediction_wins * 100) / prediction_all), 2)
 
                             if win_streak > 1:
-                              if streak_bonus == 0:
                                 add_points = -point_change + (calculate_points(win_streak)) + round(winner['points']*BonusRate) + get_bet
                                 userembed.add_field(name="",value=f"{winner['name']}님이 {win_streak}연속 적중을 이루어내며 {add_points}(연속적중 보너스 + {calculate_points(win_streak)})(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
-                              else:
-                                add_points = -point_change + (calculate_points(win_streak)) + round(winner['points']*BonusRate) + streak_bonus + get_bet
-                                userembed.add_field(name="",value=f"{winner['name']}님이 {win_streak}연속 적중을 이루어내며 {add_points}(연속적중 보너스 + {calculate_points(win_streak)})(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet})(역배 보너스 + {streak_bonus}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
                             else:
-                              if streak_bonus == 0:
                                 add_points = -point_change + round(winner["points"]*BonusRate) + get_bet
                                 userembed.add_field(name="",value=f"{winner['name']}님이 {add_points}(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
-                              else:
-                                add_points = -point_change + round(winner["points"]*BonusRate) + streak_bonus + get_bet
-                                userembed.add_field(name="",value=f"{winner['name']}님이 {add_points}(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet})(역배 보너스 + {streak_bonus}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
 
                             point -= winner['points']
                             point += add_points
@@ -888,7 +863,7 @@ async def check_jimo_points(): #지모의 솔로랭크 점수를 20초마다 확
                     await channel.send(embed=kdaembed)
 
                     if jimo_kda == 999:
-                        refperfect.update({'지모': 200})
+                        refperfect.update({'지모': 500})
                     else:
                         refperfect.update({'지모': perfect_point + 5})
                     p.kda_votes['up'].clear()
@@ -991,18 +966,14 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                         loserNum = len(losers)
 
                         if game_lose_streak >= 1:
-                          streak_bonus = calculate_points(game_lose_streak)
                           streak_bonus_rate = calculate_bonus(game_lose_streak)
                         else:
-                          streak_bonus = 0
                           streak_bonus_rate = 0
 
                         if winnerNum == 0:
                             BonusRate = 0
                         else:
-                            BonusRate = round(((winnerNum+loserNum)/winnerNum) * 0.5,2)  # 0.5배 배율 적용
-                            if BonusRate < 1:
-                                BonusRate = 1
+                            BonusRate = round((((winnerNum+loserNum)/winnerNum) - 1) * 0.5,2) + 1  # 0.5배 배율 적용
                             BonusRate += streak_bonus_rate
                             BonusRate += 0.1
 
@@ -1019,10 +990,8 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
 
                         if BonusRate == 0:
                             userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배", inline=False)
-                        elif round({winnerNum+loserNum}/{winnerNum} * 0.5) < 1:
-                            userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배!({winnerNum+loserNum}/{winnerNum} x 0.5 (1로 보정) + 역배 배율 {streak_bonus_rate} + 0.1)", inline=False)
                         else:
-                            userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배!({winnerNum+loserNum}/{winnerNum} x 0.5 + 역배 배율 {streak_bonus_rate} + 0.1)", inline=False)
+                            userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배!((({winnerNum+loserNum}/{winnerNum} - 1) x 0.5 + 1) + 역배 배율 {streak_bonus_rate} + 0.1)", inline=False)
 
                         for winner in winners:
                             ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
@@ -1083,20 +1052,12 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                             prediction_win_rate = round(((prediction_wins * 100) / prediction_all), 2)
 
                             if win_streak > 1:
-                              if streak_bonus == 0:
                                 add_points = point_change + (calculate_points(win_streak)) + round(winner['points']*BonusRate) + get_bet
                                 userembed.add_field(name="",value=f"{winner['name']}님이 {win_streak}연속 적중을 이루어내며 {add_points}(연속적중 보너스 + {calculate_points(win_streak)})(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
-                              else:
-                                add_points = point_change + (calculate_points(win_streak)) + round(winner['points']*BonusRate) + streak_bonus + get_bet
-                                userembed.add_field(name="",value=f"{winner['name']}님이 {win_streak}연속 적중을 이루어내며 {add_points}(연속적중 보너스 + {calculate_points(win_streak)})(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet})(역배 보너스 + {streak_bonus}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
                             else:
-                              if streak_bonus == 0:
                                 add_points = point_change + round(winner["points"]*BonusRate) + get_bet
                                 userembed.add_field(name="",value=f"{winner['name']}님이 {add_points}(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
-                              else:
-                                add_points = point_change + round(winner["points"]*BonusRate) + streak_bonus + get_bet
-                                userembed.add_field(name="",value=f"{winner['name']}님이 {add_points}(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet})(역배 보너스 + {streak_bonus}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
-
+                        
                             point -= winner['points']
                             point += add_points
                             ref2.update({"포인트": point})
@@ -1182,18 +1143,14 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
 
                         # 연승 보너스
                         if game_win_streak >= 1:
-                          streak_bonus = calculate_points(game_win_streak)
                           streak_bonus_rate = calculate_bonus(game_win_streak)
                         else:
-                          streak_bonus = 0
                           streak_bonus_rate = 0
 
                         if winnerNum == 0:
                             BonusRate = 0
                         else:
-                            BonusRate = round(((winnerNum+loserNum)/winnerNum) * 0.5,2) #0.5배 배율 적용
-                            if BonusRate < 1:
-                                BonusRate = 1
+                            BonusRate = round((((winnerNum+loserNum)/winnerNum) - 1) * 0.5,2) + 1 #0.5배 배율 적용
                             BonusRate += streak_bonus_rate
                             BonusRate += 0.1
 
@@ -1210,10 +1167,8 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
 
                         if BonusRate == 0:
                             userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배", inline=False)
-                        elif round({winnerNum+loserNum}/{winnerNum}) * 0.5 < 1:
-                            userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배!({winnerNum+loserNum}/{winnerNum} x 0.5 (1로 보정) + 역배 배율 {streak_bonus_rate} + 0.1)", inline=False)
                         else:
-                            userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배!({winnerNum+loserNum}/{winnerNum} x 0.5 + 역배 배율 {streak_bonus_rate} + 0.1)", inline=False)
+                            userembed.add_field(name="",value=f"베팅 배율: {BonusRate}배!((({winnerNum+loserNum}/{winnerNum} - 1) x 0.5 + 1) + 역배 배율 {streak_bonus_rate} + 0.1)", inline=False)
 
                         for winner in winners:
                             ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
@@ -1276,19 +1231,11 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                             prediction_win_rate = round(((prediction_wins * 100) / prediction_all), 2)
 
                             if win_streak > 1:
-                              if streak_bonus == 0:
                                 add_points = -point_change + (calculate_points(win_streak)) + round(winner['points']*BonusRate) + get_bet
                                 userembed.add_field(name="",value=f"{winner['name']}님이 {win_streak}연속 적중을 이루어내며 {add_points}(연속적중 보너스 + {calculate_points(win_streak)})(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
-                              else:
-                                add_points = -point_change + (calculate_points(win_streak)) + round(winner['points']*BonusRate) + streak_bonus + get_bet
-                                userembed.add_field(name="",value=f"{winner['name']}님이 {win_streak}연속 적중을 이루어내며 {add_points}(연속적중 보너스 + {calculate_points(win_streak)})(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet})(역배 보너스 + {streak_bonus}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
                             else:
-                              if streak_bonus == 0:
                                 add_points = -point_change + round(winner["points"]*BonusRate) + get_bet
                                 userembed.add_field(name="",value=f"{winner['name']}님이 {add_points}(베팅 보너스 + {round(winner['points']*BonusRate)}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']} + {get_bet})", inline=False)
-                              else:
-                                add_points = -point_change + round(winner["points"]*BonusRate) + streak_bonus + get_bet
-                                userembed.add_field(name="",value=f"{winner['name']}님이 {add_points}(베팅 보너스 + {round(winner['points']*BonusRate)} + {get_bet})(역배 보너스 + {streak_bonus}) 점수를 획득하셨습니다! (베팅 포인트:{winner['points']})", inline=False)
 
                             point -= winner['points']
                             point += add_points
@@ -1444,7 +1391,7 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
                     await channel.send(embed=kdaembed)
 
                     if melon_kda == 999:
-                        refperfect.update({'Melon': 200})
+                        refperfect.update({'Melon': 500})
                     else:
                         refperfect.update({'Melon': perfect_point + 5})
 
@@ -1790,25 +1737,20 @@ async def check_game_status(): #지모의 솔로랭크가 진행중인지 20초�
                     game_lose_streak = latest_data["연패"]
 
                     if game_win_streak >= 1:
-                      streak_bonus = calculate_points(game_win_streak)
                       streak_bonusRate = calculate_bonus(game_win_streak)
                           
                       p.current_message_jimo = await channel.send("\n지모의 솔로랭크 게임이 감지되었습니다!\n"
                                     "승부예측을 해보세요!\n"
-                                    f"{game_win_streak}연승으로 패배에 +{streak_bonus}점!\n"
-                                    f"패배 시 배율 {streak_bonusRate} 추가!",
+                                    f"{game_win_streak}연승으로 패배 시 배율 {streak_bonusRate} 추가!",
                                     view = view, embed = p.prediction_embed)
                     elif game_lose_streak >= 1:
-                      streak_bonus = calculate_points(game_lose_streak)
                       streak_bonusRate = calculate_bonus(game_lose_streak)
 
                       p.current_message_jimo = await channel.send("\n지모의 솔로랭크 게임이 감지되었습니다!\n"
                                     "승부예측을 해보세요!\n"
-                                    f"{game_lose_streak}연패로 승리에 +{streak_bonus}점!\n"
-                                    f"승리 시 배율 {streak_bonusRate} 추가!",
+                                    f"{game_lose_streak}연패로 승리 시 배율 {streak_bonusRate} 추가!",
                                     view = view, embed = p.prediction_embed)
                     else:
-                      streak_bonus = 0
                       p.current_message_jimo = await channel.send("\n지모의 솔로랭크 게임이 감지되었습니다!\n"
                                     "승부예측을 해보세요!\n",
                                     view = view, embed = p.prediction_embed)
@@ -2151,25 +2093,20 @@ async def check_game_status2(): #Melon의 솔로랭크가 진행중인지 20초�
                     game_lose_streak = latest_data["연패"]
 
                     if game_win_streak >= 1:
-                      streak_bonus = calculate_points(game_win_streak)
                       streak_bonusRate = calculate_bonus(game_win_streak)
 
                       p.current_message_melon = await channel.send("\nMelon의 솔로랭크 게임이 감지되었습니다!\n"
                                     "승부예측을 해보세요!\n"
-                                    f"{game_win_streak}연승으로 패배에 +{streak_bonus}점!\n"
-                                    f"패배 시 배율 {streak_bonusRate} 추가!",
+                                    f"{game_win_streak}연승으로 패배 시 배율 {streak_bonusRate} 추가!",
                                     view = view, embed = p.prediction2_embed)
                     elif game_lose_streak >= 1:
-                      streak_bonus = calculate_points(game_lose_streak)
                       streak_bonusRate = calculate_bonus(game_lose_streak)
 
                       p.current_message_melon = await channel.send("\nMelon의 솔로랭크 게임이 감지되었습니다!\n"
                                     "승부예측을 해보세요!\n"
-                                    f"{game_lose_streak}연패로 승리에 +{streak_bonus}점!\n"
-                                    f"승리 시 배율 {streak_bonusRate} 추가!",
+                                    f"{game_lose_streak}연패로 승리 시 배율 {streak_bonusRate} 추가!",
                                     view = view, embed = p.prediction2_embed)
                     else:
-                      streak_bonus = 0
                       p.current_message_melon = await channel.send("\nMelon의 솔로랭크 게임이 감지되었습니다!\n"
                                     "승부예측을 해보세요!\n",
                                     view = view, embed = p.prediction2_embed)

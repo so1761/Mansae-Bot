@@ -1668,7 +1668,8 @@ class hello(commands.Cog):
     @app_commands.choices(시즌=[
     Choice(name='예측시즌 1', value='예측시즌1'),
     Choice(name='예측시즌 2', value='예측시즌2'),
-    Choice(name='예측시즌 3', value='예측시즌3')
+    Choice(name='예측시즌 3', value='예측시즌3'),
+    Choice(name='정규시즌 1', value='정규시즌1')
     ])
     async def 예측순위(self, interaction: discord.Interaction, 시즌:str):
         cur_predict_seasonref = db.reference("현재예측시즌")
@@ -2336,6 +2337,23 @@ class hello(commands.Cog):
                 userembed.add_field(name="",value=f"{메세지}", inline=False)
                 await channel.send(f"@everyone\n",embed = userembed)
                 await interaction.response.send_message(f"전송 완료! 남은 포인트: {point - bettingPoint - need_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
+
+    @app_commands.command(name="공지",description="확성기 채널에 공지 메세지를 보냅니다(개발자 전용)")
+    @app_commands.describe(메세지 = "메세지를 입력하세요")
+    async def 공지(self, interaction: discord.Interaction, 제목: str, 메세지:str, url:str = None):
+        channel = self.bot.get_channel(int(1332330634546253915))
+        if interaction.user.name == "toe_kyung":
+            userembed = discord.Embed(title=제목, color=discord.Color.light_gray())
+            userembed.add_field(name="",value=f"{메세지}", inline=False)
+
+            # URL이 있을 경우에만 URL을 추가
+            if url:
+                userembed.url = url  # URL을 Embed의 url 속성에 추가
+
+            await channel.send(f"@everyone\n",embed = userembed)
+            await interaction.response.send_message(f"전송 완료!",ephemeral=True)
+        else:
+            interaction.response.send_message("권한이 없습니다",ephemeral=True)
 
     @app_commands.command(name="테스트",description="테스트(개발자 전용)")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
