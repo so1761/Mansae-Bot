@@ -2379,89 +2379,89 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             prediction_votes = votes["prediction"]
             kda_votes = votes["kda"]
             
-        async def bet_button_callback(interaction: discord.Interaction, prediction_type: str, anonym_names: list):
-            nickname = interaction.user
-            if (nickname.name not in [user["name"] for user in prediction_votes["win"]]) and (nickname.name not in [user["name"] for user in prediction_votes["lose"]]):
-                refp = db.reference(f'{current_predict_season}/예측포인트/{nickname.name}')
-                pointr = refp.get()
-                point = pointr["포인트"]
-                bettingPoint = pointr["베팅포인트"]
-                random_number = random.uniform(0.01, 0.1) # 1% ~ 10% 랜덤 배팅 할 비율을 정합
-                baseRate = round(random_number, 2)
-                basePoint = round(point * baseRate) if point - bettingPoint >= 500 else 0 # 500p 이상 보유 시 자동 베팅
+            async def bet_button_callback(interaction: discord.Interaction, prediction_type: str, anonym_names: list):
+                nickname = interaction.user
+                if (nickname.name not in [user["name"] for user in prediction_votes["win"]]) and (nickname.name not in [user["name"] for user in prediction_votes["lose"]]):
+                    refp = db.reference(f'{current_predict_season}/예측포인트/{nickname.name}')
+                    pointr = refp.get()
+                    point = pointr["포인트"]
+                    bettingPoint = pointr["베팅포인트"]
+                    random_number = random.uniform(0.01, 0.1) # 1% ~ 10% 랜덤 배팅 할 비율을 정합
+                    baseRate = round(random_number, 2)
+                    basePoint = round(point * baseRate) if point - bettingPoint >= 500 else 0 # 500p 이상 보유 시 자동 베팅
 
-                refp.update({"베팅포인트": bettingPoint + basePoint})
-                prediction_votes[prediction_type].append({"name": nickname.name, 'points': basePoint})
-                myindex = len(votes[prediction_type]) - 1 # 투표자의 위치 파악
+                    refp.update({"베팅포인트": bettingPoint + basePoint})
+                    prediction_votes[prediction_type].append({"name": nickname.name, 'points': basePoint})
+                    myindex = len(votes[prediction_type]) - 1 # 투표자의 위치 파악
 
-                embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
-                if anonymbool:
-                    win_predictions = "\n".join(f"{anonym_names[index]}: ? 포인트" for index, user in enumerate(prediction_votes["win"])) or "없음"
-                    lose_predictions = "\n".join(f"{anonym_names[index]}: ? 포인트" for index, user in enumerate(prediction_votes["lose"])) or "없음"
-                else:
-                    win_predictions = "\n".join(f"{user['name']}: {user['points']}포인트" for user in prediction_votes["win"]) or "없음"
-                    lose_predictions = "\n".join(f"{user['name']}: {user['points']}포인트" for user in prediction_votes["lose"]) or "없음"
+                    embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
+                    if anonymbool:
+                        win_predictions = "\n".join(f"{anonym_names[index]}: ? 포인트" for index, user in enumerate(prediction_votes["win"])) or "없음"
+                        lose_predictions = "\n".join(f"{anonym_names[index]}: ? 포인트" for index, user in enumerate(prediction_votes["lose"])) or "없음"
+                    else:
+                        win_predictions = "\n".join(f"{user['name']}: {user['points']}포인트" for user in prediction_votes["win"]) or "없음"
+                        lose_predictions = "\n".join(f"{user['name']}: {user['points']}포인트" for user in prediction_votes["lose"]) or "없음"
 
-                embed.add_field(name="승리 예측", value=win_predictions, inline=True)
-                embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
+                    embed.add_field(name="승리 예측", value=win_predictions, inline=True)
+                    embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
 
-                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                if anonymbool:
-                    userembed.add_field(name="", value=f"{anonym_names[myindex]}님이 {prediction_type}에 투표하셨습니다.", inline=True)
-                    if basePoint != 0:
-                        bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-                        bettingembed.add_field(name="", value=f"누군가가 {name}의 {prediction_type}에 {basePoint}포인트를 베팅했습니다!", inline=False)
-                else:
-                    userembed.add_field(name="", value=f"{nickname}님이 {prediction_type}에 투표하셨습니다.", inline=True)
-                    if basePoint != 0:
-                        bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-                        bettingembed.add_field(name="", value=f"{nickname}님이 {name}의 {prediction_type}에 {basePoint}포인트를 베팅했습니다!", inline=False)
+                    userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                    if anonymbool:
+                        userembed.add_field(name="", value=f"{anonym_names[myindex]}님이 {prediction_type}에 투표하셨습니다.", inline=True)
+                        if basePoint != 0:
+                            bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+                            bettingembed.add_field(name="", value=f"누군가가 {name}의 {prediction_type}에 {basePoint}포인트를 베팅했습니다!", inline=False)
+                    else:
+                        userembed.add_field(name="", value=f"{nickname}님이 {prediction_type}에 투표하셨습니다.", inline=True)
+                        if basePoint != 0:
+                            bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+                            bettingembed.add_field(name="", value=f"{nickname}님이 {name}의 {prediction_type}에 {basePoint}포인트를 베팅했습니다!", inline=False)
+                            await channel.send(f"\n", embed=bettingembed)
+                    
+                    await interaction.response.send_message(embed=userembed)
+
+                    if getattr(p, attrs['current_message_attr']): # p.current_message:
+                        await getattr(p, attrs['current_message_attr']).edit(embed=embed)
+                    if basePoint != 0 and anonymbool:
+                        delay = random.uniform(5, 120) # 5초부터 2분까지 랜덤 시간
+                        await asyncio.sleep(delay)
                         await channel.send(f"\n", embed=bettingembed)
-                
-                await interaction.response.send_message(embed=userembed)
-
-                if getattr(p, attrs['current_message_attr']): # p.current_message:
-                    await getattr(p, attrs['current_message_attr']).edit(embed=embed)
-                if basePoint != 0 and anonymbool:
-                    delay = random.uniform(5, 120) # 5초부터 2분까지 랜덤 시간
-                    await asyncio.sleep(delay)
-                    await channel.send(f"\n", embed=bettingembed)
-            else:
-                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                userembed.add_field(name="", value=f"{nickname}님은 이미 투표하셨습니다", inline=True)
-                await interaction.response.send_message(embed=userembed, ephemeral=True)
-
-        async def kda_button_callback(interaction: discord.Interaction, prediction_type: str):
-            nickname = interaction.user
-            if (nickname.name not in [user["name"] for user in kda_votes["up"]] )and (nickname.name not in [user["name"] for user in kda_votes["down"]]) and (nickname.name not in [user["name"] for user in kda_votes["perfect"]]):
-                kda_votes[prediction_type].append({"name": nickname.name})
-                embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.blue())
-                embed.add_field(name="퍼펙트 예측성공 포인트", value=perfect_point, inline=False)
-
-                up_predictions = "".join(f"{len(kda_votes['up'])}명")
-                down_predictions = "".join(f"{len(kda_votes['down'])}명")
-                perfect_predictions = "".join(f"{len(kda_votes['perfect'])}명")
-
-                embed.add_field(name="KDA 3 이상 예측", value=up_predictions, inline=True)
-                embed.add_field(name="KDA 3 이하 예측", value=down_predictions, inline=True)
-                embed.add_field(name="KDA 퍼펙트 예측", value=perfect_predictions, inline=True)
-
-                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                if prediction_type == 'up':
-                    userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 3 이상으로 예측했습니다!", inline=True)
-                elif prediction_type == 'down':
-                    userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 3 이하로 예측했습니다!", inline=True)
                 else:
-                    userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 0 데스, 퍼펙트로 예측했습니다!", inline=True)
-                
-                await interaction.response.send_message(embed=userembed)
+                    userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                    userembed.add_field(name="", value=f"{nickname}님은 이미 투표하셨습니다", inline=True)
+                    await interaction.response.send_message(embed=userembed, ephemeral=True)
 
-                if getattr(p, attrs['current_message_kda_attr']):
-                    await getattr(p, attrs['current_message_kda_attr']).edit(embed=embed)
-            else:
-                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                userembed.add_field(name="", value=f"{nickname}님은 이미 투표하셨습니다", inline=True)
-                await interaction.response.send_message(embed=userembed, ephemeral=True)
+            async def kda_button_callback(interaction: discord.Interaction, prediction_type: str):
+                nickname = interaction.user
+                if (nickname.name not in [user["name"] for user in kda_votes["up"]] )and (nickname.name not in [user["name"] for user in kda_votes["down"]]) and (nickname.name not in [user["name"] for user in kda_votes["perfect"]]):
+                    kda_votes[prediction_type].append({"name": nickname.name})
+                    embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.blue())
+                    embed.add_field(name="퍼펙트 예측성공 포인트", value=perfect_point, inline=False)
+
+                    up_predictions = "".join(f"{len(kda_votes['up'])}명")
+                    down_predictions = "".join(f"{len(kda_votes['down'])}명")
+                    perfect_predictions = "".join(f"{len(kda_votes['perfect'])}명")
+
+                    embed.add_field(name="KDA 3 이상 예측", value=up_predictions, inline=True)
+                    embed.add_field(name="KDA 3 이하 예측", value=down_predictions, inline=True)
+                    embed.add_field(name="KDA 퍼펙트 예측", value=perfect_predictions, inline=True)
+
+                    userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                    if prediction_type == 'up':
+                        userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 3 이상으로 예측했습니다!", inline=True)
+                    elif prediction_type == 'down':
+                        userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 3 이하로 예측했습니다!", inline=True)
+                    else:
+                        userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 0 데스, 퍼펙트로 예측했습니다!", inline=True)
+                    
+                    await interaction.response.send_message(embed=userembed)
+
+                    if getattr(p, attrs['current_message_kda_attr']):
+                        await getattr(p, attrs['current_message_kda_attr']).edit(embed=embed)
+                else:
+                    userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                    userembed.add_field(name="", value=f"{nickname}님은 이미 투표하셨습니다", inline=True)
+                    await interaction.response.send_message(embed=userembed, ephemeral=True)
 
             buttons['win_button'].callback = lambda interaction: bet_button_callback(interaction, 'win', ANONYM_NAME_WIN)
             buttons['lose_button'].callback = lambda interaction: bet_button_callback(interaction, 'lose', ANONYM_NAME_LOSE)
@@ -2532,7 +2532,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             )
             print(f"check_game_status for {name} 대기 종료")
 
-        await asyncio.sleep(20)  # 20초마다 반복
+    await asyncio.sleep(20)  # 20초마다 반복
 
 async def check_jimo_remake_status(): # 지모의 다시하기 여부를 확인!
     channel = bot.get_channel(int(CHANNEL_ID))
