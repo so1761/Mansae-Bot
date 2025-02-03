@@ -2038,8 +2038,8 @@ class hello(commands.Cog):
                             
                         winner_total_point = sum(winner["points"] for winner in p.votes[이름]['prediction']["win"])
                         loser_total_point = sum(loser["points"] for loser in p.votes[이름]['prediction']["lose"])
-                        prediction_embed.add_field(name="승리 포인트", value=f"총 {winner_total_point}포인트", inline=True)
-                        prediction_embed.add_field(name="패배 포인트", value=f"총 {loser_total_point}포인트", inline=True)
+                        prediction_embed.add_field(name="승리 포인트", value=f"총 {winner_total_point}포인트", inline=False)
+                        prediction_embed.add_field(name="패배 포인트", value=f"총 {loser_total_point}포인트", inline=False)
 
                         prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
                         prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
