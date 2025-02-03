@@ -2392,7 +2392,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
                     refp.update({"베팅포인트": bettingPoint + basePoint})
                     prediction_votes[prediction_type].append({"name": nickname.name, 'points': basePoint})
-                    myindex = len(votes[prediction_type]) - 1 # 투표자의 위치 파악
+                    myindex = len(prediction_votes[prediction_type]) - 1 # 투표자의 위치 파악
 
                     embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
                     if anonymbool:
