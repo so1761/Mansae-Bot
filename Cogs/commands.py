@@ -2035,6 +2035,12 @@ class hello(commands.Cog):
                                 f"{winner['name']}: {winner['points']}포인트" for winner in p.votes[이름]['prediction']['win']) or "없음"
                             lose_predictions = "\n".join(
                                 f"{loser['name']}: {loser['points']}포인트" for loser in p.votes[이름]['prediction']['lose']) or "없음"
+                            
+                        winner_total_point = sum(winner["points"] for winner in p.votes[이름]['prediction']["win"])
+                        loser_total_point = sum(loser["points"] for loser in p.votes[이름]['prediction']["lose"])
+                        prediction_embed.add_field(name="승리 포인트", value=f"총 {winner_total_point}포인트", inline=True)
+                        prediction_embed.add_field(name="패배 포인트", value=f"총 {loser_total_point}포인트", inline=True)
+
                         prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
                         prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
                         if current_message:
@@ -2086,6 +2092,12 @@ class hello(commands.Cog):
                                 f"{winner['name']}: {winner['points']}포인트" for winner in p.votes[이름]['prediction']['win']) or "없음"
                             lose_predictions = "\n".join(
                                 f"{loser['name']}: {loser['points']}포인트" for loser in p.votes[이름]['prediction']['lose']) or "없음"
+                            
+                        winner_total_point = sum(winner["points"] for winner in p.votes[이름]['prediction']["win"])
+                        loser_total_point = sum(loser["points"] for loser in p.votes[이름]['prediction']["lose"])
+                        prediction_embed.add_field(name="승리 포인트", value=f"총 {winner_total_point}포인트", inline=True)
+                        prediction_embed.add_field(name="패배 포인트", value=f"총 {loser_total_point}포인트", inline=True)
+
                         prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
                         prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
                         if current_message:
@@ -2100,7 +2112,7 @@ class hello(commands.Cog):
         elif 이름 == "Melon":
             winbutton = p.melon_winbutton
             current_message = p.current_message_melon
-            prediction_embed = p.prediction_embed2
+            prediction_embed = p.prediction2_embed
             handle_bet(winbutton,current_message,prediction_embed)
 
     @app_commands.command(name="승리",description="베팅 승리판정(개발자 전용)")
