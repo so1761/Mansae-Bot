@@ -694,7 +694,17 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     else:
                         userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 0 데스, 퍼펙트로 예측했습니다!", inline=True)
                     
-                    await interaction.response.send_message(embed=userembed)
+                    await channel.send(f"\n", embed=userembed)
+
+                    if prediction_type == "up":
+                        prediction_value = "KDA 3 이상"
+                    elif prediction_type == "down":
+                        prediction_value = "KDA 3 이하"
+                    elif prediction_type == "perfect":
+                        prediction_value = "KDA 퍼펙트"
+                    noticeembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                    noticeembed.add_field(name="",value=f"{name}의 {prediction_value}에 투표 완료!", inline=False)
+                    await interaction.response.send_message(embed=noticeembed, ephemeral=True)
 
                     if getattr(p, attrs['current_message_kda_attr']):
                         await getattr(p, attrs['current_message_kda_attr']).edit(embed=embed)
