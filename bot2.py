@@ -646,7 +646,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         await asyncio.sleep(delay)
                         # 자동 베팅
                         for better in prediction_votes[prediction_type]:
-                            if better['name'] == nickname:
+                            if better['name'] == nickname.name:
                                 better['points'] += basePoint
                         embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
                         if anonymbool:
