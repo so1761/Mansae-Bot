@@ -1502,10 +1502,10 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
                         # 예측 내역 변동 데이터
                         change_ref = db.reference(f'{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
-                        change_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"] + 1, "적중률": f"{round(((predict_data["적중 횟수"] * 100) / (predict_data["총 예측 횟수"] + 1)), 2)}%", "연승": predict_data["연승"] + 1, "연패": 0, "베팅포인트": bettingPoint - winner["points"]})
+                        change_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"] + 1, "적중률": f"{round(((predict_data['적중 횟수'] * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": predict_data["연승"] + 1, "연패": 0, "베팅포인트": bettingPoint - winner["points"]})
 
                         # 예측 내역 업데이트
-                        point_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"] + 1, "적중률": round(((predict_data["적중 횟수"] * 100) / (predict_data["총 예측 횟수"] + 1)), 2), "연승": predict_data["연승"] + 1, "연패": 0, "베팅포인트": bettingPoint - winner["points"]})
+                        point_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"] + 1, "적중률": f"{round(((predict_data['적중 횟수'] * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": predict_data["연승"] + 1, "연패": 0, "베팅포인트": bettingPoint - winner["points"]})
 
                         betted_rate = round(winner['points'] / winner_total_point, 1) if winner_total_point else 0
                         get_bet = round(betted_rate * loser_total_point)
@@ -1526,10 +1526,10 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
                         # 예측 내역 변동 데이터
                         change_ref = db.reference(f'{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
-                        change_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"], "적중률": f"{round(((predict_data["적중 횟수"] * 100) / (predict_data["총 예측 횟수"] + 1)), 2)}%", "연승": 0, "연패": predict_data["연패"] + 1, "베팅포인트": bettingPoint - loser["points"]})
+                        change_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"], "적중률": f"{round(((predict_data['적중 횟수'] * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": 0, "연패": predict_data["연패"] + 1, "베팅포인트": bettingPoint - loser["points"]})
                         
                         # 예측 내역 업데이트
-                        point_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"], "적중률": f"{round(((predict_data["적중 횟수"] * 100) / (predict_data["총 예측 횟수"] + 1)), 2)}%", "연승": 0, "연패": predict_data["연패"] + 1, "베팅포인트": bettingPoint - loser["points"]})
+                        point_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"], "적중률": f"{round(((predict_data['적중 횟수'] * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": 0, "연패": predict_data["연패"] + 1, "베팅포인트": bettingPoint - loser["points"]})
 
                         
                         # 남은 포인트를 배팅한 비율에 따라 환급받음 (50%)
@@ -2380,9 +2380,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             
         async def bet_button_callback(interaction: discord.Interaction, prediction_type: str, anonym_names: list):
             nickname = interaction.user
-            if (nickname.name not in [user["name"] for user in prediction_votes["win"]])
-            and (nickname.name not in [user["name"] for user in prediction_votes["lose"]]):
-                refp = db.reference(f'{season}/예측포인트/{nickname.name}')
+            if (nickname.name not in [user["name"] for user in prediction_votes["win"]]) and (nickname.name not in [user["name"] for user in prediction_votes["lose"]]):
+                refp = db.reference(f'{current_predict_season}/예측포인트/{nickname.name}')
                 pointr = refp.get()
                 point = pointr["포인트"]
                 bettingPoint = pointr["베팅포인트"]
@@ -2433,9 +2432,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
         async def kda_button_callback(interaction: discord.Interaction, prediction_type: str):
             nickname = interaction.user
-            if (nickname.name not in [user["name"] for user in kda_votes["up"]] )
-            and (nickname.name not in [user["name"] for user in kda_votes["down"]])
-            and (nickname.name not in [user["name"] for user in kda_votes["perfect"]]):
+            if (nickname.name not in [user["name"] for user in kda_votes["up"]] )and (nickname.name not in [user["name"] for user in kda_votes["down"]]) and (nickname.name not in [user["name"] for user in kda_votes["perfect"]]):
                 kda_votes[prediction_type].append({"name": nickname.name})
                 embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.blue())
                 embed.add_field(name="퍼펙트 예측성공 포인트", value=perfect_point, inline=False)
