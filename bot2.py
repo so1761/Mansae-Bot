@@ -635,8 +635,25 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     if getattr(p, attrs['current_message_attr']): # p.current_message:
                         await getattr(p, attrs['current_message_attr']).edit(embed=embed)
                     if basePoint != 0 and anonymbool:
-                        delay = random.uniform(5, 10) # 5초부터 10초까지 랜덤 시간
+                        delay = random.uniform(5, 120) # 5초부터 2분까지 랜덤 시간
                         await asyncio.sleep(delay)
+                        embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
+                        if anonymbool:
+                            win_predictions = "\n".join(f"{anonym_names[index]}: ? 포인트" for index, user in enumerate(prediction_votes["win"])) or "없음"
+                            lose_predictions = "\n".join(f"{anonym_names[index]}: ? 포인트" for index, user in enumerate(prediction_votes["lose"])) or "없음"
+                        else:
+                            win_predictions = "\n".join(f"{user['name']}: {user['points']}포인트" for user in prediction_votes["win"]) or "없음"
+                            lose_predictions = "\n".join(f"{user['name']}: {user['points']}포인트" for user in prediction_votes["lose"]) or "없음"
+                        
+                        winner_total_point = sum(winner["points"] for winner in prediction_votes["win"])
+                        loser_total_point = sum(loser["points"] for loser in prediction_votes["lose"])
+                        embed.add_field(name="승리 포인트", value=f"총 {winner_total_point}포인트", inline=False)
+                        embed.add_field(name="패배 포인트", value=f"총 {loser_total_point}포인트", inline=False)
+                        
+                        embed.add_field(name="승리 예측", value=win_predictions, inline=True)
+                        embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
+                        if getattr(p, attrs['current_message_attr']): # p.current_message:
+                            await getattr(p, attrs['current_message_attr']).edit(embed=embed)
                         await channel.send(f"\n", embed=bettingembed)
                 else:
                     userembed = discord.Embed(title="메세지", color=discord.Color.blue())

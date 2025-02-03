@@ -2108,12 +2108,12 @@ class hello(commands.Cog):
             winbutton = p.jimo_winbutton
             current_message = p.current_message_jimo
             prediction_embed = p.prediction_embed
-            handle_bet(winbutton,current_message,prediction_embed)
+            await handle_bet(winbutton,current_message,prediction_embed)
         elif 이름 == "Melon":
             winbutton = p.melon_winbutton
             current_message = p.current_message_melon
             prediction_embed = p.prediction2_embed
-            handle_bet(winbutton,current_message,prediction_embed)
+            await handle_bet(winbutton,current_message,prediction_embed)
 
     @app_commands.command(name="승리",description="베팅 승리판정(개발자 전용)")
     @app_commands.describe(이름 = "이름을 입력하세요", 포인트 = "얻을 포인트를 입력하세요", 배율 = "베팅 배율을 입력하세요", 베팅금액 = "베팅한 금액을 입력하세요")
