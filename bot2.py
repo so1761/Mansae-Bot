@@ -1403,6 +1403,202 @@ async def check_melon_points(): #Melon의 솔로랭크 점수를 20초마다 확
 
         await asyncio.sleep(20)  # 20초마다 반복
 
+async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, votes, event):
+    await bot.wait_until_ready()
+    channel = bot.get_channel(int(channel_id)) # 일반 채널
+    notice_channel = bot.get_channel(int(notice_channel_id)) # 공지 채널
+    
+    prediction_votes = votes["prediction"]
+    kda_votes = votes["kda"]
+    try:
+        last_rank = await get_summoner_ranks(summoner_id)
+        if not last_rank:
+            last_total_match = 0
+        else:
+            last_win = last_rank['wins']
+            last_loss = last_rank['losses']
+            last_total_match = last_win + last_loss
+    except NotFoundError:
+        last_total_match = 0
+
+    cur_predict_seasonref = db.reference("현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
+    current_predict_season = cur_predict_seasonref.get()
+
+    while not bot.is_closed():
+        try:
+            current_rank = await get_summoner_ranks(summoner_id)
+        except Exception as e:
+            print(f"Error in check_points: {e}")
+            current_rank = None
+
+        if not current_rank:
+            current_total_match = 0
+        else:
+            current_win = current_rank['wins']
+            current_loss = current_rank['losses']
+            current_total_match = current_win + current_loss
+            if current_total_match != last_total_match:
+                print(f"{name}의 {current_total_match}번째 게임 완료")
+                string = get_lp_and_tier_difference(last_rank, current_rank, name)
+                await notice_channel.send(f"\n{name}의 솔로랭크 점수 변동이 감지되었습니다!\n{string}")
+                await channel.send(f"\n{name}의 솔로랭크 점수 변동이 감지되었습니다!\n{string}")
+
+                last_rank = current_rank
+                last_total_match = current_total_match
+
+                onoffref = db.reference("투표온오프") # 투표가 off 되어있을 경우 결과 출력 X
+                onoffbool = onoffref.get()
+                if not onoffbool:
+                    curseasonref = db.reference("현재시즌")
+                    current_season = curseasonref.get()
+
+                    current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
+                    current_date = current_datetime.strftime("%Y-%m-%d")
+                    current_time = current_datetime.strftime("%H:%M:%S")
+
+                    ref = db.reference(f'{current_season}/점수변동/{name}')
+                    points = ref.get()
+
+                    latest_date = max(points.keys()) # 가장 최근 기록을 가져옴
+                    latest_time = max(points[latest_date].keys(), key=lambda t: datetime.strptime(t, '%H:%M:%S'))
+                    latest_data = points[latest_date][latest_time]
+
+                    # 게임의 연승/연패 기록을 가져옴 (연승/연패에 따른 추가 배율을 위함)
+                    game_win_streak = latest_data["연승"]
+                    game_lose_streak = latest_data["연패"]
+
+                    point_change = latest_data['LP 변화량']
+                    result = point_change > 0 # result가 True라면 승리
+
+                    userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                    userembed.add_field(name="게임 종료", value=f"{name}의 솔로랭크 게임이 종료되었습니다!\n{'승리!' if result else '패배..'}\n점수변동: {point_change}")
+
+                    winners = prediction_votes['win'] if result else prediction_votes['lose']
+                    losers = prediction_votes['lose'] if result else prediction_votes['win']
+                    winnerNum = len(winners)
+                    loserNum = len(losers)
+
+                    streak_bonus_rate = calculate_bonus(game_lose_streak if result else game_win_streak)
+
+                    BonusRate = 0 if winnerNum == 0 else round((((winnerNum + loserNum) / winnerNum) - 1) * 0.5, 2) + 1 # 0.5배 배율 적용
+                    BonusRate += streak_bonus_rate + 0.1
+
+                    winner_total_point = sum(winner['points'] for winner in winners)
+                    loser_total_point = sum(loser['points'] for loser in losers)
+                    remain_loser_total_point = loser_total_point
+
+                    userembed.add_field(
+                        name="", 
+                        value=f"베팅 배율: {BonusRate}배" if BonusRate == 0 else 
+                        f"베팅 배율: {BonusRate}배!((({winnerNum + loserNum}/{winnerNum} - 1) x 0.5 + 1) + 역배 배율 {streak_bonus_rate} + 0.1)", 
+                        inline=False
+                    )
+
+                    for winner in winners:
+                        point_ref = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
+                        predict_data = point_ref.get()
+                        point = predict_data["포인트"]
+                        bettingPoint = predict_data["베팅포인트"]
+
+                        # 예측 내역 변동 데이터
+                        change_ref = db.reference(f'{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
+                        change_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"] + 1, "적중률": f"{round(((predict_data["적중 횟수"] * 100) / (predict_data["총 예측 횟수"] + 1)), 2)}%", "연승": predict_data["연승"] + 1, "연패": 0, "베팅포인트": bettingPoint - winner["points"]})
+
+                        # 예측 내역 업데이트
+                        point_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"] + 1, "적중률": round(((predict_data["적중 횟수"] * 100) / (predict_data["총 예측 횟수"] + 1)), 2), "연승": predict_data["연승"] + 1, "연패": 0, "베팅포인트": bettingPoint - winner["points"]})
+
+                        betted_rate = round(winner['points'] / winner_total_point, 1) if winner_total_point else 0
+                        get_bet = round(betted_rate * loser_total_point)
+                        get_bet_limit = round(BonusRate * winner['points'])
+                        if get_bet >= get_bet_limit:
+                            get_bet = get_bet_limit
+
+                        remain_loser_total_point -= get_bet
+                        add_points = point_change + (calculate_points(predict_data["연승"] + 1)) + round(winner['points'] * BonusRate) + get_bet if predict_data["연승"] + 1 > 1 else point_change + round(winner["points"] * BonusRate) + get_bet
+                        userembed.add_field(name="", value=f"{winner['name']}님이 {f'{predict_data['연승'] + 1}연속 적중을 이루어내며 ' if predict_data['연승'] + 1 > 1 else ''}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet}) 점수를 획득하셨습니다!", inline=False)
+                        point_ref.update({"포인트": point + add_points})
+
+                    for loser in losers:
+                        point_ref = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
+                        predict_data = point_ref.get()
+                        point = predict_data["포인트"]
+                        bettingPoint = predict_data["베팅포인트"]
+
+                        # 예측 내역 변동 데이터
+                        change_ref = db.reference(f'{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
+                        change_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"], "적중률": f"{round(((predict_data["적중 횟수"] * 100) / (predict_data["총 예측 횟수"] + 1)), 2)}%", "연승": 0, "연패": predict_data["연패"] + 1, "베팅포인트": bettingPoint - loser["points"]})
+                        
+                        # 예측 내역 업데이트
+                        point_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"], "적중률": f"{round(((predict_data["적중 횟수"] * 100) / (predict_data["총 예측 횟수"] + 1)), 2)}%", "연승": 0, "연패": predict_data["연패"] + 1, "베팅포인트": bettingPoint - loser["points"]})
+
+                        
+                        # 남은 포인트를 배팅한 비율에 따라 환급받음 (50%)
+                        betted_rate = round(loser['points'] / loser_total_point, 1) if loser_total_point else 0
+                        get_bet = round(betted_rate * remain_loser_total_point * 0.5)
+                        userembed.add_field(
+                            name="",
+                            value=f"{loser['name']}님이 예측에 실패하여 베팅포인트를 잃었습니다! " if loser['point'] == 0 else 
+                            f"(베팅 포인트:-{loser['points']}) (환급 포인트: {get_bet})",
+                            inline=False
+                        )
+                        if point + get_bet < loser['points']:
+                            point_ref.update({"포인트": 0})
+                        else:
+                            point_ref.update({"포인트": point + get_bet})
+
+                    await channel.send(embed=userembed)
+                    prediction_votes['win'].clear()
+                    prediction_votes['lose'].clear()
+
+                    # KDA 예측
+                    match_id = await get_summoner_recentmatch_id(puuid)
+                    match_info = await get_summoner_matchinfo(match_id)
+
+                    for player in match_info['info']['participants']:
+                        if puuid == player['puuid']:
+                            kda = 999 if player['deaths'] == 0 else round((player['kills'] + player['assists']) / player['deaths'], 1)
+                            kdaembed = discord.Embed(title=f"{name} KDA 예측 결과", color=discord.Color.blue())
+                            kdaembed.add_field(name=f"{name}의 KDA", value=f"{player['kills']}/{player['deaths']}/{player['assists']}({'PERFECT' if kda == 999 else kda})", inline=False)
+
+                            refperfect = db.reference('퍼펙트포인트')
+                            perfect_point = refperfect.get()[name]
+
+                            if kda > 3:
+                                perfect_winners = kda_votes['perfect'] if kda == 999 else []
+                                winners = kda_votes['up']
+                                losers = kda_votes['down'] + (kda_votes['perfect'] if kda != 999 else [])
+                                for perfect_winner in perfect_winners:
+                                    point_ref = db.reference(f'{current_predict_season}/예측포인트/{perfect_winner["name"]}')
+                                    predict_data = point_ref.get()
+                                    point_ref.update({"포인트": predict_data["포인트"] + perfect_point})
+                                    kdaembed.add_field(name="", value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {perfect_point}점을 획득하셨습니다!", inline=False)
+                                for winner in winners:
+                                    point_ref = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
+                                    predict_data = point_ref.get()
+                                    point_ref.update({"포인트": predict_data["포인트"] + 20})
+                                    kdaembed.add_field(name="", value=f"{winner['name']}님이 KDA 예측에 성공하여 20점을 획득하셨습니다!", inline=False)
+                                for loser in losers:
+                                    kdaembed.add_field(name="", value=f"{loser['name']}님이 KDA 예측에 실패했습니다!", inline=False)
+                            else:
+                                winners = kda_votes['down']
+                                losers = kda_votes['up'] + kda_votes['perfect']
+                                for winner in winners:
+                                    point_ref = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
+                                    predict_data = point_ref.get()
+                                    point_ref.update({"포인트": predict_data["포인트"] + 20})
+                                    kdaembed.add_field(name="", value=f"{winner['name']}님이 KDA 예측에 성공하여 20점을 획득하셨습니다!", inline=False)
+                                for loser in losers:
+                                    kdaembed.add_field(name="", value=f"{loser['name']}님이 KDA 예측에 실패했습니다!", inline=False)
+
+                            await channel.send(embed=kdaembed)
+                            refperfect.update({name: perfect_point + 5 if kda != 999 else 500})
+                            kda_votes['up'].clear()
+                            kda_votes['down'].clear()
+                            kda_votes['perfect'].clear()
+                            event.set()
+
+        await asyncio.sleep(20)
+
 async def check_game_status(): #지모의 솔로랭크가 진행중인지 20초마다 확인
     await bot.wait_until_ready()
     channel = bot.get_channel(int(CHANNEL_ID))
@@ -2123,6 +2319,223 @@ async def check_game_status2(): #Melon의 솔로랭크가 진행중인지 20초�
 
         await asyncio.sleep(20)  # 20초마다 반복
 
+async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, event, attrs, buttons, prediction_embed):
+    await bot.wait_until_ready()
+    channel = bot.get_channel(int(channel_id))
+    notice_channel = bot.get_channel(int(notice_channel_id))
+
+    cur_predict_seasonref = db.reference("현재예측시즌")
+    current_predict_season = cur_predict_seasonref.get()
+
+    while not bot.is_closed():
+        setattr(p, attrs['current_game_state_attr'], await nowgame(puuid))
+        if getattr(p, attrs['current_game_state_attr']):
+            onoffref = db.reference("투표온오프")
+            onoffbool = onoffref.get()
+
+            anonymref = db.reference("익명온오프")
+            anonymbool = anonymref.get()
+
+            setattr(p, attrs['current_match_id_attr'], await get_summoner_recentmatch_id(puuid))
+
+            buttons['win_button'] = discord.ui.Button(style=discord.ButtonStyle.success,label="승리",disabled=onoffbool)
+            buttons['lose_button'] = discord.ui.Button(style=discord.ButtonStyle.danger,label="패배",disabled=onoffbool)
+
+            prediction_view = discord.ui.View()
+            prediction_view.add_item(buttons['win_button'])
+            prediction_view.add_item(buttons['lose_button'])
+
+            buttons['up_button'] = discord.ui.Button(style=discord.ButtonStyle.success,label="업",disabled=onoffbool)
+            buttons['down_button'] = discord.ui.Button(style=discord.ButtonStyle.danger,label="다운",disabled=onoffbool)
+            buttons['perfect_button'] = discord.ui.Button(style=discord.ButtonStyle.primary,label="퍼펙트",disabled=onoffbool)
+
+            kda_view = discord.ui.View()
+            kda_view.add_item(buttons['up_button'])
+            kda_view.add_item(buttons['down_button'])
+            kda_view.add_item(buttons['perfect_button'])
+            
+            refperfect = db.reference('퍼펙트포인트')
+            perfectr = refperfect.get()
+            perfect_point = perfectr[name]
+                
+            async def disable_buttons():
+                await asyncio.sleep(180)  # 3분 대기
+                prediction_view = discord.ui.View()
+                kda_view = discord.ui.View()
+                buttons['win_button'].disabled = True
+                buttons['lose_button'].disabled = True
+                buttons['up_button'].disabled = True
+                buttons['down_button'].disabled = True
+                buttons['perfect_button'].disabled = True
+                prediction_view.add_item(buttons['win_button'])
+                prediction_view.add_item(buttons['lose_button'])
+                kda_view.add_item(buttons['up_button'])
+                kda_view.add_item(buttons['down_button'])
+                kda_view.add_item(buttons['perfect_button'])
+                await getattr(p, attrs['current_message_attr']).edit(view=prediction_view)
+                await getattr(p, attrs['current_message_kda_attr']).edit(view=kda_view)
+
+            prediction_votes = votes["prediction"]
+            kda_votes = votes["kda"]
+            
+        async def bet_button_callback(interaction: discord.Interaction, prediction_type: str, anonym_names: list):
+            nickname = interaction.user
+            if (nickname.name not in [user["name"] for user in prediction_votes["win"]])
+            and (nickname.name not in [user["name"] for user in prediction_votes["lose"]]):
+                refp = db.reference(f'{season}/예측포인트/{nickname.name}')
+                pointr = refp.get()
+                point = pointr["포인트"]
+                bettingPoint = pointr["베팅포인트"]
+                random_number = random.uniform(0.01, 0.1) # 1% ~ 10% 랜덤 배팅 할 비율을 정합
+                baseRate = round(random_number, 2)
+                basePoint = round(point * baseRate) if point - bettingPoint >= 500 else 0 # 500p 이상 보유 시 자동 베팅
+
+                refp.update({"베팅포인트": bettingPoint + basePoint})
+                prediction_votes[prediction_type].append({"name": nickname.name, 'points': basePoint})
+                myindex = len(votes[prediction_type]) - 1 # 투표자의 위치 파악
+
+                embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
+                if anonymbool:
+                    win_predictions = "\n".join(f"{anonym_names[index]}: ? 포인트" for index, user in enumerate(prediction_votes["win"])) or "없음"
+                    lose_predictions = "\n".join(f"{anonym_names[index]}: ? 포인트" for index, user in enumerate(prediction_votes["lose"])) or "없음"
+                else:
+                    win_predictions = "\n".join(f"{user['name']}: {user['points']}포인트" for user in prediction_votes["win"]) or "없음"
+                    lose_predictions = "\n".join(f"{user['name']}: {user['points']}포인트" for user in prediction_votes["lose"]) or "없음"
+
+                embed.add_field(name="승리 예측", value=win_predictions, inline=True)
+                embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
+
+                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                if anonymbool:
+                    userembed.add_field(name="", value=f"{anonym_names[myindex]}님이 {prediction_type}에 투표하셨습니다.", inline=True)
+                    if basePoint != 0:
+                        bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+                        bettingembed.add_field(name="", value=f"누군가가 {name}의 {prediction_type}에 {basePoint}포인트를 베팅했습니다!", inline=False)
+                else:
+                    userembed.add_field(name="", value=f"{nickname}님이 {prediction_type}에 투표하셨습니다.", inline=True)
+                    if basePoint != 0:
+                        bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+                        bettingembed.add_field(name="", value=f"{nickname}님이 {name}의 {prediction_type}에 {basePoint}포인트를 베팅했습니다!", inline=False)
+                        await channel.send(f"\n", embed=bettingembed)
+                
+                await interaction.response.send_message(embed=userembed)
+
+                if getattr(p, attrs['current_message_attr']): # p.current_message:
+                    await getattr(p, attrs['current_message_attr']).edit(embed=embed)
+                if basePoint != 0 and anonymbool:
+                    delay = random.uniform(5, 120) # 5초부터 2분까지 랜덤 시간
+                    await asyncio.sleep(delay)
+                    await channel.send(f"\n", embed=bettingembed)
+            else:
+                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                userembed.add_field(name="", value=f"{nickname}님은 이미 투표하셨습니다", inline=True)
+                await interaction.response.send_message(embed=userembed, ephemeral=True)
+
+        async def kda_button_callback(interaction: discord.Interaction, prediction_type: str):
+            nickname = interaction.user
+            if (nickname.name not in [user["name"] for user in kda_votes["up"]] )
+            and (nickname.name not in [user["name"] for user in kda_votes["down"]])
+            and (nickname.name not in [user["name"] for user in kda_votes["perfect"]]):
+                kda_votes[prediction_type].append({"name": nickname.name})
+                embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.blue())
+                embed.add_field(name="퍼펙트 예측성공 포인트", value=perfect_point, inline=False)
+
+                up_predictions = "".join(f"{len(kda_votes['up'])}명")
+                down_predictions = "".join(f"{len(kda_votes['down'])}명")
+                perfect_predictions = "".join(f"{len(kda_votes['perfect'])}명")
+
+                embed.add_field(name="KDA 3 이상 예측", value=up_predictions, inline=True)
+                embed.add_field(name="KDA 3 이하 예측", value=down_predictions, inline=True)
+                embed.add_field(name="KDA 퍼펙트 예측", value=perfect_predictions, inline=True)
+
+                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                if prediction_type == 'up':
+                    userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 3 이상으로 예측했습니다!", inline=True)
+                elif prediction_type == 'down':
+                    userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 3 이하로 예측했습니다!", inline=True)
+                else:
+                    userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 0 데스, 퍼펙트로 예측했습니다!", inline=True)
+                
+                await interaction.response.send_message(embed=userembed)
+
+                if getattr(p, attrs['current_message_kda_attr']):
+                    await getattr(p, attrs['current_message_kda_attr']).edit(embed=embed)
+            else:
+                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                userembed.add_field(name="", value=f"{nickname}님은 이미 투표하셨습니다", inline=True)
+                await interaction.response.send_message(embed=userembed, ephemeral=True)
+
+            buttons['win_button'].callback = lambda interaction: bet_button_callback(interaction, 'win', ANONYM_NAME_WIN)
+            buttons['lose_button'].callback = lambda interaction: bet_button_callback(interaction, 'lose', ANONYM_NAME_LOSE)
+            buttons['up_button'].callback = lambda interaction: kda_button_callback(interaction, 'up')
+            buttons['down_button'].callback = lambda interaction: kda_button_callback(interaction, 'down')
+            buttons['perfect_button'].callback = lambda interaction: kda_button_callback(interaction, 'perfect')
+
+            prediction_embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
+
+            if anonymbool:  # 익명 투표 시
+                win_predictions = "\n".join(
+                    f"{ANONYM_NAME_WIN[index]}: ? 포인트" for index, winner in enumerate(prediction_votes["win"])) or "없음"
+                lose_predictions = "\n".join(
+                    f"{ANONYM_NAME_LOSE[index]}: ? 포인트" for index, loser in enumerate(prediction_votes["lose"])) or "없음"
+            else:
+                win_predictions = "\n".join(
+                    f"{winner['name']}: {winner['points']}포인트" for winner in prediction_votes["win"]) or "없음"
+                lose_predictions = "\n".join(
+                    f"{loser['name']}: {loser['points']}포인트" for loser in prediction_votes["lose"]) or "없음"
+            prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
+            prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
+
+            p.kda_embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.blue())
+            p.kda_embed.add_field(name="퍼펙트 예측성공 포인트", value=perfect_point, inline=False)
+            up_predictions = "".join(
+                f"{len(kda_votes['up'])}명")
+            down_predictions = "".join(
+                f"{len(kda_votes['down'])}명")
+            perfect_predictions = "".join(
+                f"{len(kda_votes['perfect'])}명")
+            p.kda_embed.add_field(name="KDA 3 이상 예측", value=up_predictions, inline=True)
+            p.kda_embed.add_field(name="KDA 3 이하 예측", value=down_predictions, inline=True)
+            p.kda_embed.add_field(name="KDA 퍼펙트 예측", value=perfect_predictions, inline=True)
+
+            curseasonref = db.reference("현재시즌")
+            current_season = curseasonref.get()
+
+            refprev = db.reference(f'{current_season}/점수변동/{name}')
+            points = refprev.get()
+
+            if points is None:
+                game_win_streak = 0
+                game_lose_streak = 0
+            else:
+                latest_date = max(points.keys())
+                latest_time = max(points[latest_date].keys(), key=lambda t: datetime.strptime(t, '%H:%M:%S'))
+                latest_data = points[latest_date][latest_time]
+                game_win_streak = latest_data["연승"]
+                game_lose_streak = latest_data["연패"]
+
+                if game_win_streak >= 1:
+                    streak_bonusRate = calculate_bonus(game_win_streak)
+                    setattr(p, attrs['current_message_attr'], await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed))
+                elif game_lose_streak >= 1:
+                    streak_bonusRate = calculate_bonus(game_lose_streak)
+                    setattr(p, attrs['current_message_attr'], await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed))
+                else:
+                    setattr(p, attrs['current_message_attr'], await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n", view=prediction_view, embed=prediction_embed))
+                setattr(p, attrs['current_message_kda_attr'], await channel.send("\n", view=kda_view, embed=p.kda_embed))
+
+            if not onoffbool:
+                await notice_channel.send(f"{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
+
+            event.clear()
+            await asyncio.gather(
+                disable_buttons(),
+                event.wait()  # 이 작업은 event가 set될 때까지 대기
+            )
+            print(f"check_game_status for {name} 대기 종료")
+
+        await asyncio.sleep(20)  # 20초마다 반복
+
 async def check_jimo_remake_status(): # 지모의 다시하기 여부를 확인!
     channel = bot.get_channel(int(CHANNEL_ID))
     last_game_state = False
@@ -2271,10 +2684,80 @@ class MyBot(commands.Bot):
             print("관리자가 발견되지 않았습니다")
         '''
 
-        bot.loop.create_task(check_jimo_points())
-        bot.loop.create_task(check_melon_points())
-        bot.loop.create_task(check_game_status())
-        bot.loop.create_task(check_game_status2())
+        #bot.loop.create_task(check_jimo_points())
+        #bot.loop.create_task(check_melon_points())
+        #bot.loop.create_task(check_game_status())
+        #bot.loop.create_task(check_game_status2())
+
+        # Task for Jimo
+        bot.loop.create_task(open_prediction(
+            name="지모", 
+            puuid=JIMO_PUUID, 
+            votes=p.prediction_votes, 
+            channel_id=CHANNEL_ID, 
+            notice_channel_id=NOTICE_CHANNEL_ID, 
+            event=p.jimo_event, 
+            attrs={
+                'current_game_state_attr': 'jimo_current_game_state', 
+                'current_match_id_attr': 'jimo_current_match_id', 
+                'current_message_attr': 'current_message_jimo', 
+                'current_message_kda_attr': 'current_message_kda_jimo'
+            }, 
+            buttons={
+                'win_button': p.jimo_winbutton, 
+                'lose_button': p.jimo_losebutton, 
+                'up_button': p.jimo_upbutton, 
+                'down_button': p.jimo_downbutton, 
+                'perfect_button': p.jimo_perfectbutton
+            }, 
+            prediction_embed=p.prediction_embed
+        ))
+
+        # Task for Melon
+        bot.loop.create_task(open_prediction(
+            name="MELON", 
+            puuid=MELON_PUUID, 
+            votes=p.prediction_votes2, 
+            channel_id=CHANNEL_ID, 
+            notice_channel_id=NOTICE_CHANNEL_ID, 
+            event=p.melon_event, 
+            attrs={
+                'current_game_state_attr': 'melon_current_game_state', 
+                'current_match_id_attr': 'melon_current_match_id', 
+                'current_message_attr': 'current_message_melon', 
+                'current_message_kda_attr': 'current_message_kda_melon'
+            }, 
+            buttons={
+                'win_button': p.melon_winbutton, 
+                'lose_button': p.melon_losebutton, 
+                'up_button': p.melon_upbutton, 
+                'down_button': p.melon_downbutton, 
+                'perfect_button': p.melon_perfectbutton
+            }, 
+            prediction_embed=p.prediction2_embed
+        ))
+
+        # Check points for Jimo
+        bot.loop.create_task(check_points(
+            puuid=JIMO_PUUID, 
+            summoner_id=JIMO_ID, 
+            name="지모", 
+            channel_id=CHANNEL_ID, 
+            notice_channel_id=NOTICE_CHANNEL_ID, 
+            votes=p.prediction_votes, 
+            event=p.jimo_event
+        ))
+
+        # Check points for Melon
+        bot.loop.create_task(check_points(
+            puuid=MELON_PUUID, 
+            summoner_id=MELON_ID, 
+            name="Melon", 
+            channel_id=CHANNEL_ID, 
+            notice_channel_id=NOTICE_CHANNEL_ID, 
+            votes=p.prediction_votes2, 
+            event=p.melon_event
+        ))
         bot.loop.create_task(check_jimo_remake_status())
         bot.loop.create_task(check_melon_remake_status())
 

@@ -24,6 +24,34 @@ kda_votes2 = {
     "perfect": []
 } #동성 KDA
 
+
+# 예측한 사람들을 저장할 딕셔너리
+votes = {
+    "jimo": {
+        "prediction": {
+            "win": [],
+            "lose": []
+        },
+        "kda": {
+            "up": [],
+            "down": [],
+            "perfect": []
+        }
+    },
+    "melon": {
+        "prediction": {
+            "win": [],
+            "lose": []
+        },
+        "kda": {
+            "up": [],
+            "down": [],
+            "perfect": []
+        }
+    }
+}
+
+
 prediction_embed = discord.Embed()
 prediction2_embed = discord.Embed()
 

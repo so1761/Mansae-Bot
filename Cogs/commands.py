@@ -1978,225 +1978,130 @@ class hello(commands.Cog):
         anonymbool = anonymref.get()
         cur_predict_seasonref = db.reference("현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
-        if 포인트 <= 0:
-            await interaction.response.send_message("포인트는 0보다 큰 숫자로 입력해주세요",ephemeral=True)
-            return
+
+        async def handle_bet(winbutton, current_message, prediction_embed):
+            if 포인트 <= 0:
+                await interaction.response.send_message("포인트는 0보다 큰 숫자로 입력해주세요",ephemeral=True)
+                return
+            if winbutton.disabled == True:
+                await interaction.response.send_message(f"지금은 {이름}에게 베팅할 수 없습니다!",ephemeral=True)
+                return
+
+            nickname = interaction.user.name
+            if (nickname not in [winner['name'] for winner in p.votes[이름]['prediction']['win']] and
+            nickname not in [loser['name'] for loser in p.votes[이름]['prediction']['lose']]):
+                await interaction.response.send_message(f"승부예측 후 이용해주세요",ephemeral=True)
+            else:
+                for winner in p.votes[이름]['prediction']['win']:
+                    if winner['name'] == nickname:
+                        ref = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
+                        ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}/베팅포인트')
+                        bettingPoint = ref2.get()
+                        info = ref.get()
+                        if winner['points'] != 0:
+                            if info['포인트'] - bettingPoint < 포인트:
+                                await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
+                            else:
+                                winner['points'] += 포인트  # 포인트 수정
+                                ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
+                                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                                if anonymbool:
+                                    await place_bet(self.bot,이름,"승리",포인트)
+                                    await interaction.response.send_message(f"{이름}의 승리에 {포인트}포인트 베팅 완료!",ephemeral=True)
+                                else:
+                                    userembed.add_field(name="",value=f"{nickname}님이 {이름}의 승리에 {포인트}포인트만큼 추가 베팅하셨습니다!", inline=True)
+                                    await interaction.response.send_message(embed=userembed)
+                        else:
+                            if info['포인트'] - bettingPoint < 포인트:
+                                await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
+                            else:
+                                winner['points'] += 포인트  # 포인트 수정
+                                ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
+                                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                                if anonymbool:
+                                    await place_bet(self.bot,이름,"승리",포인트)
+                                    await interaction.response.send_message(f"{이름}의 승리에 {포인트}포인트 베팅 완료!",ephemeral=True)
+                                else:
+                                    userembed.add_field(name="",value=f"{nickname}님이 {이름}의 승리에 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
+                                    await interaction.response.send_message(embed=userembed)
+                        prediction_embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
+                        if anonymbool: # 익명 투표 시
+                            win_predictions = "\n".join(
+                            f"{ANONYM_NAME_WIN[index]}: ? 포인트" for index,winner in enumerate(p.votes[이름]['prediction']['win'])) or "없음"
+                            lose_predictions = "\n".join(
+                            f"{ANONYM_NAME_LOSE[index]}: ? 포인트" for index,loser in enumerate(p.votes[이름]['prediction']['lose'])) or "없음"
+                        else:
+                            win_predictions = "\n".join(
+                                f"{winner['name']}: {winner['points']}포인트" for winner in p.votes[이름]['prediction']['win']) or "없음"
+                            lose_predictions = "\n".join(
+                                f"{loser['name']}: {loser['points']}포인트" for loser in p.votes[이름]['prediction']['lose']) or "없음"
+                        prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
+                        prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
+                        if current_message:
+                            await current_message.edit(embed = prediction_embed)
+                        return
+
+                # 패배 예측에서 닉네임 찾기
+                for loser in p.votes[이름]['prediction']['lose']:
+                    if loser['name'] == nickname:
+                        ref = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
+                        ref2 = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}/베팅포인트')
+                        bettingPoint = ref2.get()
+                        info = ref.get()
+
+                        if loser['points'] != 0:
+                            if info['포인트'] - bettingPoint < 포인트:
+                                await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
+                            else:
+                                loser['points'] += 포인트  # 포인트 수정
+                                ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
+                                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                                if anonymbool:
+                                    await place_bet(self.bot,이름,"패배",포인트)
+                                    await interaction.response.send_message(f"{이름}의 패배에 {포인트}포인트 베팅 완료!",ephemeral=True)
+                                else:
+                                    userembed.add_field(name="",value=f"{nickname}님이 {이름}의 패배에 {포인트}포인트만큼 추가 베팅하셨습니다!", inline=True)
+                                    await interaction.response.send_message(embed=userembed)
+                        else:
+                            if info['포인트'] - bettingPoint < 포인트:
+                                await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
+                            else:
+                                loser['points'] += 포인트  # 포인트 수정
+                                ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
+                                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                                if anonymbool:
+                                    await place_bet(self.bot,이름,"패배",포인트)
+                                    await interaction.response.send_message(f"{이름}의 패배에 {포인트}포인트 베팅 완료!",ephemeral=True)
+                                else:
+                                    userembed.add_field(name="",value=f"{nickname}님이 {이름}의 패배에 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
+                                    await interaction.response.send_message(embed=userembed)
+                        prediction_embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
+                        if anonymbool: # 익명 투표 시
+                            win_predictions = "\n".join(
+                            f"{ANONYM_NAME_WIN[index]}: ? 포인트" for index,winner in enumerate(p.votes[이름]['prediction']["win"])) or "없음"
+                            lose_predictions = "\n".join(
+                            f"{ANONYM_NAME_LOSE[index]}: ? 포인트" for index,loser in enumerate(p.votes[이름]['prediction']["lose"])) or "없음"
+                        else:
+                            win_predictions = "\n".join(
+                                f"{winner['name']}: {winner['points']}포인트" for winner in p.votes[이름]['prediction']['win']) or "없음"
+                            lose_predictions = "\n".join(
+                                f"{loser['name']}: {loser['points']}포인트" for loser in p.votes[이름]['prediction']['lose']) or "없음"
+                        prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
+                        prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
+                        if current_message:
+                            await current_message.edit(embed = prediction_embed)
+                        return
+
         if 이름 == "지모":
-            if p.jimo_winbutton.disabled == True:
-                await interaction.response.send_message("지금은 지모에게 베팅할 수 없습니다!",ephemeral=True)
-                return
-            nickname = interaction.user.name
-            if (nickname not in [winner['name'] for winner in p.prediction_votes['win']] and
-            nickname not in [loser['name'] for loser in p.prediction_votes['lose']]):
-                await interaction.response.send_message(f"승부예측 후 이용해주세요",ephemeral=True)
-            else:
-                for winner in p.prediction_votes['win']:
-                    if winner['name'] == nickname:
-                        ref = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
-                        ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}/베팅포인트')
-                        bettingPoint = ref2.get()
-                        info = ref.get()
-                        if winner['points'] != 0:
-                            if info['포인트'] - bettingPoint < 포인트:
-                                await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
-                            else:
-                                winner['points'] += 포인트  # 포인트 수정
-                                ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
-                                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                                if anonymbool:
-                                  await place_bet(self.bot,"지모","승리",포인트)
-                                  await interaction.response.send_message(f"지모의 승리에 {포인트}포인트 베팅 완료!",ephemeral=True)
-                                else:
-                                  userembed.add_field(name="",value=f"{nickname}님이 지모의 승리에 {포인트}포인트만큼 추가 베팅하셨습니다!", inline=True)
-                                  await interaction.response.send_message(embed=userembed)
-                        else:
-                            if info['포인트'] - bettingPoint < 포인트:
-                                await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
-                            else:
-                                winner['points'] += 포인트  # 포인트 수정
-                                ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
-                                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                                if anonymbool:
-                                  await place_bet(self.bot,"지모","승리",포인트)
-                                  await interaction.response.send_message(f"지모의 승리에 {포인트}포인트 베팅 완료!",ephemeral=True)
-                                else:
-                                  userembed.add_field(name="",value=f"{nickname}님이 지모의 승리에 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
-                                  await interaction.response.send_message(embed=userembed)
-                        p.prediction_embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
-                        if anonymbool: # 익명 투표 시
-                          win_predictions = "\n".join(
-                            f"{ANONYM_NAME_WIN[index]}: ? 포인트" for index,winner in enumerate(p.prediction_votes["win"])) or "없음"
-                          lose_predictions = "\n".join(
-                            f"{ANONYM_NAME_LOSE[index]}: ? 포인트" for index,loser in enumerate(p.prediction_votes["lose"])) or "없음"
-                        else:
-                          win_predictions = "\n".join(
-                              f"{winner['name']}: {winner['points']}포인트" for winner in p.prediction_votes['win']) or "없음"
-                          lose_predictions = "\n".join(
-                              f"{loser['name']}: {loser['points']}포인트" for loser in p.prediction_votes['lose']) or "없음"
-                        p.prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
-                        p.prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
-                        if p.current_message_jimo:
-                            await p.current_message_jimo.edit(embed = p.prediction_embed)
-                        return
-
-                # 패배 예측에서 닉네임 찾기
-                for loser in p.prediction_votes['lose']:
-                    if loser['name'] == nickname:
-                        ref = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
-                        ref2 = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}/베팅포인트')
-                        bettingPoint = ref2.get()
-                        info = ref.get()
-
-                        if loser['points'] != 0:
-                            if info['포인트'] - bettingPoint < 포인트:
-                                await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
-                            else:
-                                loser['points'] += 포인트  # 포인트 수정
-                                ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
-                                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                                if anonymbool:
-                                  await place_bet(self.bot,"지모","패배",포인트)
-                                  await interaction.response.send_message(f"지모의 패배에 {포인트}포인트 베팅 완료!",ephemeral=True)
-                                else:
-                                  userembed.add_field(name="",value=f"{nickname}님이 지모의 패배에 {포인트}포인트만큼 추가 베팅하셨습니다!", inline=True)
-                                  await interaction.response.send_message(embed=userembed)
-                        else:
-                            if info['포인트'] - bettingPoint < 포인트:
-                                await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
-                            else:
-                                loser['points'] += 포인트  # 포인트 수정
-                                ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
-                                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                                if anonymbool:
-                                  await place_bet(self.bot,"지모","패배",포인트)
-                                  await interaction.response.send_message(f"지모의 패배에 {포인트}포인트 베팅 완료!",ephemeral=True)
-                                else:
-                                  userembed.add_field(name="",value=f"{nickname}님이 지모의 패배에 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
-                                  await interaction.response.send_message(embed=userembed)
-                        p.prediction_embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
-                        if anonymbool: # 익명 투표 시
-                          win_predictions = "\n".join(
-                            f"{ANONYM_NAME_WIN[index]}: ? 포인트" for index,winner in enumerate(p.prediction_votes["win"])) or "없음"
-                          lose_predictions = "\n".join(
-                            f"{ANONYM_NAME_LOSE[index]}: ? 포인트" for index,loser in enumerate(p.prediction_votes["lose"])) or "없음"
-                        else:
-                          win_predictions = "\n".join(
-                              f"{winner['name']}: {winner['points']}포인트" for winner in p.prediction_votes['win']) or "없음"
-                          lose_predictions = "\n".join(
-                              f"{loser['name']}: {loser['points']}포인트" for loser in p.prediction_votes['lose']) or "없음"
-                        p.prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
-                        p.prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
-                        if p.current_message_jimo:
-                            await p.current_message_jimo.edit(embed = p.prediction_embed)
-                        return
-        if 이름 == "Melon":
-            if p.melon_winbutton.disabled == True:
-                await interaction.response.send_message("지금은 Melon에게 베팅할 수 없습니다!",ephemeral=True)
-                return
-            nickname = interaction.user.name
-            if (nickname not in [winner['name'] for winner in p.prediction_votes2['win']] and
-            nickname not in [loser['name'] for loser in p.prediction_votes2['lose']]):
-                await interaction.response.send_message(f"승부예측 후 이용해주세요",ephemeral=True)
-            else:
-                for winner in p.prediction_votes2['win']:
-                    if winner['name'] == nickname:
-                        ref = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
-                        ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}/베팅포인트')
-                        bettingPoint = ref2.get()
-                        info = ref.get()
-
-                        if winner['points'] != 0:
-                            if info['포인트'] - bettingPoint < 포인트:
-                                await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
-                            else:
-                                winner['points'] += 포인트  # 포인트 수정
-                                ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
-                                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                                if anonymbool:
-                                  await place_bet(self.bot,"Melon","승리",포인트)
-                                  await interaction.response.send_message(f"Melon의 승리에 {포인트}포인트 베팅 완료!",ephemeral=True)
-                                else:
-                                  userembed.add_field(name="",value=f"{nickname}님이 Melon의 승리에 {포인트}포인트만큼 추가 베팅하셨습니다!", inline=True)
-                                  await interaction.response.send_message(embed=userembed)
-                        else:
-                            if info['포인트'] - bettingPoint < 포인트:
-                                await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
-                            else:
-                                winner['points'] += 포인트  # 포인트 수정
-                                ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
-                                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                                if anonymbool:
-                                  await place_bet(self.bot,"Melon","승리",포인트)
-                                  await interaction.response.send_message(f"Melon의 승리에 {포인트}포인트 베팅 완료!",ephemeral=True)
-                                else:
-                                  userembed.add_field(name="",value=f"{nickname}님이 Melon의 승리에 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
-                                  await interaction.response.send_message(embed=userembed)
-                        p.prediction_embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
-                        if anonymbool: # 익명 투표 시
-                          win_predictions = "\n".join(
-                            f"{ANONYM_NAME_WIN[index]}: ? 포인트" for index,winner in enumerate(p.prediction_votes2["win"])) or "없음"
-                          lose_predictions = "\n".join(
-                            f"{ANONYM_NAME_LOSE[index]}: ? 포인트" for index,loser in enumerate(p.prediction_votes2["lose"])) or "없음"
-                        else:
-                          win_predictions = "\n".join(
-                              f"{winner['name']}: {winner['points']}포인트" for winner in p.prediction_votes2['win']) or "없음"
-                          lose_predictions = "\n".join(
-                              f"{loser['name']}: {loser['points']}포인트" for loser in p.prediction_votes2['lose']) or "없음"
-                        p.prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
-                        p.prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
-                        if p.current_message_melon:
-                            await p.current_message_melon.edit(embed = p.prediction_embed)
-                        return
-
-                # 패배 예측에서 닉네임 찾기
-                for loser in p.prediction_votes2['lose']:
-                    if loser['name'] == nickname:
-                        ref = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
-                        ref2 = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}/베팅포인트')
-                        bettingPoint = ref2.get()
-                        info = ref.get()
-                        if loser['points'] != 0:
-                            if info['포인트'] - loser['points'] < 포인트:
-                                await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
-                            else:
-                                loser['points'] += 포인트  # 포인트 수정
-                                ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
-                                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                                if anonymbool:
-                                  await place_bet(self.bot,"Melon","패배",포인트)
-                                  await interaction.response.send_message(f"Melon의 패배에 {포인트}포인트 베팅 완료!",ephemeral=True)
-                                else:
-                                  userembed.add_field(name="",value=f"{nickname}님이 Melon의 패배에 {포인트}포인트만큼 추가 베팅하셨습니다!", inline=True)
-                                  await interaction.response.send_message(embed=userembed)
-                        else:
-                            if info['포인트'] - bettingPoint < 포인트:
-                                await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
-                            else:
-                                loser['points'] += 포인트  # 포인트 수정
-                                ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
-                                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                                if anonymbool:
-                                  await place_bet(self.bot,"Melon","패배",포인트)
-                                  await interaction.response.send_message(f"Melon의 패배에 {포인트}포인트 베팅 완료!",ephemeral=True)
-                                else:
-                                  userembed.add_field(name="",value=f"{nickname}님이 Melon의 패배에 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
-                                  await interaction.response.send_message(embed=userembed)
-                        p.prediction_embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
-                        if anonymbool: # 익명 투표 시
-                          win_predictions = "\n".join(
-                            f"{ANONYM_NAME_WIN[index]}: ? 포인트" for index,winner in enumerate(p.prediction_votes["win"])) or "없음"
-                          lose_predictions = "\n".join(
-                            f"{ANONYM_NAME_LOSE[index]}: ? 포인트" for index,loser in enumerate(p.prediction_votes["lose"])) or "없음"
-                        else:
-                          win_predictions = "\n".join(
-                              f"{winner['name']}: {winner['points']}포인트" for winner in p.prediction_votes2['win']) or "없음"
-                          lose_predictions = "\n".join(
-                              f"{loser['name']}: {loser['points']}포인트" for loser in p.prediction_votes2['lose']) or "없음"
-                        p.prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
-                        p.prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
-                        if p.current_message_melon:
-                            await p.current_message_melon.edit(embed = p.prediction_embed)
-                        return
+            winbutton = p.jimo_winbutton
+            current_message = p.curent_message_jimo
+            prediction_embed = p.prediction_embed
+            handle_bet(winbutton,current_message,prediction_embed)
+        elif 이름 == "Melon":
+            winbutton = p.melon_winbutton
+            current_message = p.curent_message_melon
+            prediction_embed = p.prediction_embed2
+            handle_bet(winbutton,current_message,prediction_embed)
 
     @app_commands.command(name="승리",description="베팅 승리판정(개발자 전용)")
     @app_commands.describe(이름 = "이름을 입력하세요", 포인트 = "얻을 포인트를 입력하세요", 배율 = "베팅 배율을 입력하세요", 베팅금액 = "베팅한 금액을 입력하세요")
