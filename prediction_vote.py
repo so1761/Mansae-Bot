@@ -27,7 +27,7 @@ kda_votes2 = {
 
 # 예측한 사람들을 저장할 딕셔너리
 votes = {
-    "jimo": {
+    "지모": {
         "prediction": {
             "win": [],
             "lose": []
@@ -38,7 +38,7 @@ votes = {
             "perfect": []
         }
     },
-    "melon": {
+    "Melon": {
         "prediction": {
             "win": [],
             "lose": []

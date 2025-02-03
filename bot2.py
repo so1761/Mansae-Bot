@@ -2693,7 +2693,7 @@ class MyBot(commands.Bot):
         bot.loop.create_task(open_prediction(
             name="지모", 
             puuid=JIMO_PUUID, 
-            votes=p.prediction_votes, 
+            votes=p.votes['지모'], 
             channel_id=CHANNEL_ID, 
             notice_channel_id=NOTICE_CHANNEL_ID, 
             event=p.jimo_event, 
@@ -2717,7 +2717,7 @@ class MyBot(commands.Bot):
         bot.loop.create_task(open_prediction(
             name="MELON", 
             puuid=MELON_PUUID, 
-            votes=p.prediction_votes2, 
+            votes=p.votes['Melon'], 
             channel_id=CHANNEL_ID, 
             notice_channel_id=NOTICE_CHANNEL_ID, 
             event=p.melon_event, 
@@ -2744,7 +2744,7 @@ class MyBot(commands.Bot):
             name="지모", 
             channel_id=CHANNEL_ID, 
             notice_channel_id=NOTICE_CHANNEL_ID, 
-            votes=p.prediction_votes, 
+            votes=p.votes['지모'], 
             event=p.jimo_event
         ))
 
@@ -2755,7 +2755,7 @@ class MyBot(commands.Bot):
             name="Melon", 
             channel_id=CHANNEL_ID, 
             notice_channel_id=NOTICE_CHANNEL_ID, 
-            votes=p.prediction_votes2, 
+            votes=p.votes['Melon'], 
             event=p.melon_event
         ))
         bot.loop.create_task(check_jimo_remake_status())
