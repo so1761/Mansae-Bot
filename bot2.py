@@ -444,7 +444,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         else:
                             add_points = -point_change + (calculate_points(predict_data["연승"] + 1)) + round(winner['points'] * BonusRate) + get_bet if predict_data["연승"] + 1 > 1 else -point_change + round(winner["points"] * BonusRate) + get_bet
                         if predict_data['연승'] + 1 > 1:
-                            userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet})(연속적중 보너스 + {calculate_points(predict_data["연승"] + 1)}) 점수를 획득하셨습니다!", inline=False)
+                            userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet})(연속적중 보너스 + {calculate_points(predict_data['연승'] + 1)}) 점수를 획득하셨습니다!", inline=False)
                         else:
                             userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet}) 점수를 획득하셨습니다!", inline=False)   
                         point_ref.update({"포인트": point + add_points})
