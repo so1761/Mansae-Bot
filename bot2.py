@@ -463,7 +463,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         userembed.add_field(
                             name="",
                             value=f"{loser['name']}님이 예측에 실패하여 베팅포인트를 잃었습니다! " if loser['points'] == 0 else 
-                            f"(베팅 포인트:-{loser['points']}) (환급 포인트: {get_bet})",
+                            f"{loser['name']}님이 예측에 실패하여 베팅포인트를 잃었습니다! 베팅 포인트:-{loser['points']} (환급 포인트: {get_bet})",
                             inline=False
                         )
                         if point + get_bet < loser['points']:
@@ -596,7 +596,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     if basePoint > 0:
                         basePoint = math.ceil(basePoint / 10) * 10  # 10 단위로 무조건 올림
                     refp.update({"베팅포인트": bettingPoint + basePoint})
-                    prediction_votes[prediction_type].append({"name": nickname.name, 'points': basePoint})
+                    prediction_votes[prediction_type].append({"name": nickname.name, 'points': 0})
                     myindex = len(prediction_votes[prediction_type]) - 1 # 투표자의 위치 파악
 
                     embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
@@ -623,6 +623,9 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         if basePoint != 0:
                             bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
                             bettingembed.add_field(name="", value=f"누군가가 {name}의 {prediction_value}에 {basePoint}포인트를 베팅했습니다!", inline=False)
+                            noticeembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                            noticeembed.add_field(name="",value=f"{basePoint}포인트 자동베팅 완료!", inline=False)
+                            await interaction.response.send_message(embed=noticeembed)
                     else:
                         userembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에 투표하셨습니다.", inline=True)
                         if basePoint != 0:
@@ -630,13 +633,18 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             bettingembed.add_field(name="", value=f"{nickname}님이 {name}의 {prediction_value}에 {basePoint}포인트를 베팅했습니다!", inline=False)
                             await channel.send(f"\n", embed=bettingembed)
                     
-                    await interaction.response.send_message(embed=userembed)
+                    
+                    await channel.send(f"\n", embed=userembed)
 
                     if getattr(p, attrs['current_message_attr']): # p.current_message:
                         await getattr(p, attrs['current_message_attr']).edit(embed=embed)
                     if basePoint != 0 and anonymbool:
-                        delay = random.uniform(5, 120) # 5초부터 2분까지 랜덤 시간
+                        delay = random.uniform(5, 30) # 5초부터 30초까지 랜덤 시간
                         await asyncio.sleep(delay)
+                        # 자동 베팅
+                        for better in prediction_votes[prediction_type]:
+                            if better['name'] == nickname:
+                                better['points'] += basePoint
                         embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
                         if anonymbool:
                             win_predictions = "\n".join(f"{anonym_names[index]}: ? 포인트" for index, user in enumerate(prediction_votes["win"])) or "없음"
