@@ -2713,7 +2713,7 @@ class MyBot(commands.Bot):
 
         # Task for Melon
         bot.loop.create_task(open_prediction(
-            name="MELON", 
+            name="Melon", 
             puuid=MELON_PUUID, 
             votes=p.votes['Melon'], 
             channel_id=CHANNEL_ID, 
