@@ -2534,7 +2534,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             )
             print(f"check_game_status for {name} 대기 종료")
 
-    await asyncio.sleep(20)  # 20초마다 반복
+        await asyncio.sleep(20)  # 20초마다 반복
 
 async def check_jimo_remake_status(): # 지모의 다시하기 여부를 확인!
     channel = bot.get_channel(int(CHANNEL_ID))
