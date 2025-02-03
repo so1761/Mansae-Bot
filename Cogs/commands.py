@@ -2094,12 +2094,12 @@ class hello(commands.Cog):
 
         if 이름 == "지모":
             winbutton = p.jimo_winbutton
-            current_message = p.curent_message_jimo
+            current_message = p.current_message_jimo
             prediction_embed = p.prediction_embed
             handle_bet(winbutton,current_message,prediction_embed)
         elif 이름 == "Melon":
             winbutton = p.melon_winbutton
-            current_message = p.curent_message_melon
+            current_message = p.current_message_melon
             prediction_embed = p.prediction_embed2
             handle_bet(winbutton,current_message,prediction_embed)
 
