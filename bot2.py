@@ -609,8 +609,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     
                     winner_total_point = sum(winner["points"] for winner in prediction_votes["win"])
                     loser_total_point = sum(loser["points"] for loser in prediction_votes["lose"])
-                    prediction_embed.add_field(name="승리 포인트", value=f"총 {winner_total_point}포인트", inline=True)
-                    prediction_embed.add_field(name="패배 포인트", value=f"총 {loser_total_point}포인트", inline=True)
+                    prediction_embed.add_field(name="승리 포인트", value=f"총 {winner_total_point}포인트", inline=False)
+                    prediction_embed.add_field(name="패배 포인트", value=f"총 {loser_total_point}포인트", inline=False)
                     
                     embed.add_field(name="승리 예측", value=win_predictions, inline=True)
                     embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
@@ -696,8 +696,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             
             winner_total_point = sum(winner["points"] for winner in prediction_votes["win"])
             loser_total_point = sum(loser["points"] for loser in prediction_votes["lose"])
-            prediction_embed.add_field(name="승리 포인트", value=f"총 {winner_total_point}포인트", inline=True)
-            prediction_embed.add_field(name="패배 포인트", value=f"총 {loser_total_point}포인트", inline=True)
+            prediction_embed.add_field(name="승리 포인트", value=f"총 {winner_total_point}포인트", inline=False)
+            prediction_embed.add_field(name="패배 포인트", value=f"총 {loser_total_point}포인트", inline=False)
 
             prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
             prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
