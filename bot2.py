@@ -601,8 +601,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
                     embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
                     if anonymbool:
-                        win_predictions = "\n".join(f"{anonym_names[index]}: ? 포인트" for index, user in enumerate(prediction_votes["win"])) or "없음"
-                        lose_predictions = "\n".join(f"{anonym_names[index]}: ? 포인트" for index, user in enumerate(prediction_votes["lose"])) or "없음"
+                        win_predictions = "\n".join(f"{ANONYM_NAME_WIN[index]}: ? 포인트" for index, user in enumerate(prediction_votes["win"])) or "없음"
+                        lose_predictions = "\n".join(f"{ANONYM_NAME_LOSE[index]}: ? 포인트" for index, user in enumerate(prediction_votes["lose"])) or "없음"
                     else:
                         win_predictions = "\n".join(f"{user['name']}: {user['points']}포인트" for user in prediction_votes["win"]) or "없음"
                         lose_predictions = "\n".join(f"{user['name']}: {user['points']}포인트" for user in prediction_votes["lose"]) or "없음"
@@ -650,8 +650,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                                 better['points'] += basePoint
                         embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
                         if anonymbool:
-                            win_predictions = "\n".join(f"{anonym_names[index]}: ? 포인트" for index, user in enumerate(prediction_votes["win"])) or "없음"
-                            lose_predictions = "\n".join(f"{anonym_names[index]}: ? 포인트" for index, user in enumerate(prediction_votes["lose"])) or "없음"
+                            win_predictions = "\n".join(f"{ANONYM_NAME_WIN[index]}: ? 포인트" for index, user in enumerate(prediction_votes["win"])) or "없음"
+                            lose_predictions = "\n".join(f"{ANONYM_NAME_LOSE[index]}: ? 포인트" for index, user in enumerate(prediction_votes["lose"])) or "없음"
                         else:
                             win_predictions = "\n".join(f"{user['name']}: {user['points']}포인트" for user in prediction_votes["win"]) or "없음"
                             lose_predictions = "\n".join(f"{user['name']}: {user['points']}포인트" for user in prediction_votes["lose"]) or "없음"
