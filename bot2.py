@@ -439,7 +439,10 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
                         remain_loser_total_point -= get_bet
                         streak_text = f"{predict_data['연승'] + 1}연속 적중을 이루어내며 " if predict_data['연승'] + 1 > 1 else ""
-                        add_points = point_change + (calculate_points(predict_data["연승"] + 1)) + round(winner['points'] * BonusRate) + get_bet if predict_data["연승"] + 1 > 1 else point_change + round(winner["points"] * BonusRate) + get_bet
+                        if result:
+                            add_points = point_change + (calculate_points(predict_data["연승"] + 1)) + round(winner['points'] * BonusRate) + get_bet if predict_data["연승"] + 1 > 1 else point_change + round(winner["points"] * BonusRate) + get_bet
+                        else:
+                            add_points = -point_change + (calculate_points(predict_data["연승"] + 1)) + round(winner['points'] * BonusRate) + get_bet if predict_data["연승"] + 1 > 1 else -point_change + round(winner["points"] * BonusRate) + get_bet
                         userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet}) 점수를 획득하셨습니다!", inline=False)
                         point_ref.update({"포인트": point + add_points})
 
@@ -462,7 +465,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         get_bet = round(betted_rate * remain_loser_total_point * 0.5)
                         userembed.add_field(
                             name="",
-                            value=f"{loser['name']}님이 예측에 실패하여 베팅포인트를 잃었습니다! " if loser['points'] == 0 else 
+                            value=f"{loser['name']}님이 예측에 실패하였습니다! " if loser['points'] == 0 else 
                             f"{loser['name']}님이 예측에 실패하여 베팅포인트를 잃었습니다! 베팅 포인트:-{loser['points']} (환급 포인트: {get_bet})",
                             inline=False
                         )
