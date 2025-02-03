@@ -590,7 +590,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     pointr = refp.get()
                     point = pointr["포인트"]
                     bettingPoint = pointr["베팅포인트"]
-                    random_number = random.uniform(0.01, 0.1) # 1% ~ 10% 랜덤 배팅 할 비율을 정합
+                    random_number = random.uniform(0.01, 0.05) # 1% ~ 5% 랜덤 배팅 할 비율을 정합
                     baseRate = round(random_number, 2)
                     basePoint = round(point * baseRate) if point - bettingPoint >= 500 else 0 # 500p 이상 보유 시 자동 베팅
                     if basePoint > 0:
