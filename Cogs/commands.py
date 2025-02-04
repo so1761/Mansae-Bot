@@ -1970,6 +1970,68 @@ class hello(commands.Cog):
             
             await interaction.response.send_message("베팅포인트 초기화 완료!")
 
+    @app_commands.command(name="베팅 공개",description="현재 포인트의 10%(최소 100p)를 소모하여 현재 진행중인 승부예측의 현황을 공개합니다(3분 이후만 가능)")
+    @app_commands.describe(이름 = "예측한 사람의 이름을 입력하세요")
+    @app_commands.choices(이름=[
+    Choice(name='지모', value='지모'),
+    Choice(name='Melon', value='Melon'),
+    ])
+    async def 배팅공개(self, interaction: discord.Interaction, 이름: str):
+        win_button = ""
+        current_message = ""
+        if 이름 == "지모":
+            win_button = p.jimo_winbutton
+            current_message = p.current_message_jimo
+        elif 이름 == "Melon":
+            win_button = p.melon_winbutton
+            current_message = p.current_message_melon
+
+        if (
+            not win_button.disabled # 투표중이거나
+            or (
+                not p.votes.get(이름, {}).get('prediction', {}).get('win')  # win이 비어 있고
+                and not p.votes.get(이름, {}).get('prediction', {}).get('lose')  # lose도 비어 있을 때
+            )
+        ):
+            await interaction.response.send_message(f"{이름}의 투표가 끝나지 않았거나, 아무도 베팅하지 않았습니다!",ephemeral=True)
+            return
+
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+        current_predict_season = cur_predict_seasonref.get()
+        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
+        originr = ref.get()
+        point = originr["포인트"]
+        bettingPoint = originr["베팅포인트"]
+        real_point = point - bettingPoint
+        need_point = round(real_point * 0.1) # 10% 지불
+        if need_point < 100:
+            need_point = 100
+        if real_point < 100:
+            await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {real_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
+            return
+        prediction_embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
+        win_predictions = "\n".join(
+            f"{winner['name']}: {winner['points']}포인트" for winner in p.votes[이름]['prediction']['win']) or "없음"
+        lose_predictions = "\n".join(
+            f"{loser['name']}: {loser['points']}포인트" for loser in p.votes[이름]['prediction']['lose']) or "없음"
+            
+        winner_total_point = sum(winner["points"] for winner in p.votes[이름]['prediction']["win"])
+        loser_total_point = sum(loser["points"] for loser in p.votes[이름]['prediction']["lose"])
+        prediction_embed.add_field(name="총 포인트", value=f"승리: {winner_total_point}포인트 | 패배: {loser_total_point}포인트", inline=False)
+
+        prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
+        prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
+
+        channel = self.bot.get_channel(int(CHANNEL_ID))
+        userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+        userembed.add_field(name="",value=f"{interaction.user.name}님이 포인트를 소모하여 {이름}의 예측 내역을 공개했습니다!", inline=False)
+        await channel.send(f"\n",embed = userembed)
+        ref.update({"포인트" : point - need_point})
+        await interaction.response.send_message(f"{need_point}포인트 지불 완료! 현재 포인트: {real_point - need_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
+        if current_message:
+            await current_message.edit(embed = prediction_embed)
+
+
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
     @app_commands.choices(상대=[
