@@ -245,7 +245,7 @@ def save_lp_difference_to_file(lp_difference,current_rank,name): #지모의 점�
     # 시간만 추출하여 저장
     current_time = current_datetime.strftime("%H:%M:%S")
 
-    curseasonref = db.reference("현재시즌")
+    curseasonref = db.reference("전적분석/현재시즌")
     current_season = curseasonref.get()
 
     refprev = db.reference(f'{current_season}/점수변동/{name}')
@@ -345,7 +345,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
     except NotFoundError:
         last_total_match = 0
 
-    cur_predict_seasonref = db.reference("현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
+    cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
     current_predict_season = cur_predict_seasonref.get()
 
     while not bot.is_closed():
@@ -370,17 +370,17 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                 last_rank = current_rank
                 last_total_match = current_total_match
 
-                onoffref = db.reference("투표온오프") # 투표가 off 되어있을 경우 결과 출력 X
+                onoffref = db.reference("승부예측/투표온오프") # 투표가 off 되어있을 경우 결과 출력 X
                 onoffbool = onoffref.get()
                 if not onoffbool:
-                    curseasonref = db.reference("현재시즌")
+                    curseasonref = db.reference("전적분석/현재시즌")
                     current_season = curseasonref.get()
 
                     current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
                     current_date = current_datetime.strftime("%Y-%m-%d")
                     current_time = current_datetime.strftime("%H:%M:%S")
 
-                    ref = db.reference(f'{current_season}/점수변동/{name}')
+                    ref = db.reference(f'전적분석/{current_season}/점수변동/{name}')
                     points = ref.get()
 
                     latest_date = max(points.keys()) # 가장 최근 기록을 가져옴
@@ -419,13 +419,13 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     )
 
                     for winner in winners:
-                        point_ref = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
+                        point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
                         predict_data = point_ref.get()
                         point = predict_data["포인트"]
                         bettingPoint = predict_data["베팅포인트"]
 
                         # 예측 내역 변동 데이터
-                        change_ref = db.reference(f'{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
+                        change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
                         change_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"] + 1, "적중률": f"{round(((predict_data['적중 횟수'] * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": predict_data["연승"] + 1, "연패": 0, "베팅포인트": bettingPoint - winner["points"]})
 
                         # 예측 내역 업데이트
@@ -450,13 +450,13 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         point_ref.update({"포인트": point + add_points})
 
                     for loser in losers:
-                        point_ref = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
+                        point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
                         predict_data = point_ref.get()
                         point = predict_data["포인트"]
                         bettingPoint = predict_data["베팅포인트"]
 
                         # 예측 내역 변동 데이터
-                        change_ref = db.reference(f'{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
+                        change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
                         change_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"], "적중률": f"{round(((predict_data['적중 횟수'] * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": 0, "연패": predict_data["연패"] + 1, "베팅포인트": bettingPoint - loser["points"]})
                         
                         # 예측 내역 업데이트
@@ -491,7 +491,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                             kdaembed = discord.Embed(title=f"{name} KDA 예측 결과", color=discord.Color.blue())
                             kdaembed.add_field(name=f"{name}의 KDA", value=f"{player['kills']}/{player['deaths']}/{player['assists']}({'PERFECT' if kda == 999 else kda})", inline=False)
 
-                            refperfect = db.reference('퍼펙트포인트')
+                            refperfect = db.reference('승부예측/퍼펙트포인트')
                             perfect_point = refperfect.get()[name]
 
                             if kda > 3:
@@ -499,12 +499,12 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 winners = kda_votes['up']
                                 losers = kda_votes['down'] + (kda_votes['perfect'] if kda != 999 else [])
                                 for perfect_winner in perfect_winners:
-                                    point_ref = db.reference(f'{current_predict_season}/예측포인트/{perfect_winner["name"]}')
+                                    point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{perfect_winner["name"]}')
                                     predict_data = point_ref.get()
                                     point_ref.update({"포인트": predict_data["포인트"] + perfect_point})
                                     kdaembed.add_field(name="", value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {perfect_point}점을 획득하셨습니다!", inline=False)
                                 for winner in winners:
-                                    point_ref = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
+                                    point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
                                     predict_data = point_ref.get()
                                     point_ref.update({"포인트": predict_data["포인트"] + 20})
                                     kdaembed.add_field(name="", value=f"{winner['name']}님이 KDA 예측에 성공하여 20점을 획득하셨습니다!", inline=False)
@@ -514,7 +514,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 winners = kda_votes['down']
                                 losers = kda_votes['up'] + kda_votes['perfect']
                                 for winner in winners:
-                                    point_ref = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
+                                    point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
                                     predict_data = point_ref.get()
                                     point_ref.update({"포인트": predict_data["포인트"] + 20})
                                     kdaembed.add_field(name="", value=f"{winner['name']}님이 KDA 예측에 성공하여 20점을 획득하셨습니다!", inline=False)
@@ -535,26 +535,28 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
     channel = bot.get_channel(int(channel_id))
     notice_channel = bot.get_channel(int(notice_channel_id))
 
-    cur_predict_seasonref = db.reference("현재예측시즌")
+    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
     current_predict_season = cur_predict_seasonref.get()
 
     while not bot.is_closed():
         attrs['current_game_state_attr'] = await nowgame(puuid)
         if attrs['current_game_state_attr']:
-            onoffref = db.reference("투표온오프")
+            onoffref = db.reference("승부예측/투표온오프")
             onoffbool = onoffref.get()
 
-            anonymref = db.reference("익명온오프")
+            anonymref = db.reference("승부예측/익명온오프")
             anonymbool = anonymref.get()
 
             attrs['current_match_id_attr'] = await get_summoner_recentmatch_id(puuid)
 
             buttons['win_button'] = discord.ui.Button(style=discord.ButtonStyle.success,label="승리",disabled=onoffbool)
             buttons['lose_button'] = discord.ui.Button(style=discord.ButtonStyle.danger,label="패배",disabled=onoffbool)
+            #buttons['betrate_up_button'] = discord.ui.Button(style=discord.ButtonStyle.primary,label="배율 올리기",disabled=onoffbool)
 
             prediction_view = discord.ui.View()
             prediction_view.add_item(buttons['win_button'])
             prediction_view.add_item(buttons['lose_button'])
+            #prediction_view.add_item(buttons['betrate_up_button'])
 
             buttons['up_button'] = discord.ui.Button(style=discord.ButtonStyle.success,label="업",disabled=onoffbool)
             buttons['down_button'] = discord.ui.Button(style=discord.ButtonStyle.danger,label="다운",disabled=onoffbool)
@@ -565,7 +567,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             kda_view.add_item(buttons['down_button'])
             kda_view.add_item(buttons['perfect_button'])
             
-            refperfect = db.reference('퍼펙트포인트')
+            refperfect = db.reference('승부예측/퍼펙트포인트')
             perfectr = refperfect.get()
             perfect_point = perfectr[name]
                 
@@ -575,11 +577,13 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 kda_view = discord.ui.View()
                 buttons['win_button'].disabled = True
                 buttons['lose_button'].disabled = True
+                #buttons['betrate_up_button'].disabled = True
                 buttons['up_button'].disabled = True
                 buttons['down_button'].disabled = True
                 buttons['perfect_button'].disabled = True
                 prediction_view.add_item(buttons['win_button'])
                 prediction_view.add_item(buttons['lose_button'])
+                #prediction_view.add_item(buttons['betrate_up_button'])
                 kda_view.add_item(buttons['up_button'])
                 kda_view.add_item(buttons['down_button'])
                 kda_view.add_item(buttons['perfect_button'])
@@ -592,7 +596,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             async def bet_button_callback(interaction: discord.Interaction, prediction_type: str, anonym_names: list):
                 nickname = interaction.user
                 if (nickname.name not in [user["name"] for user in prediction_votes["win"]]) and (nickname.name not in [user["name"] for user in prediction_votes["lose"]]):
-                    refp = db.reference(f'{current_predict_season}/예측포인트/{nickname.name}')
+                    refp = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname.name}')
                     pointr = refp.get()
                     point = pointr["포인트"]
                     bettingPoint = pointr["베팅포인트"]
@@ -675,6 +679,10 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     userembed.add_field(name="", value=f"{nickname}님은 이미 투표하셨습니다", inline=True)
                     await interaction.response.send_message(embed=userembed, ephemeral=True)
 
+            #async def betrate_up_button_callback(interaction: discord.Interaction):
+            #    nickname = interaction.user
+
+
             async def kda_button_callback(interaction: discord.Interaction, prediction_type: str):
                 nickname = interaction.user
                 if (nickname.name not in [user["name"] for user in kda_votes["up"]] )and (nickname.name not in [user["name"] for user in kda_votes["down"]]) and (nickname.name not in [user["name"] for user in kda_votes["perfect"]]):
@@ -755,10 +763,10 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             p.kda_embed.add_field(name="KDA 3 이하 예측", value=down_predictions, inline=True)
             p.kda_embed.add_field(name="KDA 퍼펙트 예측", value=perfect_predictions, inline=True)
 
-            curseasonref = db.reference("현재시즌")
+            curseasonref = db.reference("전적분석/현재시즌")
             current_season = curseasonref.get()
 
-            refprev = db.reference(f'{current_season}/점수변동/{name}')
+            refprev = db.reference(f'전적분석/{current_season}/점수변동/{name}')
             points = refprev.get()
 
             if points is None:
@@ -797,7 +805,7 @@ async def check_remake_status(name, puuid, current_match_id, event, prediction_v
     channel = bot.get_channel(int(CHANNEL_ID))
     last_game_state = False
 
-    cur_predict_seasonref = db.reference("현재예측시즌")
+    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
     current_predict_season = cur_predict_seasonref.get()
 
     while not bot.is_closed():
@@ -822,14 +830,14 @@ async def check_remake_status(name, puuid, current_match_id, event, prediction_v
                             winners = prediction_votes['win']
                             losers = prediction_votes['lose']
                             for winner in winners:
-                                ref = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
+                                ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
                                 originr = ref.get()
                                 bettingPoint = originr["베팅포인트"]
                                 bettingPoint -= winner['points']
                                 ref.update({"베팅포인트": bettingPoint})
 
                             for loser in losers:
-                                ref = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
+                                ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
                                 originr = ref.get()
                                 bettingPoint = originr["베팅포인트"]
                                 bettingPoint -= loser['points']

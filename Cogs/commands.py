@@ -221,7 +221,7 @@ def plot_lp_difference_firebase(season=None,name=None):
 
     if season == None:
         # 현재 날짜 및 시간 가져오기
-        curseasonref = db.reference("현재시즌")
+        curseasonref = db.reference("전적분석/현재시즌")
         current_season = curseasonref.get()
         season = current_season
 
@@ -229,7 +229,7 @@ def plot_lp_difference_firebase(season=None,name=None):
         name = "지모"
 
     print(season)
-    ref = db.reference(f'{season}/점수변동/{name}')
+    ref = db.reference(f'전적분석/{season}/점수변동/{name}')
     lp_difference = ref.get()
     if lp_difference == None:
         return -1
@@ -1156,11 +1156,11 @@ class hello(commands.Cog):
     ])
     async def 캔들그래프(self, interaction: discord.Interaction,이름:str):
         # 현재 날짜 및 시간 가져오기
-        curseasonref = db.reference("현재시즌")
+        curseasonref = db.reference("전적분석/현재시즌")
         current_season = curseasonref.get()
         season = current_season
 
-        ref = db.reference(f'{season}/점수변동/{이름}')
+        ref = db.reference(f'전적분석/{season}/점수변동/{이름}')
         data = ref.get()
         date_list = []
 
@@ -1248,7 +1248,7 @@ class hello(commands.Cog):
     Choice(name='Melon', value='Melon'),
     ])
     async def 시즌캔들그래프(self, interaction: discord.Interaction, 이름:str,시즌:str):
-        ref = db.reference(f'{시즌}/점수변동/{이름}')
+        ref = db.reference(f'전적분석/{시즌}/점수변동/{이름}')
         data = ref.get()
 
         if data == None:
@@ -1336,7 +1336,7 @@ class hello(commands.Cog):
     Choice(name='정규시즌 1', value='정규시즌1')
     ])
     async def 예측순위(self, interaction: discord.Interaction, 시즌:str):
-        cur_predict_seasonref = db.reference("현재예측시즌")
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
         if 시즌 == current_predict_season:
             today = datetime.today()
@@ -1348,7 +1348,7 @@ class hello(commands.Cog):
             '''
             embed = discord.Embed(title=f'비공개', color = discord.Color.blue())
             embed.add_field(name=f"", value=f"최신 시즌 순위표는 비공개입니다!", inline=False)
-            pointref = db.reference("혼자보기포인트")
+            pointref = db.reference("승부예측/혼자보기포인트")
             need_point = pointref.get()
             see1button = discord.ui.Button(style=discord.ButtonStyle.success,label=f"순위표 혼자보기({need_point} 포인트)")
             see2button = discord.ui.Button(style=discord.ButtonStyle.primary,label="순위표 같이보기(500 포인트)")
@@ -1356,7 +1356,7 @@ class hello(commands.Cog):
             view.add_item(see1button)
             view.add_item(see2button)
             async def see1button_callback(interaction:discord.Interaction): # 순위표 버튼을 눌렀을 때의 반응!
-                refp = db.reference(f'{current_predict_season}/예측포인트/{interaction.user.name}')
+                refp = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
                 originr = refp.get()
                 point = originr["포인트"]
                 bettingPoint = originr["베팅포인트"]
@@ -1364,9 +1364,9 @@ class hello(commands.Cog):
                     await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {point - bettingPoint} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
                 else:
                     refp.update({"포인트" : point - need_point})
-                    refhon = db.reference('/')
+                    refhon = db.reference('승부예측')
                     refhon.update({"혼자보기포인트" : need_point + 50})
-                    ref = db.reference(f'{시즌}/예측포인트')
+                    ref = db.reference(f'승부예측/예측시즌/{시즌}/예측포인트')
                     points = ref.get()
 
                     # 점수를 기준으로 내림차순으로 정렬
@@ -1392,7 +1392,7 @@ class hello(commands.Cog):
                     await interaction.response.send_message(embed=embed,ephemeral=True)
 
             async def see2button_callback(interaction:discord.Interaction): # 순위표 버튼을 눌렀을 때의 반응!
-                refp = db.reference(f'{current_predict_season}/예측포인트/{interaction.user.name}')
+                refp = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
                 originr = refp.get()
                 point = originr["포인트"]
                 bettingPoint = originr["베팅포인트"]
@@ -1401,7 +1401,7 @@ class hello(commands.Cog):
                     await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {point - bettingPoint} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
                 else:
                     refp.update({"포인트" : point - need_point})
-                    ref = db.reference(f'{시즌}/예측포인트')
+                    ref = db.reference(f'승부예측/예측시즌/{시즌}/예측포인트')
                     points = ref.get()
 
                     # 점수를 기준으로 내림차순으로 정렬
@@ -1430,7 +1430,7 @@ class hello(commands.Cog):
 
             await interaction.response.send_message(view = view,embed=embed,ephemeral=True)
         else:
-            ref = db.reference(f'{시즌}/예측포인트')
+            ref = db.reference(f'승부예측/예측시즌/{시즌}/예측포인트')
             points = ref.get()
 
             # 점수를 기준으로 내림차순으로 정렬
@@ -1452,9 +1452,9 @@ class hello(commands.Cog):
 
     @app_commands.command(name='포인트',description="자신의 승부예측 포인트를 알려줍니다")
     async def 포인트(self, interaction: discord.Interaction):
-        cur_predict_seasonref = db.reference("현재예측시즌")
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
-        ref = db.reference(f'{current_predict_season}/예측포인트')
+        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트')
         points = ref.get()
 
         # 점수를 기준으로 내림차순으로 정렬
@@ -1479,7 +1479,7 @@ class hello(commands.Cog):
     ])
     async def 온오프(self, interaction: discord.Interaction, 값:str):
         if interaction.user.name == "toe_kyung":
-            onoffref = db.reference("/")
+            onoffref = db.reference("승부예측")
             if 값 == "True":
                 onoffbool = True
             else:
@@ -1500,7 +1500,7 @@ class hello(commands.Cog):
     ])
     async def 익명온오프(self, interaction: discord.Interaction, 값:str):
         if interaction.user.name == "toe_kyung":
-            onoffref = db.reference("/")
+            onoffref = db.reference("승부예측")
             if 값 == "True":
                 onoffbool = True
             else:
@@ -1526,9 +1526,9 @@ class hello(commands.Cog):
     @app_commands.command(name="정상화",description="점수 정상화(개발자 전용)")
     async def 정상화(self, interaction: discord.Interaction):
         if interaction.user.name == "toe_kyung":
-            cur_predict_seasonref = db.reference("현재예측시즌")
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
             current_predict_season = cur_predict_seasonref.get()
-            ref = db.reference(f'{current_predict_season}/예측포인트변동로그')
+            ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그')
 
             # timestamp 기준으로 정렬하고 마지막 데이터 하나만 가져오기
             snapshot = ref.order_by_key().get()
@@ -1552,7 +1552,7 @@ class hello(commands.Cog):
 
                 if latest_log_data:
                     for name, log in latest_log_data.items():
-                        ref2 = db.reference(f'{current_predict_season}/예측포인트/{name}')
+                        ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{name}')
                         ref2.update({'포인트' : log['포인트']})
                         ref2.update({"총 예측 횟수": log["총 예측 횟수"]})
                         ref2.update({"적중 횟수" : log["적중 횟수"]})
@@ -1564,7 +1564,7 @@ class hello(commands.Cog):
             else:
                 print('로그 데이터가 없습니다.')
 
-            ref3 = db.reference(f'{current_predict_season}/예측포인트변동로그/{date}/{time}')
+            ref3 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{date}/{time}')
             ref3.delete()
 
             await interaction.response.send_message(embed=embed)
@@ -1638,9 +1638,9 @@ class hello(commands.Cog):
     Choice(name='Melon', value='Melon'),
     ])
     async def 베팅(self, interaction: discord.Interaction, 이름:str, 포인트:int):
-        anonymref = db.reference("익명온오프")
+        anonymref = db.reference("승부예측/익명온오프")
         anonymbool = anonymref.get()
-        cur_predict_seasonref = db.reference("현재예측시즌")
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
 
         async def handle_bet(winbutton, current_message, prediction_embed):
@@ -1658,8 +1658,8 @@ class hello(commands.Cog):
             else:
                 for winner in p.votes[이름]['prediction']['win']:
                     if winner['name'] == nickname:
-                        ref = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
-                        ref2 = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}/베팅포인트')
+                        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
+                        ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}/베팅포인트')
                         bettingPoint = ref2.get()
                         info = ref.get()
                         if winner['points'] != 0:
@@ -1713,8 +1713,8 @@ class hello(commands.Cog):
                 # 패배 예측에서 닉네임 찾기
                 for loser in p.votes[이름]['prediction']['lose']:
                     if loser['name'] == nickname:
-                        ref = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
-                        ref2 = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}/베팅포인트')
+                        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
+                        ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}/베팅포인트')
                         bettingPoint = ref2.get()
                         info = ref.get()
 
@@ -1782,9 +1782,9 @@ class hello(commands.Cog):
     async def 승리(self, interaction: discord.Interaction, 이름:str, 포인트:int, 배율:float, 베팅금액:int):
         userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
         if interaction.user.name == "toe_kyung":
-            cur_predict_seasonref = db.reference("현재예측시즌")
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
             current_predict_season = cur_predict_seasonref.get()
-            ref = db.reference(f'{current_predict_season}/예측포인트/{이름}')
+            ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{이름}')
 
             pointr = ref.get()
             point = pointr["포인트"]
@@ -1832,9 +1832,9 @@ class hello(commands.Cog):
     async def 패배(self, interaction: discord.Interaction, 이름:str, 베팅금액:int):
         userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
         if interaction.user.name == "toe_kyung":
-            cur_predict_seasonref = db.reference("현재예측시즌")
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
             current_predict_season = cur_predict_seasonref.get()
-            ref = db.reference(f'{current_predict_season}/예측포인트/{이름}')
+            ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{이름}')
 
             pointr = ref.get()
             point = pointr["포인트"]
@@ -1892,13 +1892,13 @@ class hello(commands.Cog):
     ])
     async def 확성기(self, interaction: discord.Interaction, 익명여부:str, 메세지:str):
         channel = self.bot.get_channel(int(1332330634546253915))
-        cur_predict_seasonref = db.reference("현재예측시즌")
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
         if 익명여부 == '익명':
             need_point = 150
         else:
             need_point = 100
-        ref = db.reference(f'{current_predict_season}/예측포인트/{interaction.user.name}')
+        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
         originr = ref.get()
         point = originr["포인트"]
         bettingPoint = originr["베팅포인트"]
@@ -1945,8 +1945,30 @@ class hello(commands.Cog):
     @app_commands.command(name="열람포인트초기화",description="열람포인트를 100포인트로 초기화합니다(개발자 전용)")
     async def 열람포인트초기화(self, interaction: discord.Interaction):
         if interaction.user.name == "toe_kyung":
-            refhon = db.reference('/')
+            refhon = db.reference('승부예측')
             refhon.update({"혼자보기포인트" : 100})
+
+    @app_commands.command(name="베팅포인트초기화",description="모두의 베팅포인트를 제거합니다(개발자 전용)")
+    async def 베팅포인트초기화(self, interaction: discord.Interaction):
+        if interaction.user.name == "toe_kyung":
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+            current_predict_season = cur_predict_seasonref.get()
+
+            point_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트")
+            
+            users = point_ref.get()
+            if users is None:
+                await interaction.response.send_message("현재 시즌의 유저 데이터가 없습니다.")
+                return
+
+            # 각 유저의 베팅포인트 필드를 0으로 업데이트할 업데이트 딕셔너리 생성
+            updates = {}
+            for user_id in users.keys():
+                updates[f"{user_id}/베팅포인트"] = 0
+
+            point_ref.update(updates)
+            
+            await interaction.response.send_message("베팅포인트 초기화 완료!")
 
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
