@@ -248,7 +248,7 @@ def save_lp_difference_to_file(lp_difference,current_rank,name): #지모의 점�
     curseasonref = db.reference("전적분석/현재시즌")
     current_season = curseasonref.get()
 
-    refprev = db.reference(f'{current_season}/점수변동/{name}')
+    refprev = db.reference(f'전적분석/{current_season}/점수변동/{name}')
     points = refprev.get()
 
     if points is None:
@@ -279,19 +279,11 @@ def save_lp_difference_to_file(lp_difference,current_rank,name): #지모의 점�
         lose_streak += 1
 
     # 파이어베이스에 저장
-    ref = db.reference(f'{current_season}/점수변동/{name}/{current_date}/{current_time}')
+    ref = db.reference(f'전적분석/{current_season}/점수변동/{name}/{current_date}/{current_time}')
     ref.update({'LP 변화량' : lp_difference})
     ref.update({'현재 점수' : rank_num})
     ref.update({"연승": win_streak})
     ref.update({"연패": lose_streak})
-
-    ref2 = db.reference(f'최근연속/{name}')
-    if result:
-        ref2.update({"연승": win_streak})
-        ref2.update({"연패": 0})
-    else:
-        ref2.update({"연패": lose_streak})
-        ref2.update({"연승": 0})
 
 def get_participant_id(match_info, puuid): # match정보와 puuid를 통해 그 판에서 플레이어의 위치를 반환
     for i, participant in enumerate(match_info['info']['participants']):
