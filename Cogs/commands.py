@@ -1977,7 +1977,6 @@ class hello(commands.Cog):
     Choice(name='Melon', value='Melon'),
     ])
     async def 배팅공개(self, interaction: discord.Interaction, 이름: str):
-        win_button = ""
         current_message = ""
         if 이름 == "지모":
             win_button = p.jimo_winbutton
@@ -1986,6 +1985,7 @@ class hello(commands.Cog):
             win_button = p.melon_winbutton
             current_message = p.current_message_melon
 
+        print(win_button.disabled, p.votes.get(이름, {}).get('prediction', {}).get('win'), p.votes.get(이름, {}).get('prediction', {}).get('lose'))
         if (
             not win_button.disabled # 투표중이거나
             or (
