@@ -1970,7 +1970,7 @@ class hello(commands.Cog):
             
             await interaction.response.send_message("베팅포인트 초기화 완료!")
 
-    @app_commands.command(name="베팅 공개",description="현재 포인트의 10%(최소 100p)를 소모하여 현재 진행중인 승부예측의 현황을 공개합니다(3분 이후만 가능)")
+    @app_commands.command(name="베팅공개",description="현재 포인트의 10%(최소 100p)를 소모하여 현재 진행중인 승부예측의 현황을 공개합니다(3분 이후만 가능)")
     @app_commands.describe(이름 = "예측한 사람의 이름을 입력하세요")
     @app_commands.choices(이름=[
     Choice(name='지모', value='지모'),
