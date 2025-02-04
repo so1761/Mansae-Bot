@@ -539,15 +539,15 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
     current_predict_season = cur_predict_seasonref.get()
 
     while not bot.is_closed():
-        setattr(p, attrs['current_game_state_attr'], await nowgame(puuid))
-        if getattr(p, attrs['current_game_state_attr']):
+        attrs['current_game_state_attr'] = await nowgame(puuid)
+        if attrs['current_game_state_attr']:
             onoffref = db.reference("투표온오프")
             onoffbool = onoffref.get()
 
             anonymref = db.reference("익명온오프")
             anonymbool = anonymref.get()
 
-            setattr(p, attrs['current_match_id_attr'], await get_summoner_recentmatch_id(puuid))
+            attrs['current_match_id_attr'] = await get_summoner_recentmatch_id(puuid)
 
             buttons['win_button'] = discord.ui.Button(style=discord.ButtonStyle.success,label="승리",disabled=onoffbool)
             buttons['lose_button'] = discord.ui.Button(style=discord.ButtonStyle.danger,label="패배",disabled=onoffbool)
@@ -583,8 +583,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 kda_view.add_item(buttons['up_button'])
                 kda_view.add_item(buttons['down_button'])
                 kda_view.add_item(buttons['perfect_button'])
-                await getattr(p, attrs['current_message_attr']).edit(view=prediction_view)
-                await getattr(p, attrs['current_message_kda_attr']).edit(view=kda_view)
+                await attrs['current_message_attr'].edit(view=prediction_view)
+                await attrs['current_message_kda_attr'].edit(view=kda_view)
 
             prediction_votes = votes["prediction"]
             kda_votes = votes["kda"]
@@ -615,8 +615,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     
                     winner_total_point = sum(winner["points"] for winner in prediction_votes["win"])
                     loser_total_point = sum(loser["points"] for loser in prediction_votes["lose"])
-                    embed.add_field(name="승리 포인트", value=f"총 {winner_total_point}포인트", inline=False)
-                    embed.add_field(name="패배 포인트", value=f"총 {loser_total_point}포인트", inline=False)
+                    embed.add_field(name="총 포인트", value=f"승리: {winner_total_point}포인트 | 패배: {loser_total_point}포인트", inline=False)
                     
                     embed.add_field(name="승리 예측", value=win_predictions, inline=True)
                     embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
@@ -645,8 +644,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     
                     await channel.send(f"\n", embed=userembed)
 
-                    if getattr(p, attrs['current_message_attr']): # p.current_message:
-                        await getattr(p, attrs['current_message_attr']).edit(embed=embed)
+                    if attrs['current_message_attr']: # p.current_message:
+                        await attrs['current_message_attr'].edit(embed=embed)
                     if basePoint != 0 and anonymbool:
                         delay = random.uniform(5, 30) # 5초부터 30초까지 랜덤 시간
                         await asyncio.sleep(delay)
@@ -664,13 +663,12 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         
                         winner_total_point = sum(winner["points"] for winner in prediction_votes["win"])
                         loser_total_point = sum(loser["points"] for loser in prediction_votes["lose"])
-                        embed.add_field(name="승리 포인트", value=f"총 {winner_total_point}포인트", inline=False)
-                        embed.add_field(name="패배 포인트", value=f"총 {loser_total_point}포인트", inline=False)
+                        embed.add_field(name="총 포인트", value=f"승리: {winner_total_point}포인트 | 패배: {loser_total_point}포인트", inline=False)
                         
                         embed.add_field(name="승리 예측", value=win_predictions, inline=True)
                         embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
-                        if getattr(p, attrs['current_message_attr']): # p.current_message:
-                            await getattr(p, attrs['current_message_attr']).edit(embed=embed)
+                        if attrs['current_message_attr']: # p.current_message:
+                            await attrs['current_message_attr'].edit(embed=embed)
                         await channel.send(f"\n", embed=bettingembed)
                 else:
                     userembed = discord.Embed(title="메세지", color=discord.Color.blue())
@@ -712,8 +710,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     noticeembed.add_field(name="",value=f"{name}의 {prediction_value}에 투표 완료!", inline=False)
                     await interaction.response.send_message(embed=noticeembed, ephemeral=True)
 
-                    if getattr(p, attrs['current_message_kda_attr']):
-                        await getattr(p, attrs['current_message_kda_attr']).edit(embed=embed)
+                    if attrs['current_message_kda_attr']:
+                        await attrs['current_message_kda_attr'].edit(embed=embed)
                 else:
                     userembed = discord.Embed(title="메세지", color=discord.Color.blue())
                     userembed.add_field(name="", value=f"{nickname}님은 이미 투표하셨습니다", inline=True)
@@ -740,8 +738,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             
             winner_total_point = sum(winner["points"] for winner in prediction_votes["win"])
             loser_total_point = sum(loser["points"] for loser in prediction_votes["lose"])
-            prediction_embed.add_field(name="승리 포인트", value=f"총 {winner_total_point}포인트", inline=False)
-            prediction_embed.add_field(name="패배 포인트", value=f"총 {loser_total_point}포인트", inline=False)
+            prediction_embed.add_field(name="총 포인트", value=f"승리: {winner_total_point}포인트 | 패배: {loser_total_point}포인트", inline=False)
 
             prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
             prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
@@ -776,13 +773,13 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
                 if game_win_streak >= 1:
                     streak_bonusRate = calculate_bonus(game_win_streak)
-                    setattr(p, attrs['current_message_attr'], await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed))
+                    attrs['current_message_attr'] = await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
                 elif game_lose_streak >= 1:
                     streak_bonusRate = calculate_bonus(game_lose_streak)
-                    setattr(p, attrs['current_message_attr'], await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed))
+                    attrs['current_message_attr'] = await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
                 else:
-                    setattr(p, attrs['current_message_attr'], await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n", view=prediction_view, embed=prediction_embed))
-                setattr(p, attrs['current_message_kda_attr'], await channel.send("\n", view=kda_view, embed=p.kda_embed))
+                    attrs['current_message_attr'] = await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n", view=prediction_view, embed=prediction_embed)
+                attrs['current_message_kda_attr'] = await channel.send("\n", view=kda_view, embed=p.kda_embed)
 
             if not onoffbool:
                 await notice_channel.send(f"{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
@@ -847,6 +844,7 @@ async def check_jimo_remake_status(): # 지모의 다시하기 여부를 확인!
                             p.prediction_votes['lose'].clear()
 
         # 일정 시간 간격으로 확인
+        last_game_state = current_game_state
         await asyncio.sleep(20)  # 원하는 간격으로 설정
 
 async def check_melon_remake_status(): # Melon의 다시하기 여부를 확인!
@@ -904,6 +902,55 @@ async def check_melon_remake_status(): # Melon의 다시하기 여부를 확인!
         # 일정 시간 간격으로 확인
         await asyncio.sleep(20)  # 원하는 간격으로 설정
 
+async def check_remake_status(name, puuid, current_match_id, event, prediction_votes):
+    channel = bot.get_channel(int(CHANNEL_ID))
+    last_game_state = False
+
+    cur_predict_seasonref = db.reference("현재예측시즌")
+    current_predict_season = cur_predict_seasonref.get()
+
+    while not bot.is_closed():
+        current_game_state = await nowgame(puuid)
+        if current_game_state != last_game_state:
+            if not current_game_state:
+                previous_match_id = current_match_id
+
+                await asyncio.sleep(30)  # 게임 종료 후 30초 대기
+                current_match_id = await get_summoner_recentmatch_id(puuid)
+
+                if not event.is_set():
+                    if previous_match_id != current_match_id:
+                        match_info = await get_summoner_matchinfo(current_match_id)
+                        participant_id = get_participant_id(match_info, puuid)
+
+                        if match_info['info']['participants'][participant_id]['gameEndedInEarlySurrender'] and int(match_info['info']['gameDuration']) <= 240:
+                            userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+                            userembed.add_field(name="게임 종료", value=f"{name}의 솔로랭크 게임이 종료되었습니다!\n다시하기\n")
+                            await channel.send(embed=userembed)
+
+                            winners = prediction_votes['win']
+                            losers = prediction_votes['lose']
+                            for winner in winners:
+                                ref = db.reference(f'{current_predict_season}/예측포인트/{winner["name"]}')
+                                originr = ref.get()
+                                bettingPoint = originr["베팅포인트"]
+                                bettingPoint -= winner['points']
+                                ref.update({"베팅포인트": bettingPoint})
+
+                            for loser in losers:
+                                ref = db.reference(f'{current_predict_season}/예측포인트/{loser["name"]}')
+                                originr = ref.get()
+                                bettingPoint = originr["베팅포인트"]
+                                bettingPoint -= loser['points']
+                                ref.update({"베팅포인트": bettingPoint})
+
+                            event.set()
+                            prediction_votes['win'].clear()
+                            prediction_votes['lose'].clear()
+
+        last_game_state = current_game_state
+        await asyncio.sleep(20)
+
 class MyBot(commands.Bot):
     def __init__(self):
         super().__init__(
@@ -944,11 +991,6 @@ class MyBot(commands.Bot):
             print("관리자가 발견되지 않았습니다")
         '''
 
-        #bot.loop.create_task(check_jimo_points())
-        #bot.loop.create_task(check_melon_points())
-        #bot.loop.create_task(check_game_status())
-        #bot.loop.create_task(check_game_status2())
-
         # Task for Jimo
         bot.loop.create_task(open_prediction(
             name="지모", 
@@ -958,10 +1000,10 @@ class MyBot(commands.Bot):
             notice_channel_id=NOTICE_CHANNEL_ID, 
             event=p.jimo_event, 
             attrs={
-                'current_game_state_attr': 'jimo_current_game_state', 
-                'current_match_id_attr': 'jimo_current_match_id', 
-                'current_message_attr': 'current_message_jimo', 
-                'current_message_kda_attr': 'current_message_kda_jimo'
+                'current_game_state_attr': p.jimo_current_game_state, 
+                'current_match_id_attr': p.jimo_current_match_id, 
+                'current_message_attr': p.current_message_jimo, 
+                'current_message_kda_attr': p.current_message_kda_jimo
             }, 
             buttons={
                 'win_button': p.jimo_winbutton, 
@@ -982,10 +1024,10 @@ class MyBot(commands.Bot):
             notice_channel_id=NOTICE_CHANNEL_ID, 
             event=p.melon_event, 
             attrs={
-                'current_game_state_attr': 'melon_current_game_state', 
-                'current_match_id_attr': 'melon_current_match_id', 
-                'current_message_attr': 'current_message_melon', 
-                'current_message_kda_attr': 'current_message_kda_melon'
+                'current_game_state_attr': p.melon_current_game_state, 
+                'current_match_id_attr': p.melon_current_match_id, 
+                'current_message_attr': p.current_message_melon, 
+                'current_message_kda_attr': p.current_message_kda_melon
             }, 
             buttons={
                 'win_button': p.melon_winbutton, 
@@ -1018,8 +1060,10 @@ class MyBot(commands.Bot):
             votes=p.votes['Melon'], 
             event=p.melon_event
         ))
-        bot.loop.create_task(check_jimo_remake_status())
-        bot.loop.create_task(check_melon_remake_status())
+        bot.loop.create_task(check_remake_status("지모", JIMO_PUUID, p.jimo_current_match_id, p.jimo_event, p.votes['지모']['prediction']))
+        bot.loop.create_task(check_remake_status("Melon", MELON_PUUID, p.melon_current_match_id, p.melon_event, p.votes['Melon']['prediction']))
+        #bot.loop.create_task(check_jimo_remake_status())
+        #bot.loop.create_task(check_melon_remake_status())
 
 bot = MyBot()
 @bot.event

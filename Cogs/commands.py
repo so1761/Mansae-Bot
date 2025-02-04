@@ -8,7 +8,6 @@ import asyncio
 import aiohttp
 import pandas as pd
 import mplfinance as mpf
-import yt_dlp as youtube_dl
 import prediction_vote as p
 import subprocess
 import os
@@ -2038,8 +2037,7 @@ class hello(commands.Cog):
                             
                         winner_total_point = sum(winner["points"] for winner in p.votes[이름]['prediction']["win"])
                         loser_total_point = sum(loser["points"] for loser in p.votes[이름]['prediction']["lose"])
-                        prediction_embed.add_field(name="승리 포인트", value=f"총 {winner_total_point}포인트", inline=False)
-                        prediction_embed.add_field(name="패배 포인트", value=f"총 {loser_total_point}포인트", inline=False)
+                        prediction_embed.add_field(name="총 포인트", value=f"승리: {winner_total_point}포인트 | 패배: {loser_total_point}포인트", inline=False)
 
                         prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
                         prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
@@ -2095,9 +2093,8 @@ class hello(commands.Cog):
                             
                         winner_total_point = sum(winner["points"] for winner in p.votes[이름]['prediction']["win"])
                         loser_total_point = sum(loser["points"] for loser in p.votes[이름]['prediction']["lose"])
-                        prediction_embed.add_field(name="승리 포인트", value=f"총 {winner_total_point}포인트", inline=False)
-                        prediction_embed.add_field(name="패배 포인트", value=f"총 {loser_total_point}포인트", inline=False)
-
+                        prediction_embed.add_field(name="총 포인트", value=f"승리: {winner_total_point}포인트 | 패배: {loser_total_point}포인트", inline=False)
+                        
                         prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
                         prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
                         if current_message:
