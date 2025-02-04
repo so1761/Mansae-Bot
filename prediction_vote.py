@@ -47,14 +47,14 @@ melon_upbutton = discord.ui.Button()
 melon_downbutton = discord.ui.Button()
 melon_perfectbutton = discord.ui.Button()
 
-global current_message_jimo
-global current_message_melon
+current_message_jimo = ""
+current_message_melon = ""
 
-global current_message_kda_jimo
-global current_message_kda_melon
+current_message_kda_jimo = ""
+current_message_kda_melon = ""
 
-global jimo_current_match_id
-global melon_current_match_id
+jimo_current_match_id = ""
+melon_current_match_id = ""
 
 jimo_current_game_state = False
 melon_current_game_state = False
