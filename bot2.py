@@ -397,7 +397,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     streak_bonus_rate = calculate_bonus(game_lose_streak if result else game_win_streak)
 
                     BonusRate = 0 if winnerNum == 0 else round((((winnerNum + loserNum) / winnerNum) - 1) * 0.5, 2) + 1 # 0.5배 배율 적용
-                    BonusRate += streak_bonus_rate + 0.1
+                    if BonusRate > 0:
+                        BonusRate += streak_bonus_rate + 0.1
 
                     winner_total_point = sum(winner['points'] for winner in winners)
                     loser_total_point = sum(loser['points'] for loser in losers)
@@ -423,7 +424,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         # 예측 내역 업데이트
                         point_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"] + 1, "적중률": f"{round(((predict_data['적중 횟수'] * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": predict_data["연승"] + 1, "연패": 0, "베팅포인트": bettingPoint - winner["points"]})
 
-                        betted_rate = round(winner['points'] / winner_total_point, 1) if winner_total_point else 0
+                        betted_rate = round(winner['points'] / winner_total_point, 3) if winner_total_point else 0
                         get_bet = round(betted_rate * loser_total_point)
                         get_bet_limit = round(BonusRate * winner['points'])
                         if get_bet >= get_bet_limit:
@@ -456,7 +457,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
                         
                         # 남은 포인트를 배팅한 비율에 따라 환급받음 (50%)
-                        betted_rate = round(loser['points'] / loser_total_point, 1) if loser_total_point else 0
+                        betted_rate = round(loser['points'] / loser_total_point, 3) if loser_total_point else 0
                         get_bet = round(betted_rate * remain_loser_total_point * 0.5)
                         userembed.add_field(
                             name="",
