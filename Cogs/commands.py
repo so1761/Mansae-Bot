@@ -2024,7 +2024,7 @@ class hello(commands.Cog):
 
         channel = self.bot.get_channel(int(CHANNEL_ID))
         userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-        userembed.add_field(name="",value=f"{interaction.user.name}님이 포인트를 소모하여 {이름}의 예측 내역을 공개했습니다!", inline=False)
+        userembed.add_field(name="",value=f"{interaction.user.name}님이 포인트를 소모하여 {이름}의 예측 현황을 공개했습니다!", inline=False)
         await channel.send(f"\n",embed = userembed)
         ref.update({"포인트" : point - need_point})
         await interaction.response.send_message(f"{need_point}포인트 지불 완료! 현재 포인트: {real_point - need_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
