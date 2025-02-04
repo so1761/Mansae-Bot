@@ -2,6 +2,7 @@
 *.log
 *.json
 *.out
+.ssh/
 .env
 __pycache__/
 .cache/

@@ -1,30 +1,5 @@
 import discord
 import asyncio
-# 데이터 저장 파일
-# 예측한 사람들을 저장할 딕셔너리
-prediction_votes = {
-    "win": [],
-    "lose": []
-} #지모
-
-kda_votes = {
-    "up": [],
-    "down": [],
-    "perfect": []
-} #지모 KDA
-
-prediction_votes2 = {
-    "win": [],
-    "lose": []
-} #동성
-
-kda_votes2 = {
-    "up": [],
-    "down": [],
-    "perfect": []
-} #동성 KDA
-
-
 # 예측한 사람들을 저장할 딕셔너리
 votes = {
     "지모": {
