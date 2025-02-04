@@ -54,7 +54,7 @@ def find_and_kill_bot(process_name="bot2.py"):
 def restart_bot(script_name="bot2.py"):
     try:
         # nohup으로 bot2.py 재시작
-        command = f"nohup python -u {script_name} > nohup.out 2>&1 &"
+        command = f"nohup python -u {script_name} >> nohup.out 2>&1 &"
         subprocess.run(command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print(f"Script '{script_name}' restarted successfully.")
     except Exception as e:
