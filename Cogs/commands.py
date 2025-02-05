@@ -1239,7 +1239,7 @@ class hello(commands.Cog):
         current_season = curseasonref.get()
         season = current_season
 
-        result = plot_candle_graph(season,이름)
+        result = await plot_candle_graph(season,이름)
         if result == None:
             await interaction.response.send_message("해당 시즌 데이터가 존재하지 않습니다.")
             return
@@ -1262,7 +1262,7 @@ class hello(commands.Cog):
     ])
     async def 시즌캔들그래프(self, interaction: discord.Interaction, 이름:str,시즌:str):
         
-        result = plot_candle_graph(시즌,이름)
+        result = await plot_candle_graph(시즌,이름)
         if result == None:
             await interaction.response.send_message("해당 시즌 데이터가 존재하지 않습니다.")
             return
