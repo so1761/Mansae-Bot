@@ -477,7 +477,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                             userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet})(연속적중 보너스 + {calculate_points(predict_data['연승'] + 1)}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)
                         else:
                             userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)   
-                        point_ref.update({"포인트": point + add_points})
+                        point_ref.update({"포인트": point + add_points - bettingPoint})
 
                     for loser in losers:
                         point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
@@ -575,7 +575,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
         await asyncio.sleep(20)
 
-async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, event, attrs, winbutton):
+async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, event, current_game_state, current_match_id, current_message, current_message_kda, winbutton):
     await bot.wait_until_ready()
     channel = bot.get_channel(int(channel_id))
     notice_channel = bot.get_channel(int(notice_channel_id))
@@ -584,15 +584,15 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
     current_predict_season = cur_predict_seasonref.get()
 
     while not bot.is_closed():
-        attrs['current_game_state_attr'] = await nowgame(puuid)
-        if attrs['current_game_state_attr']:
+        current_game_state = await nowgame(puuid)
+        if current_game_state:
             onoffref = db.reference("승부예측/투표온오프")
             onoffbool = onoffref.get()
 
             anonymref = db.reference("승부예측/익명온오프")
             anonymbool = anonymref.get()
 
-            attrs['current_match_id_attr'] = await get_summoner_recentmatch_id(puuid)
+            current_match_id = await get_summoner_recentmatch_id(puuid)
 
             winbutton.disabled = onoffbool
             losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label="패배",disabled=onoffbool)
@@ -633,8 +633,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 kda_view.add_item(upbutton)
                 kda_view.add_item(downbutton)
                 kda_view.add_item(perfectbutton)
-                await attrs['current_message_attr'].edit(view=prediction_view)
-                await attrs['current_message_kda_attr'].edit(view=kda_view)
+                await current_message.edit(view=prediction_view)
+                await current_message_kda.edit(view=kda_view)
 
             prediction_votes = votes["prediction"]
             kda_votes = votes["kda"]
@@ -655,7 +655,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     prediction_votes[prediction_type].append({"name": nickname.name, 'points': 0})
                     myindex = len(prediction_votes[prediction_type]) - 1 # 투표자의 위치 파악
 
-                    await refresh_prediction(name,anonymbool,prediction_votes,attrs['current_message_attr']) # 새로고침
+                    await refresh_prediction(name,anonymbool,prediction_votes,current_message) # 새로고침
 
                     userembed = discord.Embed(title="메세지", color=discord.Color.blue())
 
@@ -686,7 +686,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         await asyncio.sleep(delay)
                         prediction_votes[prediction_type][myindex]['points'] += basePoint
                         # 자동 베팅
-                        await refresh_prediction(name,anonymbool,prediction_votes,attrs['current_message_attr']) # 새로고침
+                        await refresh_prediction(name,anonymbool,prediction_votes,current_message) # 새로고침
                         await channel.send(f"\n", embed=bettingembed)
                 else:
                     userembed = discord.Embed(title="메세지", color=discord.Color.blue())
@@ -724,7 +724,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             refrate.update({'배율' : rater['배율'] + 0.1})
                             userembed.add_field(name="",value=f"누군가가 아이템을 사용하여 배율을 0.1 올렸습니다!", inline=False)
                             await channel.send(f"\n",embed = userembed)
-                            await refresh_prediction(name,anonymbool,prediction_votes,attrs['current_message_attr']) # 새로고침
+                            await refresh_prediction(name,anonymbool,prediction_votes,current_message) # 새로고침
                             await interaction.response.send_message(f"{name}의 배율 0.1 증가 완료! 남은 아이템 : {itemr['배율증가1'] - 1}개",ephemeral=True)
                     else:
                         await interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
@@ -739,7 +739,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             refrate.update({'배율' : rater['배율'] + 0.3})
                             userembed.add_field(name="",value=f"누군가가 아이템을 사용하여 배율을 0.3 올렸습니다!", inline=False)
                             await channel.send(f"\n",embed = userembed)
-                            await refresh_prediction(name,anonymbool,prediction_votes,attrs['current_message_attr']) # 새로고침
+                            await refresh_prediction(name,anonymbool,prediction_votes,current_message) # 새로고침
                             await interaction.response.send_message(f"{name}의 배율 0.3 증가 완료! 남은 아이템 : {itemr['배율증가3'] - 1}개",ephemeral=True)
                     else:
                         interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
@@ -754,7 +754,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             refrate.update({'배율' : rater['배율'] + 0.5})
                             userembed.add_field(name="",value=f"누군가가 아이템을 사용하여 배율을 0.5 올렸습니다!", inline=False)
                             await channel.send(f"\n",embed = userembed)
-                            await refresh_prediction(name,anonymbool,prediction_votes,attrs['current_message_attr']) # 새로고침
+                            await refresh_prediction(name,anonymbool,prediction_votes,current_message) # 새로고침
                             await interaction.response.send_message(f"{name}의 배율 0.5 증가 완료! 남은 아이템 : {itemr['배율증가5'] - 1}개",ephemeral=True)
                     else:
                         interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
@@ -798,8 +798,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     noticeembed.add_field(name="",value=f"{name}의 {prediction_value}에 투표 완료!", inline=False)
                     await interaction.response.send_message(embed=noticeembed, ephemeral=True)
 
-                    if attrs['current_message_kda_attr']:
-                        await attrs['current_message_kda_attr'].edit(embed=embed)
+                    if current_message_kda:
+                        await current_message_kda.edit(embed=embed)
                 else:
                     userembed = discord.Embed(title="메세지", color=discord.Color.blue())
                     userembed.add_field(name="", value=f"{nickname}님은 이미 투표하셨습니다", inline=True)
@@ -864,13 +864,13 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
                 if game_win_streak >= 1:
                     streak_bonusRate = calculate_bonus(game_win_streak)
-                    attrs['current_message_attr'] = await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
+                    current_message = await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
                 elif game_lose_streak >= 1:
                     streak_bonusRate = calculate_bonus(game_lose_streak)
-                    attrs['current_message_attr'] = await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
+                    current_message = await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
                 else:
-                    attrs['current_message_attr'] = await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n", view=prediction_view, embed=prediction_embed)
-                attrs['current_message_kda_attr'] = await channel.send("\n", view=kda_view, embed=p.kda_embed)
+                    current_message = await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n", view=prediction_view, embed=prediction_embed)
+                current_message = await channel.send("\n", view=kda_view, embed=p.kda_embed)
 
             if not onoffbool:
                 await notice_channel.send(f"{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
@@ -980,13 +980,11 @@ class MyBot(commands.Bot):
             votes=p.votes['지모'], 
             channel_id=CHANNEL_ID, 
             notice_channel_id=NOTICE_CHANNEL_ID, 
-            event=p.jimo_event, 
-            attrs={
-                'current_game_state_attr': p.jimo_current_game_state, 
-                'current_match_id_attr': p.jimo_current_match_id, 
-                'current_message_attr': p.current_message_jimo, 
-                'current_message_kda_attr': p.current_message_kda_jimo
-            }, 
+            event=p.jimo_event,
+            current_game_state = p.jimo_current_game_state,
+            current_match_id = p.jimo_current_match_id,
+            current_message = p.current_message_jimo,
+            current_message_kda= p.current_message_kda_jimo,
             winbutton = p.jimo_winbutton
         ))
 
@@ -998,12 +996,10 @@ class MyBot(commands.Bot):
             channel_id=CHANNEL_ID, 
             notice_channel_id=NOTICE_CHANNEL_ID, 
             event=p.melon_event, 
-            attrs={
-                'current_game_state_attr': p.melon_current_game_state, 
-                'current_match_id_attr': p.melon_current_match_id, 
-                'current_message_attr': p.current_message_melon, 
-                'current_message_kda_attr': p.current_message_kda_melon
-            }, 
+            current_game_state = p.melon_current_game_state,
+            current_match_id = p.melon_current_match_id,
+            current_message = p.current_message_melon,
+            current_message_kda= p.current_message_kda_melon,
             winbutton = p.melon_winbutton
         ))
 
