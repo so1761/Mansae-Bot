@@ -1897,7 +1897,7 @@ class hello(commands.Cog):
                 and not p.votes.get(이름, {}).get('prediction', {}).get('lose')  # lose도 비어 있을 때
                 ))
         if (
-            not win_button.disabled # 투표중이거나
+            win_button.disabled == False # 투표중이거나
             or (
                 not p.votes.get(이름, {}).get('prediction', {}).get('win')  # win이 비어 있고
                 and not p.votes.get(이름, {}).get('prediction', {}).get('lose')  # lose도 비어 있을 때
