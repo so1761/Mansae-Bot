@@ -494,13 +494,23 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 for perfect_winner in perfect_winners:
                                     point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{perfect_winner["name"]}')
                                     predict_data = point_ref.get()
-                                    point_ref.update({"포인트": predict_data["포인트"] + perfect_point})
-                                    kdaembed.add_field(name="", value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {perfect_point}점을 획득하셨습니다!", inline=False)
+                                    today = datetime.today()
+                                    if today.weekday() == 6:
+                                        point_ref.update({"포인트": predict_data["포인트"] + (perfect_point * 2)})
+                                        kdaembed.add_field(name="", value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {perfect_point * 2}점(x2)을 획득하셨습니다!", inline=False)
+                                    else:
+                                        point_ref.update({"포인트": predict_data["포인트"] + perfect_point})
+                                        kdaembed.add_field(name="", value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {perfect_point}점을 획득하셨습니다!", inline=False)
                                 for winner in winners:
                                     point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
                                     predict_data = point_ref.get()
-                                    point_ref.update({"포인트": predict_data["포인트"] + 20})
-                                    kdaembed.add_field(name="", value=f"{winner['name']}님이 KDA 예측에 성공하여 20점을 획득하셨습니다!", inline=False)
+                                    today = datetime.today()
+                                    if today.weekday() == 6:
+                                        point_ref.update({"포인트": predict_data["포인트"] + 40})
+                                        kdaembed.add_field(name="", value=f"{winner['name']}님이 KDA 예측에 성공하여 40점(x2)을 획득하셨습니다!", inline=False)
+                                    else:
+                                        point_ref.update({"포인트": predict_data["포인트"] + 20})
+                                        kdaembed.add_field(name="", value=f"{winner['name']}님이 KDA 예측에 성공하여 20점을 획득하셨습니다!", inline=False)
                                 for loser in losers:
                                     kdaembed.add_field(name="", value=f"{loser['name']}님이 KDA 예측에 실패했습니다!", inline=False)
                             else:
@@ -509,8 +519,13 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 for winner in winners:
                                     point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
                                     predict_data = point_ref.get()
-                                    point_ref.update({"포인트": predict_data["포인트"] + 20})
-                                    kdaembed.add_field(name="", value=f"{winner['name']}님이 KDA 예측에 성공하여 20점을 획득하셨습니다!", inline=False)
+                                    today = datetime.today()
+                                    if today.weekday() == 6:
+                                        point_ref.update({"포인트": predict_data["포인트"] + 40})
+                                        kdaembed.add_field(name="", value=f"{winner['name']}님이 KDA 예측에 성공하여 40점(x2)을 획득하셨습니다!", inline=False)
+                                    else:
+                                        point_ref.update({"포인트": predict_data["포인트"] + 20})
+                                        kdaembed.add_field(name="", value=f"{winner['name']}님이 KDA 예측에 성공하여 20점을 획득하셨습니다!", inline=False)
                                 for loser in losers:
                                     kdaembed.add_field(name="", value=f"{loser['name']}님이 KDA 예측에 실패했습니다!", inline=False)
 
@@ -745,6 +760,10 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
 
             p.kda_embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.blue())
+
+            today = datetime.today()
+            if today.weekday() == 6:
+                p.kda_embed.add_field(name=f"",value=f"일요일엔 점수 2배! KDA 예측 점수 2배 지급!")
             p.kda_embed.add_field(name="퍼펙트 예측성공 포인트", value=perfect_point, inline=False)
             up_predictions = "".join(
                 f"{len(kda_votes['up'])}명")

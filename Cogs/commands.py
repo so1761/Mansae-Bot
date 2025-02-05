@@ -1457,16 +1457,6 @@ class hello(commands.Cog):
         else:
             await interaction.response.send_message("권한이 없습니다", ephemeral=True)
 
-    @app_commands.command(name="패치노트",description="만세봇 변경점을 알려드립니다")
-    async def 패치노트(self, interaction: discord.Interaction):
-        embed = discord.Embed(title=f'2024-10-20 업데이트 내용', color = discord.Color.blue())
-        embed.add_field(name=f"승부예측 시즌2", value= "승부예측 시즌 1이 마무리되고 시즌 2가 시작됩니다.", inline=False)
-        embed.add_field(name=f"베팅 시스템 추가", value= "이제 승부예측을 한 뒤에 포인트를 베팅할 수 있습니다. /베팅 [이름] [포인트] 명령어를 통해 가능합니다", inline=False)
-        embed.add_field(name=f"", value= "베팅 배율은 [전체 인원/예측 성공 인원]으로 정해지며 2배 이상일 경우 0.75배가 곱해져 적용됩니다", inline=False)
-        embed.add_field(name=f"예측 시스템 변화", value= "이제 비적중시 포인트를 잃지 않습니다. 이제 가장 낮은 포인트는 0포인트입니다.", inline=False)
-
-        await interaction.response.send_message(embed=embed)
-
     @app_commands.command(name="정상화",description="점수 정상화(개발자 전용)")
     async def 정상화(self, interaction: discord.Interaction):
         if interaction.user.name == "toe_kyung":
