@@ -870,7 +870,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     current_message = await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
                 else:
                     current_message = await channel.send(f"\n{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n", view=prediction_view, embed=prediction_embed)
-                current_message = await channel.send("\n", view=kda_view, embed=p.kda_embed)
+                current_message_kda = await channel.send("\n", view=kda_view, embed=p.kda_embed)
 
             if not onoffbool:
                 await notice_channel.send(f"{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
