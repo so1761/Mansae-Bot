@@ -1065,7 +1065,8 @@ class hello(commands.Cog):
         plot_lp_difference_firebase(name=이름)
 
         # 그래프 이미지 파일을 Discord 메시지로 전송
-        await interaction.response.send_message(file=discord.File('lp_graph.png'))
+        await interaction.response.defer()  # Interaction을 유지
+        await interaction.followup.send(file=discord.File('lp_graph.png'))
 
     @app_commands.command(name="시즌그래프",description="시즌 점수 변동 그래프를 보여줍니다")
     @app_commands.describe(시즌 = "시즌을 선택하세요")
@@ -1090,7 +1091,8 @@ class hello(commands.Cog):
             return
         else:
             # 그래프 이미지 파일을 Discord 메시지로 전송
-            await interaction.response.send_message(file=discord.File('lp_graph.png'))
+            await interaction.response.defer()  # Interaction을 유지
+            await interaction.followup.send(file=discord.File('lp_graph.png'))
 
     @app_commands.command(name="시즌종료",description="시즌 종료까지 남은 날짜")
     async def 시즌종료(self, interaction: discord.Interaction):
@@ -1233,7 +1235,9 @@ class hello(commands.Cog):
         # 그림을 파일로 저장
         fig.savefig(file_path)
         plt.close(fig)
-        await interaction.response.send_message(file=discord.File('candle_graph.png'),embed=embed)
+        # 그래프 이미지 파일을 Discord 메시지로 전송
+        await interaction.response.defer()  # Interaction을 유지
+        await interaction.followup.send(file=discord.File('candle_graph.png'))
 
     @app_commands.command(name="시즌캔들그래프",description="시즌 점수를 캔들그래프로 보여줍니다")
     @app_commands.describe(시즌 = "시즌을 선택하세요",이름='누구의 그래프를 볼지 선택하세요')
@@ -1325,7 +1329,9 @@ class hello(commands.Cog):
         # 그림을 파일로 저장
         fig.savefig(file_path)
         plt.close(fig)
-        await interaction.response.send_message(file=discord.File('candle_graph.png'),embed=embed)
+        # 그래프 이미지 파일을 Discord 메시지로 전송
+        await interaction.response.defer()  # Interaction을 유지
+        await interaction.followup.send(file=discord.File('candle_graph.png'))
 
     @app_commands.command(name="예측순위",description="승부예측 포인트 순위를 보여줍니다")
     @app_commands.describe(시즌 = "시즌을 선택하세요")
@@ -1981,9 +1987,11 @@ class hello(commands.Cog):
         if 이름 == "지모":
             win_button = p.jimo_winbutton
             current_message = p.current_message_jimo
+            prediction_embed = p.prediction_embed
         elif 이름 == "Melon":
             win_button = p.melon_winbutton
             current_message = p.current_message_melon
+            prediction_embed = p.prediction2_embed
 
         print(win_button.disabled, p.votes.get(이름, {}).get('prediction', {}).get('win'), p.votes.get(이름, {}).get('prediction', {}).get('lose'))
         print((not p.votes.get(이름, {}).get('prediction', {}).get('win')  # win이 비어 있고
