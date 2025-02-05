@@ -67,8 +67,8 @@ async def main():
     JIMO_PUUID = os.getenv("JIMO_PUUID")
     MELON_PUUID = os.getenv("MELON_PUUID")
 
-    jimo_game = await nowgame("JIMO_PUUID")
-    melon_game = await nowgame("MELON_PUUID")
+    jimo_game = await nowgame(JIMO_PUUID)
+    melon_game = await nowgame(MELON_PUUID)
     if not jimo_game and not melon_game:
         if find_and_kill_bot("bot2.py"):
             restart_bot("bot2.py")
