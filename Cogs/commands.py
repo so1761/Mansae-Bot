@@ -1628,6 +1628,7 @@ class hello(commands.Cog):
                         ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}/베팅포인트')
                         bettingPoint = ref2.get()
                         info = ref.get()
+
                         if info['포인트'] - bettingPoint < 포인트:
                             await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
                         else:
@@ -1645,8 +1646,8 @@ class hello(commands.Cog):
                                     userembed.add_field(name="",value=f"{nickname}님이 {이름}의 승리에 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
                                     await interaction.response.send_message(embed=userembed)
                                 
-                        await refresh_prediction(이름,anonymbool,p.votes[이름]['prediction'],current_message)
-                        return
+                            await refresh_prediction(이름,anonymbool,p.votes[이름]['prediction'],current_message)
+                            return
 
                 # 패배 예측에서 닉네임 찾기
                 for loser in p.votes[이름]['prediction']['lose']:
@@ -1672,8 +1673,8 @@ class hello(commands.Cog):
                                 else:
                                     userembed.add_field(name="",value=f"{nickname}님이 {이름}의 패배에 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
                                     await interaction.response.send_message(embed=userembed)
-                        await refresh_prediction(이름,anonymbool,p.votes[이름]['prediction'],current_message)
-                        return
+                            await refresh_prediction(이름,anonymbool,p.votes[이름]['prediction'],current_message)
+                            return
 
         if 이름 == "지모":
             winbutton = p.jimo_winbutton
@@ -1885,50 +1886,44 @@ class hello(commands.Cog):
     ])
     async def 배팅공개(self, interaction: discord.Interaction, 이름: str):
         current_message = ""
+        winbutton.disabled = True
         if 이름 == "지모":
-            win_button = p.jimo_winbutton
+            winbutton = p.jimo_winbutton
             current_message = p.current_message_jimo
         elif 이름 == "Melon":
-            win_button = p.melon_winbutton
+            winbutton = p.melon_winbutton
             current_message = p.current_message_melon
 
-        print(win_button.disabled, p.votes.get(이름, {}).get('prediction', {}).get('win'), p.votes.get(이름, {}).get('prediction', {}).get('lose'))
-        print((not p.votes.get(이름, {}).get('prediction', {}).get('win')  # win이 비어 있고
-                and not p.votes.get(이름, {}).get('prediction', {}).get('lose')  # lose도 비어 있을 때
-                ))
-        if (
-            win_button.disabled == False # 투표중이거나
-            or (
-                not p.votes.get(이름, {}).get('prediction', {}).get('win')  # win이 비어 있고
-                and not p.votes.get(이름, {}).get('prediction', {}).get('lose')  # lose도 비어 있을 때
-            )
-        ):
-            await interaction.response.send_message(f"{이름}의 투표가 끝나지 않았거나, 아무도 베팅하지 않았습니다!",ephemeral=True)
-            return
+        print(winbutton.disabled)
+        if winbutton.disabled == True:
+            if p.votes.get(이름, {}).get('prediction', {}).get('win') or p.votes.get(이름, {}).get('prediction', {}).get('lose'):
+                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                current_predict_season = cur_predict_seasonref.get()
+                ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
+                originr = ref.get()
+                point = originr["포인트"]
+                bettingPoint = originr["베팅포인트"]
+                real_point = point - bettingPoint
+                need_point = round(real_point * 0.1) # 10% 지불
+                if need_point < 100:
+                    need_point = 100
+                if real_point < 100:
+                    await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {real_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
+                    return
+                channel = self.bot.get_channel(int(CHANNEL_ID))
+                userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+                userembed.add_field(name="",value=f"{interaction.user.name}님이 포인트를 소모하여 {이름}의 예측 현황을 공개했습니다!", inline=False)
+                await channel.send(f"\n",embed = userembed)
 
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-        current_predict_season = cur_predict_seasonref.get()
-        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
-        originr = ref.get()
-        point = originr["포인트"]
-        bettingPoint = originr["베팅포인트"]
-        real_point = point - bettingPoint
-        need_point = round(real_point * 0.1) # 10% 지불
-        if need_point < 100:
-            need_point = 100
-        if real_point < 100:
-            await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {real_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
-            return
-        channel = self.bot.get_channel(int(CHANNEL_ID))
-        userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-        userembed.add_field(name="",value=f"{interaction.user.name}님이 포인트를 소모하여 {이름}의 예측 현황을 공개했습니다!", inline=False)
-        await channel.send(f"\n",embed = userembed)
-
-        refresh_prediction(이름,False,p.votes[이름]['prediction'],current_message)
-        
-        ref.update({"포인트" : point - need_point})
-        await interaction.response.send_message(f"{need_point}포인트 지불 완료! 현재 포인트: {real_point - need_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
-
+                refresh_prediction(이름,False,p.votes[이름]['prediction'],current_message)
+                
+                ref.update({"포인트" : point - need_point})
+                await interaction.response.send_message(f"{need_point}포인트 지불 완료! 현재 포인트: {real_point - need_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
+            else:
+                await interaction.response.send_message(f"{이름}에게 아무도 투표하지 않았습니다!",ephemeral=True)
+        else:
+            await interaction.response.send_message(f"{이름}의 투표가 끝나지 않았습니다!",ephemeral=True)
+            
     @app_commands.command(name="아이템지급",description="아이템을 지급합니다(관리자 전용)")
     @app_commands.describe(이름 = "아이템을 지급할 사람을 입력하세요")
     @app_commands.describe(아이템 = "지급할 아이템을 입력하세요")
