@@ -800,7 +800,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             buttons['up_button'].callback = lambda interaction: kda_button_callback(interaction, 'up')
             buttons['down_button'].callback = lambda interaction: kda_button_callback(interaction, 'down')
             buttons['perfect_button'].callback = lambda interaction: kda_button_callback(interaction, 'perfect')
-            buttons['betrate_up_button'].callback = betrate_up_button_callback()
+            buttons['betrate_up_button'].callback = betrate_up_button_callback
             prediction_embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
             if anonymbool:  # 익명 투표 시
                 win_predictions = "\n".join(
