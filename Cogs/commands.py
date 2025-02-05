@@ -1945,9 +1945,9 @@ class hello(commands.Cog):
     Choice(name='coeganghanu', value='coeganghanu')
     ])
     @app_commands.choices(아이템=[
-    Choice(name='배율증가 0.1', value='betRate1'),
-    Choice(name='배율증가 0.3', value='betRate2'),
-    Choice(name='배율증가 0.5', value='betRate3'),
+    Choice(name='배율증가 0.1', value='배율증가1'),
+    Choice(name='배율증가 0.3', value='배율증가3'),
+    Choice(name='배율증가 0.5', value='배율증가5'),
     ])
     async def 아이템지급(self, interaction: discord.Interaction, 이름: str, 아이템:str, 개수:int):
         if interaction.user.name == "toe_kyung":
@@ -1963,9 +1963,9 @@ class hello(commands.Cog):
     @app_commands.command(name="아이템전체지급",description="아이템을 모두에게 지급합니다(관리자 전용)")
     @app_commands.describe(아이템 = "지급할 아이템을 입력하세요")
     @app_commands.choices(아이템=[
-    Choice(name='배율증가 0.1', value='betRate1'),
-    Choice(name='배율증가 0.3', value='betRate2'),
-    Choice(name='배율증가 0.5', value='betRate3'),
+    Choice(name='배율증가 0.1', value='배율증가1'),
+    Choice(name='배율증가 0.3', value='배율증가3'),
+    Choice(name='배율증가 0.5', value='배율증가5'),
     ])
     async def 아이템전체지급(self, interaction: discord.Interaction,아이템:str, 개수:int):
         if interaction.user.name == "toe_kyung":
