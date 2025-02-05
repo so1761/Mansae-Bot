@@ -712,46 +712,46 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 async def betbutton1_callback(interaction: discord.Interaction):
                     if itemr['배율증가1'] >= 1:
                         if buttons['win_button'].disabled:
-                            interaction.response.send_message(f"투표가 종료되어 사용할 수 없습니다!",ephemeral=True)
+                            await interaction.response.send_message(f"투표가 종료되어 사용할 수 없습니다!",ephemeral=True)
                         else:
                             refitem.update({'배율증가1' : itemr['배율증가1'] - 1})
                             refrate = db.reference(f'승부예측/배율증가/{name}')
                             rater = refrate.get()
                             refrate.update({'배율' : rater['배율'] + 0.1})
                             await refresh_prediction(name,anonymbool,prediction_votes,attrs['current_message_attr']) # 새로고침
-                            interaction.response.send_message(f"{name}의 배율 0.1 증가 완료! 남은 아이템 : {itemr['배율증가1'] - 1}개",ephemeral=True)
+                            await interaction.response.send_message(f"{name}의 배율 0.1 증가 완료! 남은 아이템 : {itemr['배율증가1'] - 1}개",ephemeral=True)
                     else:
-                        interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
+                        await interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
                 async def betbutton2_callback(interaction: discord.Interaction):
                     if itemr['배율증가3'] >= 1:
                         if buttons['win_button'].disabled:
-                            interaction.response.send_message(f"투표가 종료되어 사용할 수 없습니다!",ephemeral=True)
+                            await interaction.response.send_message(f"투표가 종료되어 사용할 수 없습니다!",ephemeral=True)
                         else:
                             refitem.update({'배율증가3' : itemr['배율증가3'] - 1})
                             refrate = db.reference(f'승부예측/배율증가/{name}')
                             rater = refrate.get()
                             refrate.update({'배율' : rater['배율'] + 0.3})
                             await refresh_prediction(name,anonymbool,prediction_votes,attrs['current_message_attr']) # 새로고침
-                            interaction.response.send_message(f"{name}의 배율 0.3 증가 완료! 남은 아이템 : {itemr['배율증가3'] - 1}개",ephemeral=True)
+                            await interaction.response.send_message(f"{name}의 배율 0.3 증가 완료! 남은 아이템 : {itemr['배율증가3'] - 1}개",ephemeral=True)
                     else:
                         interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
                 async def betbutton3_callback(interaction: discord.Interaction):
                     if itemr['배율증가5'] >= 1:
                         if buttons['win_button'].disabled:
-                            interaction.response.send_message(f"투표가 종료되어 사용할 수 없습니다!",ephemeral=True)
+                            await interaction.response.send_message(f"투표가 종료되어 사용할 수 없습니다!",ephemeral=True)
                         else:
                             refitem.update({'배율증가5' : itemr['배율증가5'] - 1})
                             refrate = db.reference(f'승부예측/배율증가/{name}')
                             rater = refrate.get()
                             refrate.update({'배율' : rater['배율'] + 0.5})
                             await refresh_prediction(name,anonymbool,prediction_votes,attrs['current_message_attr']) # 새로고침
-                            interaction.response.send_message(f"{name}의 배율 0.5 증가 완료! 남은 아이템 : {itemr['배율증가5'] - 1}개",ephemeral=True)
+                            await interaction.response.send_message(f"{name}의 배율 0.5 증가 완료! 남은 아이템 : {itemr['배율증가5'] - 1}개",ephemeral=True)
                     else:
                         interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
                 betbutton1.callback = betbutton1_callback
                 betbutton2.callback = betbutton2_callback
                 betbutton3.callback = betbutton3_callback
-                interaction.response.send_message(f"\n",view=item_view, embed=embed,ephemeral=True)
+                await interaction.response.send_message(f"\n",view=item_view, embed=embed,ephemeral=True)
 
             async def kda_button_callback(interaction: discord.Interaction, prediction_type: str):
                 nickname = interaction.user
