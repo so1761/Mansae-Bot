@@ -1914,7 +1914,7 @@ class hello(commands.Cog):
                 userembed.add_field(name="",value=f"{interaction.user.name}님이 포인트를 소모하여 {이름}의 예측 현황을 공개했습니다!", inline=False)
                 await channel.send(f"\n",embed = userembed)
 
-                refresh_prediction(이름,False,p.votes[이름]['prediction'],current_message)
+                await refresh_prediction(이름,False,p.votes[이름]['prediction'],current_message)
                 
                 ref.update({"포인트" : point - need_point})
                 await interaction.response.send_message(f"{need_point}포인트 지불 완료! 현재 포인트: {real_point - need_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)

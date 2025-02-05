@@ -417,7 +417,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     winnerNum = len(winners)
                     loserNum = len(losers)
 
-                    streak_bonus_rate = calculate_bonus(game_win_streak if result else game_lose_streak)
+                    streak_bonus_rate = calculate_bonus(game_lose_streak if result else game_win_streak)
 
                     refrate = db.reference(f'승부예측/배율증가/{name}')
                     rater = refrate.get()
