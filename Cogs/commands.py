@@ -1886,7 +1886,6 @@ class hello(commands.Cog):
     ])
     async def 배팅공개(self, interaction: discord.Interaction, 이름: str):
         current_message = ""
-        winbutton.disabled = True
         if 이름 == "지모":
             winbutton = p.jimo_winbutton
             current_message = p.current_message_jimo
