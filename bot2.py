@@ -619,14 +619,14 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 
             async def disable_buttons():
                 await asyncio.sleep(180)  # 3분 대기
-                prediction_view = discord.ui.View()
-                kda_view = discord.ui.View()
                 buttons['win_button'].disabled = True
                 buttons['lose_button'].disabled = True
                 buttons['betrate_up_button'].disabled = True
                 buttons['up_button'].disabled = True
                 buttons['down_button'].disabled = True
                 buttons['perfect_button'].disabled = True
+                prediction_view = discord.ui.View()
+                kda_view = discord.ui.View()
                 prediction_view.add_item(buttons['win_button'])
                 prediction_view.add_item(buttons['lose_button'])
                 prediction_view.add_item(buttons['betrate_up_button'])
