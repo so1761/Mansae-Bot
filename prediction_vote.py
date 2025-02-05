@@ -33,21 +33,9 @@ prediction2_embed = discord.Embed()
 kda_embed = discord.Embed()
 kda2_embed = discord.Embed()
 
-jimo_winbutton = discord.ui.Button()
-jimo_losebutton = discord.ui.Button()
-jimo_betrateupbutton = discord.ui.Button()
+jimo_winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label="승리")
 
-jimo_upbutton = discord.ui.Button()
-jimo_downbutton = discord.ui.Button()
-jimo_perfectbutton = discord.ui.Button()
-
-melon_winbutton = discord.ui.Button()
-melon_losebutton = discord.ui.Button()
-melon_betrateupbutton = discord.ui.Button()
-
-melon_upbutton = discord.ui.Button()
-melon_downbutton = discord.ui.Button()
-melon_perfectbutton = discord.ui.Button()
+melon_winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label="승리")
 
 current_message_jimo = ""
 current_message_melon = ""
