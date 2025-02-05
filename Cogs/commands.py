@@ -216,7 +216,6 @@ def get_summoner_matchinfo_nonaysnc(matchid): #matchid로 매치 정보 구하�
         print('Error:', response.status_code)
         return None
 
-
 def plot_lp_difference_firebase(season=None,name=None):
 
     if season == None:
@@ -312,6 +311,84 @@ def plot_lp_difference_firebase(season=None,name=None):
     plt.savefig('lp_graph.png')
     plt.close()
     return 0
+
+async def plot_candle_graph(시즌:str, 이름:str):
+    ref = db.reference(f'전적분석/{시즌}/점수변동/{이름}')
+    data = ref.get()
+
+    if data == None:
+        return None
+    date_list = []
+
+    # 최고 점수와 최저 점수 초기화
+    highest_score = float('-inf')
+    lowest_score = float('inf')
+
+    # 각 날짜의 데이터를 정리하여 리스트에 추가
+    for date, entries in data.items():
+        total_lp_change = 0
+        max_score = float('-inf')  # 최고 점수를 음의 무한대로 초기화
+        min_score = float('inf')   # 최저 점수를 양의 무한대로 초기화
+        start_score = None
+        final_score = None
+        game_count = 0  # 판수를 초기화
+
+        for entry in entries.values():
+            lp_change = entry.get('LP 변화량', 0)
+            score = entry.get('현재 점수', 0)
+            game_count += 1
+
+            if start_score is None:
+                start_score = score - lp_change
+
+            total_lp_change += lp_change
+            max_score = max(max_score, score)
+            min_score = min(min_score, score)
+            final_score = score  # 반복이 끝날 때의 점수를 최종 점수로 설정
+        # 최고 점수와 최저 점수 업데이트
+        highest_score = max(highest_score, max_score)
+        lowest_score = min(lowest_score, min_score)
+
+        date_list.append({
+            '날짜': date,
+            '시작 점수': start_score,
+            '총 LP 변화량': total_lp_change,
+            '최고 점수': max_score,
+            '최저 점수': min_score,
+            '최종 점수': final_score,
+            '판수': game_count
+        })
+
+    highest_tier = number_to_tier(highest_score)
+    lowest_tier = number_to_tier(lowest_score)
+    basecolor = 0x000000
+    embed = discord.Embed(title=f'{이름} 점수 변동', color = basecolor)
+    embed.add_field(name="최고점수", value=f"{highest_tier}({highest_score})",inline=False)
+    embed.add_field(name="최저점수", value=f"{lowest_tier}({lowest_score})",inline=False)
+
+
+    # 데이터프레임 생성
+    df = pd.DataFrame(date_list)
+    df['날짜'] = pd.to_datetime(df['날짜'])
+    df.set_index('날짜', inplace=True)
+
+    # 데이터프레임 열 이름 변경 (예: '시작 점수'를 'Open', '최고 점수'를 'High' 등으로 변경)
+    df.rename(columns={'시작 점수': 'Open', '최고 점수': 'High', '최저 점수': 'Low', '최종 점수': 'Close', '판수': 'Volume'}, inplace=True)
+
+    def make_mpf_style():
+        # marketcolors 설정
+        mc = mpf.make_marketcolors(up='red', down='blue')
+        # 스타일 설정
+        return mpf.make_mpf_style(base_mpf_style = "binance",marketcolors=mc)
+    # 캔들스틱 차트 그리기
+    fig, axlist = mpf.plot(df, type='candle', style= make_mpf_style(), ylabel='Tier', xlabel='Dates', mav=2, volume=True, ylabel_lower='Games', returnfig=True)
+
+    # 파일 경로 및 이름 설정
+    file_path = "candle_graph.png"
+
+    # 그림을 파일로 저장
+    fig.savefig(file_path)
+    plt.close(fig)
 
 def nowgameinfo(puuid): #puuid를 통해 현재 진행중인 게임의 참가자 정보를 반환
     url = f'https://kr.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/{puuid}'
@@ -1157,84 +1234,16 @@ class hello(commands.Cog):
     Choice(name='Melon', value='Melon'),
     ])
     async def 캔들그래프(self, interaction: discord.Interaction,이름:str):
-        # 현재 날짜 및 시간 가져오기
+        # 현재 시즌 정보 가져오기
         curseasonref = db.reference("전적분석/현재시즌")
         current_season = curseasonref.get()
         season = current_season
 
-        ref = db.reference(f'전적분석/{season}/점수변동/{이름}')
-        data = ref.get()
-        date_list = []
-
-        # 최고 점수와 최저 점수 초기화
-        highest_score = float('-inf')
-        lowest_score = float('inf')
-
-        # 각 날짜의 데이터를 정리하여 리스트에 추가
-        for date, entries in data.items():
-            total_lp_change = 0
-            max_score = float('-inf')  # 최고 점수를 음의 무한대로 초기화
-            min_score = float('inf')   # 최저 점수를 양의 무한대로 초기화
-            start_score = None
-            final_score = None
-            game_count = 0  # 판수를 초기화
-
-            for entry in entries.values():
-                lp_change = entry.get('LP 변화량', 0)
-                score = entry.get('현재 점수', 0)
-                game_count += 1
-
-                if start_score is None:
-                    start_score = score - lp_change
-
-                total_lp_change += lp_change
-                max_score = max(max_score, score)
-                min_score = min(min_score, score)
-                final_score = score  # 반복이 끝날 때의 점수를 최종 점수로 설정
-            # 최고 점수와 최저 점수 업데이트
-            highest_score = max(highest_score, max_score)
-            lowest_score = min(lowest_score, min_score)
-
-            date_list.append({
-                '날짜': date,
-                '시작 점수': start_score,
-                '총 LP 변화량': total_lp_change,
-                '최고 점수': max_score,
-                '최저 점수': min_score,
-                '최종 점수': final_score,
-                '판수': game_count
-            })
-
-        highest_tier = number_to_tier(highest_score)
-        lowest_tier = number_to_tier(lowest_score)
-        basecolor = 0x000000
-        embed = discord.Embed(title=f'{이름} 점수 변동', color = basecolor)
-        embed.add_field(name="최고점수", value=f"{highest_tier}({highest_score})",inline=False)
-        embed.add_field(name="최저점수", value=f"{lowest_tier}({lowest_score})",inline=False)
-
-
-        # 데이터프레임 생성
-        df = pd.DataFrame(date_list)
-        df['날짜'] = pd.to_datetime(df['날짜'])
-        df.set_index('날짜', inplace=True)
-
-        # 데이터프레임 열 이름 변경 (예: '시작 점수'를 'Open', '최고 점수'를 'High' 등으로 변경)
-        df.rename(columns={'시작 점수': 'Open', '최고 점수': 'High', '최저 점수': 'Low', '최종 점수': 'Close', '판수': 'Volume'}, inplace=True)
-
-        def make_mpf_style():
-            # marketcolors 설정
-            mc = mpf.make_marketcolors(up='red', down='blue')
-            # 스타일 설정
-            return mpf.make_mpf_style(base_mpf_style = "binance",marketcolors=mc)
-        # 캔들스틱 차트 그리기
-        fig, axlist = mpf.plot(df, type='candle', style= make_mpf_style(), ylabel='Tier', xlabel='Dates', mav=2, volume=True, ylabel_lower='Games', returnfig=True)
-
-        # 파일 경로 및 이름 설정
-        file_path = "candle_graph.png"
-
-        # 그림을 파일로 저장
-        fig.savefig(file_path)
-        plt.close(fig)
+        result = plot_candle_graph(season,이름)
+        if result == None:
+            await interaction.response.send_message("해당 시즌 데이터가 존재하지 않습니다.")
+            return
+        
         # 그래프 이미지 파일을 Discord 메시지로 전송
         await interaction.response.defer()  # Interaction을 유지
         await interaction.followup.send(file=discord.File('candle_graph.png'))
@@ -1252,83 +1261,12 @@ class hello(commands.Cog):
     Choice(name='Melon', value='Melon'),
     ])
     async def 시즌캔들그래프(self, interaction: discord.Interaction, 이름:str,시즌:str):
-        ref = db.reference(f'전적분석/{시즌}/점수변동/{이름}')
-        data = ref.get()
-
-        if data == None:
+        
+        result = plot_candle_graph(시즌,이름)
+        if result == None:
             await interaction.response.send_message("해당 시즌 데이터가 존재하지 않습니다.")
             return
-        date_list = []
-
-        # 최고 점수와 최저 점수 초기화
-        highest_score = float('-inf')
-        lowest_score = float('inf')
-
-        # 각 날짜의 데이터를 정리하여 리스트에 추가
-        for date, entries in data.items():
-            total_lp_change = 0
-            max_score = float('-inf')  # 최고 점수를 음의 무한대로 초기화
-            min_score = float('inf')   # 최저 점수를 양의 무한대로 초기화
-            start_score = None
-            final_score = None
-            game_count = 0  # 판수를 초기화
-
-            for entry in entries.values():
-                lp_change = entry.get('LP 변화량', 0)
-                score = entry.get('현재 점수', 0)
-                game_count += 1
-
-                if start_score is None:
-                    start_score = score - lp_change
-
-                total_lp_change += lp_change
-                max_score = max(max_score, score)
-                min_score = min(min_score, score)
-                final_score = score  # 반복이 끝날 때의 점수를 최종 점수로 설정
-            # 최고 점수와 최저 점수 업데이트
-            highest_score = max(highest_score, max_score)
-            lowest_score = min(lowest_score, min_score)
-
-            date_list.append({
-                '날짜': date,
-                '시작 점수': start_score,
-                '총 LP 변화량': total_lp_change,
-                '최고 점수': max_score,
-                '최저 점수': min_score,
-                '최종 점수': final_score,
-                '판수': game_count
-            })
-
-        highest_tier = number_to_tier(highest_score)
-        lowest_tier = number_to_tier(lowest_score)
-        basecolor = 0x000000
-        embed = discord.Embed(title=f'{이름} 점수 변동', color = basecolor)
-        embed.add_field(name="최고점수", value=f"{highest_tier}({highest_score})",inline=False)
-        embed.add_field(name="최저점수", value=f"{lowest_tier}({lowest_score})",inline=False)
-
-
-        # 데이터프레임 생성
-        df = pd.DataFrame(date_list)
-        df['날짜'] = pd.to_datetime(df['날짜'])
-        df.set_index('날짜', inplace=True)
-
-        # 데이터프레임 열 이름 변경 (예: '시작 점수'를 'Open', '최고 점수'를 'High' 등으로 변경)
-        df.rename(columns={'시작 점수': 'Open', '최고 점수': 'High', '최저 점수': 'Low', '최종 점수': 'Close', '판수': 'Volume'}, inplace=True)
-
-        def make_mpf_style():
-            # marketcolors 설정
-            mc = mpf.make_marketcolors(up='red', down='blue')
-            # 스타일 설정
-            return mpf.make_mpf_style(base_mpf_style = "binance",marketcolors=mc)
-        # 캔들스틱 차트 그리기
-        fig, axlist = mpf.plot(df, type='candle', style= make_mpf_style(), ylabel='Tier', xlabel='Dates', mav=2, volume=True, ylabel_lower='Games', returnfig=True)
-
-        # 파일 경로 및 이름 설정
-        file_path = "candle_graph.png"
-
-        # 그림을 파일로 저장
-        fig.savefig(file_path)
-        plt.close(fig)
+        
         # 그래프 이미지 파일을 Discord 메시지로 전송
         await interaction.response.defer()  # Interaction을 유지
         await interaction.followup.send(file=discord.File('candle_graph.png'))
