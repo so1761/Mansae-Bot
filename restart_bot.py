@@ -6,10 +6,6 @@ import asyncio
 from dotenv import load_dotenv
 
 API_KEY = None
-JIMO_PUUID = None
-MELON_PUUID = None
-
-
 
 async def nowgame(puuid):
     url = f'https://kr.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/{puuid}'
@@ -63,6 +59,7 @@ def restart_bot(script_name="bot2.py"):
 async def main():
     load_dotenv()
 
+    global API_KEY
     API_KEY = os.getenv("RIOT_API_KEY")
     JIMO_PUUID = os.getenv("JIMO_PUUID")
     MELON_PUUID = os.getenv("MELON_PUUID")
