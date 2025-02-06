@@ -1888,12 +1888,6 @@ class hello(commands.Cog):
     Choice(name='Melon', value='Melon'),
     ])
     async def 베팅공개(self, interaction: discord.Interaction, 이름: str):
-
-        if 이름 == "지모":
-            await bet_open(p.jimo_winbutton)
-        elif 이름 == "Melon":
-            await bet_open(p.melon_winbutton)
-
         async def bet_open(winbutton):
             if winbutton.disabled == True:
                 if p.votes.get(이름, {}).get('prediction', {}).get('win') or p.votes.get(이름, {}).get('prediction', {}).get('lose'):
@@ -1923,6 +1917,11 @@ class hello(commands.Cog):
                     await interaction.response.send_message(f"{이름}에게 아무도 투표하지 않았습니다!",ephemeral=True)
             else:
                 await interaction.response.send_message(f"{이름}의 투표가 끝나지 않았습니다!",ephemeral=True)
+
+        if 이름 == "지모":
+            await bet_open(p.jimo_winbutton)
+        elif 이름 == "Melon":
+            await bet_open(p.melon_winbutton)
         
     @app_commands.command(name="아이템지급",description="아이템을 지급합니다(관리자 전용)")
     @app_commands.describe(이름 = "아이템을 지급할 사람을 입력하세요")
