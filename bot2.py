@@ -992,7 +992,7 @@ class MyBot(commands.Bot):
         prediction_view.add_item(losebutton)
 
         async def disable_buttons():
-            await asyncio.sleep(180)  # 3분 대기
+            await asyncio.sleep(60)  # 1분 대기
             p.jimo_winbutton.disabled = True
             losebutton.disabled = True
             prediction_view = discord.ui.View()
@@ -1024,8 +1024,10 @@ class MyBot(commands.Bot):
             p.votes['지모']['prediction']['lose'][0]['points'] += 26
             # 자동 베팅
             await refresh_prediction("지모", False, p.votes['지모']['prediction'], p.current_test_message)
-            await channel.send(f"\n", embed=bettingembed)              
-        p.current_test_message = await channel.send(f"\n테스트용 메세지입니다.",embed=prediction_embed)
+            await channel.send(f"\n", embed=bettingembed)      
+        p.jimo_winbutton.callback = winbutton_callback
+        losebutton.callback = losebutton_callback        
+        p.current_test_message = await channel.send(f"\n테스트용 메세지입니다.",embed=prediction_embed, view = prediction_view)
         '''
         if admin:
             try:
