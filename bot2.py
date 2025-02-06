@@ -984,6 +984,47 @@ class MyBot(commands.Bot):
         prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
         prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
 
+        p.jimo_winbutton.disabled = False
+        losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label="패배",disabled=False)
+
+        prediction_view = discord.ui.View()
+        prediction_view.add_item(p.jimo_winbutton)
+        prediction_view.add_item(losebutton)
+
+        async def disable_buttons():
+            await asyncio.sleep(180)  # 3분 대기
+            p.jimo_winbutton.disabled = True
+            losebutton.disabled = True
+            prediction_view = discord.ui.View()
+            prediction_view.add_item(p.jimo_winbutton)
+            prediction_view.add_item(losebutton)
+            await p.current_test_message.edit(view=prediction_view)
+
+        async def winbutton_callback(interaction: discord.Interaction):
+            userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+            userembed.add_field(name="", value=f"User1님이 승리에 투표하셨습니다.", inline=True)
+            bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+            bettingembed.add_field(name="", value=f"누군가가 지모의 승리에 26포인트를 베팅했습니다!", inline=False)
+            await channel.send(f"\n", embed=userembed)
+            delay = random.uniform(5, 30) # 5초부터 30초까지 랜덤 시간
+            await asyncio.sleep(delay)
+            p.votes['지모']['prediction']['win'][0]['points'] += 26
+            # 자동 베팅
+            await refresh_prediction("지모", False, p.votes['지모']['prediction'], p.current_test_message)
+            await channel.send(f"\n", embed=bettingembed)   
+
+        async def losebutton_callback(interaction: discord.Interaction):
+            userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+            userembed.add_field(name="", value=f"User3님이 패배에 투표하셨습니다.", inline=True)
+            bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+            bettingembed.add_field(name="", value=f"누군가가 지모의 패배에 26포인트를 베팅했습니다!", inline=False)
+            await channel.send(f"\n", embed=userembed)
+            delay = random.uniform(5, 30) # 5초부터 30초까지 랜덤 시간
+            await asyncio.sleep(delay)
+            p.votes['지모']['prediction']['lose'][0]['points'] += 26
+            # 자동 베팅
+            await refresh_prediction("지모", False, p.votes['지모']['prediction'], p.current_test_message)
+            await channel.send(f"\n", embed=bettingembed)              
         p.current_test_message = await channel.send(f"\n테스트용 메세지입니다.",embed=prediction_embed)
         '''
         if admin:
