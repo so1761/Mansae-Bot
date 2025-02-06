@@ -2027,7 +2027,7 @@ class hello(commands.Cog):
                 {"name": "User4", "points": 80}
             ]
         }
-        await refresh_prediction("지무", False, prediction_votes, current_message)
+        await refresh_prediction("지모", False, prediction_votes, current_message)
 
         await interaction.response.send_message("수행완료",ephemeral=True)
 
@@ -2044,7 +2044,7 @@ class hello(commands.Cog):
                 {"name": "User4", "points": 80}
             ]
         }
-        await refresh_prediction("지무", True, prediction_votes, current_message)
+        await refresh_prediction("지모", True, prediction_votes, current_message)
 
         await interaction.response.send_message("수행완료",ephemeral=True)
     
