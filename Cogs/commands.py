@@ -399,7 +399,7 @@ async def plot_candle_graph(시즌:str, 이름:str):
     # 그림을 파일로 저장
     fig.savefig(file_path)
     plt.close(fig)
-    return 1
+    return embed
 
 async def refresh_prediction(name, anonym, prediction_votes, current_message):
     embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
@@ -1279,7 +1279,7 @@ class hello(commands.Cog):
         
         # 그래프 이미지 파일을 Discord 메시지로 전송
         await interaction.response.defer()  # Interaction을 유지
-        await interaction.followup.send(file=discord.File('candle_graph.png'))
+        await interaction.followup.send(file=discord.File('candle_graph.png'),embed = result)
 
     @app_commands.command(name="시즌캔들그래프",description="시즌 점수를 캔들그래프로 보여줍니다")
     @app_commands.describe(시즌 = "시즌을 선택하세요",이름='누구의 그래프를 볼지 선택하세요')
@@ -1302,7 +1302,7 @@ class hello(commands.Cog):
         
         # 그래프 이미지 파일을 Discord 메시지로 전송
         await interaction.response.defer()  # Interaction을 유지
-        await interaction.followup.send(file=discord.File('candle_graph.png'))
+        await interaction.followup.send(file=discord.File('candle_graph.png'),embed = result)
 
     @app_commands.command(name="예측순위",description="승부예측 포인트 순위를 보여줍니다")
     @app_commands.describe(시즌 = "시즌을 선택하세요")
