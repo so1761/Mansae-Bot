@@ -459,10 +459,10 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
                         # 예측 내역 변동 데이터
                         change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
-                        change_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"] + 1, "적중률": f"{round(((predict_data['적중 횟수'] * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": predict_data["연승"] + 1, "연패": 0, "베팅포인트": bettingPoint - winner["points"]})
+                        change_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"] + 1, "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": predict_data["연승"] + 1, "연패": 0, "베팅포인트": bettingPoint - winner["points"]})
 
                         # 예측 내역 업데이트
-                        point_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"] + 1, "적중률": f"{round(((predict_data['적중 횟수'] * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": predict_data["연승"] + 1, "연패": 0, "베팅포인트": bettingPoint - winner["points"]})
+                        point_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"] + 1, "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": predict_data["연승"] + 1, "연패": 0, "베팅포인트": bettingPoint - winner["points"]})
 
                         betted_rate = round(winner['points'] / winner_total_point, 3) if winner_total_point else 0
                         get_bet = round(betted_rate * loser_total_point)
@@ -480,7 +480,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                             userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet})(연속적중 보너스 + {calculate_points(predict_data['연승'] + 1)}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)
                         else:
                             userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)   
-                        point_ref.update({"포인트": point + add_points - bettingPoint})
+                        change_ref.update({"포인트": point + add_points - winner['points']})
+                        point_ref.update({"포인트": point + add_points - winner['points']})
 
                     for loser in losers:
                         point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
@@ -507,8 +508,10 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         )
                         if point + get_bet < loser['points']:
                             point_ref.update({"포인트": 0})
+                            change_ref.update({"포인트": 0})
                         else:
-                            point_ref.update({"포인트": point + get_bet})
+                            point_ref.update({"포인트": point + get_bet - loser['points']})
+                            change_ref.update({"포인트": point + get_bet - loser['points']})
 
                     await channel.send(embed=userembed)
                     prediction_votes['win'].clear()
@@ -587,7 +590,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
     current_predict_season = cur_predict_seasonref.get()
 
     while not bot.is_closed():
-        #current_game_state = await nowgame(puuid)
+        current_game_state = await nowgame(puuid)
         if current_game_state:
             onoffref = db.reference("승부예측/투표온오프")
             onoffbool = onoffref.get()
@@ -888,8 +891,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
                 current_message_kda = await channel.send("\n", view=kda_view, embed=p.kda_embed)
 
-            #if not onoffbool:
-            #    await notice_channel.send(f"{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
+            if not onoffbool:
+                await notice_channel.send(f"{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
 
             event.clear()
             await asyncio.gather(
@@ -996,8 +999,7 @@ class MyBot(commands.Bot):
             channel_id=CHANNEL_ID, 
             notice_channel_id=NOTICE_CHANNEL_ID, 
             event=p.jimo_event,
-            #current_game_state = p.jimo_current_game_state,
-            current_game_state = True,
+            current_game_state = p.jimo_current_game_state,
             current_match_id = p.jimo_current_match_id,
             current_message_kda= p.current_message_kda_jimo,
             winbutton = p.jimo_winbutton
