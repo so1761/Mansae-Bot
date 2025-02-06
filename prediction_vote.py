@@ -37,8 +37,8 @@ jimo_winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label="승�
 
 melon_winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label="승리")
 
-current_message_jimo = None
-current_message_melon = None
+global current_message_jimo
+global current_message_melon
 
 current_message_kda_jimo = None
 current_message_kda_melon = None
