@@ -583,7 +583,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
     current_predict_season = cur_predict_seasonref.get()
 
     while not bot.is_closed():
-        current_game_state = await nowgame(puuid)
+        #current_game_state = await nowgame(puuid)
         if current_game_state:
             onoffref = db.reference("승부예측/투표온오프")
             onoffbool = onoffref.get()
