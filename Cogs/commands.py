@@ -399,6 +399,7 @@ async def plot_candle_graph(시즌:str, 이름:str):
     # 그림을 파일로 저장
     fig.savefig(file_path)
     plt.close(fig)
+    return 1
 
 async def refresh_prediction(name, anonym, prediction_votes, current_message):
     embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
