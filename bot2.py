@@ -78,6 +78,9 @@ ANONYM_NAME_LOSE = [
 CHANNEL_ID = '938728993329397781'
 NOTICE_CHANNEL_ID = '1232585451911643187'
 
+used_items_for_user_jimo = {}
+used_items_for_user_melon = {}
+
 async def nowgame(puuid):
     url = f'https://kr.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/{puuid}'
     headers = {'X-Riot-Token': API_KEY}
@@ -516,6 +519,10 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     await channel.send(embed=userembed)
                     prediction_votes['win'].clear()
                     prediction_votes['lose'].clear()
+                    if name == "지모":
+                        used_items_for_user_jimo.clear()
+                    elif name == "Melon":
+                        used_items_for_user_melon.clear()
                     refrate.update({'배율' : 0}) # 배율 0으로 초기화
                     # KDA 예측
                     match_id = await get_summoner_recentmatch_id(puuid)
@@ -723,6 +730,11 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
 
                 async def betbutton1_callback(interaction: discord.Interaction):
+                    user_id = interaction.user.id  # 사용자 ID
+                    if used_items_for_user_jimo.get(user_id, False):  # 아이템을 이미 사용한 경우
+                        await interaction.response.send_message(f"이미 아이템을 사용했습니다.", ephemeral=True)
+                        return
+                    
                     if itemr['배율증가1'] >= 1:
                         if winbutton.disabled:
                             await interaction.response.send_message(f"투표가 종료되어 사용할 수 없습니다!",ephemeral=True)
@@ -735,9 +747,17 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             await channel.send(f"\n",embed = userembed)
                             await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
                             await interaction.response.send_message(f"{name}의 배율 0.1 증가 완료! 남은 아이템 : {itemr['배율증가1'] - 1}개",ephemeral=True)
+                            if name == "지모":
+                                used_items_for_user_jimo[user_id] = True  # 사용자에게 아이템 사용 기록
+                            elif name == "Melon":
+                                used_items_for_user_melon[user_id] = True
                     else:
                         await interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
                 async def betbutton2_callback(interaction: discord.Interaction):
+                    user_id = interaction.user.id  # 사용자 ID
+                    if used_items_for_user_jimo.get(user_id, False):  # 아이템을 이미 사용한 경우
+                        await interaction.response.send_message(f"이미 아이템을 사용했습니다.", ephemeral=True)
+                        return
                     if itemr['배율증가3'] >= 1:
                         if winbutton.disabled:
                             await interaction.response.send_message(f"투표가 종료되어 사용할 수 없습니다!",ephemeral=True)
@@ -750,9 +770,17 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             await channel.send(f"\n",embed = userembed)
                             await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
                             await interaction.response.send_message(f"{name}의 배율 0.3 증가 완료! 남은 아이템 : {itemr['배율증가3'] - 1}개",ephemeral=True)
+                            if name == "지모":
+                                used_items_for_user_jimo[user_id] = True  # 사용자에게 아이템 사용 기록
+                            elif name == "Melon":
+                                used_items_for_user_melon[user_id] = True
                     else:
                         interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
                 async def betbutton3_callback(interaction: discord.Interaction):
+                    user_id = interaction.user.id  # 사용자 ID
+                    if used_items_for_user_jimo.get(user_id, False):  # 아이템을 이미 사용한 경우
+                        await interaction.response.send_message(f"이미 아이템을 사용했습니다.", ephemeral=True)
+                        return
                     if itemr['배율증가5'] >= 1:
                         if winbutton.disabled:
                             await interaction.response.send_message(f"투표가 종료되어 사용할 수 없습니다!",ephemeral=True)
@@ -765,6 +793,10 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             await channel.send(f"\n",embed = userembed)
                             await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
                             await interaction.response.send_message(f"{name}의 배율 0.5 증가 완료! 남은 아이템 : {itemr['배율증가5'] - 1}개",ephemeral=True)
+                            if name == "지모":
+                                used_items_for_user_jimo[user_id] = True  # 사용자에게 아이템 사용 기록
+                            elif name == "Melon":
+                                used_items_for_user_melon[user_id] = True
                     else:
                         interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
                 betbutton1.callback = betbutton1_callback
