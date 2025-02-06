@@ -2017,37 +2017,73 @@ class hello(commands.Cog):
     @app_commands.command(name="메세지수정테스트",description="테스트")
     async def 메세지수정테스트(self, interaction: discord.Interaction):
         current_message = p.current_test_message
-        prediction_votes = {
-            "win": [
-                {"name": "User1", "points": 150},
-                {"name": "User2", "points": 200}
-            ],
-            "lose": [
-                {"name": "User3", "points": 50},
-                {"name": "User4", "points": 80}
-            ]
-        }
-        await refresh_prediction("지모", False, prediction_votes, current_message)
+        await refresh_prediction("지모", False, p.votes['지모']['prediction'], current_message)
 
         await interaction.response.send_message("수행완료",ephemeral=True)
 
     @app_commands.command(name="메세지수정테스트2",description="테스트")
     async def 메세지수정테스트2(self, interaction: discord.Interaction):
-        current_message = p.current_test_message
-        prediction_votes = {
-            "win": [
-                {"name": "User1", "points": 200},
-                {"name": "User2", "points": 300}
-            ],
-            "lose": [
-                {"name": "User3", "points": 150},
-                {"name": "User4", "points": 80}
-            ]
-        }
-        await refresh_prediction("지모", True, prediction_votes, current_message)
+        await refresh_prediction("지모", True, p.votes['지모']['prediction'], p.current_test_message)
 
         await interaction.response.send_message("수행완료",ephemeral=True)
-    
+
+    @app_commands.command(name="테스트베팅",description="테스트 승부예측에 걸 포인트를 설정합니다.")
+    @app_commands.describe(포인트 = "베팅할 포인트를 선택하세요 (자연수만)",승패 = "승리 or 패배")
+    @app_commands.choices(승패=[
+    Choice(name='승리', value='승리'),
+    Choice(name='패배', value='패배'),
+    ])
+    async def 테스트베팅(self, interaction: discord.Interaction, 포인트:int, 승패:str):
+        anonymref = db.reference("승부예측/익명온오프")
+        anonymbool = anonymref.get()
+
+        async def handle_bet1(current_message):
+            if 포인트 <= 0:
+                await interaction.response.send_message("포인트는 0보다 큰 숫자로 입력해주세요",ephemeral=True)
+                return
+
+            nickname = interaction.user.name
+            
+            if 승패 == "승리":
+                for winner in p.votes['지모']['prediction']['win']:
+                    if winner['name'] == "User1":
+                        winner['points'] += 포인트  # 포인트 수정
+                        userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                        if anonymbool:
+                            await place_bet(self.bot,'지모',"승리",포인트)
+                            await interaction.response.send_message(f"{'지모'}의 승리에 {'지모'}포인트 베팅 완료!",ephemeral=True)
+                        else:
+                            if winner['points'] != 포인트:
+                                userembed.add_field(name="",value=f"{nickname}님이 지모의 승리에 {포인트}포인트만큼 추가 베팅하셨습니다!", inline=True)
+                                await interaction.response.send_message(embed=userembed)
+                            else:
+                                userembed.add_field(name="",value=f"{nickname}님이 지모의 승리에 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
+                                await interaction.response.send_message(embed=userembed)
+                            
+                        await refresh_prediction('지모',anonymbool,p.votes['지모']['prediction'],current_message)
+                        return
+                    
+            elif 승패 == "패배":
+                # 패배 예측에서 닉네임 찾기
+                for loser in p.votes['지모']['prediction']['lose']:
+                    if loser['name'] == "User3":
+                        loser['points'] += 포인트  # 포인트 수정
+                        userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                        if anonymbool:
+                            await place_bet(self.bot,'지모',"패배",포인트)
+                            await interaction.response.send_message(f"지모의 패배에 {포인트}포인트 베팅 완료!",ephemeral=True)
+                        else:
+                            if loser['points'] != 포인트:
+                                userembed.add_field(name="",value=f"{nickname}님이 지모의 패배에 {포인트}포인트만큼 추가 베팅하셨습니다!", inline=True)
+                                await interaction.response.send_message(embed=userembed)
+                            else:
+                                userembed.add_field(name="",value=f"{nickname}님이 지모의 패배에 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
+                                await interaction.response.send_message(embed=userembed)
+                        await refresh_prediction('지모',anonymbool,p.votes['지모']['prediction'],current_message)
+                        return
+
+        await handle_bet1(p.current_test_message)
+
     #베팅 테스트를 위한 코드
     # @app_commands.command(name="베팅테스트",description="베팅 테스트(개발자 전용)")
     # @app_commands.describe(이름 = "이름을 입력하세요", 값 = "값")
