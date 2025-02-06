@@ -1948,9 +1948,9 @@ class hello(commands.Cog):
             give_item(이름,아이템,개수)
             channel = self.bot.get_channel(int(CHANNEL_ID))
             userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-            userembed.add_field(name="",value=f"{이름}에게 {아이템}아이템 {개수}개가 지급되었습니다!", inline=False)
+            userembed.add_field(name="",value=f"{이름}에게 [{아이템}] {개수}개가 지급되었습니다!", inline=False)
             await channel.send(f"\n",embed = userembed)
-            await interaction.response.send_message("{이름}에게 {아이템}아이템 {개수}개 지급 완료!",ephemeral=True)
+            await interaction.response.send_message(f"{이름}에게 [{아이템}] {개수}개 지급 완료!",ephemeral=True)
         else:
             await interaction.response.send_message("권한이 없습니다",ephemeral=True)
 
@@ -1972,9 +1972,9 @@ class hello(commands.Cog):
                 give_item(nickname,아이템,개수)
             channel = self.bot.get_channel(int(CHANNEL_ID))
             userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-            userembed.add_field(name="",value=f"모두에게 {아이템}아이템 {개수}개가 지급되었습니다!", inline=False)
+            userembed.add_field(name="",value=f"모두에게 [{아이템}] {개수}개가 지급되었습니다!", inline=False)
             await channel.send(f"\n",embed = userembed)
-            await interaction.response.send_message("모두에게 {아이템}아이템 {개수}개 지급 완료!",ephemeral=True)
+            await interaction.response.send_message(f"모두에게 [{아이템}] {개수}개 지급 완료!",ephemeral=True)
         else:
             await interaction.response.send_message("권한이 없습니다",ephemeral=True)
 
