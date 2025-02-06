@@ -669,7 +669,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             await interaction.response.send_message(embed=noticeembed, ephemeral=True)
                         else:
                             noticeembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                            noticeembed.add_field(name="",value=f"{name}의 {prediction_value} 투표 완료!", inline=False)
+                            noticeembed.add_field(name="",value=f"{name}의 {prediction_value}에 투표 완료!", inline=False)
                             await interaction.response.send_message(embed=noticeembed, ephemeral=True)
                     else:
                         userembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에 투표하셨습니다.", inline=True)
