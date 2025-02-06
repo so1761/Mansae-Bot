@@ -206,7 +206,6 @@ async def refresh_prediction(name, anonym, prediction_votes, current_message):
         await current_message.edit(embed=embed)
 
 
-
 def tier_to_number(tier, rank, lp): # 티어를 레이팅 숫자로 변환
     tier_num = TIER_RANK_MAP.get(tier)
     rank_num = RANK_MAP.get(rank)
@@ -960,75 +959,6 @@ class MyBot(commands.Bot):
         })
 
         admin = await bot.fetch_user("298068763335589899")  # toe_kyung의 디스코드 사용자 ID 입력
-        channel = bot.get_channel(int(CHANNEL_ID)) # 일반 채널
-        p.votes['지모']['prediction'] = {
-            "win": [
-                {"name": "User1", "points": 200},
-                {"name": "User2", "points": 300}
-            ],
-            "lose": [
-                {"name": "User3", "points": 150},
-                {"name": "User4", "points": 80}
-            ]
-        }
-        prediction_embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
-        win_predictions = "\n".join(
-            f"{winner['name']}: {winner['points']}포인트" for winner in p.votes['지모']['prediction']["win"]) or "없음"
-        lose_predictions = "\n".join(
-            f"{loser['name']}: {loser['points']}포인트" for loser in p.votes['지모']['prediction']["lose"]) or "없음"
-    
-        winner_total_point = sum(winner["points"] for winner in p.votes['지모']['prediction']["win"])
-        loser_total_point = sum(loser["points"] for loser in p.votes['지모']['prediction']["lose"])
-        prediction_embed.add_field(name="총 포인트", value=f"승리: {winner_total_point}포인트 | 패배: {loser_total_point}포인트", inline=False)
-
-        prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
-        prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
-
-        p.jimo_winbutton.disabled = False
-        losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label="패배",disabled=False)
-
-        prediction_view = discord.ui.View()
-        prediction_view.add_item(p.jimo_winbutton)
-        prediction_view.add_item(losebutton)
-
-        async def disable_buttons():
-            await asyncio.sleep(60)  # 1분 대기
-            p.jimo_winbutton.disabled = True
-            losebutton.disabled = True
-            prediction_view = discord.ui.View()
-            prediction_view.add_item(p.jimo_winbutton)
-            prediction_view.add_item(losebutton)
-            await p.current_test_message.edit(view=prediction_view)
-
-        async def winbutton_callback(interaction: discord.Interaction):
-            userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-            userembed.add_field(name="", value=f"User1님이 승리에 투표하셨습니다.", inline=True)
-            bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-            bettingembed.add_field(name="", value=f"누군가가 지모의 승리에 26포인트를 베팅했습니다!", inline=False)
-            await channel.send(f"\n", embed=userembed)
-            delay = random.uniform(5, 30) # 5초부터 30초까지 랜덤 시간
-            await asyncio.sleep(delay)
-            p.votes['지모']['prediction']['win'][0]['points'] += 26
-            # 자동 베팅
-            await refresh_prediction("지모", False, p.votes['지모']['prediction'], p.current_test_message)
-            await channel.send(f"\n", embed=bettingembed)   
-
-        async def losebutton_callback(interaction: discord.Interaction):
-            userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-            userembed.add_field(name="", value=f"User3님이 패배에 투표하셨습니다.", inline=True)
-            bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-            bettingembed.add_field(name="", value=f"누군가가 지모의 패배에 26포인트를 베팅했습니다!", inline=False)
-            await channel.send(f"\n", embed=userembed)
-            delay = random.uniform(5, 30) # 5초부터 30초까지 랜덤 시간
-            await asyncio.sleep(delay)
-            p.votes['지모']['prediction']['lose'][0]['points'] += 26
-            # 자동 베팅
-            await refresh_prediction("지모", False, p.votes['지모']['prediction'], p.current_test_message)
-            await channel.send(f"\n", embed=bettingembed)      
-        p.jimo_winbutton.callback = winbutton_callback
-        losebutton.callback = losebutton_callback        
-        p.current_test_message = await channel.send(f"\n테스트용 메세지입니다.",embed=prediction_embed, view = prediction_view)
-        await disable_buttons()
         '''
         if admin:
             try:
@@ -1049,7 +979,8 @@ class MyBot(commands.Bot):
             channel_id=CHANNEL_ID, 
             notice_channel_id=NOTICE_CHANNEL_ID, 
             event=p.jimo_event,
-            current_game_state = p.jimo_current_game_state,
+            #current_game_state = p.jimo_current_game_state,
+            current_game_state = True,
             current_match_id = p.jimo_current_match_id,
             current_message = p.current_message_jimo,
             current_message_kda= p.current_message_kda_jimo,
