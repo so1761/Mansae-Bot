@@ -1684,9 +1684,9 @@ class hello(commands.Cog):
                             return
 
         if 이름 == "지모":
-            await handle_bet(p.jimo_winbutton,p.current_message_jimo)
+            await handle_bet(p.jimo_winbutton)
         elif 이름 == "Melon":
-            await handle_bet(p.melon_winbutton,p.current_message_melon)
+            await handle_bet(p.melon_winbutton)
 
     @app_commands.command(name="승리",description="베팅 승리판정(개발자 전용)")
     @app_commands.describe(이름 = "이름을 입력하세요", 포인트 = "얻을 포인트를 입력하세요", 배율 = "베팅 배율을 입력하세요", 베팅금액 = "베팅한 금액을 입력하세요")
