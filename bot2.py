@@ -202,6 +202,7 @@ async def refresh_prediction(name, anonym, prediction_votes, current_message):
     
     embed.add_field(name="승리 예측", value=win_predictions, inline=True)
     embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
+    print(f"current_message = {current_message}")
     if current_message: # p.current_message:
         await current_message.edit(embed=embed)
 
