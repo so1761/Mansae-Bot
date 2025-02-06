@@ -2017,18 +2017,35 @@ class hello(commands.Cog):
     @app_commands.command(name="메세지수정테스트",description="테스트")
     async def 메세지수정테스트(self, interaction: discord.Interaction):
         current_message = p.current_test_message
-        print(f"current_message: {current_message}")
-        print(f"current_message 메모리 주소: {id(current_message)}") 
-        if current_message:
-            await current_message.edit(content="수정완료")
-        
+        prediction_votes = {
+            "win": [
+                {"name": "User1", "points": 150},
+                {"name": "User2", "points": 200}
+            ],
+            "lose": [
+                {"name": "User3", "points": 50},
+                {"name": "User4", "points": 80}
+            ]
+        }
+        await refresh_prediction("지무", False, prediction_votes, current_message)
+
         await interaction.response.send_message("수행완료",ephemeral=True)
 
     @app_commands.command(name="메세지수정테스트2",description="테스트")
     async def 메세지수정테스트2(self, interaction: discord.Interaction):
-        print(f"p.current_test_message: {p.current_test_message}")
-        print(f"p.current_test_message 메모리 주소: {id(p.current_test_message)}")
-        await p.current_test_message.edit(content="수정완료")
+        current_message = p.current_test_message
+        prediction_votes = {
+            "win": [
+                {"name": "User1", "points": 200},
+                {"name": "User2", "points": 300}
+            ],
+            "lose": [
+                {"name": "User3", "points": 150},
+                {"name": "User4", "points": 80}
+            ]
+        }
+        await refresh_prediction("지무", True, prediction_votes, current_message)
+
         await interaction.response.send_message("수행완료",ephemeral=True)
     
     #베팅 테스트를 위한 코드
