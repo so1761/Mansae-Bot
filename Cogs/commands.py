@@ -2020,7 +2020,7 @@ class hello(commands.Cog):
         print(f"current_message: {current_message}")
         print(f"current_message 메모리 주소: {id(current_message)}") 
         if current_message:
-            current_message.edit("수정완료")
+            current_message.edit(content="수정완료")
         
         await interaction.response.send_message("수행완료",ephemeral=True)
 
@@ -2028,7 +2028,7 @@ class hello(commands.Cog):
     async def 메세지수정테스트2(self, interaction: discord.Interaction):
         print(f"p.current_test_message: {p.current_test_message}")
         print(f"p.current_test_message 메모리 주소: {id(p.current_test_message)}")
-        p.current_test_message.edit("수정완료")
+        p.current_test_message.edit(content="수정완료")
         await interaction.response.send_message("수행완료",ephemeral=True)
     
     #베팅 테스트를 위한 코드
