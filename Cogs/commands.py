@@ -1677,13 +1677,9 @@ class hello(commands.Cog):
                             return
 
         if 이름 == "지모":
-            winbutton = p.jimo_winbutton
-            current_message = p.current_message_jimo
-            await handle_bet(winbutton,current_message)
+            await handle_bet(p.jimo_winbutton,p.current_message_jimo)
         elif 이름 == "Melon":
-            winbutton = p.melon_winbutton
-            current_message = p.current_message_melon
-            await handle_bet(winbutton,current_message)
+            await handle_bet(p.melon_winbutton,p.current_message_melon)
 
     @app_commands.command(name="승리",description="베팅 승리판정(개발자 전용)")
     @app_commands.describe(이름 = "이름을 입력하세요", 포인트 = "얻을 포인트를 입력하세요", 배율 = "베팅 배율을 입력하세요", 베팅금액 = "베팅한 금액을 입력하세요")
@@ -1884,45 +1880,43 @@ class hello(commands.Cog):
     Choice(name='지모', value='지모'),
     Choice(name='Melon', value='Melon'),
     ])
-    async def 배팅공개(self, interaction: discord.Interaction, 이름: str):
-        current_message = ""
+    async def 베팅공개(self, interaction: discord.Interaction, 이름: str):
+
         if 이름 == "지모":
-            winbutton = p.jimo_winbutton
-            current_message = p.current_message_jimo
+            await bet_open(p.jimo_winbutton,p.current_message_jimo)
         elif 이름 == "Melon":
-            winbutton = p.melon_winbutton
-            current_message = p.current_message_melon
+            await bet_open(p.melon_winbutton,p.current_message_melon)
 
-        print(winbutton.disabled)
-        if winbutton.disabled == True:
-            if p.votes.get(이름, {}).get('prediction', {}).get('win') or p.votes.get(이름, {}).get('prediction', {}).get('lose'):
-                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                current_predict_season = cur_predict_seasonref.get()
-                ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
-                originr = ref.get()
-                point = originr["포인트"]
-                bettingPoint = originr["베팅포인트"]
-                real_point = point - bettingPoint
-                need_point = round(real_point * 0.1) # 10% 지불
-                if need_point < 100:
-                    need_point = 100
-                if real_point < 100:
-                    await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {real_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
-                    return
-                channel = self.bot.get_channel(int(CHANNEL_ID))
-                userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-                userembed.add_field(name="",value=f"{interaction.user.name}님이 포인트를 소모하여 {이름}의 예측 현황을 공개했습니다!", inline=False)
-                await channel.send(f"\n",embed = userembed)
-
-                await refresh_prediction(이름,False,p.votes[이름]['prediction'],current_message)
-                
-                ref.update({"포인트" : point - need_point})
-                await interaction.response.send_message(f"{need_point}포인트 지불 완료! 현재 포인트: {real_point - need_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
+        async def bet_open(winbutton,current_message):
+            if winbutton.disabled == True:
+                if p.votes.get(이름, {}).get('prediction', {}).get('win') or p.votes.get(이름, {}).get('prediction', {}).get('lose'):
+                    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                    current_predict_season = cur_predict_seasonref.get()
+                    ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
+                    originr = ref.get()
+                    point = originr["포인트"]
+                    bettingPoint = originr["베팅포인트"]
+                    real_point = point - bettingPoint
+                    need_point = round(real_point * 0.1) # 10% 지불
+                    if need_point < 100:
+                        need_point = 100
+                    if real_point < 100:
+                        await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {real_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
+                        return
+                    channel = self.bot.get_channel(int(CHANNEL_ID))
+                    userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+                    userembed.add_field(name="",value=f"{interaction.user.name}님이 포인트를 소모하여 {이름}의 예측 현황을 공개했습니다!", inline=False)
+                    await channel.send(f"\n",embed = userembed)
+                    
+                    await refresh_prediction(이름,False,p.votes[이름]['prediction'],current_message)
+                    
+                    ref.update({"포인트" : point - need_point})
+                    await interaction.response.send_message(f"{need_point}포인트 지불 완료! 현재 포인트: {real_point - need_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
+                else:
+                    await interaction.response.send_message(f"{이름}에게 아무도 투표하지 않았습니다!",ephemeral=True)
             else:
-                await interaction.response.send_message(f"{이름}에게 아무도 투표하지 않았습니다!",ephemeral=True)
-        else:
-            await interaction.response.send_message(f"{이름}의 투표가 끝나지 않았습니다!",ephemeral=True)
-            
+                await interaction.response.send_message(f"{이름}의 투표가 끝나지 않았습니다!",ephemeral=True)
+        
     @app_commands.command(name="아이템지급",description="아이템을 지급합니다(관리자 전용)")
     @app_commands.describe(이름 = "아이템을 지급할 사람을 입력하세요")
     @app_commands.describe(아이템 = "지급할 아이템을 입력하세요")
@@ -2020,6 +2014,23 @@ class hello(commands.Cog):
             await channel.send(f"\n",embed = battleEmbed)
             await interaction.response.send_message("수행완료",ephemeral=True)
 
+    @app_commands.command(name="메세지수정테스트",description="테스트")
+    async def 메세지수정테스트(self, interaction: discord.Interaction):
+        current_message = p.current_test_message
+        print(f"current_message: {current_message}")
+        print(f"current_message 메모리 주소: {id(current_message)}") 
+        if current_message:
+            current_message.edit("수정완료")
+        
+        await interaction.response.send_message("수행완료",ephemeral=True)
+
+    @app_commands.command(name="메세지수정테스트2",description="테스트")
+    async def 메세지수정테스트2(self, interaction: discord.Interaction):
+        print(f"p.current_test_message: {p.current_test_message}")
+        print(f"p.current_test_message 메모리 주소: {id(p.current_test_message)}")
+        p.current_test_message.edit("수정완료")
+        await interaction.response.send_message("수행완료",ephemeral=True)
+    
     #베팅 테스트를 위한 코드
     # @app_commands.command(name="베팅테스트",description="베팅 테스트(개발자 전용)")
     # @app_commands.describe(이름 = "이름을 입력하세요", 값 = "값")

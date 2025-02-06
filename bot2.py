@@ -960,7 +960,8 @@ class MyBot(commands.Bot):
         })
 
         admin = await bot.fetch_user("298068763335589899")  # toe_kyung의 디스코드 사용자 ID 입력
-
+        channel = bot.get_channel(int(CHANNEL_ID)) # 일반 채널
+        p.current_test_message = await channel.send(f"\n테스트용 메세지입니다.")
         '''
         if admin:
             try:

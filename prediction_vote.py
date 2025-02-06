@@ -37,17 +37,19 @@ jimo_winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label="승�
 
 melon_winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label="승리")
 
-current_message_jimo = ""
-current_message_melon = ""
+current_message_jimo = None
+current_message_melon = None
 
-current_message_kda_jimo = ""
-current_message_kda_melon = ""
+current_message_kda_jimo = None
+current_message_kda_melon = None
 
-jimo_current_match_id = ""
-melon_current_match_id = ""
+jimo_current_match_id = None
+melon_current_match_id = None
 
 jimo_current_game_state = False
 melon_current_game_state = False
 
 jimo_event = asyncio.Event()
 melon_event = asyncio.Event()
+
+current_test_message = ""
