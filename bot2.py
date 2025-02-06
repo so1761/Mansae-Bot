@@ -1028,6 +1028,7 @@ class MyBot(commands.Bot):
         p.jimo_winbutton.callback = winbutton_callback
         losebutton.callback = losebutton_callback        
         p.current_test_message = await channel.send(f"\n테스트용 메세지입니다.",embed=prediction_embed, view = prediction_view)
+        disable_buttons()
         '''
         if admin:
             try:
