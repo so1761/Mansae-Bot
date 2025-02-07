@@ -2053,7 +2053,7 @@ class hello(commands.Cog):
                                                         f"남은 포인트 : {real_point - total_need_point} (베팅포인트 {bettingPoint} 제외) (- {total_need_point})",ephemeral=True)
     
     @app_commands.command(name="예측확인", description="현재 내가 투표한 항목을 확인합니다.")
-    async def check_my_vote(interaction: discord.Interaction):
+    async def check_my_vote(self,interaction: discord.Interaction):
         nickname = interaction.user.name  # 현재 유저의 닉네임
         results = []  # 투표 내역 저장 리스트
 
