@@ -2038,7 +2038,7 @@ class hello(commands.Cog):
                 item_name = "자동예측" + 이름 + "승리"
                 ref.update({"포인트" : point - total_need_point})
                 give_item(nickname,item_name,판수)
-                await interaction.response.send_message(f"{이름}의 {winlosebool}에 {판수}게임동안 자동예측! \n"
+                await interaction.response.send_message(f"{이름}의 {승패}에 {판수}게임동안 자동예측! \n"
                                                         f"남은 포인트 : {real_point - total_need_point} (베팅포인트 {bettingPoint} 제외) (- {total_need_point})",ephemeral=True)
         else:
             if itemr.get("자동예측" + 이름 + "승리", 0) > 0:
@@ -2047,7 +2047,7 @@ class hello(commands.Cog):
                 item_name = "자동예측" + 이름 + "패배"
                 ref.update({"포인트" : point - total_need_point})
                 give_item(nickname,item_name,판수)
-                await interaction.response.send_message(f"{이름}의 {winlosebool}에 {판수}게임동안 자동예측! \n"
+                await interaction.response.send_message(f"{이름}의 {승패}에 {판수}게임동안 자동예측! \n"
                                                         f"남은 포인트 : {real_point - total_need_point} (베팅포인트 {bettingPoint} 제외) (- {total_need_point})",ephemeral=True)
     
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")

@@ -677,20 +677,20 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     for autowinner in auto_bet_users["자동예측지모승리"]:
                         delay = random.uniform(1, 5) # 1초부터 5초까지 랜덤 시간
                         await asyncio.sleep(delay)
-                        await bet_button_callback(None,"승리",ANONYM_NAME_WIN,autowinner)
+                        await bet_button_callback(None,'win',ANONYM_NAME_WIN,autowinner)
                     for autoloser in auto_bet_users["자동예측지모패배"]:
                         delay = random.uniform(1, 5) # 1초부터 5초까지 랜덤 시간
                         await asyncio.sleep(delay)
-                        await bet_button_callback(None,"패배",ANONYM_NAME_LOSE,autoloser)
+                        await bet_button_callback(None,'lose',ANONYM_NAME_LOSE,autoloser)
                 elif name == "Melon":
                     for autowinner in auto_bet_users["자동예측Melon승리"]:
                         delay = random.uniform(1, 5) # 1초부터 5초까지 랜덤 시간
                         await asyncio.sleep(delay)
-                        await bet_button_callback(None,"승리",ANONYM_NAME_WIN,autowinner)
+                        await bet_button_callback(None,'win',ANONYM_NAME_WIN,autowinner)
                     for autoloser in auto_bet_users["자동예측Melon패배"]:
                         delay = random.uniform(1, 5) # 1초부터 5초까지 랜덤 시간
                         await asyncio.sleep(delay)
-                        await bet_button_callback(None,"패배",ANONYM_NAME_LOSE,autoloser)
+                        await bet_button_callback(None,'lose',ANONYM_NAME_LOSE,autoloser)
 
             prediction_votes = votes["prediction"]
             kda_votes = votes["kda"]
@@ -976,8 +976,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
                 current_message_kda = await channel.send("\n", view=kda_view, embed=p.kda_embed)
 
-            if not onoffbool:
-                await notice_channel.send(f"{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
+            #if not onoffbool:
+            #    await notice_channel.send(f"{name}의 솔로랭크 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
 
             event.clear()
             await asyncio.gather(
