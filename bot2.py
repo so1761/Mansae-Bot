@@ -444,6 +444,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                 ref = db.reference(f'전적분석/{current_season}/점수변동/{name}/{rank_type}')
                 points = ref.get()
 
+                point_change = 0
                 if points is None:
                     game_win_streak = 0
                     game_lose_streak = 0
@@ -986,7 +987,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     if current_message_kda:
                         await current_message_kda.edit(embed=embed)
                 else:
-                    userembed = discord.Embed(title="메세지", color=discord.Color.gray())
+                    userembed = discord.Embed(title="메세지", color=discord.Color.dark_gray())
                     userembed.add_field(name="", value=f"{nickname}님은 이미 투표하셨습니다", inline=True)
                     await interaction.response.send_message(embed=userembed, ephemeral=True)
 
