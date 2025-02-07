@@ -1996,7 +1996,7 @@ class hello(commands.Cog):
 
         await interaction.response.send_message(embed=embed,ephemeral=True)
 
-    @app_commands.command(name="자동예측",description="포인트를 소모하여, 승부예측이 올라왔을 때 자동으로 예측합니다")
+    @app_commands.command(name="자동예측",description="판당 15 포인트를 소모하여, 승부예측이 올라왔을 때 자동으로 예측합니다")
     @app_commands.choices(이름=[
     Choice(name='지모', value='지모'),
     Choice(name='Melon', value='Melon')
@@ -2015,8 +2015,7 @@ class hello(commands.Cog):
             winlosebool = True
         else:
             winlosebool = False
-        #need_point = 15 # 한 판당 15p를 소모하여 자동예측
-        need_point = 0
+        need_point = 15 # 한 판당 15p를 소모하여 자동예측
         total_need_point = need_point * 판수
 
         ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname.name}')
