@@ -2011,11 +2011,13 @@ class hello(commands.Cog):
 
         nickname = interaction.user
 
+        
         if 승패 == "True":
             winlosebool = True
         else:
             winlosebool = False
-        need_point = 15 # 한 판당 15p를 소모하여 자동예측
+        #need_point = 15 # 한 판당 15p를 소모하여 자동예측
+        need_point = 0
         total_need_point = need_point * 판수
 
         ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname.name}')
@@ -2027,7 +2029,7 @@ class hello(commands.Cog):
         if real_point < total_need_point:
             await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {real_point} (베팅포인트 {bettingPoint} 제외) \n"
                                                     f"필요 포인트 : {total_need_point}({need_point} x {판수})",ephemeral=True)
-
+            
         refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname.name}/아이템')
         itemr = refitem.get()
 
@@ -2050,6 +2052,40 @@ class hello(commands.Cog):
                 await interaction.response.send_message(f"{이름}의 {승패}에 {판수}게임동안 자동예측! \n"
                                                         f"남은 포인트 : {real_point - total_need_point} (베팅포인트 {bettingPoint} 제외) (- {total_need_point})",ephemeral=True)
     
+    @app_commands.command(name="예측확인", description="현재 내가 투표한 항목을 확인합니다.")
+    async def check_my_vote(interaction: discord.Interaction):
+        nickname = interaction.user.name  # 현재 유저의 닉네임
+        results = []  # 투표 내역 저장 리스트
+
+        # 확인할 플레이어 목록
+        players = ["지모", "Melon"]
+
+        for player in players:
+            if player in p.votes:
+                player_votes = []
+
+                # 승부 예측 (win/lose)
+                for outcome in ["win", "lose"]:
+                    if nickname in p.votes[player]["prediction"][outcome]:
+                        player_votes.append(f"- {outcome.upper()} (승부예측)")
+
+                # KDA 예측 (up/down/perfect)
+                for outcome in ["up", "down", "perfect"]:
+                    if nickname in p.votes[player]["kda"][outcome]:
+                        player_votes.append(f"- {outcome.upper()} (KDA예측)")
+
+                # 플레이어별로 투표 내역 정리
+                if player_votes:
+                    results.append(f"✅ **{player}에 대한 투표 내역:**\n" + "\n".join(player_votes))
+
+        # 최종 메시지 출력
+        if results:
+            message = "\n\n".join(results)
+        else:
+            message = "❌ 현재 투표한 항목이 없습니다."
+
+        await interaction.response.send_message(message, ephemeral=True)
+
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
     @app_commands.choices(상대=[
