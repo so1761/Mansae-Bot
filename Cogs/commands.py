@@ -1185,8 +1185,12 @@ class hello(commands.Cog):
     async def 그래프(self, interaction: discord.Interaction, 이름:str, 랭크:str = "솔로랭크"):
         print(f"{interaction.user}가 요청한 그래프 요청 수행 ({이름}, {랭크})")
         # LP 변동량 그래프 그리기
-        plot_lp_difference_firebase(name = 이름, rank = 랭크)
 
+        returnVal = plot_lp_difference_firebase(name = 이름, rank = 랭크)
+        
+        if returnVal == -1:
+            await interaction.response.send_message("해당 시즌 데이터가 존재하지 않습니다.")
+            return
         # 그래프 이미지 파일을 Discord 메시지로 전송
         await interaction.response.defer()  # Interaction을 유지
         await interaction.followup.send(file=discord.File('lp_graph.png'))
