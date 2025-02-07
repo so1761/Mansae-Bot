@@ -1039,25 +1039,25 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 game_win_streak = latest_data["연승"]
                 game_lose_streak = latest_data["연패"]
         
-                if game_win_streak >= 1:
-                    streak_bonusRate = calculate_bonus(game_win_streak)
-                    if name == "지모":
-                        p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
-                    elif name == "Melon":
-                        p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
-                elif game_lose_streak >= 1:
-                    streak_bonusRate = calculate_bonus(game_lose_streak)
-                    if name == "지모":
-                        p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
-                    elif name == "Melon":
-                        p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
-                else:
-                    if name == "지모":
-                        p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n", view=prediction_view, embed=prediction_embed)
-                    elif name == "Melon":
-                        p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n", view=prediction_view, embed=prediction_embed)
+            if game_win_streak >= 1:
+                streak_bonusRate = calculate_bonus(game_win_streak)
+                if name == "지모":
+                    p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
+                elif name == "Melon":
+                    p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
+            elif game_lose_streak >= 1:
+                streak_bonusRate = calculate_bonus(game_lose_streak)
+                if name == "지모":
+                    p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
+                elif name == "Melon":
+                    p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
+            else:
+                if name == "지모":
+                    p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n", view=prediction_view, embed=prediction_embed)
+                elif name == "Melon":
+                    p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n", view=prediction_view, embed=prediction_embed)
 
-                current_message_kda = await channel.send("\n", view=kda_view, embed=p.kda_embed)
+            current_message_kda = await channel.send("\n", view=kda_view, embed=p.kda_embed)
 
             #if not onoffbool:
             #    await notice_channel.send(f"{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
@@ -1169,7 +1169,7 @@ class MyBot(commands.Bot):
             notice_channel_id=NOTICE_CHANNEL_ID, 
             event=p.jimo_event,
             #current_game_state = p.jimo_current_game_state,
-            current_game_state= True,
+            current_game_state = True,
             current_match_id = p.jimo_current_match_id,
             current_message_kda= p.current_message_kda_jimo,
             winbutton = p.jimo_winbutton
