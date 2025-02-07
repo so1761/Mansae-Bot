@@ -420,7 +420,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                 await channel.send(f"\n{name}의 솔로랭크 점수 변동이 감지되었습니다!\n{string_solo}")
                 last_rank_solo = current_rank_solo
                 last_total_match_solo = current_total_match_solo
-                rank_type = "자유랭크"
+                rank_type = "솔로랭크"
             
             if current_total_match_flex != last_total_match_flex:
                 print(f"{name}의 {current_total_match_solo}번째 자유랭크 게임 완료")
@@ -648,7 +648,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
         await asyncio.sleep(20)
 
-async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, event, current_game_state, current_match_id, current_message_kda, winbutton):
+async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, event, current_game_state, current_message_kda, winbutton):
     await bot.wait_until_ready()
     channel = bot.get_channel(int(channel_id))
     notice_channel = bot.get_channel(int(notice_channel_id))
@@ -665,8 +665,17 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             anonymref = db.reference("승부예측/익명온오프")
             anonymbool = anonymref.get()
 
-            current_match_id = await get_summoner_recentmatch_id(puuid)
-
+            if name == "지모":
+                if current_game_type == "솔로랭크":
+                    p.jimo_current_match_id_solo = await get_summoner_recentmatch_id(puuid)
+                else:
+                    p.jimo_current_match_id_flex = await get_summoner_recentmatch_id(puuid)
+            elif name == "Melon":
+                if current_game_type == "솔로랭크":
+                    p.melon_current_match_id_solo = await get_summoner_recentmatch_id(puuid)
+                else:
+                    p.melon_current_match_id_flex = await get_summoner_recentmatch_id(puuid)
+            
             winbutton.disabled = onoffbool
             losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label="패배",disabled=onoffbool)
             betrateupbutton = discord.ui.Button(style=discord.ButtonStyle.primary,label="배율 올리기",disabled=onoffbool)
@@ -1086,7 +1095,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
         await asyncio.sleep(20)  # 20초마다 반복
 
-async def check_remake_status(name, puuid, current_match_id, event, prediction_votes):
+async def check_remake_status(name, puuid, event, prediction_votes):
     channel = bot.get_channel(int(CHANNEL_ID))
     last_game_state = False
 
@@ -1094,7 +1103,7 @@ async def check_remake_status(name, puuid, current_match_id, event, prediction_v
     current_predict_season = cur_predict_seasonref.get()
 
     while not bot.is_closed():
-        current_game_state = await nowgame(puuid)
+        current_game_state, current_game_type = await nowgame(puuid)
         if current_game_state != last_game_state:
             if not current_game_state:
                 previous_match_id = current_match_id
@@ -1225,8 +1234,8 @@ class MyBot(commands.Bot):
             votes=p.votes['Melon'], 
             event=p.melon_event
         ))
-        bot.loop.create_task(check_remake_status("지모", JIMO_PUUID, p.jimo_current_match_id, p.jimo_event, p.votes['지모']['prediction']))
-        bot.loop.create_task(check_remake_status("Melon", MELON_PUUID, p.melon_current_match_id, p.melon_event, p.votes['Melon']['prediction']))
+        bot.loop.create_task(check_remake_status("지모", JIMO_PUUID, p.jimo_event, p.votes['지모']['prediction']))
+        bot.loop.create_task(check_remake_status("Melon", MELON_PUUID, p.melon_event, p.votes['Melon']['prediction']))
         #bot.loop.create_task(check_jimo_remake_status())
         #bot.loop.create_task(check_melon_remake_status())
 
