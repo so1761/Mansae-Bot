@@ -2066,12 +2066,12 @@ class hello(commands.Cog):
 
                 # 승부 예측 (win/lose)
                 for outcome in ["win", "lose"]:
-                    if nickname in p.votes[player]["prediction"][outcome]['name']:
+                    if any(entry["name"] == nickname for entry in p.votes[player]["prediction"][outcome]):
                         player_votes.append(f"- {outcome.upper()} (승부예측)")
 
                 # KDA 예측 (up/down/perfect)
                 for outcome in ["up", "down", "perfect"]:
-                    if nickname in p.votes[player]["kda"][outcome]['name']:
+                    if any(entry["name"] == nickname for entry in p.votes[player]["kda"][outcome]):
                         player_votes.append(f"- {outcome.upper()} (KDA예측)")
 
                 # 플레이어별로 투표 내역 정리
@@ -2091,7 +2091,7 @@ class hello(commands.Cog):
     Choice(name='지모', value='지모'),
     Choice(name='Melon', value='Melon')
     ])
-    async def 자동예측변경(self, interaction: discord.Interaction, 이름:str, 승패:str, 판수:int):
+    async def 자동예측변경(self, interaction: discord.Interaction, 이름:str):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
         current_predict_season = cur_predict_seasonref.get()
 
