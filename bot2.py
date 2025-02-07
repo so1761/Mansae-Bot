@@ -959,12 +959,13 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     embed.add_field(name="KDA 퍼펙트 예측", value=perfect_predictions, inline=True)
 
                     if name == "지모":
-                        userembed = discord.Embed(title="메세지", color=0x000000())
+                        userembed = discord.Embed(title="메세지", color=0x000000)
+                        noticeembed = discord.Embed(title="메세지", color=0x000000)
                     elif name == "Melon":
                         userembed = discord.Embed(title="메세지", color=discord.Color.brand_green())
+                        noticeembed = discord.Embed(title="메세지", color=discord.Color.brand_green())
                     
                     if prediction_type == 'up':
-                        
                         userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 3 이상으로 예측했습니다!", inline=True)
                     elif prediction_type == 'down':
                         userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 3 이하로 예측했습니다!", inline=True)
@@ -975,13 +976,10 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
                     if prediction_type == "up":
                         prediction_value = "KDA 3 이상"
-                        noticeembed = discord.Embed(title="메세지", color=discord.Color.blue())
                     elif prediction_type == "down":
                         prediction_value = "KDA 3 이하"
-                        noticeembed = discord.Embed(title="메세지", color=discord.Color.red())
                     elif prediction_type == "perfect":
                         prediction_value = "KDA 퍼펙트"
-                        noticeembed = discord.Embed(title="메세지", color=discord.Color.gold())
                     
                     noticeembed.add_field(name="",value=f"{name}의 {prediction_value}에 투표 완료!", inline=False)
                     await interaction.response.send_message(embed=noticeembed, ephemeral=True)
@@ -1184,8 +1182,8 @@ class MyBot(commands.Bot):
             channel_id=CHANNEL_ID, 
             notice_channel_id=NOTICE_CHANNEL_ID, 
             event=p.jimo_event,
-            current_game_state = p.jimo_current_game_state,
-            #current_game_state = True,
+            #current_game_state = p.jimo_current_game_state,
+            current_game_state = True,
             current_match_id = p.jimo_current_match_id,
             current_message_kda= p.current_message_kda_jimo,
             winbutton = p.jimo_winbutton
@@ -1199,8 +1197,8 @@ class MyBot(commands.Bot):
             channel_id=CHANNEL_ID, 
             notice_channel_id=NOTICE_CHANNEL_ID, 
             event=p.melon_event, 
-            #current_game_state = p.melon_current_game_state,
-            current_game_state = True,
+            current_game_state = p.melon_current_game_state,
+            #current_game_state = True,
             current_match_id = p.melon_current_match_id,
             current_message_kda= p.current_message_kda_melon,
             winbutton = p.melon_winbutton
