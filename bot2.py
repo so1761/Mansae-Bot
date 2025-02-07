@@ -415,7 +415,11 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     point_change = latest_data['LP 변화량']
                     result = point_change > 0 # result가 True라면 승리
 
-                    userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                    if result:
+                        userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                    else:
+                        userembed = discord.Embed(title="메세지", color=discord.Color.red())
+
                     userembed.add_field(name="게임 종료", value=f"{name}의 솔로랭크 게임이 종료되었습니다!\n{'승리!' if result else '패배..'}\n점수변동: {point_change}")
 
                     winners = prediction_votes['win'] if result else prediction_votes['lose']
@@ -531,7 +535,16 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     for player in match_info['info']['participants']:
                         if puuid == player['puuid']:
                             kda = 999 if player['deaths'] == 0 else round((player['kills'] + player['assists']) / player['deaths'], 1)
-                            kdaembed = discord.Embed(title=f"{name} KDA 예측 결과", color=discord.Color.blue())
+
+                            if kda == 999:
+                                kdaembed = discord.Embed(title=f"{name} KDA 예측 결과", color=discord.Color.gold())
+                            elif kda == 3:
+                                kdaembed = discord.Embed(title=f"{name} KDA 예측 결과", color=discord.Color.purple())
+                            elif kda > 3:
+                                kdaembed = discord.Embed(title=f"{name} KDA 예측 결과", color=discord.Color.blue())
+                            elif kda < 3:
+                                kdaembed = discord.Embed(title=f"{name} KDA 예측 결과", color=discord.Color.red())
+
                             kdaembed.add_field(name=f"{name}의 KDA", value=f"{player['kills']}/{player['deaths']}/{player['assists']}({'PERFECT' if kda == 999 else kda})", inline=False)
 
                             refperfect = db.reference('승부예측/퍼펙트포인트')
@@ -733,9 +746,13 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
                     await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
 
-                    userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                    
 
                     prediction_value = "승리" if prediction_type == "win" else "패배"
+                    if prediction_type == "win":
+                        userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                    else:
+                        userembed = discord.Embed(title="메세지", color=discord.Color.red())
                     if anonymbool:
                         userembed.add_field(name="", value=f"{anonym_names[myindex]}님이 {prediction_value}에 투표하셨습니다.", inline=True)
                         if basePoint != 0:
@@ -891,12 +908,15 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     embed.add_field(name="KDA 3 이하 예측", value=down_predictions, inline=True)
                     embed.add_field(name="KDA 퍼펙트 예측", value=perfect_predictions, inline=True)
 
-                    userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                    
                     if prediction_type == 'up':
+                        userembed = discord.Embed(title="메세지", color=discord.Color.blue())
                         userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 3 이상으로 예측했습니다!", inline=True)
                     elif prediction_type == 'down':
+                        userembed = discord.Embed(title="메세지", color=discord.Color.red())
                         userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 3 이하로 예측했습니다!", inline=True)
                     else:
+                        userembed = discord.Embed(title="메세지", color=discord.Color.gold())
                         userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 0 데스, 퍼펙트로 예측했습니다!", inline=True)
                     
                     await channel.send(f"\n", embed=userembed)
@@ -914,7 +934,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     if current_message_kda:
                         await current_message_kda.edit(embed=embed)
                 else:
-                    userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                    userembed = discord.Embed(title="메세지", color=discord.Color.gray())
                     userembed.add_field(name="", value=f"{nickname}님은 이미 투표하셨습니다", inline=True)
                     await interaction.response.send_message(embed=userembed, ephemeral=True)
 
