@@ -796,12 +796,12 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     
 
                     prediction_value = "승리" if prediction_type == "win" else "패배"
-                    if prediction_type == "win":
-                        userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                        noticeembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                    else:
-                        userembed = discord.Embed(title="메세지", color=discord.Color.red())
-                        noticeembed = discord.Embed(title="메세지", color=discord.Color.red())
+                    if name == "지모":
+                        userembed = discord.Embed(title="메세지", color=0x000000())
+                        noticeembed = discord.Embed(title="메세지", color=0x000000())
+                    elif name == "Melon":
+                        userembed = discord.Embed(title="메세지", color=discord.Color.brand_green())
+                        noticeembed = discord.Embed(title="메세지", color=discord.Color.brand_green())
                     if anonymbool:
                         userembed.add_field(name="", value=f"{anonym_names[myindex]}님이 {prediction_value}에 투표하셨습니다.", inline=True)
                         if basePoint != 0:
@@ -958,15 +958,17 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     embed.add_field(name="KDA 3 이하 예측", value=down_predictions, inline=True)
                     embed.add_field(name="KDA 퍼펙트 예측", value=perfect_predictions, inline=True)
 
+                    if name == "지모":
+                        userembed = discord.Embed(title="메세지", color=0x000000())
+                    elif name == "Melon":
+                        userembed = discord.Embed(title="메세지", color=discord.Color.brand_green())
                     
                     if prediction_type == 'up':
-                        userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                        
                         userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 3 이상으로 예측했습니다!", inline=True)
                     elif prediction_type == 'down':
-                        userembed = discord.Embed(title="메세지", color=discord.Color.red())
                         userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 3 이하로 예측했습니다!", inline=True)
                     else:
-                        userembed = discord.Embed(title="메세지", color=discord.Color.gold())
                         userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 0 데스, 퍼펙트로 예측했습니다!", inline=True)
                     
                     await channel.send(f"\n", embed=userembed)
