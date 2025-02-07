@@ -2035,7 +2035,7 @@ class hello(commands.Cog):
 
         if winlosebool:
             if itemr.get("자동예측" + 이름 + "패배", 0) > 0:
-                await interaction.response.send_message(f"이미 {이름}의 패배에 자동예측중입니다. </자동예측변경:command_id> 명령어를 사용해주세요!",ephemeral=True) 
+                await interaction.response.send_message(f"이미 {이름}의 패배에 자동예측중입니다. </자동예측변경:1337254677326073929> 명령어를 사용해주세요!",ephemeral=True) 
             else:
                 item_name = "자동예측" + 이름 + "승리"
                 ref.update({"포인트" : point - total_need_point})
@@ -2044,7 +2044,7 @@ class hello(commands.Cog):
                                                         f"남은 포인트 : {real_point - total_need_point} (베팅포인트 {bettingPoint} 제외) (- {total_need_point}({need_point} x {판수}))",ephemeral=True)
         else:
             if itemr.get("자동예측" + 이름 + "승리", 0) > 0:
-                await interaction.response.send_message(f"이미 {이름}의 승리에 자동예측중입니다. </자동예측변경:command_id> 명령어를 사용해주세요!",ephemeral=True) 
+                await interaction.response.send_message(f"이미 {이름}의 승리에 자동예측중입니다. </자동예측변경:1337254677326073929> 명령어를 사용해주세요!",ephemeral=True) 
             else:
                 item_name = "자동예측" + 이름 + "패배"
                 ref.update({"포인트" : point - total_need_point})
