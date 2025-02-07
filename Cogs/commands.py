@@ -408,7 +408,7 @@ async def refresh_prediction(name, anonym, prediction_votes):
     if name == "지모":
         embed = discord.Embed(title="예측 현황", color=0x000000) # Black
     elif name == "Melon":
-        embed = discord.Embed(title="예측 현황", color=discord.Color.green)
+        embed = discord.Embed(title="예측 현황", color=discord.Color.brand_green())
     refrate = db.reference(f'승부예측/배율증가/{name}')
     rater = refrate.get()
     if rater['배율'] != 0:

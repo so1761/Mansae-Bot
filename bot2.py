@@ -195,7 +195,7 @@ async def refresh_prediction(name, anonym, prediction_votes):
     if name == "지모":
         embed = discord.Embed(title="예측 현황", color=0x000000) # Black
     elif name == "Melon":
-        embed = discord.Embed(title="예측 현황", color=discord.Color.green)
+        embed = discord.Embed(title="예측 현황", color=discord.Color.brand_green())
     refrate = db.reference(f'승부예측/배율증가/{name}')
     rater = refrate.get()
     if rater['배율'] != 0:
@@ -947,7 +947,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     if name == "지모":
                         embed = discord.Embed(title="KDA 예측 현황", color=0x000000) # Black
                     elif name == "Melon":
-                        embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.green())
+                        embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.brand_green())
                     embed.add_field(name="퍼펙트 예측성공 포인트", value=perfect_point, inline=False)
 
                     up_predictions = "".join(f"{len(kda_votes['up'])}명")
@@ -1000,7 +1000,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             if name == "지모":
                 prediction_embed = discord.Embed(title="예측 현황", color=0x000000) # Black
             elif name == "Melon":
-                prediction_embed = discord.Embed(title="예측 현황", color=discord.Color.green)
+                prediction_embed = discord.Embed(title="예측 현황", color=discord.Color.brand_green())
             if anonymbool:  # 익명 투표 시
                 win_predictions = "\n".join(
                     f"{ANONYM_NAME_WIN[index]}: ? 포인트" for index, winner in enumerate(prediction_votes["win"])) or "없음"
@@ -1022,7 +1022,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             if name == "지모":
                 p.kda_embed = discord.Embed(title="KDA 예측 현황", color=0x000000) # Black
             elif name == "Melon":
-                p.kda_embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.green())
+                p.kda_embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.brand_green())
             today = datetime.today()
             if today.weekday() == 6:
                 p.kda_embed.add_field(name=f"",value=f"일요일엔 점수 2배! KDA 예측 점수 2배 지급!")
