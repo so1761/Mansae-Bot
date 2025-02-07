@@ -415,7 +415,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
         if current_total_match_solo != last_total_match_solo or current_total_match_flex != last_total_match_flex:
             if current_total_match_solo != last_total_match_solo:
                 print(f"{name}의 {current_total_match_solo}번째 솔로랭크 게임 완료")
-                string_solo = get_lp_and_tier_difference(last_rank_solo, current_rank_solo, name)
+                string_solo = get_lp_and_tier_difference(last_rank_solo, current_rank_solo,"솔로랭크",name)
                 await notice_channel.send(f"\n{name}의 솔로랭크 점수 변동이 감지되었습니다!\n{string_solo}")
                 await channel.send(f"\n{name}의 솔로랭크 점수 변동이 감지되었습니다!\n{string_solo}")
                 last_rank_solo = current_rank_solo
@@ -424,7 +424,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
             
             if current_total_match_flex != last_total_match_flex:
                 print(f"{name}의 {current_total_match_solo}번째 자유랭크 게임 완료")
-                string_flex = get_lp_and_tier_difference(last_rank_flex, current_rank_flex, name)
+                string_flex = get_lp_and_tier_difference(last_rank_flex, current_rank_flex,"자유랭크",name)
                 await notice_channel.send(f"\n{name}의 자유랭크 점수 변동이 감지되었습니다!\n{string_flex}")
                 await channel.send(f"\n{name}의 자유랭크 점수 변동이 감지되었습니다!\n{string_flex}")
                 last_rank_flex = current_rank_flex
@@ -639,7 +639,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 kdaembed.add_field(name="", value=f"{loser['name']}님이 KDA 예측에 실패했습니다!", inline=False)
 
                         await channel.send(embed=kdaembed)
-                        refperfect.update({name: perfect_point + 5 if kda != 999 else 500})
+                        refperfect.update({name: perfect_point + 5 if kda != 999 else 300})
                         kda_votes['up'].clear()
                         kda_votes['down'].clear()
                         kda_votes['perfect'].clear()
