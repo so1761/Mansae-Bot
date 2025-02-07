@@ -2086,6 +2086,40 @@ class hello(commands.Cog):
 
         await interaction.response.send_message(message, ephemeral=True)
 
+    @app_commands.command(name="자동예측변경",description="보유한 자동예측의 승패를 바꿉니다.")
+    @app_commands.choices(이름=[
+    Choice(name='지모', value='지모'),
+    Choice(name='Melon', value='Melon')
+    ])
+    async def 자동예측변경(self, interaction: discord.Interaction, 이름:str, 승패:str, 판수:int):
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
+        current_predict_season = cur_predict_seasonref.get()
+
+        nickname = interaction.user
+
+        refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname.name}/아이템')
+        itemr = refitem.get()
+        
+    
+        if itemr.get("자동예측" + 이름 + "승리", 0) > 0:
+            item_num = itemr.get("자동예측" + 이름 + "승리", 0)
+            refitem.update({
+                f"자동예측{이름}패배": item_num,
+                f"자동예측{이름}승리": 0
+            })
+            await interaction.response.send_message(f"{이름}의 자동예측을 승리에서 패배로 변경했습니다!. 현재 보유중인 [자동예측{이름}패배] : f{item_num}",ephemeral=True) 
+        elif itemr.get("자동예측" + 이름 + "패배", 0) > 0:
+            item_num = itemr.get("자동예측" + 이름 + "패배", 0)
+            refitem.update({
+                f"자동예측{이름}승리": item_num,
+                f"자동예측{이름}패배": 0
+            })
+            await interaction.response.send_message(f"{이름}의 자동예측을 패배에서 승리로 변경했습니다!. 현재 보유중인 [자동예측{이름}승리] : f{item_num}",ephemeral=True) 
+        else:
+            await interaction.response.send_message(f"보유한 {이름}의 자동예측이 없습니다!",ephemeral=True)
+            return
+                
+
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
     @app_commands.choices(상대=[

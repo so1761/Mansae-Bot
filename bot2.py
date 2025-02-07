@@ -672,8 +672,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     for item in auto_bet_users.keys():
                         if items.get(item, 0) >= 1:
                             auto_bet_users[item].append(nickname)
-                refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템')
-                item_data = refitem.get()
+                
 
                 
                 if name == "지모":
@@ -681,12 +680,16 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         delay = random.uniform(1, 5) # 1초부터 5초까지 랜덤 시간
                         await asyncio.sleep(delay)
                         await bet_button_callback(None,'win',ANONYM_NAME_WIN,autowinner)
+                        refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{autowinner}/아이템')
+                        item_data = refitem.get()
                         refitem.update({"자동예측지모승리": item_data.get("자동예측지모승리", 0) - 1})
-                        print(f"{nickname}의 자동예측지모승리 차감")
+                        print(f"{autowinner}의 자동예측지모승리 차감")
                     for autoloser in auto_bet_users["자동예측지모패배"]:
                         delay = random.uniform(1, 5) # 1초부터 5초까지 랜덤 시간
                         await asyncio.sleep(delay)
                         await bet_button_callback(None,'lose',ANONYM_NAME_LOSE,autoloser)
+                        refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{autoloser}/아이템')
+                        item_data = refitem.get()
                         refitem.update({"자동예측지모패배": item_data.get("자동예측지모패배", 0) - 1})
                         print(f"{nickname}의 자동예측지모패배 차감")
                 elif name == "Melon":
@@ -694,14 +697,18 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         delay = random.uniform(1, 5) # 1초부터 5초까지 랜덤 시간
                         await asyncio.sleep(delay)
                         await bet_button_callback(None,'win',ANONYM_NAME_WIN,autowinner)
+                        refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{autowinner}/아이템')
+                        item_data = refitem.get()
                         refitem.update({"자동예측Melon승리": item_data.get("자동예측Melon승리", 0) - 1})
-                        print(f"{nickname}의 자동예측Melon승리 차감")
+                        print(f"{autowinner}의 자동예측Melon승리 차감")
                     for autoloser in auto_bet_users["자동예측Melon패배"]:
                         delay = random.uniform(1, 5) # 1초부터 5초까지 랜덤 시간
                         await asyncio.sleep(delay)
                         await bet_button_callback(None,'lose',ANONYM_NAME_LOSE,autoloser)
+                        refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{autoloser}/아이템')
+                        item_data = refitem.get()
                         refitem.update({"자동예측Melon패배": item_data.get("자동예측Melon패배", 0) - 1})
-                        print(f"{nickname}의 자동예측Melon패배 차감")
+                        print(f"{autoloser}의 자동예측Melon패배 차감")
 
 
             prediction_votes = votes["prediction"]
