@@ -2121,7 +2121,7 @@ class hello(commands.Cog):
     
     @app_commands.command(name="명령어",description="명령어 목록을 불러옵니다")
     async def 명령어(self, interaction: discord.Interaction):
-        commands = await interaction.client.tree.fetch_commands()
+        commands = await interaction.client.tree.fetch_commands(guild=interaction.guild)
         for cmd in commands:
             if cmd.name == "자동예측변경":
                 await interaction.response.send_message(f"명령어: {cmd.name}, ID: {cmd.id}",ephemeral=True)
