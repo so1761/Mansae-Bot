@@ -797,8 +797,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
                     prediction_value = "승리" if prediction_type == "win" else "패배"
                     if name == "지모":
-                        userembed = discord.Embed(title="메세지", color=0x000000())
-                        noticeembed = discord.Embed(title="메세지", color=0x000000())
+                        userembed = discord.Embed(title="메세지", color=0x000000)
+                        noticeembed = discord.Embed(title="메세지", color=0x000000)
                     elif name == "Melon":
                         userembed = discord.Embed(title="메세지", color=discord.Color.brand_green())
                         noticeembed = discord.Embed(title="메세지", color=discord.Color.brand_green())
