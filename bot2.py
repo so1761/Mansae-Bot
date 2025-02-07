@@ -656,8 +656,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
     current_predict_season = cur_predict_seasonref.get()
 
     while not bot.is_closed():
-        #current_game_state, current_game_type = await nowgame(puuid)
-        current_game_type = "자유랭크"
+        current_game_state, current_game_type = await nowgame(puuid)
         if current_game_state:
             onoffref = db.reference("승부예측/투표온오프")
             onoffbool = onoffref.get()
@@ -1073,8 +1072,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
             current_message_kda = await channel.send("\n", view=kda_view, embed=p.kda_embed)
 
-            #if not onoffbool:
-            #    await notice_channel.send(f"{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
+            if not onoffbool:
+                await notice_channel.send(f"{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
 
             event.clear()
             await asyncio.gather(
@@ -1182,8 +1181,8 @@ class MyBot(commands.Bot):
             channel_id=CHANNEL_ID, 
             notice_channel_id=NOTICE_CHANNEL_ID, 
             event=p.jimo_event,
-            #current_game_state = p.jimo_current_game_state,
-            current_game_state = True,
+            current_game_state = p.jimo_current_game_state,
+            #current_game_state = True,
             current_match_id = p.jimo_current_match_id,
             current_message_kda= p.current_message_kda_jimo,
             winbutton = p.jimo_winbutton
