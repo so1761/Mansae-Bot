@@ -2118,7 +2118,13 @@ class hello(commands.Cog):
         else:
             await interaction.response.send_message(f"보유한 {이름}의 자동예측이 없습니다!",ephemeral=True)
             return
-                
+    
+    @app_commands.command(name="명령어",description="명령어 목록을 불러옵니다")
+    async def 명령어(self, interaction: discord.Interaction):
+        commands = await interaction.client.tree.fetch_commands()
+        for cmd in commands:
+            if cmd.name == "자동예측변경":
+                await interaction.response.send_message(f"명령어: {cmd.name}, ID: {cmd.id}",ephemeral=True)
 
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")

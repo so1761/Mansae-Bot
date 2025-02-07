@@ -776,7 +776,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템')
                         item_data = refitem.get()
 
-                        item_name = "자동예측" + name + prediction_type
+                        item_name = "자동예측" + name + prediction_value
                         refitem.update({item_name: item_data.get(item_name, 0) + 1})
                         print(f"{nickname}님이 먼저 예측하여 [{item_name}] 돌려줌")
 
