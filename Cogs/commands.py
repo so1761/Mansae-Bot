@@ -405,7 +405,10 @@ async def plot_candle_graph(시즌:str, 이름:str, 랭크:str):
     return embed
 
 async def refresh_prediction(name, anonym, prediction_votes):
-    embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
+    if name == "지모":
+        embed = discord.Embed(title="예측 현황", color=0x000000) # Black
+    elif name == "Melon":
+        embed = discord.Embed(title="예측 현황", color=discord.Color.green)
     refrate = db.reference(f'승부예측/배율증가/{name}')
     rater = refrate.get()
     if rater['배율'] != 0:

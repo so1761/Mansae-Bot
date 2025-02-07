@@ -192,7 +192,10 @@ async def get_summoner_matchinfo(matchid):
             print(f"[ERROR] Exception occurred while fetching match info in get_summoner_matchinfo: {e}")
     return None
 async def refresh_prediction(name, anonym, prediction_votes):
-    embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
+    if name == "지모":
+        embed = discord.Embed(title="예측 현황", color=0x000000) # Black
+    elif name == "Melon":
+        embed = discord.Embed(title="예측 현황", color=discord.Color.green)
     refrate = db.reference(f'승부예측/배율증가/{name}')
     rater = refrate.get()
     if rater['배율'] != 0:
@@ -941,7 +944,10 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 nickname = interaction.user
                 if (nickname.name not in [user["name"] for user in kda_votes["up"]] )and (nickname.name not in [user["name"] for user in kda_votes["down"]]) and (nickname.name not in [user["name"] for user in kda_votes["perfect"]]):
                     kda_votes[prediction_type].append({"name": nickname.name})
-                    embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.blue())
+                    if name == "지모":
+                        embed = discord.Embed(title="KDA 예측 현황", color=0x000000) # Black
+                    elif name == "Melon":
+                        embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.green())
                     embed.add_field(name="퍼펙트 예측성공 포인트", value=perfect_point, inline=False)
 
                     up_predictions = "".join(f"{len(kda_votes['up'])}명")
