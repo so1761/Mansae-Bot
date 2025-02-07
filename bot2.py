@@ -673,8 +673,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         if items.get(item, 0) >= 1:
                             auto_bet_users[item].append(nickname)
                 
-
-                
+                await asyncio.sleep(30) # 30초 일단 대기
                 if name == "지모":
                     for autowinner in auto_bet_users["자동예측지모승리"]:
                         delay = random.uniform(1, 5) # 1초부터 5초까지 랜덤 시간

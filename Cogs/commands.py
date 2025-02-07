@@ -2002,8 +2002,8 @@ class hello(commands.Cog):
     Choice(name='Melon', value='Melon')
     ])
     @app_commands.choices(승패=[
-    Choice(name='승리', value="True"),
-    Choice(name='패배', value="False")
+    Choice(name='승리', value="승리"),
+    Choice(name='패배', value="패배")
     ])
     async def 자동예측(self, interaction: discord.Interaction, 이름:str, 승패:str, 판수:int):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
@@ -2011,7 +2011,7 @@ class hello(commands.Cog):
 
         nickname = interaction.user
         
-        if 승패 == "True":
+        if 승패 == "승리":
             winlosebool = True
         else:
             winlosebool = False
@@ -2041,7 +2041,7 @@ class hello(commands.Cog):
                 ref.update({"포인트" : point - total_need_point})
                 give_item(nickname,item_name,판수)
                 await interaction.response.send_message(f"{이름}의 {승패}에 {판수}게임동안 자동예측! \n"
-                                                        f"남은 포인트 : {real_point - total_need_point} (베팅포인트 {bettingPoint} 제외) (- {total_need_point})",ephemeral=True)
+                                                        f"남은 포인트 : {real_point - total_need_point} (베팅포인트 {bettingPoint} 제외) (- {total_need_point}({need_point} x {판수}))",ephemeral=True)
         else:
             if itemr.get("자동예측" + 이름 + "승리", 0) > 0:
                 await interaction.response.send_message(f"이미 {이름}의 승리에 자동예측중입니다. </자동예측변경:command_id> 명령어를 사용해주세요!",ephemeral=True) 
@@ -2107,14 +2107,14 @@ class hello(commands.Cog):
                 f"자동예측{이름}패배": item_num,
                 f"자동예측{이름}승리": 0
             })
-            await interaction.response.send_message(f"{이름}의 자동예측을 승리에서 패배로 변경했습니다!. 현재 보유중인 [자동예측{이름}패배] : f{item_num}",ephemeral=True) 
+            await interaction.response.send_message(f"{이름}의 자동예측을 승리에서 패배로 변경했습니다! 현재 보유중인 [자동예측{이름}패배] : {item_num}개",ephemeral=True) 
         elif itemr.get("자동예측" + 이름 + "패배", 0) > 0:
             item_num = itemr.get("자동예측" + 이름 + "패배", 0)
             refitem.update({
                 f"자동예측{이름}승리": item_num,
                 f"자동예측{이름}패배": 0
             })
-            await interaction.response.send_message(f"{이름}의 자동예측을 패배에서 승리로 변경했습니다!. 현재 보유중인 [자동예측{이름}승리] : f{item_num}",ephemeral=True) 
+            await interaction.response.send_message(f"{이름}의 자동예측을 패배에서 승리로 변경했습니다! 현재 보유중인 [자동예측{이름}승리] : {item_num}개",ephemeral=True) 
         else:
             await interaction.response.send_message(f"보유한 {이름}의 자동예측이 없습니다!",ephemeral=True)
             return
