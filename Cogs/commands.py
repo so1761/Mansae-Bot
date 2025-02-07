@@ -2010,7 +2010,6 @@ class hello(commands.Cog):
         current_predict_season = cur_predict_seasonref.get()
 
         nickname = interaction.user
-
         
         if 승패 == "True":
             winlosebool = True
@@ -2029,7 +2028,8 @@ class hello(commands.Cog):
         if real_point < total_need_point:
             await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {real_point} (베팅포인트 {bettingPoint} 제외) \n"
                                                     f"필요 포인트 : {total_need_point}({need_point} x {판수})",ephemeral=True)
-            
+            return
+
         refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname.name}/아이템')
         itemr = refitem.get()
 
@@ -2066,12 +2066,12 @@ class hello(commands.Cog):
 
                 # 승부 예측 (win/lose)
                 for outcome in ["win", "lose"]:
-                    if nickname in p.votes[player]["prediction"][outcome]:
+                    if nickname in p.votes[player]["prediction"][outcome]['name']:
                         player_votes.append(f"- {outcome.upper()} (승부예측)")
 
                 # KDA 예측 (up/down/perfect)
                 for outcome in ["up", "down", "perfect"]:
-                    if nickname in p.votes[player]["kda"][outcome]:
+                    if nickname in p.votes[player]["kda"][outcome]['name']:
                         player_votes.append(f"- {outcome.upper()} (KDA예측)")
 
                 # 플레이어별로 투표 내역 정리
