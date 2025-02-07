@@ -597,7 +597,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
     current_predict_season = cur_predict_seasonref.get()
 
     while not bot.is_closed():
-        current_game_state = await nowgame(puuid)
+        #current_game_state = await nowgame(puuid)
         if current_game_state:
             onoffref = db.reference("승부예측/투표온오프")
             onoffbool = onoffref.get()
@@ -652,13 +652,55 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     await p.current_message_melon.edit(view=prediction_view)
                 await current_message_kda.edit(view=kda_view)
 
+            async def auto_prediction():
+                # 예측포인트의 모든 사용자 데이터 가져오기
+                predict_points_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트')
+                users_data = predict_points_ref.get() or {}
+
+                # 아이템별 사용자 목록 저장용 딕셔너리
+                auto_bet_users = {
+                    "자동예측지모승리": [],
+                    "자동예측지모패배": [],
+                    "자동예측Melon승리": [],
+                    "자동예측Melon패배": []
+                }
+
+                for nickname, data in users_data.items():
+                    items = data.get("아이템", {})
+
+                    # 각 아이템이 1개 이상이면 해당 리스트에 추가
+                    for item in auto_bet_users.keys():
+                        if items.get(item, 0) >= 1:
+                            auto_bet_users[item].append(nickname)
+                
+                if name == "지모":
+                    for autowinner in auto_bet_users["자동예측지모승리"]:
+                        delay = random.uniform(1, 5) # 1초부터 5초까지 랜덤 시간
+                        await asyncio.sleep(delay)
+                        await bet_button_callback(None,"승리",ANONYM_NAME_WIN,autowinner)
+                    for autoloser in auto_bet_users["자동예측지모패배"]:
+                        delay = random.uniform(1, 5) # 1초부터 5초까지 랜덤 시간
+                        await asyncio.sleep(delay)
+                        await bet_button_callback(None,"패배",ANONYM_NAME_LOSE,autoloser)
+                elif name == "Melon":
+                    for autowinner in auto_bet_users["자동예측Melon승리"]:
+                        delay = random.uniform(1, 5) # 1초부터 5초까지 랜덤 시간
+                        await asyncio.sleep(delay)
+                        await bet_button_callback(None,"승리",ANONYM_NAME_WIN,autowinner)
+                    for autoloser in auto_bet_users["자동예측Melon패배"]:
+                        delay = random.uniform(1, 5) # 1초부터 5초까지 랜덤 시간
+                        await asyncio.sleep(delay)
+                        await bet_button_callback(None,"패배",ANONYM_NAME_LOSE,autoloser)
+
             prediction_votes = votes["prediction"]
             kda_votes = votes["kda"]
             
-            async def bet_button_callback(interaction: discord.Interaction, prediction_type: str, anonym_names: list):
-                nickname = interaction.user
-                if (nickname.name not in [user["name"] for user in prediction_votes["win"]]) and (nickname.name not in [user["name"] for user in prediction_votes["lose"]]):
-                    refp = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname.name}')
+            async def bet_button_callback(interaction: discord.Interaction = None, prediction_type: str = "", anonym_names: list = None, nickname: str = None):
+                if interaction:
+                    nickname = interaction.user.name
+                    await interaction.response.defer()  # 응답 지연 (버튼 눌렀을 때 오류 방지)
+                if (nickname not in [user["name"] for user in prediction_votes["win"]]) and (nickname not in [user["name"] for user in prediction_votes["lose"]]):
+                    refp = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}')
                     pointr = refp.get()
                     point = pointr["포인트"]
                     bettingPoint = pointr["베팅포인트"]
@@ -668,7 +710,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     if basePoint > 0:
                         basePoint = math.ceil(basePoint / 10) * 10  # 10 단위로 무조건 올림
                     refp.update({"베팅포인트": bettingPoint + basePoint})
-                    prediction_votes[prediction_type].append({"name": nickname.name, 'points': 0})
+                    prediction_votes[prediction_type].append({"name": nickname, 'points': 0})
                     myindex = len(prediction_votes[prediction_type]) - 1 # 투표자의 위치 파악
 
                     await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
@@ -683,11 +725,13 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             bettingembed.add_field(name="", value=f"누군가가 {name}의 {prediction_value}에 {basePoint}포인트를 베팅했습니다!", inline=False)
                             noticeembed = discord.Embed(title="메세지", color=discord.Color.blue())
                             noticeembed.add_field(name="",value=f"{name}의 {prediction_value}에 {basePoint}포인트 자동베팅 완료!", inline=False)
-                            await interaction.response.send_message(embed=noticeembed, ephemeral=True)
+                            if interaction:
+                                await interaction.followup.send(embed=noticeembed, ephemeral=True)
                         else:
                             noticeembed = discord.Embed(title="메세지", color=discord.Color.blue())
                             noticeembed.add_field(name="",value=f"{name}의 {prediction_value}에 투표 완료!", inline=False)
-                            await interaction.response.send_message(embed=noticeembed, ephemeral=True)
+                            if interaction:
+                                await interaction.followup.send(embed=noticeembed, ephemeral=True)
                     else:
                         userembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에 투표하셨습니다.", inline=True)
                         if basePoint != 0:
@@ -707,7 +751,16 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 else:
                     userembed = discord.Embed(title="메세지", color=discord.Color.blue())
                     userembed.add_field(name="", value=f"{nickname}님은 이미 투표하셨습니다", inline=True)
-                    await interaction.response.send_message(embed=userembed, ephemeral=True)
+                    if interaction:
+                        await interaction.followup.send(embed=userembed, ephemeral=True)
+                    else: # 자동예측일 경우 아이템 돌려줌
+                        # 사용자 아이템 데이터 위치
+                        refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템')
+                        item_data = refitem.get()
+
+                        item_name = "자동예측" + name + prediction_type
+                        refitem.update({item_name: item_data.get(item_name, 0) + 1})
+                        print(f"{nickname}님이 먼저 예측하여 [{item_name}] 돌려줌")
 
             async def betrate_up_button_callback(interaction: discord.Interaction):
                 nickname = interaction.user
@@ -929,6 +982,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             event.clear()
             await asyncio.gather(
                 disable_buttons(),
+                auto_prediction(),
                 event.wait()  # 이 작업은 event가 set될 때까지 대기
             )
             print(f"check_game_status for {name} 대기 종료")
@@ -1031,7 +1085,8 @@ class MyBot(commands.Bot):
             channel_id=CHANNEL_ID, 
             notice_channel_id=NOTICE_CHANNEL_ID, 
             event=p.jimo_event,
-            current_game_state = p.jimo_current_game_state,
+            #current_game_state = p.jimo_current_game_state,
+            current_game_state= True,
             current_match_id = p.jimo_current_match_id,
             current_message_kda= p.current_message_kda_jimo,
             winbutton = p.jimo_winbutton

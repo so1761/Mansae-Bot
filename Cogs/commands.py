@@ -137,7 +137,7 @@ def give_item(nickname, item_name, amount):
     refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템')
     item_data = refitem.get()
 
-    refitem.update({item_name: item_data[item_name] + amount})
+    refitem.update({item_name: item_data.get(item_name, 0) + amount})
 
 async def get_summoner_puuid(riot_id, tagline):
     url = f'https://asia.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{riot_id}/{tagline}'
@@ -1996,6 +1996,56 @@ class hello(commands.Cog):
 
         await interaction.response.send_message(embed=embed,ephemeral=True)
 
+    @app_commands.command(name="자동예측",description="포인트를 소모하여, 승부예측이 올라왔을 때 자동으로 예측합니다")
+    @app_commands.choices(이름=[
+    Choice(name='지모', value='지모'),
+    Choice(name='Melon', value='Melon')
+    ])
+    @app_commands.choices(승패=[
+    Choice(name='승리', value=True),
+    Choice(name='패배', value=False)
+    ])
+    async def 자동예측(self, interaction: discord.Interaction, 이름:str, 승패:bool, 판수:int):
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
+        current_predict_season = cur_predict_seasonref.get()
+
+        nickname = interaction.user
+
+        need_point = 15 # 한 판당 15p를 소모하여 자동예측
+        total_need_point = need_point * 판수
+
+        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname.name}')
+        originr = ref.get()
+        point = originr["포인트"]
+        bettingPoint = originr["베팅포인트"]
+        real_point = point - bettingPoint
+
+        if real_point < total_need_point:
+            await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {real_point} (베팅포인트 {bettingPoint} 제외) \n"
+                                                    f"필요 포인트 : {total_need_point}({need_point} x {판수})",ephemeral=True)
+
+        refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname.name}/아이템')
+        itemr = refitem.get()
+
+        if 승패:
+            if itemr.get("자동예측" + 이름 + "패배", 0) > 0:
+                await interaction.response.send_message(f"이미 {이름}의 패배에 자동예측중입니다. </자동예측변경:command_id> 명령어를 사용해주세요!",ephemeral=True) 
+            else:
+                item_name = "자동예측" + 이름 + "승리"
+                ref.update({"포인트" : point - total_need_point})
+                give_item(nickname,item_name,판수)
+                await interaction.response.send_message(f"{이름}의 {승패}에 {판수}게임동안 자동예측! \n"
+                                                        f"남은 포인트 : {real_point - total_need_point} (베팅포인트 {bettingPoint} 제외) (- {total_need_point})",ephemeral=True)
+        else:
+            if itemr.get("자동예측" + 이름 + "승리", 0) > 0:
+                await interaction.response.send_message(f"이미 {이름}의 승리에 자동예측중입니다. </자동예측변경:command_id> 명령어를 사용해주세요!",ephemeral=True) 
+            else:
+                item_name = "자동예측" + 이름 + "패배"
+                ref.update({"포인트" : point - total_need_point})
+                give_item(nickname,item_name,판수)
+                await interaction.response.send_message(f"{이름}의 {승패}에 {판수}게임동안 자동예측! \n"
+                                                        f"남은 포인트 : {real_point - total_need_point} (베팅포인트 {bettingPoint} 제외) (- {total_need_point})",ephemeral=True)
+    
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
     @app_commands.choices(상대=[
