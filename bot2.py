@@ -1193,7 +1193,6 @@ class MyBot(commands.Bot):
             event=p.jimo_event,
             current_game_state = p.jimo_current_game_state,
             #current_game_state = True,
-            current_match_id = p.jimo_current_match_id,
             current_message_kda= p.current_message_kda_jimo,
             winbutton = p.jimo_winbutton
         ))
@@ -1208,7 +1207,6 @@ class MyBot(commands.Bot):
             event=p.melon_event, 
             current_game_state = p.melon_current_game_state,
             #current_game_state = True,
-            current_match_id = p.melon_current_match_id,
             current_message_kda= p.current_message_kda_melon,
             winbutton = p.melon_winbutton
         ))
