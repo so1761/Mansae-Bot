@@ -795,19 +795,19 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     prediction_value = "승리" if prediction_type == "win" else "패배"
                     if prediction_type == "win":
                         userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                        noticeembed = discord.Embed(title="메세지", color=discord.Color.blue())
                     else:
                         userembed = discord.Embed(title="메세지", color=discord.Color.red())
+                        noticeembed = discord.Embed(title="메세지", color=discord.Color.red())
                     if anonymbool:
                         userembed.add_field(name="", value=f"{anonym_names[myindex]}님이 {prediction_value}에 투표하셨습니다.", inline=True)
                         if basePoint != 0:
                             bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
                             bettingembed.add_field(name="", value=f"누군가가 {name}의 {prediction_value}에 {basePoint}포인트를 베팅했습니다!", inline=False)
-                            noticeembed = discord.Embed(title="메세지", color=discord.Color.blue())
                             noticeembed.add_field(name="",value=f"{name}의 {prediction_value}에 {basePoint}포인트 자동베팅 완료!", inline=False)
                             if interaction:
                                 await interaction.followup.send(embed=noticeembed, ephemeral=True)
                         else:
-                            noticeembed = discord.Embed(title="메세지", color=discord.Color.blue())
                             noticeembed.add_field(name="",value=f"{name}의 {prediction_value}에 투표 완료!", inline=False)
                             if interaction:
                                 await interaction.followup.send(embed=noticeembed, ephemeral=True)
@@ -967,11 +967,14 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
                     if prediction_type == "up":
                         prediction_value = "KDA 3 이상"
+                        noticeembed = discord.Embed(title="메세지", color=discord.Color.blue())
                     elif prediction_type == "down":
                         prediction_value = "KDA 3 이하"
+                        noticeembed = discord.Embed(title="메세지", color=discord.Color.red())
                     elif prediction_type == "perfect":
                         prediction_value = "KDA 퍼펙트"
-                    noticeembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                        noticeembed = discord.Embed(title="메세지", color=discord.Color.gold())
+                    
                     noticeembed.add_field(name="",value=f"{name}의 {prediction_value}에 투표 완료!", inline=False)
                     await interaction.response.send_message(embed=noticeembed, ephemeral=True)
 
@@ -988,7 +991,10 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             downbutton.callback = lambda interaction: kda_button_callback(interaction, 'down')
             perfectbutton.callback = lambda interaction: kda_button_callback(interaction, 'perfect')
             betrateupbutton.callback = betrate_up_button_callback
-            prediction_embed = discord.Embed(title="예측 현황", color=discord.Color.blue())
+            if name == "지모":
+                prediction_embed = discord.Embed(title="예측 현황", color=0x000000) # Black
+            elif name == "Melon":
+                prediction_embed = discord.Embed(title="예측 현황", color=discord.Color.green)
             if anonymbool:  # 익명 투표 시
                 win_predictions = "\n".join(
                     f"{ANONYM_NAME_WIN[index]}: ? 포인트" for index, winner in enumerate(prediction_votes["win"])) or "없음"
@@ -1007,8 +1013,10 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
             prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
 
-            p.kda_embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.blue())
-
+            if name == "지모":
+                p.kda_embed = discord.Embed(title="KDA 예측 현황", color=0x000000) # Black
+            elif name == "Melon":
+                p.kda_embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.green())
             today = datetime.today()
             if today.weekday() == 6:
                 p.kda_embed.add_field(name=f"",value=f"일요일엔 점수 2배! KDA 예측 점수 2배 지급!")
