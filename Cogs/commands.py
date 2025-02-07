@@ -226,7 +226,7 @@ def get_summoner_matchinfo_nonaysnc(matchid): #matchid로 매치 정보 구하�
         print('Error:', response.status_code)
         return None
 
-def plot_lp_difference_firebase(season=None,name=None):
+def plot_lp_difference_firebase(season=None,name=None,rank=None):
 
     if season == None:
         # 현재 날짜 및 시간 가져오기
@@ -236,9 +236,12 @@ def plot_lp_difference_firebase(season=None,name=None):
 
     if name == None:
         name = "지모"
-
+    
+    if rank == None:
+        rank = "솔로랭크"
+    
     print(season)
-    ref = db.reference(f'전적분석/{season}/점수변동/{name}')
+    ref = db.reference(f'전적분석/{season}/점수변동/{name}/{rank}')
     lp_difference = ref.get()
     if lp_difference == None:
         return -1
@@ -264,7 +267,7 @@ def plot_lp_difference_firebase(season=None,name=None):
         plt.plot(lp_scores, marker='', linestyle='-',color ="dodgerblue")
     if name == 'Melon':
         plt.plot(lp_scores, marker='', linestyle='-',color ="violet")
-    plt.title(f"{name} LP 변화량 추이")
+    plt.title(f"{name} {rank} LP 변화량 추이")
     plt.xlabel('게임 플레이 판수')
     plt.ylabel('현재 LP 점수')
     xticks = []
@@ -322,8 +325,8 @@ def plot_lp_difference_firebase(season=None,name=None):
     plt.close()
     return 0
 
-async def plot_candle_graph(시즌:str, 이름:str):
-    ref = db.reference(f'전적분석/{시즌}/점수변동/{이름}')
+async def plot_candle_graph(시즌:str, 이름:str, 랭크:str):
+    ref = db.reference(f'전적분석/{시즌}/점수변동/{이름}/{랭크}')
     data = ref.get()
 
     if data == None:
@@ -1167,15 +1170,19 @@ class hello(commands.Cog):
                         f'승: {wins}, 패: {losses}, 승률: {winrate}%')
 
     @app_commands.command(name="그래프",description="이번시즌 점수 변동 그래프를 보여줍니다")
-    @app_commands.describe(이름='누구의 그래프를 볼지 선택하세요')
+    @app_commands.describe(이름="누구의 그래프를 볼지 선택하세요", 랭크="랭크 유형을 선택하세요 (기본값: 솔로랭크)")
     @app_commands.choices(이름=[
     Choice(name='강지모', value='지모'),
     Choice(name='Melon', value='Melon'),
     ])
-    async def 그래프(self, interaction: discord.Interaction, 이름:str):
-        print(f"{interaction.user}가 요청한 그래프 요청 수행")
+    @app_commands.choices(랭크=[
+    Choice(name='솔랭', value='솔로랭크'),
+    Choice(name='자랭', value='자유랭크'),
+    ])
+    async def 그래프(self, interaction: discord.Interaction, 이름:str, 랭크:str = "솔로랭크"):
+        print(f"{interaction.user}가 요청한 그래프 요청 수행 ({이름}, {랭크})")
         # LP 변동량 그래프 그리기
-        plot_lp_difference_firebase(name=이름)
+        plot_lp_difference_firebase(name = 이름, rank = 랭크)
 
         # 그래프 이미지 파일을 Discord 메시지로 전송
         await interaction.response.defer()  # Interaction을 유지
@@ -1194,10 +1201,14 @@ class hello(commands.Cog):
     Choice(name='강지모', value='지모'),
     Choice(name='Melon', value='Melon'),
     ])
-    async def 시즌그래프(self, interaction: discord.Interaction, 이름:str, 시즌:str):
+    @app_commands.choices(랭크=[
+    Choice(name='솔랭', value='솔로랭크'),
+    Choice(name='자랭', value='자유랭크'),
+    ])
+    async def 시즌그래프(self, interaction: discord.Interaction, 이름:str, 시즌:str, 랭크:str = "솔로랭크"):
         print(f"{interaction.user}가 요청한 시즌그래프 요청 수행")
         # LP 변동량 그래프 그리기
-        returnVal = plot_lp_difference_firebase(season = 시즌, name = 이름)
+        returnVal = plot_lp_difference_firebase(season = 시즌, name = 이름, rank = 랭크)
 
         if returnVal == -1:
             await interaction.response.send_message("해당 시즌 데이터가 존재하지 않습니다.")
@@ -1269,13 +1280,17 @@ class hello(commands.Cog):
     Choice(name='강지모', value='지모'),
     Choice(name='Melon', value='Melon'),
     ])
-    async def 캔들그래프(self, interaction: discord.Interaction,이름:str):
+    @app_commands.choices(랭크=[
+    Choice(name='솔랭', value='솔로랭크'),
+    Choice(name='자랭', value='자유랭크'),
+    ])
+    async def 캔들그래프(self, interaction: discord.Interaction,이름:str, 랭크:str = "솔로랭크"):
         # 현재 시즌 정보 가져오기
         curseasonref = db.reference("전적분석/현재시즌")
         current_season = curseasonref.get()
         season = current_season
 
-        result = await plot_candle_graph(season,이름)
+        result = await plot_candle_graph(season,이름,랭크)
         if result == None:
             await interaction.response.send_message("해당 시즌 데이터가 존재하지 않습니다.")
             return
@@ -1296,9 +1311,9 @@ class hello(commands.Cog):
     Choice(name='강지모', value='지모'),
     Choice(name='Melon', value='Melon'),
     ])
-    async def 시즌캔들그래프(self, interaction: discord.Interaction, 이름:str,시즌:str):
+    async def 시즌캔들그래프(self, interaction: discord.Interaction, 이름:str,시즌:str, 랭크:str = "솔로랭크"):
         
-        result = await plot_candle_graph(시즌,이름)
+        result = await plot_candle_graph(시즌,이름,랭크)
         if result == None:
             await interaction.response.send_message("해당 시즌 데이터가 존재하지 않습니다.")
             return
