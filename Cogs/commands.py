@@ -2002,15 +2002,19 @@ class hello(commands.Cog):
     Choice(name='Melon', value='Melon')
     ])
     @app_commands.choices(승패=[
-    Choice(name='승리', value=True),
-    Choice(name='패배', value=False)
+    Choice(name='승리', value="True"),
+    Choice(name='패배', value="False")
     ])
-    async def 자동예측(self, interaction: discord.Interaction, 이름:str, 승패:bool, 판수:int):
+    async def 자동예측(self, interaction: discord.Interaction, 이름:str, 승패:str, 판수:int):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
         current_predict_season = cur_predict_seasonref.get()
 
         nickname = interaction.user
 
+        if 승패 == "True":
+            winlosebool = True
+        else:
+            winlosebool = False
         need_point = 15 # 한 판당 15p를 소모하여 자동예측
         total_need_point = need_point * 판수
 
@@ -2027,14 +2031,14 @@ class hello(commands.Cog):
         refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname.name}/아이템')
         itemr = refitem.get()
 
-        if 승패:
+        if winlosebool:
             if itemr.get("자동예측" + 이름 + "패배", 0) > 0:
                 await interaction.response.send_message(f"이미 {이름}의 패배에 자동예측중입니다. </자동예측변경:command_id> 명령어를 사용해주세요!",ephemeral=True) 
             else:
                 item_name = "자동예측" + 이름 + "승리"
                 ref.update({"포인트" : point - total_need_point})
                 give_item(nickname,item_name,판수)
-                await interaction.response.send_message(f"{이름}의 {승패}에 {판수}게임동안 자동예측! \n"
+                await interaction.response.send_message(f"{이름}의 {winlosebool}에 {판수}게임동안 자동예측! \n"
                                                         f"남은 포인트 : {real_point - total_need_point} (베팅포인트 {bettingPoint} 제외) (- {total_need_point})",ephemeral=True)
         else:
             if itemr.get("자동예측" + 이름 + "승리", 0) > 0:
@@ -2043,7 +2047,7 @@ class hello(commands.Cog):
                 item_name = "자동예측" + 이름 + "패배"
                 ref.update({"포인트" : point - total_need_point})
                 give_item(nickname,item_name,판수)
-                await interaction.response.send_message(f"{이름}의 {승패}에 {판수}게임동안 자동예측! \n"
+                await interaction.response.send_message(f"{이름}의 {winlosebool}에 {판수}게임동안 자동예측! \n"
                                                         f"남은 포인트 : {real_point - total_need_point} (베팅포인트 {bettingPoint} 제외) (- {total_need_point})",ephemeral=True)
     
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
