@@ -1185,14 +1185,13 @@ class hello(commands.Cog):
     async def 그래프(self, interaction: discord.Interaction, 이름:str, 랭크:str = "솔로랭크"):
         print(f"{interaction.user}가 요청한 그래프 요청 수행 ({이름}, {랭크})")
         # LP 변동량 그래프 그리기
-
+        await interaction.response.defer()  # Interaction을 유지
         returnVal = plot_lp_difference_firebase(name = 이름, rank = 랭크)
         
         if returnVal == -1:
             await interaction.response.send_message("해당 시즌 데이터가 존재하지 않습니다.")
             return
         # 그래프 이미지 파일을 Discord 메시지로 전송
-        await interaction.response.defer()  # Interaction을 유지
         await interaction.followup.send(file=discord.File('lp_graph.png'))
 
     @app_commands.command(name="시즌그래프",description="시즌 점수 변동 그래프를 보여줍니다")
@@ -1215,6 +1214,7 @@ class hello(commands.Cog):
     async def 시즌그래프(self, interaction: discord.Interaction, 이름:str, 시즌:str, 랭크:str = "솔로랭크"):
         print(f"{interaction.user}가 요청한 시즌그래프 요청 수행")
         # LP 변동량 그래프 그리기
+        await interaction.response.defer()  # Interaction을 유지
         returnVal = plot_lp_difference_firebase(season = 시즌, name = 이름, rank = 랭크)
 
         if returnVal == -1:
@@ -1222,7 +1222,6 @@ class hello(commands.Cog):
             return
         else:
             # 그래프 이미지 파일을 Discord 메시지로 전송
-            await interaction.response.defer()  # Interaction을 유지
             await interaction.followup.send(file=discord.File('lp_graph.png'))
 
     @app_commands.command(name="시즌종료",description="시즌 종료까지 남은 날짜")
@@ -1296,14 +1295,13 @@ class hello(commands.Cog):
         curseasonref = db.reference("전적분석/현재시즌")
         current_season = curseasonref.get()
         season = current_season
-
+        await interaction.response.defer()  # Interaction을 유지
         result = await plot_candle_graph(season,이름,랭크)
         if result == None:
             await interaction.response.send_message("해당 시즌 데이터가 존재하지 않습니다.")
             return
         
         # 그래프 이미지 파일을 Discord 메시지로 전송
-        await interaction.response.defer()  # Interaction을 유지
         await interaction.followup.send(file=discord.File('candle_graph.png'),embed = result)
 
     @app_commands.command(name="시즌캔들그래프",description="시즌 점수를 캔들그래프로 보여줍니다")
@@ -1320,13 +1318,13 @@ class hello(commands.Cog):
     ])
     async def 시즌캔들그래프(self, interaction: discord.Interaction, 이름:str,시즌:str, 랭크:str = "솔로랭크"):
         
+        await interaction.response.defer()  # Interaction을 유지
         result = await plot_candle_graph(시즌,이름,랭크)
         if result == None:
             await interaction.response.send_message("해당 시즌 데이터가 존재하지 않습니다.")
             return
         
         # 그래프 이미지 파일을 Discord 메시지로 전송
-        await interaction.response.defer()  # Interaction을 유지
         await interaction.followup.send(file=discord.File('candle_graph.png'),embed = result)
 
     @app_commands.command(name="예측순위",description="승부예측 포인트 순위를 보여줍니다")
