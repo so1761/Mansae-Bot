@@ -450,16 +450,49 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     game_lose_streak = 0
                     result = True
                 else:
-                    latest_date = max(points.keys()) # 가장 최근 기록을 가져옴
-                    latest_time = max(points[latest_date].keys(), key=lambda t: datetime.strptime(t, '%H:%M:%S'))
+                     # 날짜 정렬
+                    sorted_dates = sorted(points.keys(), key=lambda d: datetime.strptime(d, '%Y-%m-%d'))
+
+                    # 가장 최근 날짜 가져오기
+                    latest_date = sorted_dates[-1]
+                    latest_times = sorted(points[latest_date].keys(), key=lambda t: datetime.strptime(t, '%H:%M:%S'))
+
+                    if len(latest_times) > 1:
+                        # 같은 날짜에 여러 게임이 있는 경우, 가장 최근 경기의 "바로 전 경기" 선택
+                        previous_time = latest_times[-2]
+                        latest_time = latest_times[-1]
+                    else:
+                        # 가장 최근 날짜에 한 판만 있었다면, 이전 날짜로 넘어감
+                        if len(sorted_dates) > 1:
+                            previous_date = sorted_dates[-2]
+                            previous_times = sorted(points[previous_date].keys(), key=lambda t: datetime.strptime(t, '%H:%M:%S'))
+                            previous_time = previous_times[-1]  # 이전 날짜에서 가장 늦은 경기
+                        else:
+                            # 데이터가 한 판밖에 없는 경우 (첫 경기), 연승/연패 초기화
+                            game_win_streak = 0
+                            game_lose_streak = 0
+                            latest_time = latest_times[-1]
+                            previous_time = None
+
+                    # 최신 경기 데이터
                     latest_data = points[latest_date][latest_time]
-
-                    # 게임의 연승/연패 기록을 가져옴 (연승/연패에 따른 추가 배율을 위함)
-                    game_win_streak = latest_data["연승"]
-                    game_lose_streak = latest_data["연패"]
-
                     point_change = latest_data['LP 변화량']
-                    result = point_change > 0 # result가 True라면 승리
+                    result = point_change > 0  # 승리 여부 판단
+
+                    if previous_time:
+                        # "바로 전 경기" 데이터 가져오기
+                        if previous_time in points[latest_date]:  # 같은 날짜에서 찾은 경우
+                            previous_data = points[latest_date][previous_time]
+                        else:  # 이전 날짜에서 가져온 경우
+                            previous_data = points[previous_date][previous_time]
+
+                        # "바로 전 경기"의 연승/연패 기록 사용
+                        game_win_streak = previous_data["연승"]
+                        game_lose_streak = previous_data["연패"]
+                    else:
+                        # 첫 경기라면 연승/연패 초기화
+                        game_win_streak = 0
+                        game_lose_streak = 0
 
                 if result:
                     userembed = discord.Embed(title="메세지", color=discord.Color.blue())
