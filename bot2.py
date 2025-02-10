@@ -1232,8 +1232,9 @@ class MyBot(commands.Bot):
             votes=p.votes['Melon'], 
             event=p.melon_event
         ))
-        bot.loop.create_task(check_remake_status("지모", JIMO_PUUID, p.jimo_event, p.votes['지모']['prediction']))
-        bot.loop.create_task(check_remake_status("Melon", MELON_PUUID, p.melon_event, p.votes['Melon']['prediction']))
+
+        #bot.loop.create_task(check_remake_status("지모", JIMO_PUUID, p.jimo_current_match_id, p.jimo_event, p.votes['지모']['prediction']))
+        #bot.loop.create_task(check_remake_status("Melon", MELON_PUUID, p.melon_current_match_id, p.melon_event, p.votes['Melon']['prediction']))
         #bot.loop.create_task(check_jimo_remake_status())
         #bot.loop.create_task(check_melon_remake_status())
 
