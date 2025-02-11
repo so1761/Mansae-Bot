@@ -252,7 +252,7 @@ class WarnModal(Modal):
         embed.set_footer(text=f"메시지 ID: {self.message.id}")
 
         # 경고 채널에 임베드 전송
-        warning_channel = self.bot.get_channel(WARNING_CHANNEL_ID)
+        warning_channel = interaction.client.get_channel(WARNING_CHANNEL_ID)
         if warning_channel:
             await warning_channel.send(embed=embed)
             await interaction.response.send_message("경고가 성공적으로 기록되었습니다.", ephemeral=True)
