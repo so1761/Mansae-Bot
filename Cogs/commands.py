@@ -248,13 +248,18 @@ class WarnModal(Modal):
         embed.add_field(name="경고 대상", value=warned_user.mention, inline=True)
         embed.add_field(name="경고 발령자", value=moderator.mention, inline=True)
         embed.add_field(name="경고 사유", value=reason, inline=False)
-        embed.add_field(name="대상 메시지", value=f"[메시지로 이동](https://discord.com/channels/{self.message.guild.id}/{self.message.channel.id}/{self.message.id})", inline=False)
+        embed.add_field(name="대상 메시지", value=self.message.content, inline=False)
         embed.set_footer(text=f"메시지 ID: {self.message.id}")
 
+        # 버튼 생성
+        button = discord.ui.Button(label="원본 메시지로 이동", url=f"https://discord.com/channels/{self.message.guild.id}/{self.message.channel.id}/{self.message.id}")
+        view = discord.ui.View()
+        view.add_item(button)
+        
         # 경고 채널에 임베드 전송
         warning_channel = interaction.client.get_channel(WARNING_CHANNEL_ID)
         if warning_channel:
-            await warning_channel.send(embed=embed)
+            await warning_channel.send(embed=embed, view = view)
             await interaction.response.send_message("경고가 성공적으로 기록되었습니다.", ephemeral=True)
         else:
             await interaction.response.send_message("경고 채널을 찾을 수 없습니다.", ephemeral=True)
