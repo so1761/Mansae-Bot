@@ -1905,7 +1905,7 @@ class hello(commands.Cog):
     
     # 명령어에서 모달을 호출하는 예제
     @app_commands.command(name="공지", description="확성기 채널에 공지 메세지를 보냅니다(개발자 전용)")
-    async def 공지(interaction: discord.Interaction):
+    async def 공지(self,interaction: discord.Interaction):
         await interaction.response.send_modal(공지모달())
     
 
