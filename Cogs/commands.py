@@ -231,6 +231,34 @@ def get_summoner_matchinfo_nonaysnc(matchid): #matchid로 매치 정보 구하�
         print('Error:', response.status_code)
         return None
 
+class WarnModal(Modal):
+    reason = TextInput(label="경고 사유", placeholder="경고 사유를 입력하세요.")
+
+    def __init__(self, message: discord.Message):
+        super().__init__(title="경고 사유 입력")
+        self.message = message
+
+    async def on_submit(self, interaction: discord.Interaction):
+        warned_user = self.message.author
+        moderator = interaction.user
+        reason = self.reason.value
+
+        # 임베드 생성
+        embed = discord.Embed(title="경고 기록", color=discord.Color.red())
+        embed.add_field(name="경고 대상", value=warned_user.mention, inline=True)
+        embed.add_field(name="경고 발령자", value=moderator.mention, inline=True)
+        embed.add_field(name="경고 사유", value=reason, inline=False)
+        embed.add_field(name="대상 메시지", value=self.message.content, inline=False)
+        embed.set_footer(text=f"메시지 ID: {self.message.id}")
+
+        # 경고 채널에 임베드 전송
+        warning_channel = self.bot.get_channel(WARNING_CHANNEL_ID)
+        if warning_channel:
+            await warning_channel.send(embed=embed)
+            await interaction.response.send_message("경고가 성공적으로 기록되었습니다.", ephemeral=True)
+        else:
+            await interaction.response.send_message("경고 채널을 찾을 수 없습니다.", ephemeral=True)
+
 def plot_lp_difference_firebase(season=None,name=None,rank=None):
 
     if season == None:
@@ -823,7 +851,7 @@ class hello(commands.Cog):
 
     async def warn_user(self, interaction: discord.Interaction, message: discord.Message) -> None:
         # 경고 처리 로직
-        await interaction.response.send_message(f"{message.author.mention}님에게 경고를 주었습니다.", ephemeral=True)
+        await interaction.response.send_modal(WarnModal(message))
 
     @commands.Cog.listener()
     async def on_ready(self):
