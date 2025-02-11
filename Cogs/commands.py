@@ -11,7 +11,8 @@ import mplfinance as mpf
 import prediction_vote as p
 import subprocess
 import os
-from discord.ui import Modal, TextInput, TextInputStyle
+from discord.ui import Modal, TextInput
+from discord import TextStyle
 from firebase_admin import db
 from discord.app_commands import Choice
 from discord import app_commands
@@ -710,14 +711,33 @@ def fetch_all_match_info(matches, puuid):
 
 # 커스텀 모달 정의 (제목, 내용, URL 입력)
 class 공지모달(Modal, title="공지 작성"):
-    제목 = TextInput(label="제목", placeholder="공지 제목을 입력하세요", max_length=100)
-    메세지 = TextInput(label="내용", style=TextInputStyle.long, placeholder="공지 내용을 입력하세요", max_length=2000)
-    url = TextInput(label="URL (선택)", placeholder="옵션: URL을 입력하세요", required=False)
+    제목 = TextInput(
+        label="제목", 
+        placeholder="공지 제목을 입력하세요", 
+        max_length=100,
+        style=TextStyle.short  # 짧은 입력 스타일
+    )
+    메세지 = TextInput(
+        label="내용", 
+        placeholder="공지 내용을 입력하세요", 
+        max_length=2000,
+        style=TextStyle.long  # 긴 입력 스타일
+    )
+    url = TextInput(
+        label="URL (선택)", 
+        placeholder="옵션: URL을 입력하세요", 
+        required=False,
+        style=TextStyle.short
+    )
 
     async def on_submit(self, interaction: discord.Interaction):
         channel = interaction.client.get_channel(1332330634546253915)
         if interaction.user.name == "toe_kyung":
-            embed = discord.Embed(title=self.제목.value, description=self.메세지.value, color=discord.Color.light_gray())
+            embed = discord.Embed(
+                title=self.제목.value, 
+                description=self.메세지.value, 
+                color=discord.Color.light_gray()
+            )
             if self.url.value:
                 embed.url = self.url.value
             await channel.send("@everyone\n", embed=embed)
