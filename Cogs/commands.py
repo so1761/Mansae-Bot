@@ -2323,13 +2323,7 @@ class hello(commands.Cog):
             await channel.send(f"\n",embed = battleEmbed)
             await interaction.response.send_message("수행완료",ephemeral=True)
 
-    # 컨텍스트 메뉴 명령어 등록 (메시지 대상)
-    @app_commands.context_menu(name="경고 주기")
-    async def warn_context(interaction: discord.Interaction, message: discord.Message):
-        # 필요에 따라 권한 체크(예: 관리자인지) 추가 가능
-        # 모달을 띄워 경고 사유를 입력받음
-        await interaction.response.send_modal(WarnModal(message))
-        
+
     #베팅 테스트를 위한 코드
     # @app_commands.command(name="베팅테스트",description="베팅 테스트(개발자 전용)")
     # @app_commands.describe(이름 = "이름을 입력하세요", 값 = "값")
@@ -2366,6 +2360,14 @@ class hello(commands.Cog):
 
     #     else:
     #         interaction.response.send_message("권한이 없습니다",ephemeral=True)
+
+# 컨텍스트 메뉴 명령어 등록 (메시지 대상)
+@app_commands.context_menu(name="경고 주기")
+async def warn_context(interaction: discord.Interaction, message: discord.Message):
+    # 필요에 따라 권한 체크(예: 관리자인지) 추가 가능
+    # 모달을 띄워 경고 사유를 입력받음
+    await interaction.response.send_modal(WarnModal(message))
+
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(
         hello(bot),
