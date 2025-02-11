@@ -853,6 +853,20 @@ async def place_bet(bot,which,result,bet_amount):
 class hello(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
+        self.warn_context_menu = app_commands.ContextMenu(
+            name="경고 주기",
+            callback=self.warn_user
+        )
+        # 컨텍스트 메뉴를 CommandTree에 추가
+        self.bot.tree.add_command(self.warn_context_menu)
+
+    async def cog_unload(self):
+        # Cog 언로드 시 컨텍스트 메뉴 제거
+        self.bot.tree.remove_command(self.warn_context_menu.name, type=self.warn_context_menu.type)
+
+    async def warn_user(self, interaction: discord.Interaction, message: discord.Message):
+        # 경고 처리 로직
+        await interaction.response.send_message(f"{message.author.mention}님에게 경고를 주었습니다.", ephemeral=True)
 
     @commands.Cog.listener()
     async def on_ready(self):
