@@ -803,47 +803,6 @@ class 공지모달(Modal, title="공지 작성"):
         else:
             await interaction.response.send_message("권한이 없습니다", ephemeral=True)
 
-# 경고 사유를 입력받는 모달 클래스 정의
-class WarnModal(Modal, title="경고 사유 입력"):
-    # 텍스트 입력 필드: 경고 사유
-    reason = TextInput(
-        label="경고 사유",
-        placeholder="경고를 주는 이유를 입력하세요.",
-        style=TextStyle.long,
-        max_length=2000
-    )
-
-    def __init__(self, target_message: discord.Message):
-        super().__init__()
-        self.target_message = target_message  # 경고를 적용할 메시지를 저장
-
-    async def on_submit(self, interaction: discord.Interaction):
-        # 경고 대상 메시지 작성자와 경고 발령자를 추출
-        warned_user = self.target_message.author
-        moderator = interaction.user
-
-        # embed 구성: 경고 대상, 발령자, 사유, 메시지 내용 등
-        embed = discord.Embed(title="경고 기록", color=discord.Color.red())
-        embed.add_field(name="경고 대상", value=warned_user.mention, inline=True)
-        embed.add_field(name="경고 발령자", value=moderator.mention, inline=True)
-        embed.add_field(name="경고 사유", value=self.reason.value, inline=False)
-        # 메시지 내용이 없을 경우 첨부파일 등 대체
-        content = self.target_message.content if self.target_message.content else "첨부파일 등"
-        embed.add_field(name="대상 메시지", value=content, inline=False)
-        embed.set_footer(text=f"메시지 ID: {self.target_message.id}")
-
-        # '메시지 보기' 버튼 추가 (메시지의 jump URL 사용)
-        view = View()
-        view.add_item(Button(label="메시지 보기", style=discord.ButtonStyle.link, url=self.target_message.jump_url))
-
-        # #경고채널로 embed 전송
-        warning_channel = interaction.client.get_channel(WARNING_CHANNEL_ID)
-        if warning_channel is None:
-            # 필요시 fetch_channel 사용
-            warning_channel = await interaction.client.fetch_channel(WARNING_CHANNEL_ID)
-        await warning_channel.send(embed=embed, view=view)
-        await interaction.response.send_message("경고가 발령되었습니다.", ephemeral=True)
-
 async def place_bet(bot,which,result,bet_amount):
     channel = bot.get_channel(int(CHANNEL_ID))
     userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
@@ -853,20 +812,6 @@ async def place_bet(bot,which,result,bet_amount):
 class hello(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        self.warn_context_menu = app_commands.ContextMenu(
-            name="경고 주기",
-            callback=self.warn_user
-        )
-        # 컨텍스트 메뉴를 CommandTree에 추가
-        self.bot.tree.add_command(self.warn_context_menu)
-
-    async def cog_unload(self):
-        # Cog 언로드 시 컨텍스트 메뉴 제거
-        self.bot.tree.remove_command(self.warn_context_menu.name, type=self.warn_context_menu.type)
-
-    async def warn_user(self, interaction: discord.Interaction, message: discord.Message):
-        # 경고 처리 로직
-        await interaction.response.send_message(f"{message.author.mention}님에게 경고를 주었습니다.", ephemeral=True)
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -2376,11 +2321,7 @@ class hello(commands.Cog):
     #         interaction.response.send_message("권한이 없습니다",ephemeral=True)
 
 # 컨텍스트 메뉴 명령어 등록 (메시지 대상)
-@app_commands.context_menu(name="경고 주기")
-async def warn_context(interaction: discord.Interaction, message: discord.Message):
-    # 필요에 따라 권한 체크(예: 관리자인지) 추가 가능
-    # 모달을 띄워 경고 사유를 입력받음
-    await interaction.response.send_modal(WarnModal(message))
+
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(
