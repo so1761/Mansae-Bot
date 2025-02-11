@@ -248,7 +248,7 @@ class WarnModal(Modal):
         embed.add_field(name="경고 대상", value=warned_user.mention, inline=True)
         embed.add_field(name="경고 발령자", value=moderator.mention, inline=True)
         embed.add_field(name="경고 사유", value=reason, inline=False)
-        embed.add_field(name="대상 메시지", value=self.message.content, inline=False)
+        embed.add_field(name="대상 메시지", value=f"[메시지로 이동](https://discord.com/channels/{self.message.guild.id}/{self.message.channel.id}/{self.message.id})", inline=False)
         embed.set_footer(text=f"메시지 ID: {self.message.id}")
 
         # 경고 채널에 임베드 전송
