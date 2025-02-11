@@ -467,6 +467,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                             previous_date = sorted_dates[-2]
                             previous_times = sorted(points[previous_date].keys(), key=lambda t: datetime.strptime(t, '%H:%M:%S'))
                             previous_time = previous_times[-1]  # 이전 날짜에서 가장 늦은 경기
+                            latest_time = latest_times[-1]
                         else:
                             # 데이터가 한 판밖에 없는 경우 (첫 경기), 연승/연패 초기화
                             game_win_streak = 0
