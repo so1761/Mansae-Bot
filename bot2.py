@@ -1234,6 +1234,7 @@ class MyBot(commands.Bot):
         ]
 
     async def setup_hook(self):
+        print("setup_hook called")  # 디버그 로그 추가
         for ext in self.initial_extension:
             await self.load_extension(ext)
 
