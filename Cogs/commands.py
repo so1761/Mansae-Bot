@@ -709,6 +709,61 @@ def fetch_all_match_info(matches, puuid):
             raise NotFoundError
     return list(player_stats_list)
 
+# 확성기 모달 정의 (메세지 입력만)
+class 확성기모달(Modal, title="확성기 메세지 작성"):
+    def __init__(self, 익명여부: str):
+        super().__init__()
+        self.익명여부 = 익명여부  # 커맨드에서 받은 익명 여부를 저장
+        # 메세지 입력 필드 추가
+        self.message_input = TextInput(
+            label="메세지",
+            placeholder="보낼 메세지를 입력하세요",
+            style=TextStyle.long,
+            max_length=2000
+        )
+        self.add_item(self.message_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # 전송할 채널 ID
+        channel = interaction.client.get_channel(1332330634546253915)
+        
+        # 예시: DB에서 현재 예측 시즌 및 포인트 정보를 가져오는 코드 (구현은 사용 중인 DB에 맞게 수정)
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+        current_predict_season = cur_predict_seasonref.get()
+        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
+        originr = ref.get()
+        point = originr["포인트"]
+        bettingPoint = originr["베팅포인트"]
+        
+        # 익명 여부에 따른 필요 포인트 설정
+        if self.익명여부.strip() == '익명':
+            need_point = 150
+        else:
+            need_point = 100
+        
+        if point - bettingPoint < need_point:
+            await interaction.response.send_message(
+                f"포인트가 부족합니다! 현재 포인트: {point - bettingPoint} (베팅포인트 {bettingPoint} 제외)",
+                ephemeral=True
+            )
+            return
+
+        # 포인트 차감
+        ref.update({"포인트": point - need_point})
+        
+        # 익명 여부에 따라 임베드 제목 결정
+        if self.익명여부.strip() == '익명':
+            embed = discord.Embed(title="익명의 메세지", color=discord.Color.light_gray())
+        else:
+            embed = discord.Embed(title=f"{interaction.user.name}의 메세지", color=discord.Color.light_gray())
+        embed.add_field(name="", value=self.message_input.value, inline=False)
+        
+        await channel.send("@everyone\n", embed=embed)
+        await interaction.response.send_message(
+            f"전송 완료! 남은 포인트: {point - bettingPoint - need_point} (베팅포인트 {bettingPoint} 제외)",
+            ephemeral=True
+        )
+        
 # 커스텀 모달 정의 (제목, 내용, URL 입력)
 class 공지모달(Modal, title="공지 작성"):
     제목 = TextInput(
@@ -1850,40 +1905,52 @@ class hello(commands.Cog):
         else:
             interaction.response.send_message("권한이 없습니다",ephemeral=True)
 
-
-    @app_commands.command(name="확성기",description="예측 포인트를 사용하여 확성기 채널에 메세지를 보냅니다(비익명 100P, 익명 150P)")
-    @app_commands.describe(메세지 = "메세지를 입력하세요")
+    @app_commands.command(
+        name="확성기",
+        description="예측 포인트를 사용하여 확성기 채널에 메세지를 보냅니다(비익명 100P, 익명 150P)"
+    )
+    @app_commands.describe(익명여부="익명 또는 비익명을 선택하세요")
     @app_commands.choices(익명여부=[
-    Choice(name='익명', value='익명'),
-    Choice(name='비익명', value='비익명'),
+        Choice(name='익명', value='익명'),
+        Choice(name='비익명', value='비익명')
     ])
-    async def 확성기(self, interaction: discord.Interaction, 익명여부:str, 메세지:str):
-        channel = self.bot.get_channel(int(1332330634546253915))
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-        current_predict_season = cur_predict_seasonref.get()
-        if 익명여부 == '익명':
-            need_point = 150
-        else:
-            need_point = 100
-        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
-        originr = ref.get()
-        point = originr["포인트"]
-        bettingPoint = originr["베팅포인트"]
-        if point - bettingPoint < need_point:
-            await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {point - bettingPoint} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
-        else:
-            if 익명여부 == '익명':
-                ref.update({"포인트" : point - need_point})
-                userembed = discord.Embed(title="익명의 메세지", color=discord.Color.light_gray())
-                userembed.add_field(name="",value=f"{메세지}", inline=False)
-                await channel.send(f"@everyone\n",embed = userembed)
-                await interaction.response.send_message(f"전송 완료! 남은 포인트: {point - bettingPoint - need_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
-            else:
-                ref.update({"포인트" : point - need_point})
-                userembed = discord.Embed(title=f"{interaction.user.name}의 메세지", color=discord.Color.light_gray())
-                userembed.add_field(name="",value=f"{메세지}", inline=False)
-                await channel.send(f"@everyone\n",embed = userembed)
-                await interaction.response.send_message(f"전송 완료! 남은 포인트: {point - bettingPoint - need_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
+    async def 확성기(self, interaction: discord.Interaction, 익명여부: str):
+        # 명령어 옵션으로 받은 익명여부를 모달 생성자에 전달하여 모달 호출
+        await interaction.response.send_modal(확성기모달(익명여부))
+
+    # @app_commands.command(name="확성기",description="예측 포인트를 사용하여 확성기 채널에 메세지를 보냅니다(비익명 100P, 익명 150P)")
+    # @app_commands.describe(메세지 = "메세지를 입력하세요")
+    # @app_commands.choices(익명여부=[
+    # Choice(name='익명', value='익명'),
+    # Choice(name='비익명', value='비익명'),
+    # ])
+    # async def 확성기(self, interaction: discord.Interaction, 익명여부:str, 메세지:str):
+    #     channel = self.bot.get_channel(int(1332330634546253915))
+    #     cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+    #     current_predict_season = cur_predict_seasonref.get()
+    #     if 익명여부 == '익명':
+    #         need_point = 150
+    #     else:
+    #         need_point = 100
+    #     ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
+    #     originr = ref.get()
+    #     point = originr["포인트"]
+    #     bettingPoint = originr["베팅포인트"]
+    #     if point - bettingPoint < need_point:
+    #         await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {point - bettingPoint} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
+    #     else:
+    #         if 익명여부 == '익명':
+    #             ref.update({"포인트" : point - need_point})
+    #             userembed = discord.Embed(title="익명의 메세지", color=discord.Color.light_gray())
+    #             userembed.add_field(name="",value=f"{메세지}", inline=False)
+    #             await channel.send(f"@everyone\n",embed = userembed)
+    #             await interaction.response.send_message(f"전송 완료! 남은 포인트: {point - bettingPoint - need_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
+    #         else:
+    #             ref.update({"포인트" : point - need_point})
+    #             userembed = discord.Embed(title=f"{interaction.user.name}의 메세지", color=discord.Color.light_gray())
+    #             userembed.add_field(name="",value=f"{메세지}", inline=False)
+    #             await channel.send(f"@everyone\n",embed = userembed)
+    #             await interaction.response.send_message(f"전송 완료! 남은 포인트: {point - bettingPoint - need_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
 
 
     # @app_commands.command(name="공지",description="확성기 채널에 공지 메세지를 보냅니다(개발자 전용)")
