@@ -11,7 +11,7 @@ import mplfinance as mpf
 import prediction_vote as p
 import subprocess
 import os
-from discord.ui import Modal, InputText, InputTextStyle
+from discord.ui import Modal, TextInput, TextInputStyle
 from firebase_admin import db
 from discord.app_commands import Choice
 from discord import app_commands
@@ -710,19 +710,17 @@ def fetch_all_match_info(matches, puuid):
 
 # 커스텀 모달 정의 (제목, 내용, URL 입력)
 class 공지모달(Modal, title="공지 작성"):
-    제목 = InputText(label="제목", placeholder="공지 제목을 입력하세요", max_length=100)
-    메세지 = InputText(label="내용", style=InputTextStyle.long, placeholder="공지 내용을 입력하세요", max_length=2000)
-    url = InputText(label="URL (선택)", placeholder="옵션: URL을 입력하세요", required=False)
+    제목 = TextInput(label="제목", placeholder="공지 제목을 입력하세요", max_length=100)
+    메세지 = TextInput(label="내용", style=TextInputStyle.long, placeholder="공지 내용을 입력하세요", max_length=2000)
+    url = TextInput(label="URL (선택)", placeholder="옵션: URL을 입력하세요", required=False)
 
     async def on_submit(self, interaction: discord.Interaction):
         channel = interaction.client.get_channel(1332330634546253915)
-        # 사용자 권한 확인 (예: 이름이 "toe_kyung"인 경우)
         if interaction.user.name == "toe_kyung":
-            userembed = discord.Embed(title=self.제목.value, color=discord.Color.light_gray())
-            userembed.add_field(name="", value=self.메세지.value, inline=False)
+            embed = discord.Embed(title=self.제목.value, description=self.메세지.value, color=discord.Color.light_gray())
             if self.url.value:
-                userembed.url = self.url.value
-            await channel.send("@everyone\n", embed=userembed)
+                embed.url = self.url.value
+            await channel.send("@everyone\n", embed=embed)
             await interaction.response.send_message("전송 완료!", ephemeral=True)
         else:
             await interaction.response.send_message("권한이 없습니다", ephemeral=True)
