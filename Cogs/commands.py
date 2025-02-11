@@ -856,7 +856,14 @@ class hello(commands.Cog):
 
     async def warn_user(self, interaction: discord.Interaction, message: discord.Message) -> None:
         # 경고 처리 로직
-        await interaction.response.send_modal(WarnModal(message))
+        allowed_role_name = "1등 ✨"
+
+        # 사용자의 역할 확인
+        user_roles = [role.name for role in interaction.user.roles]
+        if allowed_role_name in user_roles:
+            await interaction.response.send_modal(WarnModal(message))
+        else:
+            await interaction.response.send_message("경고는 1등만 부여할 수 있습니다.")
 
     @commands.Cog.listener()
     async def on_ready(self):
