@@ -29,6 +29,9 @@ API_KEY = None
 JIMO_NAME = '강지모'
 JIMO_TAG = 'KR1'
 
+# 경고 채널의 ID (실제 채널 ID로 변경)
+WARNING_CHANNEL_ID = 1314643507490590731
+
 SEASON_CHANGE_DATE = datetime(2024, 5, 15, 0, 0, 0)
 SEASON_CHANGE_DATE2 = datetime(2024, 9, 11, 0, 0, 0)
 SEASON_CHANGE_DATE3 = datetime(2025, 1, 9, 0, 0, 0)
@@ -763,7 +766,7 @@ class 확성기모달(Modal, title="확성기 메세지 작성"):
             f"전송 완료! 남은 포인트: {point - bettingPoint - need_point} (베팅포인트 {bettingPoint} 제외)",
             ephemeral=True
         )
-        
+
 # 커스텀 모달 정의 (제목, 내용, URL 입력)
 class 공지모달(Modal, title="공지 작성"):
     제목 = TextInput(
@@ -799,6 +802,47 @@ class 공지모달(Modal, title="공지 작성"):
             await interaction.response.send_message("전송 완료!", ephemeral=True)
         else:
             await interaction.response.send_message("권한이 없습니다", ephemeral=True)
+
+# 경고 사유를 입력받는 모달 클래스 정의
+class WarnModal(Modal, title="경고 사유 입력"):
+    # 텍스트 입력 필드: 경고 사유
+    reason = TextInput(
+        label="경고 사유",
+        placeholder="경고를 주는 이유를 입력하세요.",
+        style=TextStyle.long,
+        max_length=2000
+    )
+
+    def __init__(self, target_message: discord.Message):
+        super().__init__()
+        self.target_message = target_message  # 경고를 적용할 메시지를 저장
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # 경고 대상 메시지 작성자와 경고 발령자를 추출
+        warned_user = self.target_message.author
+        moderator = interaction.user
+
+        # embed 구성: 경고 대상, 발령자, 사유, 메시지 내용 등
+        embed = discord.Embed(title="경고 기록", color=discord.Color.red())
+        embed.add_field(name="경고 대상", value=warned_user.mention, inline=True)
+        embed.add_field(name="경고 발령자", value=moderator.mention, inline=True)
+        embed.add_field(name="경고 사유", value=self.reason.value, inline=False)
+        # 메시지 내용이 없을 경우 첨부파일 등 대체
+        content = self.target_message.content if self.target_message.content else "첨부파일 등"
+        embed.add_field(name="대상 메시지", value=content, inline=False)
+        embed.set_footer(text=f"메시지 ID: {self.target_message.id}")
+
+        # '메시지 보기' 버튼 추가 (메시지의 jump URL 사용)
+        view = View()
+        view.add_item(Button(label="메시지 보기", style=discord.ButtonStyle.link, url=self.target_message.jump_url))
+
+        # #경고채널로 embed 전송
+        warning_channel = interaction.client.get_channel(WARNING_CHANNEL_ID)
+        if warning_channel is None:
+            # 필요시 fetch_channel 사용
+            warning_channel = await interaction.client.fetch_channel(WARNING_CHANNEL_ID)
+        await warning_channel.send(embed=embed, view=view)
+        await interaction.response.send_message("경고가 발령되었습니다.", ephemeral=True)
 
 async def place_bet(bot,which,result,bet_amount):
     channel = bot.get_channel(int(CHANNEL_ID))
@@ -2279,6 +2323,13 @@ class hello(commands.Cog):
             await channel.send(f"\n",embed = battleEmbed)
             await interaction.response.send_message("수행완료",ephemeral=True)
 
+    # 컨텍스트 메뉴 명령어 등록 (메시지 대상)
+    @app_commands.context_menu(name="경고 주기")
+    async def warn_context(interaction: discord.Interaction, message: discord.Message):
+        # 필요에 따라 권한 체크(예: 관리자인지) 추가 가능
+        # 모달을 띄워 경고 사유를 입력받음
+        await interaction.response.send_modal(WarnModal(message))
+        
     #베팅 테스트를 위한 코드
     # @app_commands.command(name="베팅테스트",description="베팅 테스트(개발자 전용)")
     # @app_commands.describe(이름 = "이름을 입력하세요", 값 = "값")
