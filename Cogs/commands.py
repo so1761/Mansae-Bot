@@ -11,6 +11,7 @@ import mplfinance as mpf
 import prediction_vote as p
 import subprocess
 import os
+from discord.ui import Modal, InputText, InputTextStyle
 from firebase_admin import db
 from discord.app_commands import Choice
 from discord import app_commands
@@ -707,7 +708,24 @@ def fetch_all_match_info(matches, puuid):
             raise NotFoundError
     return list(player_stats_list)
 
+# 커스텀 모달 정의 (제목, 내용, URL 입력)
+class 공지모달(Modal, title="공지 작성"):
+    제목 = InputText(label="제목", placeholder="공지 제목을 입력하세요", max_length=100)
+    메세지 = InputText(label="내용", style=InputTextStyle.long, placeholder="공지 내용을 입력하세요", max_length=2000)
+    url = InputText(label="URL (선택)", placeholder="옵션: URL을 입력하세요", required=False)
 
+    async def on_submit(self, interaction: discord.Interaction):
+        channel = interaction.client.get_channel(1332330634546253915)
+        # 사용자 권한 확인 (예: 이름이 "toe_kyung"인 경우)
+        if interaction.user.name == "toe_kyung":
+            userembed = discord.Embed(title=self.제목.value, color=discord.Color.light_gray())
+            userembed.add_field(name="", value=self.메세지.value, inline=False)
+            if self.url.value:
+                userembed.url = self.url.value
+            await channel.send("@everyone\n", embed=userembed)
+            await interaction.response.send_message("전송 완료!", ephemeral=True)
+        else:
+            await interaction.response.send_message("권한이 없습니다", ephemeral=True)
 
 async def place_bet(bot,which,result,bet_amount):
     channel = bot.get_channel(int(CHANNEL_ID))
@@ -1849,22 +1867,29 @@ class hello(commands.Cog):
                 await channel.send(f"@everyone\n",embed = userembed)
                 await interaction.response.send_message(f"전송 완료! 남은 포인트: {point - bettingPoint - need_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
 
-    @app_commands.command(name="공지",description="확성기 채널에 공지 메세지를 보냅니다(개발자 전용)")
-    @app_commands.describe(메세지 = "메세지를 입력하세요")
-    async def 공지(self, interaction: discord.Interaction, 제목: str, 메세지:str, url:str = None):
-        channel = self.bot.get_channel(int(1332330634546253915))
-        if interaction.user.name == "toe_kyung":
-            userembed = discord.Embed(title=제목, color=discord.Color.light_gray())
-            userembed.add_field(name="",value=f"{메세지}", inline=False)
 
-            # URL이 있을 경우에만 URL을 추가
-            if url:
-                userembed.url = url  # URL을 Embed의 url 속성에 추가
+    # @app_commands.command(name="공지",description="확성기 채널에 공지 메세지를 보냅니다(개발자 전용)")
+    # @app_commands.describe(메세지 = "메세지를 입력하세요")
+    # async def 공지(self, interaction: discord.Interaction, 제목: str, 메세지:str, url:str = None):
+    #     channel = self.bot.get_channel(int(1332330634546253915))
+    #     if interaction.user.name == "toe_kyung":
+    #         userembed = discord.Embed(title=제목, color=discord.Color.light_gray())
+    #         userembed.add_field(name="",value=f"{메세지}", inline=False)
 
-            await channel.send(f"@everyone\n",embed = userembed)
-            await interaction.response.send_message(f"전송 완료!",ephemeral=True)
-        else:
-            interaction.response.send_message("권한이 없습니다",ephemeral=True)
+    #         # URL이 있을 경우에만 URL을 추가
+    #         if url:
+    #             userembed.url = url  # URL을 Embed의 url 속성에 추가
+
+    #         await channel.send(f"@everyone\n",embed = userembed)
+    #         await interaction.response.send_message(f"전송 완료!",ephemeral=True)
+    #     else:
+    #         interaction.response.send_message("권한이 없습니다",ephemeral=True)
+    
+    # 명령어에서 모달을 호출하는 예제
+    @app_commands.command(name="공지", description="확성기 채널에 공지 메세지를 보냅니다(개발자 전용)")
+    async def 공지(interaction: discord.Interaction):
+        await interaction.response.send_modal(공지모달())
+    
 
     @app_commands.command(name="테스트",description="테스트(개발자 전용)")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
@@ -1900,7 +1925,7 @@ class hello(commands.Cog):
             point_ref.update(updates)
             
             await interaction.response.send_message("베팅포인트 초기화 완료!")
-
+    
     @app_commands.command(name="베팅공개",description="현재 포인트의 10%(최소 100p)를 소모하여 현재 진행중인 승부예측의 현황을 공개합니다(3분 이후만 가능)")
     @app_commands.describe(이름 = "예측한 사람의 이름을 입력하세요")
     @app_commands.choices(이름=[
