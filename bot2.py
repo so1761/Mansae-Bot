@@ -358,47 +358,6 @@ def calculate_points(streak):
     
     return points
 
-# 경고 사유를 입력받는 모달 클래스 정의
-class WarnModal(Modal, title="경고 사유 입력"):
-    # 텍스트 입력 필드: 경고 사유
-    reason = TextInput(
-        label="경고 사유",
-        placeholder="경고를 주는 이유를 입력하세요.",
-        style=TextStyle.long,
-        max_length=2000
-    )
-
-    def __init__(self, target_message: discord.Message):
-        super().__init__()
-        self.target_message = target_message  # 경고를 적용할 메시지를 저장
-
-    async def on_submit(self, interaction: discord.Interaction):
-        # 경고 대상 메시지 작성자와 경고 발령자를 추출
-        warned_user = self.target_message.author
-        moderator = interaction.user
-
-        # embed 구성: 경고 대상, 발령자, 사유, 메시지 내용 등
-        embed = discord.Embed(title="경고 기록", color=discord.Color.red())
-        embed.add_field(name="경고 대상", value=warned_user.mention, inline=True)
-        embed.add_field(name="경고 발령자", value=moderator.mention, inline=True)
-        embed.add_field(name="경고 사유", value=self.reason.value, inline=False)
-        # 메시지 내용이 없을 경우 첨부파일 등 대체
-        content = self.target_message.content if self.target_message.content else "첨부파일 등"
-        embed.add_field(name="대상 메시지", value=content, inline=False)
-        embed.set_footer(text=f"메시지 ID: {self.target_message.id}")
-
-        # '메시지 보기' 버튼 추가 (메시지의 jump URL 사용)
-        view = View()
-        view.add_item(Button(label="메시지 보기", style=discord.ButtonStyle.link, url=self.target_message.jump_url))
-
-        # #경고채널로 embed 전송
-        warning_channel = interaction.client.get_channel(WARNING_CHANNEL_ID)
-        if warning_channel is None:
-            # 필요시 fetch_channel 사용
-            warning_channel = await interaction.client.fetch_channel(WARNING_CHANNEL_ID)
-        await warning_channel.send(embed=embed, view=view)
-        await interaction.response.send_message("경고가 발령되었습니다.", ephemeral=True)
-
 async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, votes, event):
     await bot.wait_until_ready()
     channel = bot.get_channel(int(channel_id)) # 일반 채널
@@ -1234,7 +1193,6 @@ class MyBot(commands.Bot):
         ]
 
     async def setup_hook(self):
-        print("setup_hook called")  # 디버그 로그 추가
         for ext in self.initial_extension:
             await self.load_extension(ext)
 
