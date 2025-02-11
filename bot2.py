@@ -1196,7 +1196,7 @@ class MyBot(commands.Bot):
         for ext in self.initial_extension:
             await self.load_extension(ext)
 
-        await bot.tree.sync(guild=Object(id=298064707460268032))
+        #await bot.tree.sync(guild=Object(id=298064707460268032))
 
     async def on_ready(self):
         print('Logged on as', self.user)
@@ -1206,6 +1206,7 @@ class MyBot(commands.Bot):
         firebase_admin.initialize_app(cred,{
             'databaseURL' : 'https://mansaebot-default-rtdb.firebaseio.com/'
         })
+        await self.tree.sync(guild=Object(id=298064707460268032))
         
         admin = await bot.fetch_user("298068763335589899")  # toe_kyung의 디스코드 사용자 ID 입력
         '''
