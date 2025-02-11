@@ -9,7 +9,7 @@ import math
 from firebase_admin import credentials
 from firebase_admin import db
 from discord import Intents
-from discord import TextStyle
+from discord import app_commands,TextStyle
 from discord.ext import commands
 from discord.ui import Modal, TextInput, View, Button
 from discord import Game
@@ -1324,7 +1324,7 @@ async def on_message(message):
         return
 
 # 컨텍스트 메뉴 명령어 등록 (메시지 대상)
-@bot.tree.context_menu(name="경고 주기")
+@app_commands.context_menu(name="경고 주기")
 async def warn_context(interaction: discord.Interaction, message: discord.Message):
     # 필요에 따라 권한 체크(예: 관리자인지) 추가 가능
     # 모달을 띄워 경고 사유를 입력받음
