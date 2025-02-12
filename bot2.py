@@ -161,7 +161,6 @@ def get_mission_data(user_name,mission_type):
     ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}")
     mission_data = ref.get()
 
-    print(mission_data)
     # 미션 데이터를 처리하여 반환
     if mission_data:
         return [
