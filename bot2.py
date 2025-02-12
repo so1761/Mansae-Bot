@@ -86,20 +86,7 @@ used_items_for_user_melon = {}
 class MissionView(View):
     def __init__(self):
         super().__init__(timeout=None)
-        self.add_item(Button(label='미션확인', custom_id='check_mission'))
-
-    async def update_main_embed(self, interaction: discord.Interaction):
-        reset_time = datetime.utcnow().replace(hour=5, minute=0, second=0, microsecond=0)
-        if datetime.utcnow() >= reset_time:
-            reset_time += timedelta(days=1)
-        
-        remaining_time = reset_time - datetime.utcnow()
-        hours, remainder = divmod(remaining_time.seconds, 3600)
-        
-        embed = discord.Embed(title="🎯 일일 미션", color=discord.Color.blue())
-        embed.add_field(name="초기화까지 남은 시간", value=f"{hours}시간 {remainder // 60}분", inline=False)
-
-        await interaction.response.send_message(embed=embed, view=self, ephemeral=True)
+        self.add_item(CheckMissionButton())
 
 class CheckMissionButton(discord.ui.Button):
     def __init__(self):
@@ -1311,16 +1298,30 @@ class MyBot(commands.Bot):
             print("관리자가 발견되지 않았습니다")
         '''
         mission_channel = bot.get_channel(int(MISSION_CHANNEL_ID)) # 미션 채널
-        global MESSAGE_ID
-        MESSAGE_ID = None
-        #print(f"처음 : {MESSAGE_ID}")
+        
+        MESSAGE_ID = 1339062649287217184
+
+        # 초기화까지 남은 시간 계산
+        reset_time = datetime.utcnow().replace(hour=5, minute=0, second=0, microsecond=0)
+        if datetime.utcnow() >= reset_time:
+            reset_time += timedelta(days=1)
+
+        remaining_time = reset_time - datetime.utcnow()
+        hours, minutes = divmod(remaining_time.seconds, 3600)
+        minutes //= 60  # 초를 분 단위로 변환
+
+        # 미션 임베드 생성
+        embed = discord.Embed(title="🎯 일일 미션", color=discord.Color.blue())
+        embed.add_field(name="⏳ 초기화까지 남은 시간", value=f"{hours}시간 {minutes}분", inline=False)
+        embed.set_footer(text="아래 버튼을 눌러 미션을 확인하세요.")
+
         if MESSAGE_ID is None:
-            message = await mission_channel.send('미션 확인 버튼을 눌러주세요!', view=MissionView())
+            message = await mission_channel.send(embed=embed, view=MissionView())
             MESSAGE_ID = message.id
-            #print(f"if 절 안: {MESSAGE_ID}")
         else:
             message = await mission_channel.fetch_message(MESSAGE_ID)
-            await message.edit(content='미션 확인 버튼을 눌러주세요!', view=MissionView())
+            await message.edit(embed=embed, view=MissionView())
+        
         # Task for Jimo
         bot.loop.create_task(open_prediction(
             name="지모", 
