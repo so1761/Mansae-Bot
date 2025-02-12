@@ -162,12 +162,15 @@ async def add_missions_to_all_users(mission_name,mission_type):
 
             # 미션 타입에 해당하는 기존 미션 목록을 가져와서 ID 생성
             mission_type_data = user_data.get("미션", {}).get(mission_type, {})
-            if mission_type_data:
-                new_mission_id = str(max(map(int, mission_type_data.keys())) + 1)
-            else:
-                new_mission_id = "1"  # 미션이 없으면 1번부터 시작 
-                
-            user_daily_missions_ref.child(new_mission_id).set(new_mission)
+
+            # 새로운 미션 이름과 관련된 데이터
+            new_mission = {
+                "완료": False,
+                "보상수령": False
+            }
+
+            # 미션 이름을 키로 사용하여 미션 추가
+            user_daily_missions_ref.child(mission_name).set(new_mission)
         return True
     else:
         return False
@@ -2332,16 +2335,10 @@ class hello(commands.Cog):
             # 유저의 미션 목록을 가져옴
             mission_type_data = user_data.get("미션", {}).get(미션종류, {})
 
-            # 리스트인지 확인 후 처리
-            if isinstance(mission_type_data, list):
-                mission_type_data = {str(i + 1): mission for i, mission in enumerate(mission_type_data) if mission}
-
-            # 삭제할 미션을 찾아서 삭제
-            for mission_id, mission in mission_type_data.items():
-                if mission["name"] == 미션이름:
-                    user_missions_ref.child(mission_id).delete()  # 미션 삭제
-                    deleted = True
-                    break  # 첫 번째로 찾은 미션만 삭제하고 종료
+            # 미션 목록에서 미션 이름이 일치하는 미션을 찾아 삭제
+            if 미션이름 in mission_type_data:
+                user_missions_ref.child(미션이름).delete()  # 미션 이름으로 삭제
+                deleted = True
 
         if deleted:
             await interaction.response.send_message(f"미션 '{미션이름}'을 삭제했습니다.", ephemeral=True)
