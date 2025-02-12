@@ -1263,6 +1263,7 @@ async def update_mission_message():
     mission_channel = bot.get_channel(int(MISSION_CHANNEL_ID)) # 미션 채널
     global MESSAGE_ID
     MESSAGE_ID = 1339062649287217184
+    print("1차 테스트")
     mission_channel = bot.get_channel(MISSION_CHANNEL_ID)  # 미션 메시지를 보낼 채널
 
     if not mission_channel:
@@ -1270,6 +1271,7 @@ async def update_mission_message():
 
     while True:
         # 현재 시간 (KST 기준)
+        print("2차 테스트")
         now = datetime.now() + timedelta(hours=9)
         reset_time = now.replace(hour=5, minute=0, second=0, microsecond=0)
         if now >= reset_time:
@@ -1286,16 +1288,19 @@ async def update_mission_message():
         embed.set_footer(text="아래 버튼을 눌러 미션을 확인하세요.")
 
         if MESSAGE_ID is None:
+            print("3-1차 테스트")
             message = await mission_channel.send(embed=embed, view=MissionView())
             MESSAGE_ID = message.id
         else:
             try:
                 message = await mission_channel.fetch_message(MESSAGE_ID)
                 await message.edit(embed=embed, view=MissionView())
+                print("3-2차 테스트")
             except discord.NotFound:
                 # 메시지가 삭제된 경우 새로 생성
                 message = await mission_channel.send(embed=embed, view=MissionView())
                 MESSAGE_ID = message.id
+                print("3-3차 테스트")
 
         await asyncio.sleep(60)  # 1분마다 업데이트 (초 단위)
 
@@ -1339,6 +1344,7 @@ class MyBot(commands.Bot):
         else:
             print("관리자가 발견되지 않았습니다")
         '''
+
         bot.loop.create_task(update_mission_message())
         
         # Task for Jimo
