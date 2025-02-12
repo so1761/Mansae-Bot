@@ -144,28 +144,28 @@ def give_item(nickname, item_name, amount):
 
     refitem.update({item_name: item_data.get(item_name, 0) + amount})
 
-def add_missions_to_all_users(mission_name,mission_type):
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
-        current_predict_season = cur_predict_seasonref.get()
-        # '예측포인트' 경로 아래의 모든 유저들 가져오기
-        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트")
-        all_users = ref.get()
+async def add_missions_to_all_users(mission_name,mission_type):
+    cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
+    current_predict_season = cur_predict_seasonref.get()
+    # '예측포인트' 경로 아래의 모든 유저들 가져오기
+    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트")
+    all_users = ref.get()
 
-        # 동적으로 미션 추가
-        new_mission = {"name": mission_name, "completed": False, "reward_claimed": False}
+    # 동적으로 미션 추가
+    new_mission = {"name": mission_name, "completed": False, "reward_claimed": False}
 
-        # 각 유저에게 미션 추가
-        if all_users:
-            for user_id, user_data in all_users.items():
-                # 각 유저의 '미션' 경로
-                user_daily_missions_ref = ref.child(user_id).child("미션").child(mission_type)
+    # 각 유저에게 미션 추가
+    if all_users:
+        for user_id, user_data in all_users.items():
+            # 각 유저의 '미션' 경로
+            user_daily_missions_ref = ref.child(user_id).child("미션").child(mission_type)
 
-                # 유저에게 새로운 미션 추가
-                new_mission_id = str(len(user_data.get("미션", {}).get("mission_type", {})) + 1)  # 미션 ID를 자동으로 생성
-                user_daily_missions_ref.child(new_mission_id).set(new_mission)
-            return True
-        else:
-            return False
+            # 유저에게 새로운 미션 추가
+            new_mission_id = str(len(user_data.get("미션", {}).get("mission_type", {})) + 1)  # 미션 ID를 자동으로 생성
+            user_daily_missions_ref.child(new_mission_id).set(new_mission)
+        return True
+    else:
+        return False
         
 async def get_summoner_puuid(riot_id, tagline):
     url = f'https://asia.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{riot_id}/{tagline}'
@@ -2283,17 +2283,17 @@ class hello(commands.Cog):
     @app_commands.command(name="일일미션추가",description="일일미션을 추가합니다")
     async def 일일미션추가(self,interaction: discord.Interaction, 미션이름:str):
         
-        result = add_missions_to_all_users(미션이름,"일일미션")
+        result = await add_missions_to_all_users(미션이름,"일일미션")
 
         if result:
             await interaction.response.send_message(f"미션을 추가했습니다.",ephemeral=True)
         else:
             await interaction.response.send_message("유저가 존재하지 않습니다.",ephemeral=True)
 
-    @app_commands.command(name="시즌미션추가",description="일일미션을 추가합니다")
+    @app_commands.command(name="시즌미션추가",description="시즌미션을 추가합니다")
     async def 시즌미션추가(self,interaction: discord.Interaction, 미션이름:str):
         
-        result = add_missions_to_all_users(미션이름,"시즌미션")
+        result = await add_missions_to_all_users(미션이름,"시즌미션")
 
         if result:
             await interaction.response.send_message(f"미션을 추가했습니다.",ephemeral=True)
