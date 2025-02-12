@@ -1259,7 +1259,6 @@ async def check_remake_status(name, puuid, event, prediction_votes):
         await asyncio.sleep(20)
 
 
-@tasks.loop(minutes=1)  # 1분마다 실행
 async def update_mission_message():
     mission_channel = bot.get_channel(int(MISSION_CHANNEL_ID)) # 미션 채널
     global MESSAGE_ID
@@ -1269,30 +1268,36 @@ async def update_mission_message():
     if not mission_channel:
         return
 
-    # 현재 시간 (KST 기준)
-    now = datetime.now() + timedelta(hours=9)
+    while True:
+        # 현재 시간 (KST 기준)
+        now = datetime.now() + timedelta(hours=9)
+        reset_time = now.replace(hour=5, minute=0, second=0, microsecond=0)
+        if now >= reset_time:
+            reset_time += timedelta(days=1)
 
-    # 다음 초기화 시간 (매일 오전 5시 KST)
-    reset_time = now.replace(hour=5, minute=0, second=0, microsecond=0)
-    if now >= reset_time:
-        reset_time += timedelta(days=1)
+        # 남은 시간 계산 (시간, 분)
+        remaining_time = reset_time - now
+        hours, remainder = divmod(remaining_time.seconds, 3600)
+        minutes = remainder // 60
 
-    # 남은 시간 계산 (시간, 분)
-    remaining_time = reset_time - now
-    hours, remainder = divmod(remaining_time.seconds, 3600)
-    minutes = remainder // 60
+        # 미션 임베드 생성
+        embed = discord.Embed(title="🎯 일일 미션", color=discord.Color.blue())
+        embed.add_field(name="⏳ 초기화까지 남은 시간", value=f"{hours}시간 {minutes}분", inline=False)
+        embed.set_footer(text="아래 버튼을 눌러 미션을 확인하세요.")
 
-    # 미션 임베드 생성
-    embed = discord.Embed(title="🎯 일일 미션", color=discord.Color.blue())
-    embed.add_field(name="⏳ 초기화까지 남은 시간", value=f"{hours}시간 {minutes}분", inline=False)
-    embed.set_footer(text="아래 버튼을 눌러 미션을 확인하세요.")
+        if MESSAGE_ID is None:
+            message = await mission_channel.send(embed=embed, view=MissionView())
+            MESSAGE_ID = message.id
+        else:
+            try:
+                message = await mission_channel.fetch_message(MESSAGE_ID)
+                await message.edit(embed=embed, view=MissionView())
+            except discord.NotFound:
+                # 메시지가 삭제된 경우 새로 생성
+                message = await mission_channel.send(embed=embed, view=MissionView())
+                MESSAGE_ID = message.id
 
-    if MESSAGE_ID is None:
-        message = await mission_channel.send(embed=embed, view=MissionView())
-        MESSAGE_ID = message.id
-    else:
-        message = await mission_channel.fetch_message(MESSAGE_ID)
-        await message.edit(content="",embed=embed, view=MissionView())
+        await asyncio.sleep(60)  # 1분마다 업데이트 (초 단위)
 
 class MyBot(commands.Bot):
     def __init__(self):
