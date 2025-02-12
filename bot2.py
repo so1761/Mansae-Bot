@@ -701,6 +701,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             anonymref = db.reference("승부예측/익명온오프")
             anonymbool = anonymref.get()
 
+            # 이전 게임의 match_id를 저장
             if name == "지모":
                 if current_game_type == "솔로랭크":
                     p.jimo_current_match_id_solo = await get_summoner_recentmatch_id(puuid)
@@ -1142,40 +1143,60 @@ async def check_remake_status(name, puuid, event, prediction_votes):
         current_game_state, current_game_type = await nowgame(puuid)
         if current_game_state != last_game_state:
             if not current_game_state:
-                previous_match_id = current_match_id
+                
+                # open_prediction에서 얻은 이전 게임의 current_match_id를 파악한 뒤 previous_match_id에 넣음
+                if name == "지모":
+                    if current_game_type == "솔로랭크":
+                        previous_match_id_solo = p.jimo_current_match_id_solo
+                    else:
+                        previous_match_id_flex  = p.jimo_current_match_id_flex
+                elif name == "Melon":
+                    if current_game_type == "솔로랭크":
+                        previous_match_id_solo = p.melon_current_match_id_solo
+                    else:
+                        previous_match_id_flex = p.melon_current_match_id_flex
 
                 await asyncio.sleep(30)  # 게임 종료 후 30초 대기
-                current_match_id = await get_summoner_recentmatch_id(puuid)
+                
+                # 30초 뒤 다시 이전 게임의 match_id를 구함. match_id가 다르다면 게임이 끝난 것(다시하기)
+                async def check_match_id(puuid, previous_match_id):
+                    current_match_id = await get_summoner_recentmatch_id(puuid)
+                    return previous_match_id != current_match_id, current_match_id
 
-                if not event.is_set():
-                    if previous_match_id != current_match_id:
-                        match_info = await get_summoner_matchinfo(current_match_id)
-                        participant_id = get_participant_id(match_info, puuid)
+                # match_id를 확인하고 게임이 끝났는지 판단
+                if current_game_type == "솔로랭크":
+                    match_ended, current_match_id = await check_match_id(puuid, previous_match_id_solo)
+                else:
+                    match_ended, current_match_id = await check_match_id(puuid, previous_match_id_flex)
 
-                        if match_info['info']['participants'][participant_id]['gameEndedInEarlySurrender'] and int(match_info['info']['gameDuration']) <= 240:
-                            userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-                            userembed.add_field(name="게임 종료", value=f"{name}의 랭크게임이 종료되었습니다!\n다시하기\n")
-                            await channel.send(embed=userembed)
+                if match_ended: # 게임이 끝났다면
+                    match_info = await get_summoner_matchinfo(current_match_id)
+                    participant_id = get_participant_id(match_info, puuid)
 
-                            winners = prediction_votes['win']
-                            losers = prediction_votes['lose']
-                            for winner in winners:
-                                ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
-                                originr = ref.get()
-                                bettingPoint = originr["베팅포인트"]
-                                bettingPoint -= winner['points']
-                                ref.update({"베팅포인트": bettingPoint})
+                    if match_info['info']['participants'][participant_id]['gameEndedInEarlySurrender'] and int(match_info['info']['gameDuration']) <= 240:
+                        userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+                        userembed.add_field(name="게임 종료", value=f"{name}의 랭크게임이 종료되었습니다!\n다시하기\n")
+                        await channel.send(embed=userembed)
 
-                            for loser in losers:
-                                ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
-                                originr = ref.get()
-                                bettingPoint = originr["베팅포인트"]
-                                bettingPoint -= loser['points']
-                                ref.update({"베팅포인트": bettingPoint})
+                        winners = prediction_votes['win']
+                        losers = prediction_votes['lose']
+                        for winner in winners:
+                            ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
+                            originr = ref.get()
+                            bettingPoint = originr["베팅포인트"]
+                            bettingPoint -= winner['points']
+                            ref.update({"베팅포인트": bettingPoint})
 
-                            event.set()
-                            prediction_votes['win'].clear()
-                            prediction_votes['lose'].clear()
+                        for loser in losers:
+                            ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
+                            originr = ref.get()
+                            bettingPoint = originr["베팅포인트"]
+                            bettingPoint -= loser['points']
+                            ref.update({"베팅포인트": bettingPoint})
+
+                        event.set()
+                        prediction_votes['win'].clear()
+                        prediction_votes['lose'].clear()
 
         last_game_state = current_game_state
         await asyncio.sleep(20)
@@ -1271,10 +1292,8 @@ class MyBot(commands.Bot):
             event=p.melon_event
         ))
 
-        #bot.loop.create_task(check_remake_status("지모", JIMO_PUUID, p.jimo_current_match_id, p.jimo_event, p.votes['지모']['prediction']))
-        #bot.loop.create_task(check_remake_status("Melon", MELON_PUUID, p.melon_current_match_id, p.melon_event, p.votes['Melon']['prediction']))
-        #bot.loop.create_task(check_jimo_remake_status())
-        #bot.loop.create_task(check_melon_remake_status())
+        bot.loop.create_task(check_remake_status("지모", JIMO_PUUID, p.jimo_current_match_id, p.jimo_event, p.votes['지모']['prediction']))
+        bot.loop.create_task(check_remake_status("Melon", MELON_PUUID, p.melon_current_match_id, p.melon_event, p.votes['Melon']['prediction']))
 
 bot = MyBot()
 @bot.event
