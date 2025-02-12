@@ -242,6 +242,8 @@ class WarnModal(Modal):
         warned_user = self.message.author
         moderator = interaction.user
         reason = self.reason.value
+        
+        WARNING_EMOJI = '⚠️'  # 경고 이모지
 
         # 임베드 생성
         embed = discord.Embed(title="경고 기록", color=discord.Color.red())
@@ -256,11 +258,14 @@ class WarnModal(Modal):
         view = discord.ui.View()
         view.add_item(button)
         
+        channel = interaction.client.get_channel(self.message.channel.id)
+        message = await channel.fetch_message(self.message.id)
+        await message.add_reaction(WARNING_EMOJI)
         # 경고 채널에 임베드 전송
         warning_channel = interaction.client.get_channel(WARNING_CHANNEL_ID)
         if warning_channel:
             await warning_channel.send(embed=embed, view = view)
-            await interaction.response.send_message("경고가 성공적으로 기록되었습니다.", ephemeral=True)
+            await interaction.response.send_message(embed=embed, view = view)
         else:
             await interaction.response.send_message("경고 채널을 찾을 수 없습니다.", ephemeral=True)
 
