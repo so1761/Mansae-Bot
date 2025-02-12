@@ -1294,7 +1294,7 @@ async def update_mission_message():
 
     while True:
         # 현재 시간 (KST 기준)
-        now = datetime.now() + timedelta(hours=9)
+        now = datetime.now()
         reset_time = now.replace(hour=5, minute=0, second=0, microsecond=0)
         if now >= reset_time:
             reset_time += timedelta(days=1)
