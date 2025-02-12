@@ -1334,7 +1334,7 @@ class MyBot(commands.Bot):
         else:
             print("관리자가 발견되지 않았습니다")
         '''
-        update_mission_message.start()
+        bot.loop.create_task(update_mission_message())
         
         # Task for Jimo
         bot.loop.create_task(open_prediction(
