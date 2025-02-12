@@ -1312,9 +1312,12 @@ class MyBot(commands.Bot):
         '''
         mission_channel = bot.get_channel(int(MISSION_CHANNEL_ID)) # 미션 채널
         global MESSAGE_ID
+        MESSAGE_ID = None
+        #print(f"처음 : {MESSAGE_ID}")
         if MESSAGE_ID is None:
             message = await mission_channel.send('미션 확인 버튼을 눌러주세요!', view=MissionView())
             MESSAGE_ID = message.id
+            #print(f"if 절 안: {MESSAGE_ID}")
         else:
             message = await mission_channel.fetch_message(MESSAGE_ID)
             await message.edit(content='미션 확인 버튼을 눌러주세요!', view=MissionView())
