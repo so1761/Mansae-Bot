@@ -87,23 +87,49 @@ used_items_for_user_melon = {}
 class MissionView(View):
     def __init__(self):
         super().__init__(timeout=None)
-        self.add_item(CheckMissionButton())
+        self.add_item(CheckDailyMissionButton())
+        self.add_item(CheckSeasonMissionButton())
 
-class CheckMissionButton(discord.ui.Button):
+class CheckDailyMissionButton(discord.ui.Button):
     def __init__(self):
-        super().__init__(label="미션 목록", custom_id="check_mission", style=discord.ButtonStyle.primary)
+        super().__init__(label="일일 미션", custom_id="daily_mission", style=discord.ButtonStyle.primary)
 
     async def callback(self, interaction: discord.Interaction):
         user_id = interaction.user.id
         mission_data = get_mission_data(user_id)  # 유저별 미션 상태 불러오기
 
         embed = discord.Embed(title="📜 미션 목록", color=discord.Color.green())
-        
+
         for mission in mission_data:
             status = "✅ 완료" if mission["completed"] else "❌ 미완료"
             embed.add_field(name=mission["name"], value=status, inline=False)
 
         view = discord.ui.View()
+        
+        # 미션 완료 여부에 따른 버튼 추가
+        for mission in mission_data:
+            button = MissionRewardButton(mission)
+            view.add_item(button)
+
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+class CheckSeasonMissionButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="시즌 미션", custom_id="season_mission", style=discord.ButtonStyle.success)
+
+    async def callback(self, interaction: discord.Interaction):
+        user_id = interaction.user.id
+        mission_data = get_mission_data(user_id)  # 유저별 미션 상태 불러오기
+
+        embed = discord.Embed(title="📜 미션 목록", color=discord.Color.green())
+
+        for mission in mission_data:
+            status = "✅ 완료" if mission["completed"] else "❌ 미완료"
+            embed.add_field(name=mission["name"], value=status, inline=False)
+
+        view = discord.ui.View()
+        
+        # 미션 완료 여부에 따른 버튼 추가
         for mission in mission_data:
             button = MissionRewardButton(mission)
             view.add_item(button)
@@ -113,9 +139,9 @@ class CheckMissionButton(discord.ui.Button):
 class MissionRewardButton(discord.ui.Button):
     def __init__(self, mission):
         super().__init__(
-            label=f"{mission['name']} 보상 받기",
+            label="🎁 보상 받기",  # 보상 받기 버튼
             style=discord.ButtonStyle.success,
-            disabled=mission["completed"] or mission["reward_claimed"],
+            disabled=mission["completed"] is False or mission["reward_claimed"],  # 완료된 미션만 버튼 활성화
             custom_id=f"reward_{mission['id']}"
         )
         self.mission = mission
@@ -136,8 +162,7 @@ def get_mission_data(user_id):
 
 def claim_reward(user_id, mission_id):
     """보상 지급 처리 (임시 예제)"""
-    # 여기서 데이터베이스를 업데이트해야 함
-    return True  # 보상 지급 성공)
+    return True  # 보상 지급 성공
 
 async def nowgame(puuid):
     url = f'https://kr.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/{puuid}'
@@ -1280,8 +1305,8 @@ async def update_mission_message():
         minutes = remainder // 60
 
         # 미션 임베드 생성
-        embed = discord.Embed(title="🎯 일일 미션", color=discord.Color.blue())
-        embed.add_field(name="⏳ 초기화까지 남은 시간", value=f"{hours}시간 {minutes}분", inline=False)
+        embed = discord.Embed(title="🎯 예측 미션", color=discord.Color.blue())
+        embed.add_field(name="⏳ 일일 미션 초기화까지 남은 시간", value=f"{hours}시간 {minutes}분", inline=False)
         embed.set_footer(text="아래 버튼을 눌러 미션을 확인하세요.")
 
         if MESSAGE_ID is None:
