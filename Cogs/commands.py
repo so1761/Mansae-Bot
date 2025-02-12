@@ -2318,27 +2318,31 @@ class hello(commands.Cog):
             await interaction.response.send_message("유저가 존재하지 않습니다.", ephemeral=True)
             return
 
+        deleted = False  # 삭제 여부를 추적
+
         # 각 유저에서 특정 미션 삭제
         for user_id, user_data in all_users.items():
             # 각 유저의 '미션' 경로
-            user_daily_missions_ref = ref.child(user_id).child("미션").child(미션종류)
+            user_missions_ref = ref.child(user_id).child("미션").child(미션종류)
 
             # 유저의 미션 목록을 가져옴
             mission_type_data = user_data.get("미션", {}).get(미션종류, {})
 
+            # 리스트인지 확인 후 처리
+            if isinstance(mission_type_data, list):
+                mission_type_data = {str(i + 1): mission for i, mission in enumerate(mission_type_data) if mission}
+
             # 삭제할 미션을 찾아서 삭제
-            deleted = False  # 삭제 여부를 추적
             for mission_id, mission in mission_type_data.items():
-                if mission["name"] == 미션이름:  # 미션 이름으로 매칭
-                    user_daily_missions_ref.child(mission_id).delete()  # 미션 삭제
+                if mission["name"] == 미션이름:
+                    user_missions_ref.child(mission_id).delete()  # 미션 삭제
                     deleted = True
                     break  # 첫 번째로 찾은 미션만 삭제하고 종료
 
-            if deleted:
-                await interaction.response.send_message(f"미션 '{미션이름}'을 삭제했습니다.", ephemeral=True)
-            else:
-                await interaction.response.send_message(f"미션 '{미션이름}'을 찾을 수 없습니다.", ephemeral=True)
-                break  # 미션이 없으면 더 이상 유저를 처리하지 않음
+        if deleted:
+            await interaction.response.send_message(f"미션 '{미션이름}'을 삭제했습니다.", ephemeral=True)
+        else:
+            await interaction.response.send_message(f"미션 '{미션이름}'을 찾을 수 없습니다.", ephemeral=True)
 
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
