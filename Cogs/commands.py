@@ -2255,13 +2255,31 @@ class hello(commands.Cog):
         else:
             await interaction.response.send_message(f"보유한 {이름}의 자동예측이 없습니다!",ephemeral=True)
             return
-    
-    @app_commands.command(name="명령어",description="명령어 목록을 불러옵니다")
-    async def 명령어(self, interaction: discord.Interaction):
-        commands = await interaction.client.tree.fetch_commands(guild=interaction.guild)
-        for cmd in commands:
-            if cmd.name == "자동예측변경":
-                await interaction.response.send_message(f"명령어: {cmd.name}, ID: {cmd.id}",ephemeral=True)
+        
+    @app_commands.command(name="일일미션추가",description="일일미션을 추가합니다")
+    async def add_missions_to_all_users(self,interaction: discord.Interaction, 미션이름:str):
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
+        current_predict_season = cur_predict_seasonref.get()
+        # '예측포인트' 경로 아래의 모든 유저들 가져오기
+        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트")
+        all_users = ref.get()
+
+        # 동적으로 미션 추가
+        new_mission = {"name": 미션이름, "completed": False, "reward_claimed": False}
+
+        # 각 유저에게 미션 추가
+        if all_users:
+            for user_id, user_data in all_users.items():
+                # 각 유저의 '미션' 경로
+                user_daily_missions_ref = ref.child(user_id).child("미션").child("일일미션")
+
+                # 유저에게 새로운 미션 추가
+                new_mission_id = str(len(user_data.get("미션", {}).get("일일미션", {})) + 1)  # 일일미션 ID를 자동으로 생성
+                user_daily_missions_ref.child(new_mission_id).set(new_mission)
+
+            interaction.response.send_message(f"미션을 추가했습니다.",ephemeral=True)
+        else:
+            interaction.response.send_message("유저가 존재하지 않습니다.",ephemeral=True)
 
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")

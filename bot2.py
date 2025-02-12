@@ -155,10 +155,20 @@ class MissionRewardButton(discord.ui.Button):
 
 def get_mission_data(user_id):
     """데이터베이스에서 미션 상태 불러오기 (임시 예제)"""
-    return [
-        {"id": 1, "name": "승부예측 1회 적중", "completed": True, "reward_claimed": False},
-        {"id": 2, "name": "5연승 달성", "completed": False, "reward_claimed": False},
-    ]
+    cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
+    current_predict_season = cur_predict_seasonref.get()
+
+    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_id}/미션")
+    mission_data = ref.get()
+
+    # 미션 데이터를 처리하여 반환
+    if mission_data:
+        return [
+            {"id": mission_id, "name": mission["name"], "completed": mission["completed"], "reward_claimed": mission["reward_claimed"]}
+            for mission_id, mission in mission_data.items()
+        ]
+    else:
+        return []
 
 def claim_reward(user_id, mission_id):
     """보상 지급 처리 (임시 예제)"""
