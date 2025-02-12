@@ -9,13 +9,12 @@ import math
 from firebase_admin import credentials
 from firebase_admin import db
 from discord import Intents
-from discord import TextStyle
 from discord.ext import commands
-from discord.ui import Modal, TextInput, View, Button
+from discord.ui import View, Button
 from discord import Game
 from discord import Status
 from discord import Object
-from datetime import datetime
+from datetime import datetime,timedelta
 from dotenv import load_dotenv
 
 TARGET_TEXT_CHANNEL_ID = 1289184218135396483
@@ -79,9 +78,78 @@ ANONYM_NAME_LOSE = [
 
 CHANNEL_ID = '938728993329397781'
 NOTICE_CHANNEL_ID = '1232585451911643187'
+MISSION_CHANNEL_ID = '1339058849247793255'
 
 used_items_for_user_jimo = {}
 used_items_for_user_melon = {}
+
+class MissionView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(Button(label='미션확인', custom_id='check_mission'))
+
+    async def update_main_embed(self, interaction: discord.Interaction):
+        reset_time = datetime.utcnow().replace(hour=5, minute=0, second=0, microsecond=0)
+        if datetime.utcnow() >= reset_time:
+            reset_time += timedelta(days=1)
+        
+        remaining_time = reset_time - datetime.utcnow()
+        hours, remainder = divmod(remaining_time.seconds, 3600)
+        
+        embed = discord.Embed(title="🎯 일일 미션", color=discord.Color.blue())
+        embed.add_field(name="초기화까지 남은 시간", value=f"{hours}시간 {remainder // 60}분", inline=False)
+
+        await interaction.response.send_message(embed=embed, view=self, ephemeral=True)
+
+class CheckMissionButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="미션 목록", custom_id="check_mission", style=discord.ButtonStyle.primary)
+
+    async def callback(self, interaction: discord.Interaction):
+        user_id = interaction.user.id
+        mission_data = get_mission_data(user_id)  # 유저별 미션 상태 불러오기
+
+        embed = discord.Embed(title="📜 미션 목록", color=discord.Color.green())
+        
+        for mission in mission_data:
+            status = "✅ 완료" if mission["completed"] else "❌ 미완료"
+            embed.add_field(name=mission["name"], value=status, inline=False)
+
+        view = discord.ui.View()
+        for mission in mission_data:
+            button = MissionRewardButton(mission)
+            view.add_item(button)
+
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+class MissionRewardButton(discord.ui.Button):
+    def __init__(self, mission):
+        super().__init__(
+            label=f"{mission['name']} 보상 받기",
+            style=discord.ButtonStyle.success,
+            disabled=mission["completed"] or mission["reward_claimed"],
+            custom_id=f"reward_{mission['id']}"
+        )
+        self.mission = mission
+
+    async def callback(self, interaction: discord.Interaction):
+        user_id = interaction.user.id
+        if claim_reward(user_id, self.mission["id"]):
+            await interaction.response.send_message("🎉 보상을 받았습니다!", ephemeral=True)
+        else:
+            await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
+
+def get_mission_data(user_id):
+    """데이터베이스에서 미션 상태 불러오기 (임시 예제)"""
+    return [
+        {"id": 1, "name": "승부예측 1회 적중", "completed": True, "reward_claimed": False},
+        {"id": 2, "name": "5연승 달성", "completed": False, "reward_claimed": False},
+    ]
+
+def claim_reward(user_id, mission_id):
+    """보상 지급 처리 (임시 예제)"""
+    # 여기서 데이터베이스를 업데이트해야 함
+    return True  # 보상 지급 성공)
 
 async def nowgame(puuid):
     url = f'https://kr.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/{puuid}'
@@ -193,6 +261,7 @@ async def get_summoner_matchinfo(matchid):
         except Exception as e:
             print(f"[ERROR] Exception occurred while fetching match info in get_summoner_matchinfo: {e}")
     return None
+
 async def refresh_prediction(name, anonym, prediction_votes):
     if name == "지모":
         embed = discord.Embed(title="예측 현황", color=0x000000) # Black
@@ -1241,7 +1310,14 @@ class MyBot(commands.Bot):
         else:
             print("관리자가 발견되지 않았습니다")
         '''
-
+        mission_channel = bot.get_channel(int(MISSION_CHANNEL_ID)) # 미션 채널
+        global MESSAGE_ID
+        if MESSAGE_ID is None:
+            message = await mission_channel.send('미션 확인 버튼을 눌러주세요!', view=MissionView())
+            MESSAGE_ID = message.id
+        else:
+            message = await mission_channel.fetch_message(MESSAGE_ID)
+            await message.edit(content='미션 확인 버튼을 눌러주세요!', view=MissionView())
         # Task for Jimo
         bot.loop.create_task(open_prediction(
             name="지모", 
