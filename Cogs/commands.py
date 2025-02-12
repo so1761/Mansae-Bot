@@ -861,8 +861,8 @@ class hello(commands.Cog):
 
     async def warn_user(self, interaction: discord.Interaction, message: discord.Message) -> None:
         # 경고 처리 로직
-        allowed_role_name = "1등 ✨"
-
+        #allowed_role_name = "1등 ✨"
+        allowed_role_name = "관리자"
         # 사용자의 역할 확인
         user_roles = [role.name for role in interaction.user.roles]
         if allowed_role_name in user_roles:
