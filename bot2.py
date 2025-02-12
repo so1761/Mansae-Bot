@@ -1318,19 +1318,14 @@ async def update_mission_message():
         time_difference = season_end_date - now
         
         # 시간 차이를 한글로 변환하여 출력
-        days = time_difference.days
-        hours, remainder = divmod(time_difference.seconds, 3600)
-        minutes, seconds = divmod(remainder, 60)
+        sdays = time_difference.days
+        shours = divmod(time_difference.seconds, 3600)
 
         output = ""
-        if days:
-            output += f"{days}일 "
-        if hours:
-            output += f"{hours}시간 "
-        if minutes:
-            output += f"{minutes}분 "
-        if seconds:
-            output += f"{seconds}초"
+        if sdays:
+            output += f"{sdays}일 "
+        if shours:
+            output += f"{shours}시간 "
 
         if time_difference.total_seconds() < 0:
             output = "시즌 종료"
