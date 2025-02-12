@@ -1319,7 +1319,7 @@ async def update_mission_message():
         
         # 시간 차이를 한글로 변환하여 출력
         sdays = time_difference.days
-        shours = divmod(time_difference.seconds, 3600)
+        shours , sremainder = divmod(time_difference.seconds, 3600)
 
         output = ""
         if sdays:
