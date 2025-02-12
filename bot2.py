@@ -158,6 +158,7 @@ def get_mission_data(user_id,mission_type):
     cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
     current_predict_season = cur_predict_seasonref.get()
 
+    print(user_id)
     ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_id}/미션/{mission_type}")
     mission_data = ref.get()
 
