@@ -95,8 +95,8 @@ class CheckDailyMissionButton(discord.ui.Button):
         super().__init__(label="일일 미션", custom_id="daily_mission", style=discord.ButtonStyle.primary)
 
     async def callback(self, interaction: discord.Interaction):
-        user_id = interaction.user.id
-        mission_data = get_mission_data(user_id,"일일미션")  # 유저별 미션 상태 불러오기
+        user_name = interaction.user.name
+        mission_data = get_mission_data(user_name,"일일미션")  # 유저별 미션 상태 불러오기
 
         embed = discord.Embed(title="📜 미션 목록", color=discord.Color.green())
 
@@ -118,8 +118,8 @@ class CheckSeasonMissionButton(discord.ui.Button):
         super().__init__(label="시즌 미션", custom_id="season_mission", style=discord.ButtonStyle.success)
 
     async def callback(self, interaction: discord.Interaction):
-        user_id = interaction.user.id
-        mission_data = get_mission_data(user_id,"시즌미션")  # 유저별 미션 상태 불러오기
+        user_name = interaction.user.name
+        mission_data = get_mission_data(user_name,"시즌미션")  # 유저별 미션 상태 불러오기
 
         embed = discord.Embed(title="📜 미션 목록", color=discord.Color.green())
 
@@ -147,19 +147,18 @@ class MissionRewardButton(discord.ui.Button):
         self.mission = mission
 
     async def callback(self, interaction: discord.Interaction):
-        user_id = interaction.user.id
-        if claim_reward(user_id, self.mission["id"]):
+        user_name = interaction.user.name
+        if claim_reward(user_name, self.mission["id"]):
             await interaction.response.send_message("🎉 보상을 받았습니다!", ephemeral=True)
         else:
             await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
 
-def get_mission_data(user_id,mission_type):
+def get_mission_data(user_name,mission_type):
     """데이터베이스에서 미션 상태 불러오기 (임시 예제)"""
     cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
     current_predict_season = cur_predict_seasonref.get()
 
-    print(user_id)
-    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_id}/미션/{mission_type}")
+    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}")
     mission_data = ref.get()
 
     print(mission_data)
@@ -172,7 +171,7 @@ def get_mission_data(user_id,mission_type):
     else:
         return []
 
-def claim_reward(user_id, mission_id):
+def claim_reward(user_name, mission_id):
     """보상 지급 처리 (임시 예제)"""
     return True  # 보상 지급 성공
 
