@@ -2277,9 +2277,9 @@ class hello(commands.Cog):
                 new_mission_id = str(len(user_data.get("미션", {}).get("일일미션", {})) + 1)  # 일일미션 ID를 자동으로 생성
                 user_daily_missions_ref.child(new_mission_id).set(new_mission)
 
-            interaction.response.send_message(f"미션을 추가했습니다.",ephemeral=True)
+            await interaction.response.send_message(f"미션을 추가했습니다.",ephemeral=True)
         else:
-            interaction.response.send_message("유저가 존재하지 않습니다.",ephemeral=True)
+            await interaction.response.send_message("유저가 존재하지 않습니다.",ephemeral=True)
 
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
