@@ -1264,7 +1264,6 @@ async def update_mission_message():
     global MESSAGE_ID
     MESSAGE_ID = 1339062649287217184
     print("1차 테스트")
-    mission_channel = bot.get_channel(MISSION_CHANNEL_ID)  # 미션 메시지를 보낼 채널
 
     if not mission_channel:
         return
