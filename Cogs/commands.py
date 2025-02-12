@@ -160,8 +160,9 @@ async def add_missions_to_all_users(mission_name,mission_type):
             # 각 유저의 '미션' 경로
             user_daily_missions_ref = ref.child(user_id).child("미션").child(mission_type)
 
-            # 유저에게 새로운 미션 추가
-            new_mission_id = str(len(user_data.get("미션", {}).get("mission_type", {})) + 1)  # 미션 ID를 자동으로 생성
+            # 미션 타입에 해당하는 기존 미션 목록을 가져와서 ID 생성
+            mission_type_data = user_data.get("미션", {}).get(mission_type, {})
+            new_mission_id = str(len(mission_type_data) + 1)  # 미션 ID를 자동으로 생성
             user_daily_missions_ref.child(new_mission_id).set(new_mission)
         return True
     else:
