@@ -2300,6 +2300,45 @@ class hello(commands.Cog):
             await interaction.response.send_message(f"미션을 추가했습니다.",ephemeral=True)
         else:
             await interaction.response.send_message("유저가 존재하지 않습니다.",ephemeral=True)
+    
+    @app_commands.command(name="미션삭제", description="일일미션 또는 시즌미션을 삭제합니다.")
+    @app_commands.choices(미션종류=[
+    Choice(name='일일미션', value='일일미션'),
+    Choice(name='시즌미션', value='시즌미션')
+    ])
+    async def remove_mission(self, interaction: discord.Interaction, 미션이름: str, 미션종류: str):
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")  # 현재 진행중인 예측 시즌을 가져옴
+        current_predict_season = cur_predict_seasonref.get()
+        
+        # '예측포인트' 경로 아래의 모든 유저들 가져오기
+        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트")
+        all_users = ref.get()
+
+        if not all_users:
+            await interaction.response.send_message("유저가 존재하지 않습니다.", ephemeral=True)
+            return
+
+        # 각 유저에서 특정 미션 삭제
+        for user_id, user_data in all_users.items():
+            # 각 유저의 '미션' 경로
+            user_daily_missions_ref = ref.child(user_id).child("미션").child(미션종류)
+
+            # 유저의 미션 목록을 가져옴
+            mission_type_data = user_data.get("미션", {}).get(미션종류, {})
+
+            # 삭제할 미션을 찾아서 삭제
+            deleted = False  # 삭제 여부를 추적
+            for mission_id, mission in mission_type_data.items():
+                if mission["name"] == 미션이름:  # 미션 이름으로 매칭
+                    user_daily_missions_ref.child(mission_id).delete()  # 미션 삭제
+                    deleted = True
+                    break  # 첫 번째로 찾은 미션만 삭제하고 종료
+
+            if deleted:
+                await interaction.response.send_message(f"미션 '{미션이름}'을 삭제했습니다.", ephemeral=True)
+            else:
+                await interaction.response.send_message(f"미션 '{미션이름}'을 찾을 수 없습니다.", ephemeral=True)
+                break  # 미션이 없으면 더 이상 유저를 처리하지 않음
 
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
