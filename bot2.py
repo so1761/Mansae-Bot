@@ -10,6 +10,7 @@ from firebase_admin import credentials
 from firebase_admin import db
 from discord import Intents
 from discord.ext import commands
+from discord.ext import tasks
 from discord.ui import View, Button
 from discord import Game
 from discord import Status
@@ -1257,6 +1258,42 @@ async def check_remake_status(name, puuid, event, prediction_votes):
         last_game_state = current_game_state
         await asyncio.sleep(20)
 
+
+@tasks.loop(minutes=1)  # 1분마다 실행
+async def update_mission_message():
+    mission_channel = bot.get_channel(int(MISSION_CHANNEL_ID)) # 미션 채널
+    global MESSAGE_ID
+    MESSAGE_ID = 1339062649287217184
+    mission_channel = bot.get_channel(MISSION_CHANNEL_ID)  # 미션 메시지를 보낼 채널
+
+    if not mission_channel:
+        return
+
+    # 현재 시간 (KST 기준)
+    now = datetime.now() + timedelta(hours=9)
+
+    # 다음 초기화 시간 (매일 오전 5시 KST)
+    reset_time = now.replace(hour=5, minute=0, second=0, microsecond=0)
+    if now >= reset_time:
+        reset_time += timedelta(days=1)
+
+    # 남은 시간 계산 (시간, 분)
+    remaining_time = reset_time - now
+    hours, remainder = divmod(remaining_time.seconds, 3600)
+    minutes = remainder // 60
+
+    # 미션 임베드 생성
+    embed = discord.Embed(title="🎯 일일 미션", color=discord.Color.blue())
+    embed.add_field(name="⏳ 초기화까지 남은 시간", value=f"{hours}시간 {minutes}분", inline=False)
+    embed.set_footer(text="아래 버튼을 눌러 미션을 확인하세요.")
+
+    if MESSAGE_ID is None:
+        message = await mission_channel.send(embed=embed, view=MissionView())
+        MESSAGE_ID = message.id
+    else:
+        message = await mission_channel.fetch_message(MESSAGE_ID)
+        await message.edit(content="",embed=embed, view=MissionView())
+
 class MyBot(commands.Bot):
     def __init__(self):
         super().__init__(
@@ -1297,30 +1334,7 @@ class MyBot(commands.Bot):
         else:
             print("관리자가 발견되지 않았습니다")
         '''
-        mission_channel = bot.get_channel(int(MISSION_CHANNEL_ID)) # 미션 채널
-        
-        MESSAGE_ID = 1339062649287217184
-
-        # 초기화까지 남은 시간 계산
-        reset_time = datetime.utcnow().replace(hour=5, minute=0, second=0, microsecond=0)
-        if datetime.utcnow() >= reset_time:
-            reset_time += timedelta(days=1)
-
-        remaining_time = reset_time - datetime.utcnow()
-        hours, minutes = divmod(remaining_time.seconds, 3600)
-        minutes //= 60  # 초를 분 단위로 변환
-
-        # 미션 임베드 생성
-        embed = discord.Embed(title="🎯 일일 미션", color=discord.Color.blue())
-        embed.add_field(name="⏳ 초기화까지 남은 시간", value=f"{hours}시간 {minutes}분", inline=False)
-        embed.set_footer(text="아래 버튼을 눌러 미션을 확인하세요.")
-
-        if MESSAGE_ID is None:
-            message = await mission_channel.send(embed=embed, view=MissionView())
-            MESSAGE_ID = message.id
-        else:
-            message = await mission_channel.fetch_message(MESSAGE_ID)
-            await message.edit(embed=embed, view=MissionView())
+        update_mission_message.start()
         
         # Task for Jimo
         bot.loop.create_task(open_prediction(
