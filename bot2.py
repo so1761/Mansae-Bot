@@ -96,7 +96,7 @@ class CheckDailyMissionButton(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         user_id = interaction.user.id
-        mission_data = get_mission_data(user_id)  # 유저별 미션 상태 불러오기
+        mission_data = get_mission_data(user_id,"일일미션")  # 유저별 미션 상태 불러오기
 
         embed = discord.Embed(title="📜 미션 목록", color=discord.Color.green())
 
@@ -119,7 +119,7 @@ class CheckSeasonMissionButton(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction):
         user_id = interaction.user.id
-        mission_data = get_mission_data(user_id)  # 유저별 미션 상태 불러오기
+        mission_data = get_mission_data(user_id,"시즌미션")  # 유저별 미션 상태 불러오기
 
         embed = discord.Embed(title="📜 미션 목록", color=discord.Color.green())
 
@@ -153,12 +153,12 @@ class MissionRewardButton(discord.ui.Button):
         else:
             await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
 
-def get_mission_data(user_id):
+def get_mission_data(user_id,mission_type):
     """데이터베이스에서 미션 상태 불러오기 (임시 예제)"""
     cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
     current_predict_season = cur_predict_seasonref.get()
 
-    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_id}/미션")
+    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_id}/미션/{mission_type}")
     mission_data = ref.get()
 
     # 미션 데이터를 처리하여 반환
@@ -1314,9 +1314,31 @@ async def update_mission_message():
         hours, remainder = divmod(remaining_time.seconds, 3600)
         minutes = remainder // 60
 
+        season_end_date = datetime(2025, 3, 1, 0, 0, 0)
+        time_difference = season_end_date - now
+        
+        # 시간 차이를 한글로 변환하여 출력
+        days = time_difference.days
+        hours, remainder = divmod(time_difference.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        output = ""
+        if days:
+            output += f"{days}일 "
+        if hours:
+            output += f"{hours}시간 "
+        if minutes:
+            output += f"{minutes}분 "
+        if seconds:
+            output += f"{seconds}초"
+
+        if time_difference.total_seconds() < 0:
+            output = "시즌 종료"
+
         # 미션 임베드 생성
         embed = discord.Embed(title="🎯 예측 미션", color=discord.Color.blue())
         embed.add_field(name="⏳ 일일 미션 초기화까지 남은 시간", value=f"{hours}시간 {minutes}분", inline=False)
+        embed.add_field(name="⏳ 시즌 초기화까지 남은 시간", value=f"{output}", inline=False)
         embed.set_footer(text="아래 버튼을 눌러 미션을 확인하세요.")
 
         if MESSAGE_ID is None:
