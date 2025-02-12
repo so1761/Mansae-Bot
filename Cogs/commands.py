@@ -2300,8 +2300,6 @@ class hello(commands.Cog):
         else:
             await interaction.response.send_message("유저가 존재하지 않습니다.",ephemeral=True)
 
-    @app_commands.command(name="일일미션추가",description="일일미션을 추가합니다")
-
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
     @app_commands.choices(상대=[
