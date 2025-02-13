@@ -194,7 +194,12 @@ class MissionRewardButton(discord.ui.Button):
             self.disabled = True  
 
             # `self.view`를 직접 설정하지 않고, interaction에서 가져옴
-            view = self.view  
+            # view = self.view
+
+            completed_missions = [m for m in mission_data if m["completed"] and not m["reward_claimed"]]
+            # 새로고침
+            view = MissionRewardView(completed_missions,self.mission_type)
+
             await interaction.message.edit(view=view)
         else:
             await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
