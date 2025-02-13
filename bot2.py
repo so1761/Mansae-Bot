@@ -198,7 +198,9 @@ class MissionRewardButton(discord.ui.Button):
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")  # 현재 진행 중인 예측 시즌 가져오기
             current_predict_season = cur_predict_seasonref.get()
 
-            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}")
+
+
+            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{self.mission_type}")
             mission_data = ref.get()
 
             completed_missions = [m for m in mission_data if m["completed"] and not m["reward_claimed"]]
