@@ -812,6 +812,17 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 else:
                                     point_ref.update({"포인트": predict_data["포인트"] + perfect_point})
                                     kdaembed.add_field(name="", value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {perfect_point}점을 획득하셨습니다!", inline=False)
+                                
+                                # ====================  [미션]  ====================
+                                # 시즌미션 : 불사대마왕
+                                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                                current_predict_season = cur_predict_seasonref.get()
+                                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{perfect_winner['name']}/미션/시즌미션/불사대마왕")
+                                ref.update({"완료": True})
+                                print(f"{perfect_winner['name']}의 [불사대마왕] 미션 완료")
+
+                                # ====================  [미션]  ====================
+
                             for winner in winners:
                                 point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
                                 predict_data = point_ref.get()

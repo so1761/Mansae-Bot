@@ -1614,6 +1614,17 @@ class hello(commands.Cog):
                     userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
                     userembed.add_field(name="",value=f"{interaction.user.name}님이 {need_point}포인트를 소모하여 순위표를 전체 열람했습니다!", inline=False)
                     await channel.send(f"\n",embed = userembed)
+
+                    # ====================  [미션]  ====================
+                    # 시즌미션 : 내가 보여주는 미래
+                    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                    current_predict_season = cur_predict_seasonref.get()
+                    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/내가 보여주는 미래")
+                    ref.update({"완료": True})
+                    print(f"{interaction.user.name}의 [내가 보여주는 미래] 미션 완료")
+
+                    # ====================  [미션]  ====================
+
                     await interaction.response.send_message(embed=embed)
             see1button.callback = see1button_callback
             see2button.callback = see2button_callback
@@ -1927,7 +1938,7 @@ class hello(commands.Cog):
                                 print(f"{nickname}의 [모든 것을 건 한방] 미션 완료")
 
                             # ====================  [미션]  ====================
-                            
+
                             return
 
         if 이름 == "지모":
@@ -2393,6 +2404,38 @@ class hello(commands.Cog):
             await interaction.followup.send(f"미션 '{미션이름}'을 삭제했습니다.", ephemeral=True)
         else:
             await interaction.followup.send(f"미션 '{미션이름}'을 찾을 수 없습니다.", ephemeral=True)
+
+    @app_commands.command(name="업적", description="시즌미션의 상세 정보를 확인합니다.")
+    async def get_user_missions(self, interaction: discord.Interaction):
+        user_id = interaction.user.name
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_id}/미션")
+        user_missions = ref.get()
+
+        if not user_missions:
+            await interaction.response.send_message("현재 진행 중인 미션이 없습니다.", ephemeral=True)
+            return  # 중복 응답 방지
+
+        mission_details = {
+            "모든 것을 건 한방": "🔥 승부사에게 필요한 건 단 한 번의 기회. 자신의 모든 포인트를 베팅하기.",
+            "불사대마왕": "👑 죽음을 모르는 전설이 되어라. KDA 예측에서 퍼펙트를 건 뒤, 적중하기.",
+            "세상을 향한 외침": "📢 세상은 용기 있는 자를 기억한다. 확성기 명령어를 통해 '비익명'으로 메시지 전달하기.",
+            "천 리 길도 한 걸음부터": "🚶 가장 위대한 여정도 작은 한 걸음에서 시작된다. 시즌 미션 버튼을 눌러 미션 목록을 확인하기.",
+            "내가 보여주는 미래": "🔮 예언자는 미래를 숨기지 않는다. 예측순위 명령어를 통해 '모두에게' 예측 순위표 공개하기."
+        }
+
+        embed = discord.Embed(title="📜 시즌 미션 상세 정보", color=discord.Color.gold())
+
+        for mission_type, missions in user_missions.items():
+            for mission_name, mission_data in missions.items():
+                description = mission_details.get(mission_name, "설명이 없습니다.")
+                if not mission_data.get("완료", False):
+                    description = "??"
+                embed.add_field(name=mission_name, value=description, inline=False)
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
