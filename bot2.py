@@ -205,8 +205,10 @@ class MissionRewardButton(discord.ui.Button):
             # ✅ 새로운 Select UI 생성
             new_select = MissionSelect(completed_missions, self.mission_type)
 
+            view = discord.ui.View()
+            view.add_item(new_select)
             # ✅ 새로운 Select UI를 사용자에게 다시 보내기
-            await interaction.followup.send("남은 미션 목록:", view=discord.ui.View(new_select), ephemeral=True)
+            await interaction.followup.send("남은 미션 목록:", view=view, ephemeral=True)
         else:
             await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
     def update_label(self):
