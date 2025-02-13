@@ -105,7 +105,7 @@ class CheckDailyMissionButton(Button):
 
         # 완료한 미션만 선택할 수 있도록 View 생성
         completed_missions = [m for m in mission_data if m["completed"] and not m["reward_claimed"]]
-        view = MissionRewardView(completed_missions)
+        view = MissionRewardView(completed_missions,"일일미션")
 
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
@@ -135,7 +135,7 @@ class CheckSeasonMissionButton(Button):
 
         # 완료한 미션만 선택할 수 있도록 View 생성
         completed_missions = [m for m in mission_data if m["completed"] and not m["reward_claimed"]]
-        view = MissionRewardView(completed_missions)
+        view = MissionRewardView(completed_missions,"시즌미션")
 
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
@@ -204,7 +204,7 @@ class MissionRewardButton(discord.ui.Button):
         else:
             self.label = "🎁 보상 받기"
 
-class MissionRewardView(discord.ui.View):
+class MissionRewardView(discord.ui.View,mission_type):
     def __init__(self, completed_missions):
         super().__init__()
         self.selected_mission = None  # 선택한 미션
@@ -212,7 +212,7 @@ class MissionRewardView(discord.ui.View):
 
         # 미션 선택 드롭다운 추가 (완료한 미션이 있을 경우에만)
         if completed_missions:
-            mission_select = MissionSelect(completed_missions)
+            mission_select = MissionSelect(completed_missions,mission_type)
             self.add_item(mission_select)
 
         self.add_item(self.reward_button)  # 보상 버튼 추가
