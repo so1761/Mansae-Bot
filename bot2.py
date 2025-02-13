@@ -90,93 +90,139 @@ class MissionView(View):
         self.add_item(CheckDailyMissionButton())
         self.add_item(CheckSeasonMissionButton())
 
-class CheckDailyMissionButton(discord.ui.Button):
+class CheckDailyMissionButton(Button):
     def __init__(self):
         super().__init__(label="일일 미션", custom_id="daily_mission", style=discord.ButtonStyle.primary)
 
     async def callback(self, interaction: discord.Interaction):
         user_name = interaction.user.name
-        mission_data = get_mission_data(user_name,"일일미션")  # 유저별 미션 상태 불러오기
+        mission_data = get_mission_data(user_name, "일일미션")  # 유저별 미션 상태 불러오기
 
         embed = discord.Embed(title="📜 미션 목록", color=discord.Color.green())
-
         for mission in mission_data:
             status = "✅ 완료" if mission["completed"] else "❌ 미완료"
             embed.add_field(name=mission["name"], value=status, inline=False)
 
-        view = discord.ui.View()
-        
-        # 미션 완료 여부에 따른 버튼 추가
-        for mission in mission_data:
-            button = MissionRewardButton(mission)
-            view.add_item(button)
+        # 완료한 미션만 선택할 수 있도록 View 생성
+        completed_missions = [m for m in mission_data if m["completed"] and not m["reward_claimed"]]
+        view = MissionRewardView(completed_missions)
 
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
-class CheckSeasonMissionButton(discord.ui.Button):
+class CheckSeasonMissionButton(Button):
     def __init__(self):
         super().__init__(label="시즌 미션", custom_id="season_mission", style=discord.ButtonStyle.success)
 
     async def callback(self, interaction: discord.Interaction):
         user_name = interaction.user.name
-        mission_data = get_mission_data(user_name,"시즌미션")  # 유저별 미션 상태 불러오기
+        mission_data = get_mission_data(user_name, "시즌미션")  # 유저별 미션 상태 불러오기
+
+        # ✅ [시즌미션 확인하기]를 자동 완료 처리
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+        current_predict_season = cur_predict_seasonref.get()
+        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/시즌미션/시즌미션 확인하기")
+        ref.update({"완료": True})
 
         embed = discord.Embed(title="📜 미션 목록", color=discord.Color.green())
-
         for mission in mission_data:
             status = "✅ 완료" if mission["completed"] else "❌ 미완료"
             embed.add_field(name=mission["name"], value=status, inline=False)
 
-        view = discord.ui.View()
-        
-        # 미션 완료 여부에 따른 버튼 추가
-        for mission in mission_data:
-            button = MissionRewardButton(mission)
-            view.add_item(button)
+        # 완료한 미션만 선택할 수 있도록 View 생성
+        completed_missions = [m for m in mission_data if m["completed"] and not m["reward_claimed"]]
+        view = MissionRewardView(completed_missions)
 
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
-class MissionRewardButton(discord.ui.Button):
-    def __init__(self, mission):
+class MissionSelect(Select):
+    def __init__(self, view, completed_missions):
+        self.view = view  # 부모 View 참조
+        self.completed_missions = completed_missions  # 미션 목록 저장
+        options = [
+            discord.SelectOption(label=mission["name"], value=mission["name"])
+            for mission in completed_missions
+        ]
         super().__init__(
-            label="🎁 보상 받기",  # 보상 받기 버튼
-            style=discord.ButtonStyle.success,
-            disabled=mission["completed"] is False or mission["reward_claimed"],  # 완료된 미션만 버튼 활성화
-            custom_id=f"reward_{mission['name']}"
+            placeholder="완료한 미션을 선택하세요!",
+            min_values=1,
+            max_values=1,
+            options=options
         )
-        self.mission = mission
+    
+    async def callback(self, interaction: discord.Interaction):
+        self.view.selected_mission = self.values[0]  # 선택한 미션 저장
+        self.view.reward_button.mission_name = self.view.selected_mission  # 버튼에 미션 설정
+        self.view.reward_button.disabled = False  # 버튼 활성화
+        await interaction.response.edit_message(view=self.view)
 
+class MissionRewardButton(Button):
+    def __init__(self, view):
+        super().__init__(
+            label="🎁 보상 받기",
+            style=discord.ButtonStyle.success,
+            disabled=True,  # 기본적으로 비활성화
+            custom_id="reward_button"
+        )
+        self.view = view  # 부모 View 참조
+        self.mission_name = None  # 선택한 미션 저장
+    
     async def callback(self, interaction: discord.Interaction):
         user_name = interaction.user.name
-        if claim_reward(user_name, self.mission["name"]):
-            await interaction.response.send_message("🎉 보상을 받았습니다!", ephemeral=True)
+        if not self.mission_name:
+            await interaction.response.send_message("먼저 미션을 선택하세요!", ephemeral=True)
+            return
+        
+        if claim_reward(user_name, self.mission_name):
+            await interaction.response.send_message(f"🎉 {self.mission_name} 보상을 받았습니다!", ephemeral=True)
+            
+            # ✅ 보상을 받은 미션을 목록에서 제거
+            self.view.completed_missions = [m for m in self.view.completed_missions if m["name"] != self.mission_name]
+
+            # ✅ 새로운 View를 생성하여 메시지 업데이트
+            new_view = MissionRewardView(self.view.completed_missions)
+            await interaction.message.edit(view=new_view)
         else:
             await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
 
-def get_mission_data(user_name,mission_type):
-    """데이터베이스에서 미션 상태 불러오기 (임시 예제)"""
-    cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
+class MissionRewardView(View):
+    def __init__(self, completed_missions):
+        super().__init__()
+        self.completed_missions = completed_missions  # 완료된 미션 리스트
+        self.selected_mission = None  # 선택한 미션
+        
+        self.reward_button = MissionRewardButton(self)
+        self.add_item(MissionSelect(self, completed_missions))
+        self.add_item(self.reward_button)
+
+def get_mission_data(user_name, mission_type):
+    """데이터베이스에서 미션 상태 불러오기"""
+    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")  # 현재 진행 중인 예측 시즌 가져오기
     current_predict_season = cur_predict_seasonref.get()
 
     ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}")
     mission_data = ref.get()
     
-    if mission_data is None:
-        return {}  # 미션 데이터가 없으면 빈 딕셔너리 반환
-
-    # 미션 데이터를 처리하여 반환
-    if mission_data:
-        # 미션 데이터를 처리하여 반환
-        return [
-            {"name": mission_name, "completed": mission["완료"], "reward_claimed": mission["보상수령"]}
-            for mission_name, mission in mission_data.items()
-        ]
-    else:
+    if not mission_data:
         return []
 
+    return [
+        {"name": mission_name, "completed": mission["완료"], "reward_claimed": mission["보상수령"]}
+        for mission_name, mission in mission_data.items()
+    ]
+
 def claim_reward(user_name, mission_name):
-    """보상 지급 처리 (임시 예제)"""
-    return True  # 보상 지급 성공
+    """보상 지급 처리"""
+    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+    current_predict_season = cur_predict_seasonref.get()
+
+    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션")
+    mission_data = ref.get()
+
+    if mission_data and mission_name in mission_data and not mission_data[mission_name]["보상수령"]:
+        ref.child(mission_name).update({"보상수령": True})
+        return True
+    
+    return False
 
 async def nowgame(puuid):
     url = f'https://kr.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/{puuid}'
@@ -935,8 +981,6 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
                     await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
 
-                    
-
                     prediction_value = "승리" if prediction_type == "win" else "패배"
                     if name == "지모":
                         userembed = discord.Embed(title="메세지", color=0x000000)
@@ -964,6 +1008,16 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             await channel.send(f"\n", embed=bettingembed)
                     
                     await channel.send(f"\n", embed=userembed)
+
+                    # ====================  [미션]  ====================
+                    # 미션 : 승부예측 1회
+
+                    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/승부예측 1회")
+                    mission = ref.get()
+                    mission.update({"완료" : True})
+                    print(f"{nickname}의 [승부예측 1회] 미션 완료")
+
+                    # ====================  [미션]  ====================
 
                     if basePoint != 0 and anonymbool:
                         delay = random.uniform(5, 30) # 5초부터 30초까지 랜덤 시간
