@@ -121,8 +121,11 @@ class CheckSeasonMissionButton(Button):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/시즌미션/천 리 길도 한 걸음부터")
-        ref.update({"완료": True})
-        print(f"{user_name}의 [천 리 길도 한 걸음부터] 미션 완료")
+
+        mission_bool = ref.get()['완료']
+        if not mission_bool:
+            ref.update({"완료": True})
+            print(f"{user_name}의 [천 리 길도 한 걸음부터] 미션 완료")
 
         # ====================  [미션]  ====================
 
@@ -818,8 +821,10 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                                 current_predict_season = cur_predict_seasonref.get()
                                 ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{perfect_winner['name']}/미션/시즌미션/불사대마왕")
-                                ref.update({"완료": True})
-                                print(f"{perfect_winner['name']}의 [불사대마왕] 미션 완료")
+                                mission_bool = ref.get()['완료']
+                                if not mission_bool:
+                                    ref.update({"완료": True})
+                                    print(f"{perfect_winner['name']}의 [불사대마왕] 미션 완료")
 
                                 # ====================  [미션]  ====================
 
@@ -1048,8 +1053,10 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
                     ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/승부예측 1회")
                     mission = ref.get()
-                    mission.update({"완료" : True})
-                    print(f"{nickname}의 [승부예측 1회] 미션 완료")
+                    mission_bool = ref.get()['완료']
+                    if not mission_bool:
+                        mission.update({"완료" : True})
+                        print(f"{nickname}의 [승부예측 1회] 미션 완료")
 
                     # ====================  [미션]  ====================
 

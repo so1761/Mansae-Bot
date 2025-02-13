@@ -832,8 +832,10 @@ class 확성기모달(Modal, title="확성기 메세지 작성"):
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
             current_predict_season = cur_predict_seasonref.get()
             ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/세상을 향한 외침")
-            ref.update({"완료": True})
-            print(f"{interaction.user.name}의 [세상을 향한 외침] 미션 완료")
+            mission_bool = ref.get()['완료']
+            if not mission_bool:
+                ref.update({"완료": True})
+                print(f"{interaction.user.name}의 [세상을 향한 외침] 미션 완료")
 
             # ====================  [미션]  ====================
         embed.add_field(name="", value=self.message_input.value, inline=False)
@@ -1620,8 +1622,10 @@ class hello(commands.Cog):
                     cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                     current_predict_season = cur_predict_seasonref.get()
                     ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/내가 보여주는 미래")
-                    ref.update({"완료": True})
-                    print(f"{interaction.user.name}의 [내가 보여주는 미래] 미션 완료")
+                    mission_bool = ref.get()['완료']
+                    if not mission_bool:
+                        ref.update({"완료": True})
+                        print(f"{interaction.user.name}의 [내가 보여주는 미래] 미션 완료")
 
                     # ====================  [미션]  ====================
 
@@ -1888,8 +1892,10 @@ class hello(commands.Cog):
                                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                                 current_predict_season = cur_predict_seasonref.get()
                                 ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/모든 것을 건 한방")
-                                ref.update({"완료": True})
-                                print(f"{nickname}의 [모든 것을 건 한방] 미션 완료")
+                                mission_bool = ref.get()['완료']
+                                if not mission_bool:
+                                    ref.update({"완료": True})
+                                    print(f"{nickname}의 [모든 것을 건 한방] 미션 완료")
 
                             # ====================  [미션]  ====================
                             
@@ -1934,8 +1940,10 @@ class hello(commands.Cog):
                                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                                 current_predict_season = cur_predict_seasonref.get()
                                 ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/모든 것을 건 한방")
-                                ref.update({"완료": True})
-                                print(f"{nickname}의 [모든 것을 건 한방] 미션 완료")
+                                mission_bool = ref.get()['완료']
+                                if not mission_bool:
+                                    ref.update({"완료": True})
+                                    print(f"{nickname}의 [모든 것을 건 한방] 미션 완료")
 
                             # ====================  [미션]  ====================
 
