@@ -1853,6 +1853,8 @@ class hello(commands.Cog):
             else:
                 for winner in p.votes[이름]['prediction']['win']:
                     if winner['name'] == nickname:
+                        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                        current_predict_season = cur_predict_seasonref.get()
                         ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
                         ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}/베팅포인트')
                         bettingPoint = ref2.get()
@@ -1904,6 +1906,8 @@ class hello(commands.Cog):
                 # 패배 예측에서 닉네임 찾기
                 for loser in p.votes[이름]['prediction']['lose']:
                     if loser['name'] == nickname:
+                        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                        current_predict_season = cur_predict_seasonref.get()
                         ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
                         ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}/베팅포인트')
                         bettingPoint = ref2.get()
