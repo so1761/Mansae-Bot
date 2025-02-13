@@ -196,10 +196,17 @@ class MissionRewardButton(discord.ui.Button):
             self.disabled = True  
 
             # `self.view`를 직접 설정하지 않고, interaction에서 가져옴
-            view = self.view  
-            
-            # 별도로 보상 메시지를 보냄
-            await interaction.response.edit_message(view=view)
+            view = self.view 
+             
+            # ✅ 최신 미션 목록 가져오기 (보상 받은 미션 제외)
+            updated_missions = get_mission_data(user_name, mission_type)
+            completed_missions = [m for m in updated_missions if m["completed"] and not m["reward_claimed"]]
+
+            # ✅ 새로운 Select UI 생성
+            new_select = MissionSelect(completed_missions, mission_type)
+
+            # ✅ 새로운 Select UI를 사용자에게 다시 보내기
+            await interaction.followup.send("남은 미션 목록:", view=discord.ui.View(new_select), ephemeral=True)
         else:
             await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
     def update_label(self):
