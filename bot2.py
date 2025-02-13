@@ -155,15 +155,14 @@ class MissionSelect(Select):
         self.view.reward_button.disabled = False  # 버튼 활성화
         await interaction.response.edit_message(view=self.view)
 
-class MissionRewardButton(Button):
-    def __init__(self, view):
+class MissionRewardButton(discord.ui.Button):
+    def __init__(self):
         super().__init__(
             label="🎁 보상 받기",
             style=discord.ButtonStyle.success,
             disabled=True,  # 기본적으로 비활성화
             custom_id="reward_button"
         )
-        self.view = view  # 부모 View 참조
         self.mission_name = None  # 선택한 미션 저장
     
     async def callback(self, interaction: discord.Interaction):
@@ -175,24 +174,24 @@ class MissionRewardButton(Button):
         if claim_reward(user_name, self.mission_name):
             await interaction.response.send_message(f"🎉 {self.mission_name} 보상을 받았습니다!", ephemeral=True)
             
-            # ✅ 보상을 받은 미션을 목록에서 제거
-            self.view.completed_missions = [m for m in self.view.completed_missions if m["name"] != self.mission_name]
+            # 버튼 비활성화
+            self.disabled = True  
 
-            # ✅ 새로운 View를 생성하여 메시지 업데이트
-            new_view = MissionRewardView(self.view.completed_missions)
-            await interaction.message.edit(view=new_view)
+            # `self.view`를 직접 설정하지 않고, interaction에서 가져옴
+            view = self.view  
+            await interaction.message.edit(view=view)
         else:
             await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
 
-class MissionRewardView(View):
+
+class MissionRewardView(discord.ui.View):
     def __init__(self, completed_missions):
         super().__init__()
-        self.completed_missions = completed_missions  # 완료된 미션 리스트
         self.selected_mission = None  # 선택한 미션
-        
-        self.reward_button = MissionRewardButton(self)
-        self.add_item(MissionSelect(self, completed_missions))
-        self.add_item(self.reward_button)
+        self.reward_button = MissionRewardButton()  # 여기서 `view`를 전달하지 않음
+
+        self.add_item(MissionSelect(completed_missions))
+        self.add_item(self.reward_button)  # 보상 버튼 추가
 
 def get_mission_data(user_name, mission_type):
     """데이터베이스에서 미션 상태 불러오기"""
