@@ -204,8 +204,8 @@ class MissionRewardButton(discord.ui.Button):
         else:
             self.label = "🎁 보상 받기"
 
-class MissionRewardView(discord.ui.View,mission_type):
-    def __init__(self, completed_missions):
+class MissionRewardView(discord.ui.View):
+    def __init__(self, completed_missions,mission_type):
         super().__init__()
         self.selected_mission = None  # 선택한 미션
         self.reward_button = MissionRewardButton()  # 보상 버튼 추가
