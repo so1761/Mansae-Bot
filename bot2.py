@@ -187,7 +187,7 @@ class MissionRewardButton(discord.ui.Button):
             await interaction.response.send_message("먼저 미션을 선택하세요!", ephemeral=True)
             return
         
-        if claim_reward(user_name, self.mission_name, mission_type):
+        if claim_reward(user_name, self.mission_name, self.mission_type):
             await interaction.response.send_message(f"🎉 {self.mission_name} 보상을 받았습니다!", ephemeral=True)
             
             # 버튼 비활성화
