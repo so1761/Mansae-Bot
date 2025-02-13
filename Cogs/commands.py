@@ -144,16 +144,13 @@ def give_item(nickname, item_name, amount):
 
     refitem.update({item_name: item_data.get(item_name, 0) + amount})
 
-async def add_missions_to_all_users(mission_name,mission_type):
+async def add_missions_to_all_users(mission_name,point,mission_type):
     cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
     current_predict_season = cur_predict_seasonref.get()
     # '예측포인트' 경로 아래의 모든 유저들 가져오기
     ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트")
     all_users = ref.get()
-
-    # 동적으로 미션 추가
-    new_mission = {"name": mission_name, "completed": False, "reward_claimed": False}
-
+    
     # 각 유저에게 미션 추가
     if all_users:
         for user_id, user_data in all_users.items():
@@ -166,7 +163,8 @@ async def add_missions_to_all_users(mission_name,mission_type):
             # 새로운 미션 이름과 관련된 데이터
             new_mission = {
                 "완료": False,
-                "보상수령": False
+                "보상수령": False,
+                "포인트": point
             }
 
             # 미션 이름을 키로 사용하여 미션 추가
@@ -2289,9 +2287,9 @@ class hello(commands.Cog):
         
         
     @app_commands.command(name="일일미션추가",description="일일미션을 추가합니다")
-    async def 일일미션추가(self,interaction: discord.Interaction, 미션이름:str):
+    async def 일일미션추가(self,interaction: discord.Interaction, 미션이름:str, 포인트:int):
         
-        result = await add_missions_to_all_users(미션이름,"일일미션")
+        result = await add_missions_to_all_users(미션이름,포인트,"일일미션")
 
         if result:
             await interaction.response.send_message(f"미션을 추가했습니다.",ephemeral=True)
@@ -2299,9 +2297,9 @@ class hello(commands.Cog):
             await interaction.response.send_message("유저가 존재하지 않습니다.",ephemeral=True)
 
     @app_commands.command(name="시즌미션추가",description="시즌미션을 추가합니다")
-    async def 시즌미션추가(self,interaction: discord.Interaction, 미션이름:str):
+    async def 시즌미션추가(self,interaction: discord.Interaction, 미션이름:str, 포인트:int):
         
-        result = await add_missions_to_all_users(미션이름,"시즌미션")
+        result = await add_missions_to_all_users(미션이름,포인트,"시즌미션")
 
         if result:
             await interaction.response.send_message(f"미션을 추가했습니다.",ephemeral=True)

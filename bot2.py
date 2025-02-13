@@ -132,7 +132,7 @@ class CheckSeasonMissionButton(Button):
         embed = discord.Embed(title="📜 미션 목록", color=discord.Color.green())
         for mission in mission_data:
             status = "✅ 완료" if mission["completed"] else "❌ 미완료"
-            embed.add_field(name=mission["name"], value=status, inline=False)
+            embed.add_field(name=f"{mission["name"]} ({mission['points']}p)", value=status, inline=False)
 
         # 완료한 미션만 선택할 수 있도록 View 생성
         completed_missions = [m for m in mission_data if m["completed"] and not m["reward_claimed"]]
@@ -144,7 +144,7 @@ class MissionSelect(discord.ui.Select):
     def __init__(self, completed_missions, mission_type):
         self.mission_type = mission_type
         options = [
-            discord.SelectOption(label=mission["name"], value=mission["name"])
+            discord.SelectOption(label=f"{mission["name"]} ({mission['points']}p)", value=mission["name"])
             for mission in completed_missions
         ]
         super().__init__(
@@ -230,7 +230,7 @@ def get_mission_data(user_name, mission_type):
         return []
 
     return [
-        {"name": mission_name, "completed": mission["완료"], "reward_claimed": mission["보상수령"]}
+        {"name": mission_name, "completed": mission["완료"], "reward_claimed": mission["보상수령"], "points": mission["포인트"]}
         for mission_name, mission in mission_data.items()
     ]
 
