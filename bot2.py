@@ -199,7 +199,7 @@ class MissionRewardButton(discord.ui.Button):
             view = self.view  
             
             # 별도로 보상 메시지를 보냄
-            await interaction.message.edit(view=view)
+            await interaction.response.edit_message(view=view)
         else:
             await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
     def update_label(self):
