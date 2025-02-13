@@ -179,6 +179,7 @@ class MissionRewardButton(discord.ui.Button):
             custom_id="reward_button"
         )
         self.mission_name = None  # 선택한 미션 저장
+        self.mission_type = None # 어떤 종류의 미션인지 저장
     
     async def callback(self, interaction: discord.Interaction):
         user_name = interaction.user.name
