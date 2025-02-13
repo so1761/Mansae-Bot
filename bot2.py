@@ -117,11 +117,12 @@ class CheckSeasonMissionButton(Button):
         user_name = interaction.user.name
 
         # ====================  [미션]  ====================
-        # 미션 : 시즌미션 확인하기기
+        # 미션 : 시즌미션 확인하기
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/시즌미션/시즌미션 확인하기")
         ref.update({"완료": True})
+        print(f"{user_name}의 [시즌미션 확인하기] 미션 완료")
 
         # ====================  [미션]  ====================
 
@@ -195,13 +196,7 @@ class MissionRewardButton(discord.ui.Button):
 
             # `self.view`를 직접 설정하지 않고, interaction에서 가져옴
             # view = self.view
-            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")  # 현재 진행 중인 예측 시즌 가져오기
-            current_predict_season = cur_predict_seasonref.get()
-
-
-
-            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{self.mission_type}")
-            mission_data = ref.get()
+            mission_data = get_mission_data(user_name, "시즌미션") 
 
             completed_missions = [m for m in mission_data if m["completed"] and not m["reward_claimed"]]
             # 새로고침
