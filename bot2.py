@@ -195,6 +195,9 @@ class MissionRewardButton(discord.ui.Button):
 
             # `self.view`를 직접 설정하지 않고, interaction에서 가져옴
             # view = self.view
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")  # 현재 진행 중인 예측 시즌 가져오기
+            current_predict_season = cur_predict_seasonref.get()
+
             ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}")
             mission_data = ref.get()
 
