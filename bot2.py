@@ -202,7 +202,11 @@ class MissionRewardButton(discord.ui.Button):
             # 새로고침
             view = MissionRewardView(completed_missions,self.mission_type)
 
-            await interaction.message.edit(view=view)
+            # response를 직접 수정하는 방법 사용
+            try:
+                await interaction.response.edit_message(view=view)
+            except discord.errors.NotFound:
+                print("메시지를 찾을 수 없어 View를 수정할 수 없습니다.")
         else:
             await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
     
