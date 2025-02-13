@@ -142,13 +142,13 @@ class MissionRewardButton(discord.ui.Button):
             label="🎁 보상 받기",  # 보상 받기 버튼
             style=discord.ButtonStyle.success,
             disabled=mission["completed"] is False or mission["reward_claimed"],  # 완료된 미션만 버튼 활성화
-            custom_id=f"reward_{mission['id']}"
+            custom_id=f"reward_{mission['name']}"
         )
         self.mission = mission
 
     async def callback(self, interaction: discord.Interaction):
         user_name = interaction.user.name
-        if claim_reward(user_name, self.mission["id"]):
+        if claim_reward(user_name, self.mission["name"]):
             await interaction.response.send_message("🎉 보상을 받았습니다!", ephemeral=True)
         else:
             await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
@@ -174,7 +174,7 @@ def get_mission_data(user_name,mission_type):
     else:
         return []
 
-def claim_reward(user_name, mission_id):
+def claim_reward(user_name, mission_name):
     """보상 지급 처리 (임시 예제)"""
     return True  # 보상 지급 성공
 
