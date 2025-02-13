@@ -134,10 +134,8 @@ class CheckSeasonMissionButton(Button):
 
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
-class MissionSelect(Select):
-    def __init__(self, view, completed_missions):
-        self.view = view  # 부모 View 참조
-        self.completed_missions = completed_missions  # 미션 목록 저장
+class MissionSelect(discord.ui.Select):
+    def __init__(self, completed_missions):
         options = [
             discord.SelectOption(label=mission["name"], value=mission["name"])
             for mission in completed_missions
@@ -150,9 +148,18 @@ class MissionSelect(Select):
         )
     
     async def callback(self, interaction: discord.Interaction):
-        self.view.selected_mission = self.values[0]  # 선택한 미션 저장
-        self.view.reward_button.mission_name = self.view.selected_mission  # 버튼에 미션 설정
-        self.view.reward_button.disabled = False  # 버튼 활성화
+        selected_mission = self.values[0]  # 선택한 미션
+
+        # self.view에서 reward_button을 가져와 미션 설정
+        reward_button = next(
+            (item for item in self.view.children if isinstance(item, MissionRewardButton)), 
+            None
+        )
+
+        if reward_button:
+            reward_button.mission_name = selected_mission  # 버튼에 미션 설정
+            reward_button.disabled = False  # 버튼 활성화
+        
         await interaction.response.edit_message(view=self.view)
 
 class MissionRewardButton(discord.ui.Button):
@@ -188,9 +195,12 @@ class MissionRewardView(discord.ui.View):
     def __init__(self, completed_missions):
         super().__init__()
         self.selected_mission = None  # 선택한 미션
-        self.reward_button = MissionRewardButton()  # 여기서 `view`를 전달하지 않음
+        self.reward_button = MissionRewardButton()  # 보상 버튼 추가
 
-        self.add_item(MissionSelect(completed_missions))
+        # `MissionSelect` 생성 시 `completed_missions` 전달
+        mission_select = MissionSelect(completed_missions)
+
+        self.add_item(mission_select)
         self.add_item(self.reward_button)  # 보상 버튼 추가
 
 def get_mission_data(user_name, mission_type):
