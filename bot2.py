@@ -163,15 +163,13 @@ def get_mission_data(user_name,mission_type):
     
     if mission_data is None:
         return {}  # 미션 데이터가 없으면 빈 딕셔너리 반환
-    
-    if isinstance(mission_data, list):
-        mission_data = {str(i + 1): mission for i, mission in enumerate(mission_data) if mission}
 
     # 미션 데이터를 처리하여 반환
     if mission_data:
+        # 미션 데이터를 처리하여 반환
         return [
-            {"id": mission_id, "name": mission["name"], "completed": mission["completed"], "reward_claimed": mission["reward_claimed"]}
-            for mission_id, mission in mission_data.items()
+            {"name": mission_name, "completed": mission["완료"], "reward_claimed": mission["보상수령"]}
+            for mission_name, mission in mission_data.items()
         ]
     else:
         return []
