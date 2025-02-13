@@ -197,10 +197,11 @@ class MissionRewardView(discord.ui.View):
         self.selected_mission = None  # 선택한 미션
         self.reward_button = MissionRewardButton()  # 보상 버튼 추가
 
-        # `MissionSelect` 생성 시 `completed_missions` 전달
-        mission_select = MissionSelect(completed_missions)
+        # 미션 선택 드롭다운 추가 (완료한 미션이 있을 경우에만)
+        if completed_missions:
+            mission_select = MissionSelect(completed_missions)
+            self.add_item(mission_select)
 
-        self.add_item(mission_select)
         self.add_item(self.reward_button)  # 보상 버튼 추가
 
 def get_mission_data(user_name, mission_type):
