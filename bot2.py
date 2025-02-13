@@ -189,27 +189,21 @@ class MissionRewardButton(discord.ui.Button):
             return
         
         if claim_reward(user_name, self.mission_name, self.mission_type):
-            await interaction.response.send_message(f"🎉 {self.mission_name} 보상을 받았습니다!", ephemeral=True)
-            
+            await interaction.response.defer()
+
             # 버튼 비활성화
             self.disabled = True  
 
-            # `self.view`를 직접 설정하지 않고, interaction에서 가져옴
-            # view = self.view
-            mission_data = get_mission_data(user_name, "시즌미션") 
-
+            # 새로운 View 생성
+            mission_data = get_mission_data(user_name, self.mission_type) 
             completed_missions = [m for m in mission_data if m["completed"] and not m["reward_claimed"]]
-            # 새로고침
-            view = MissionRewardView(completed_missions,self.mission_type)
+            view = MissionRewardView(completed_missions, self.mission_type)
 
-            # response를 직접 수정하는 방법 사용
-            try:
-                await interaction.response.edit_message(view=view)
-            except discord.errors.NotFound:
-                print("메시지를 찾을 수 없어 View를 수정할 수 없습니다.")
-        else:
-            await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
-    
+            # 메시지 수정
+            await interaction.message.edit(view=view)
+
+            # 별도로 보상 메시지를 보냄
+            await interaction.followup.send(f"🎉 {self.mission_name} 보상을 받았습니다!", ephemeral=True)
     def update_label(self):
         if self.mission_name:
             self.label = f"🎁 [{self.mission_name}] 보상 받기"
