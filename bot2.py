@@ -169,7 +169,16 @@ class MissionSelect(discord.ui.Select):
             reward_button.update_label()  # 버튼 라벨 업데이트
             reward_button.disabled = False  # 버튼 활성화
         
-        await interaction.response.edit_message(view=self.view)
+        # ✅ 새로운 Select를 비활성화 상태로 생성
+        new_select = MissionSelect([], self.mission_type)  # 빈 목록으로 새로운 Select 생성
+        new_select.disabled = True  # 비활성화
+        
+        # ✅ 새로운 View 생성 후 추가
+        new_view = MissionRewardView([], self.mission_type)
+        new_view.add_item(new_select)
+        new_view.add_item(reward_button)  # 보상 버튼 추가
+
+        await interaction.response.edit_message(view=new_view)
 
 class MissionRewardButton(discord.ui.Button):
     def __init__(self):
@@ -189,21 +198,19 @@ class MissionRewardButton(discord.ui.Button):
             return
         
         if claim_reward(user_name, self.mission_name, self.mission_type):
-            await interaction.response.defer()
-
+            # 버튼 비활성화
+            await interaction.response.send_message(f"🎉 {self.mission_name} 보상을 받았습니다!", ephemeral=True)
+            
             # 버튼 비활성화
             self.disabled = True  
 
-            # 새로운 View 생성
-            mission_data = get_mission_data(user_name, self.mission_type) 
-            completed_missions = [m for m in mission_data if m["completed"] and not m["reward_claimed"]]
-            view = MissionRewardView(completed_missions, self.mission_type)
-
-            # 메시지 수정
-            await interaction.message.edit(view=view)
-
+            # `self.view`를 직접 설정하지 않고, interaction에서 가져옴
+            view = self.view  
+            
             # 별도로 보상 메시지를 보냄
-            await interaction.followup.send(f"🎉 {self.mission_name} 보상을 받았습니다!", ephemeral=True)
+            await interaction.message.edit(view=view)
+        else:
+            await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
     def update_label(self):
         if self.mission_name:
             self.label = f"🎁 [{self.mission_name}] 보상 받기"
