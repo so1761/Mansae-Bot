@@ -115,14 +115,19 @@ class CheckSeasonMissionButton(Button):
 
     async def callback(self, interaction: discord.Interaction):
         user_name = interaction.user.name
-        mission_data = get_mission_data(user_name, "시즌미션")  # 유저별 미션 상태 불러오기
 
-        # ✅ [시즌미션 확인하기]를 자동 완료 처리
+        # ====================  [미션]  ====================
+        # 미션 : 시즌미션 확인하기기
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/시즌미션/시즌미션 확인하기")
         ref.update({"완료": True})
 
+        # ====================  [미션]  ====================
+
+        mission_data = get_mission_data(user_name, "시즌미션")  # 유저별 미션 상태 불러오기
+
+        
         embed = discord.Embed(title="📜 미션 목록", color=discord.Color.green())
         for mission in mission_data:
             status = "✅ 완료" if mission["completed"] else "❌ 미완료"
@@ -135,7 +140,8 @@ class CheckSeasonMissionButton(Button):
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 class MissionSelect(discord.ui.Select):
-    def __init__(self, completed_missions):
+    def __init__(self, completed_missions, mission_type):
+        self.mission_type = mission_type
         options = [
             discord.SelectOption(label=mission["name"], value=mission["name"])
             for mission in completed_missions
@@ -158,6 +164,8 @@ class MissionSelect(discord.ui.Select):
 
         if reward_button:
             reward_button.mission_name = selected_mission  # 버튼에 미션 설정
+            reward_button.mission_type = self.mission_type
+            reward_button.update_label()  # 버튼 라벨 업데이트
             reward_button.disabled = False  # 버튼 활성화
         
         await interaction.response.edit_message(view=self.view)
@@ -178,7 +186,7 @@ class MissionRewardButton(discord.ui.Button):
             await interaction.response.send_message("먼저 미션을 선택하세요!", ephemeral=True)
             return
         
-        if claim_reward(user_name, self.mission_name):
+        if claim_reward(user_name, self.mission_name, mission_type):
             await interaction.response.send_message(f"🎉 {self.mission_name} 보상을 받았습니다!", ephemeral=True)
             
             # 버튼 비활성화
@@ -189,7 +197,12 @@ class MissionRewardButton(discord.ui.Button):
             await interaction.message.edit(view=view)
         else:
             await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
-
+    
+    def update_label(self):
+        if self.mission_name:
+            self.label = f"🎁 [{self.mission_name}] 보상 받기"
+        else:
+            self.label = "🎁 보상 받기"
 
 class MissionRewardView(discord.ui.View):
     def __init__(self, completed_missions):
@@ -220,12 +233,12 @@ def get_mission_data(user_name, mission_type):
         for mission_name, mission in mission_data.items()
     ]
 
-def claim_reward(user_name, mission_name):
+def claim_reward(user_name, mission_name, mission_type):
     """보상 지급 처리"""
     cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
     current_predict_season = cur_predict_seasonref.get()
 
-    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션")
+    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}")
     mission_data = ref.get()
 
     if mission_data and mission_name in mission_data and not mission_data[mission_name]["보상수령"]:
