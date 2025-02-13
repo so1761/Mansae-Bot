@@ -2288,23 +2288,25 @@ class hello(commands.Cog):
         
     @app_commands.command(name="일일미션추가",description="일일미션을 추가합니다")
     async def 일일미션추가(self,interaction: discord.Interaction, 미션이름:str, 포인트:int):
+        await interaction.response.defer()
         
         result = await add_missions_to_all_users(미션이름,포인트,"일일미션")
 
         if result:
-            await interaction.response.send_message(f"미션을 추가했습니다.",ephemeral=True)
+            await interaction.followup.send(f"미션을 추가했습니다.",ephemeral=True)
         else:
-            await interaction.response.send_message("유저가 존재하지 않습니다.",ephemeral=True)
+            await interaction.followup.send("유저가 존재하지 않습니다.",ephemeral=True)
 
     @app_commands.command(name="시즌미션추가",description="시즌미션을 추가합니다")
     async def 시즌미션추가(self,interaction: discord.Interaction, 미션이름:str, 포인트:int):
-        
+        await interaction.response.defer()
+
         result = await add_missions_to_all_users(미션이름,포인트,"시즌미션")
 
         if result:
-            await interaction.response.send_message(f"미션을 추가했습니다.",ephemeral=True)
+            await interaction.followup.send(f"미션을 추가했습니다.",ephemeral=True)
         else:
-            await interaction.response.send_message("유저가 존재하지 않습니다.",ephemeral=True)
+            await interaction.followup.send("유저가 존재하지 않습니다.",ephemeral=True)
     
     @app_commands.command(name="미션삭제", description="일일미션 또는 시즌미션을 삭제합니다.")
     @app_commands.choices(미션종류=[
@@ -2312,6 +2314,8 @@ class hello(commands.Cog):
     Choice(name='시즌미션', value='시즌미션')
     ])
     async def remove_mission(self, interaction: discord.Interaction, 미션이름: str, 미션종류: str):
+        await interaction.response.defer()
+
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")  # 현재 진행중인 예측 시즌을 가져옴
         current_predict_season = cur_predict_seasonref.get()
         
@@ -2320,7 +2324,7 @@ class hello(commands.Cog):
         all_users = ref.get()
 
         if not all_users:
-            await interaction.response.send_message("유저가 존재하지 않습니다.", ephemeral=True)
+            await interaction.followup.send("유저가 존재하지 않습니다.", ephemeral=True)
             return
 
         deleted = False  # 삭제 여부를 추적
@@ -2339,9 +2343,9 @@ class hello(commands.Cog):
                 deleted = True
 
         if deleted:
-            await interaction.response.send_message(f"미션 '{미션이름}'을 삭제했습니다.", ephemeral=True)
+            await interaction.followup.send(f"미션 '{미션이름}'을 삭제했습니다.", ephemeral=True)
         else:
-            await interaction.response.send_message(f"미션 '{미션이름}'을 찾을 수 없습니다.", ephemeral=True)
+            await interaction.followup.send(f"미션 '{미션이름}'을 찾을 수 없습니다.", ephemeral=True)
 
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
