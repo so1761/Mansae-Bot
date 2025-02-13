@@ -169,16 +169,7 @@ class MissionSelect(discord.ui.Select):
             reward_button.update_label()  # 버튼 라벨 업데이트
             reward_button.disabled = False  # 버튼 활성화
         
-        # ✅ 새로운 Select를 비활성화 상태로 생성
-        new_select = MissionSelect([], self.mission_type)  # 빈 목록으로 새로운 Select 생성
-        new_select.disabled = True  # 비활성화
-        
-        # ✅ 새로운 View 생성 후 추가
-        new_view = MissionRewardView([], self.mission_type)
-        new_view.add_item(new_select)
-        new_view.add_item(reward_button)  # 보상 버튼 추가
-
-        await interaction.response.edit_message(view=new_view)
+        await interaction.response.edit_message(view=self.view)
 
 class MissionRewardButton(discord.ui.Button):
     def __init__(self):
