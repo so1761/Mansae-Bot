@@ -195,6 +195,8 @@ class MissionRewardButton(discord.ui.Button):
 
             # `self.view`를 직접 설정하지 않고, interaction에서 가져옴
             # view = self.view
+            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}")
+            mission_data = ref.get()
 
             completed_missions = [m for m in mission_data if m["completed"] and not m["reward_claimed"]]
             # 새로고침
