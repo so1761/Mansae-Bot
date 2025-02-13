@@ -826,6 +826,16 @@ class 확성기모달(Modal, title="확성기 메세지 작성"):
             embed = discord.Embed(title="익명의 메세지", color=discord.Color.light_gray())
         else:
             embed = discord.Embed(title=f"{interaction.user.name}의 메세지", color=discord.Color.light_gray())
+            # ====================  [미션]  ====================
+            # 시즌미션 : 세상을 향한 외침
+
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+            current_predict_season = cur_predict_seasonref.get()
+            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/세상을 향한 외침")
+            ref.update({"완료": True})
+            print(f"{interaction.user.name}의 [세상을 향한 외침] 미션 완료")
+
+            # ====================  [미션]  ====================
         embed.add_field(name="", value=self.message_input.value, inline=False)
         
         await channel.send("@everyone\n", embed=embed)
@@ -1852,6 +1862,26 @@ class hello(commands.Cog):
 
             
                             await refresh_prediction(이름,anonymbool,p.votes[이름]['prediction'])
+
+
+                            
+                            # ====================  [미션]  ====================
+                            # 시즌미션 : 모든 것을 건 한방
+                            
+                            mref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
+                            mref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}/베팅포인트')
+                            minfo = mref.get()
+                            mbettingPoint = mref2.get()
+                            mpoint = minfo['포인트']
+                            if mpoint == mbettingPoint: # 포인트의 전부를 베팅포인트로 넣음
+                                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                                current_predict_season = cur_predict_seasonref.get()
+                                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/모든 것을 건 한방")
+                                ref.update({"완료": True})
+                                print(f"{nickname}의 [모든 것을 건 한방] 미션 완료")
+
+                            # ====================  [미션]  ====================
+                            
                             return
 
                 # 패배 예측에서 닉네임 찾기
@@ -1881,6 +1911,23 @@ class hello(commands.Cog):
 
                             await refresh_prediction(이름,anonymbool,p.votes[이름]['prediction'])
 
+                            # ====================  [미션]  ====================
+                            # 시즌미션 : 모든 것을 건 한방
+                            
+                            mref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
+                            mref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}/베팅포인트')
+                            minfo = mref.get()
+                            mbettingPoint = mref2.get()
+                            mpoint = minfo['포인트']
+                            if mpoint == mbettingPoint: # 포인트의 전부를 베팅포인트로 넣음
+                                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                                current_predict_season = cur_predict_seasonref.get()
+                                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/모든 것을 건 한방")
+                                ref.update({"완료": True})
+                                print(f"{nickname}의 [모든 것을 건 한방] 미션 완료")
+
+                            # ====================  [미션]  ====================
+                            
                             return
 
         if 이름 == "지모":

@@ -117,18 +117,17 @@ class CheckSeasonMissionButton(Button):
         user_name = interaction.user.name
 
         # ====================  [미션]  ====================
-        # 미션 : 시즌미션 확인하기
+        # 시즌미션 : 천 리 길도 한 걸음부터
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
-        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/시즌미션/시즌미션 확인하기")
+        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/시즌미션/천 리 길도 한 걸음부터")
         ref.update({"완료": True})
-        print(f"{user_name}의 [시즌미션 확인하기] 미션 완료")
+        print(f"{user_name}의 [천 리 길도 한 걸음부터] 미션 완료")
 
         # ====================  [미션]  ====================
 
         mission_data = get_mission_data(user_name, "시즌미션")  # 유저별 미션 상태 불러오기
 
-        
         embed = discord.Embed(title="📜 미션 목록", color=discord.Color.green())
         for mission in mission_data:
             status = "✅ 완료" if mission["completed"] else "❌ 미완료"
