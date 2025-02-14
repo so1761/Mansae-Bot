@@ -132,7 +132,7 @@ class CheckSeasonMissionButton(Button):
         if not mission_bool:
             ref.update({"완료": True})
             print(f"{user_name}의 [천 리 길도 한 걸음부터] 미션 완료")
-            mission_notice(user_name,"천 리 길도 한 걸음부터")
+            await mission_notice(user_name,"천 리 길도 한 걸음부터")
 
         # ====================  [미션]  ====================
 
@@ -772,7 +772,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{winner['name']}의 [대왕원숭이] 미션 완료")
-                            mission_notice(winner['name'],"대왕원숭이")
+                            await mission_notice(winner['name'],"대왕원숭이")
 
                     # ====================  [미션]  ====================
 
@@ -786,7 +786,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{winner['name']}의 [지모의 충신] 미션 완료")
-                            mission_notice(winner['name'],"지모의 충신")
+                            await mission_notice(winner['name'],"지모의 충신")
 
                     # ====================  [미션]  ====================
 
@@ -814,7 +814,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{winner['name']}의 [끝까지 가면 내가 다 이겨] 미션 완료")
-                            mission_notice(winner['name'],"끝까지 가면 내가 다 이겨")
+                            await mission_notice(winner['name'],"끝까지 가면 내가 다 이겨")
                     # ====================  [미션]  ====================
                     betted_rate = round(winner['points'] / winner_total_point, 3) if winner_total_point else 0
                     get_bet = round(betted_rate * loser_total_point)
@@ -845,7 +845,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{winner['name']}의 [신의 한 수] 미션 완료")
-                            mission_notice(winner['name'],"신의 한 수")
+                            await mission_notice(winner['name'],"신의 한 수")
                     # ====================  [미션]  ====================
 
                 for loser in losers:
@@ -898,7 +898,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{loser['name']}의 [대왕앵무] 미션 완료")
-                            mission_notice(loser['name'],"대왕앵무")
+                            await mission_notice(loser['name'],"대왕앵무")
 
                     # ====================  [미션]  ====================
 
@@ -913,7 +913,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{loser['name']}의 [끝까지 가면 내가 다 이겨] 미션 완료")
-                            mission_notice(loser['name'],"끝까지 가면 내가 다 이겨")
+                            await mission_notice(loser['name'],"끝까지 가면 내가 다 이겨")
                     # ====================  [미션]  ====================
 
                     # ====================  [미션]  ====================
@@ -924,7 +924,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{loser['name']}의 [마이너스의 손] 미션 완료")
-                            mission_notice(loser['name'],"마이너스의 손")
+                            await mission_notice(loser['name'],"마이너스의 손")
                     # ====================  [미션]  ====================
                     
                     # 남은 포인트를 배팅한 비율에 따라 환급받음 (50%)
@@ -998,7 +998,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 if not mission_bool:
                                     ref.update({"완료": True})
                                     print(f"{perfect_winner['name']}의 [불사대마왕] 미션 완료")
-                                    mission_notice(perfect_winner['name'],"불사대마왕")
+                                    await mission_notice(perfect_winner['name'],"불사대마왕")
 
                                 # ====================  [미션]  ====================
 
