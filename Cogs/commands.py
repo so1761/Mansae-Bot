@@ -836,7 +836,7 @@ class 확성기모달(Modal, title="확성기 메세지 작성"):
             if not mission_bool:
                 ref.update({"완료": True})
                 print(f"{interaction.user.name}의 [세상을 향한 외침] 미션 완료")
-
+                mission_notice(interaction.client, nickname, "세상을 향한 외침")
             # ====================  [미션]  ====================
         embed.add_field(name="", value=self.message_input.value, inline=False)
         
@@ -887,6 +887,12 @@ async def place_bet(bot,which,result,bet_amount):
     userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
     userembed.add_field(name="",value=f"누군가가 {which}의 {result}에 {bet_amount}포인트를 베팅했습니다!", inline=False)
     await channel.send(f"\n",embed = userembed)
+
+async def mission_notice(bot,name, mission):
+    channel = bot.get_channel(int(CHANNEL_ID))
+    userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+    userembed.add_field(name="",value=f"{name}님이 [{mission}]미션을 달성했습니다다!", inline=False)
+    await channel.send(f"\n",embed = userembed)  
 
 class hello(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
@@ -1626,7 +1632,7 @@ class hello(commands.Cog):
                     if not mission_bool:
                         ref.update({"완료": True})
                         print(f"{interaction.user.name}의 [내가 보여주는 미래] 미션 완료")
-
+                        mission_notice(interaction.client,interaction.user.name, "내가 보여주는 미래")
                     # ====================  [미션]  ====================
 
                     await interaction.response.send_message(embed=embed)
@@ -1898,7 +1904,7 @@ class hello(commands.Cog):
                                 if not mission_bool:
                                     ref.update({"완료": True})
                                     print(f"{nickname}의 [모든 것을 건 한방] 미션 완료")
-
+                                    mission_notice(interaction.client, nickname, "모든 것을 건 한방")
                             # ====================  [미션]  ====================
                             
                             return
@@ -1948,7 +1954,7 @@ class hello(commands.Cog):
                                 if not mission_bool:
                                     ref.update({"완료": True})
                                     print(f"{nickname}의 [모든 것을 건 한방] 미션 완료")
-
+                                    mission_notice(interaction.client, nickname, "모든 것을 건 한방")
                             # ====================  [미션]  ====================
 
                             return
@@ -2495,7 +2501,7 @@ class hello(commands.Cog):
                 if not mission_bool:
                     ref.update({"완료": True})
                     print(f"{nickname}의 [행운의 주인공] 미션 완료")
-
+                    mission_notice(interaction.client, nickname, "행운의 주인공")
             # ====================  [미션]  ====================
         else: 
             embed = discord.Embed(

@@ -84,6 +84,12 @@ MISSION_CHANNEL_ID = '1339058849247793255'
 used_items_for_user_jimo = {}
 used_items_for_user_melon = {}
 
+async def mission_notice(name, mission):
+    channel = bot.get_channel(int(CHANNEL_ID))
+    userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+    userembed.add_field(name="",value=f"{name}님이 [{mission}]미션을 달성했습니다다!", inline=False)
+    await channel.send(f"\n",embed = userembed)
+
 class MissionView(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -126,6 +132,7 @@ class CheckSeasonMissionButton(Button):
         if not mission_bool:
             ref.update({"완료": True})
             print(f"{user_name}의 [천 리 길도 한 걸음부터] 미션 완료")
+            mission_notice(user_name,"천 리 길도 한 걸음부터")
 
         # ====================  [미션]  ====================
 
@@ -723,10 +730,66 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
                     # 예측 내역 변동 데이터
                     change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
-                    change_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"] + 1, "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": predict_data["연승"] + 1, "연패": 0, "베팅포인트": bettingPoint - winner["points"]})
-
+                    change_ref.update({
+                        "포인트": point,
+                        "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
+                        "적중 횟수": predict_data["적중 횟수"] + 1,
+                        "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
+                        "연승": predict_data["연승"] + 1,
+                        "연패": 0,
+                        "베팅포인트": bettingPoint - winner["points"],
+                        
+                        # 추가 데이터
+                        "지모승리예측": predict_data.get("지모승리예측", 0) + (1 if name == "지모" else 0),
+                        "Melon승리예측": predict_data.get("Melon승리예측", 0) + (1 if name == "Melon" else 0),
+                        "승리예측연속": predict_data["승리예측연속"] + 1,
+                        "패배예측연속": 0
+                    })
                     # 예측 내역 업데이트
-                    point_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"] + 1, "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": predict_data["연승"] + 1, "연패": 0, "베팅포인트": bettingPoint - winner["points"]})
+                    point_ref.update({
+                        "포인트": point,
+                        "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
+                        "적중 횟수": predict_data["적중 횟수"] + 1,
+                        "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
+                        "연승": predict_data["연승"] + 1,
+                        "연패": 0,
+                        "베팅포인트": bettingPoint - winner["points"],
+                        
+                        # 추가 데이터
+                        "지모승리예측": predict_data.get("지모승리예측", 0) + (1 if name == "지모" else 0),
+                        "Melon승리예측": predict_data.get("Melon승리예측", 0) + (1 if name == "Melon" else 0),
+                        "승리예측연속": predict_data["승리예측연속"] + 1,
+                        "패배예측연속": 0
+                    })
+
+                    # ====================  [미션]  ====================
+                    # 시즌미션 : 대왕원숭이
+                    if predict_data.get("승리예측연속", 0) == 20:
+                        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                        current_predict_season = cur_predict_seasonref.get()
+                        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/시즌미션/대왕원숭이")
+                        mission_bool = ref.get()['완료']
+                        if not mission_bool:
+                            ref.update({"완료": True})
+                            print(f"{winner['name']}의 [대왕원숭이] 미션 완료")
+                            mission_notice(winner['name'],"대왕원숭이")
+
+                    # ====================  [미션]  ====================
+
+                    # ====================  [미션]  ====================
+                    # 시즌미션 : 지모의 충신
+                    if predict_data.get("지모승리예측", 0) == 50:
+                        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                        current_predict_season = cur_predict_seasonref.get()
+                        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/시즌미션/지모의 충신")
+                        mission_bool = ref.get()['완료']
+                        if not mission_bool:
+                            ref.update({"완료": True})
+                            print(f"{winner['name']}의 [지모의 충신] 미션 완료")
+                            mission_notice(winner['name'],"지모의 충신")
+
+                    # ====================  [미션]  ====================
+
 
                     # ====================  [미션]  ====================
                     # 일일미션 : 승부예측 1회 적중
@@ -751,6 +814,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{winner['name']}의 [끝까지 가면 내가 다 이겨] 미션 완료")
+                            mission_notice(winner['name'],"끝까지 가면 내가 다 이겨")
                     # ====================  [미션]  ====================
                     betted_rate = round(winner['points'] / winner_total_point, 3) if winner_total_point else 0
                     get_bet = round(betted_rate * loser_total_point)
@@ -781,6 +845,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{winner['name']}의 [신의 한 수] 미션 완료")
+                            mission_notice(winner['name'],"신의 한 수")
                     # ====================  [미션]  ====================
 
                 for loser in losers:
@@ -791,11 +856,53 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
                     # 예측 내역 변동 데이터
                     change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
-                    change_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"], "적중률": f"{round(((predict_data['적중 횟수'] * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": 0, "연패": predict_data["연패"] + 1, "베팅포인트": bettingPoint - loser["points"]})
-                    
+                    change_ref.update({
+                        "포인트": point,
+                        "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
+                        "적중 횟수": predict_data["적중 횟수"],
+                        "적중률": f"{round((((predict_data['적중 횟수']) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
+                        "연승": 0,
+                        "연패": predict_data["연패"] + 1,
+                        "베팅포인트": bettingPoint - loser["points"],
+                        
+                        # 추가 데이터
+                        "지모패배예측": predict_data.get("지모패배예측", 0) + (1 if name == "지모" else 0),
+                        "Melon패배예측": predict_data.get("Melon승리예측", 0) + (1 if name == "Melon" else 0),
+                        "승리예측연속": 0,
+                        "패배예측연속": predict_data["패배예측연속"] + 1
+                    })
                     # 예측 내역 업데이트
                     point_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"], "적중률": f"{round(((predict_data['적중 횟수'] * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": 0, "연패": predict_data["연패"] + 1, "베팅포인트": bettingPoint - loser["points"]})
-                    
+                    point_ref.update({
+                        "포인트": point,
+                        "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
+                        "적중 횟수": predict_data["적중 횟수"],
+                        "적중률": f"{round((((predict_data['적중 횟수']) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
+                        "연승": 0,
+                        "연패": predict_data["연패"] + 1,
+                        "베팅포인트": bettingPoint - loser["points"],
+                        
+                        # 추가 데이터
+                        "지모패배예측": predict_data.get("지모패배예측", 0) + (1 if name == "지모" else 0),
+                        "Melon패배예측": predict_data.get("Melon승리예측", 0) + (1 if name == "Melon" else 0),
+                        "승리예측연속": 0,
+                        "패배예측연속": predict_data["패배예측연속"] + 1
+                    })
+                    # ====================  [미션]  ====================
+                    # 시즌미션 : 대왕앵무
+                    if predict_data.get("패배예측연속", 0) == 20:
+                        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                        current_predict_season = cur_predict_seasonref.get()
+                        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{loser['name']}/미션/시즌미션/대왕앵무")
+                        mission_bool = ref.get()['완료']
+                        if not mission_bool:
+                            ref.update({"완료": True})
+                            print(f"{loser['name']}의 [대왕앵무] 미션 완료")
+                            mission_notice(loser['name'],"대왕앵무")
+
+                    # ====================  [미션]  ====================
+
+
                     # ====================  [미션]  ====================
                     # 시즌미션 : 끝까지 가면 내가 다 이겨
                     if predict_data["총 예측 횟수"] + 1 == 100:
@@ -806,6 +913,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{loser['name']}의 [끝까지 가면 내가 다 이겨] 미션 완료")
+                            mission_notice(loser['name'],"끝까지 가면 내가 다 이겨")
                     # ====================  [미션]  ====================
 
                     # ====================  [미션]  ====================
@@ -816,7 +924,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{loser['name']}의 [마이너스의 손] 미션 완료")
-
+                            mission_notice(loser['name'],"마이너스의 손")
                     # ====================  [미션]  ====================
                     
                     # 남은 포인트를 배팅한 비율에 따라 환급받음 (50%)
@@ -890,6 +998,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 if not mission_bool:
                                     ref.update({"완료": True})
                                     print(f"{perfect_winner['name']}의 [불사대마왕] 미션 완료")
+                                    mission_notice(perfect_winner['name'],"불사대마왕")
 
                                 # ====================  [미션]  ====================
 
