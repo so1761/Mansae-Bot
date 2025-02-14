@@ -982,11 +982,11 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 predict_data = point_ref.get()
                                 today = datetime.today()
                                 if today.weekday() == 6:
-                                    point_ref.update({"포인트": predict_data["포인트"] + ((perfect_point * 2) / perfecter_num)})
-                                    kdaembed.add_field(name="", value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {((perfect_point * 2) / perfecter_num)}점(({perfect_point} / {perfecter_num}) x 2)을 획득하셨습니다!", inline=False)
+                                    point_ref.update({"포인트": predict_data["포인트"] + round((perfect_point * 2) / perfecter_num)})
+                                    kdaembed.add_field(name="", value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {round(((perfect_point * 2) / perfecter_num))}점(({perfect_point} / {perfecter_num}) x 2)을 획득하셨습니다!", inline=False)
                                 else:
-                                    point_ref.update({"포인트": predict_data["포인트"] + perfect_point})
-                                    kdaembed.add_field(name="", value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {((perfect_point) / perfecter_num)}점({perfect_point} / {perfecter_num})점을 획득하셨습니다!", inline=False)
+                                    point_ref.update({"포인트": predict_data["포인트"] + round(perfect_point / perfecter_num)})
+                                    kdaembed.add_field(name="", value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {round(((perfect_point) / perfecter_num))}점({perfect_point} / {perfecter_num})점을 획득하셨습니다!", inline=False)
                                 
                                 # ====================  [미션]  ====================
                                 # 시즌미션 : 불사대마왕
