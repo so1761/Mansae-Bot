@@ -2435,17 +2435,19 @@ class hello(commands.Cog):
             "불사대마왕": "👑 죽음을 모르는 전설이 되어라. KDA 예측에서 퍼펙트를 건 뒤, 적중하기.",
             "세상을 향한 외침": "📢 세상은 용기 있는 자를 기억한다. 확성기 명령어를 통해 '비익명'으로 메시지 전달하기.",
             "천 리 길도 한 걸음부터": "🚶 가장 위대한 여정도 작은 한 걸음에서 시작된다. 시즌 미션 버튼을 눌러 미션 목록을 확인하기.",
-            "내가 보여주는 미래": "🔮 예언자는 미래를 숨기지 않는다. 예측순위 명령어를 통해 '모두에게' 예측 순위표 공개하기."
+            "내가 보여주는 미래": "🔮 예언자는 미래를 숨기지 않는다. 예측순위 명령어를 통해 '모두에게' 예측 순위표 공개하기.",
+            "신의 한 수": "♟️ 이 한 수로 승부를 결정짓는다. 배율 3 이상에서 500포인트 이상 베팅하고 적중하기."
         }
 
         embed = discord.Embed(title="📜 시즌 미션 상세 정보", color=discord.Color.gold())
 
         for mission_type, missions in user_missions.items():
             for mission_name, mission_data in missions.items():
-                description = mission_details.get(mission_name, "설명이 없습니다.")
-                if not mission_data.get("완료", False):
-                    description = "??"
-                embed.add_field(name=mission_name, value=description, inline=False)
+                if mission_type == "시즌미션":
+                    description = mission_details.get(mission_name, "설명이 없습니다.")
+                    if not mission_data.get("완료", False):
+                        description = "??"
+                    embed.add_field(name=mission_name, value=description, inline=False)
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 

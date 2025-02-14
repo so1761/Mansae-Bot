@@ -101,7 +101,7 @@ class CheckDailyMissionButton(Button):
         embed = discord.Embed(title="📜 미션 목록", color=discord.Color.green())
         for mission in mission_data:
             status = "✅ 완료" if mission["completed"] else "❌ 미완료"
-            embed.add_field(name=mission['name'], value=status, inline=False)
+            embed.add_field(name=f"{mission['name']} ({mission['points']}p)", value=status, inline=False)
 
         # 완료한 미션만 선택할 수 있도록 View 생성
         completed_missions = [m for m in mission_data if m["completed"] and not m["reward_claimed"]]
@@ -722,6 +722,17 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     # 예측 내역 업데이트
                     point_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"] + 1, "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": predict_data["연승"] + 1, "연패": 0, "베팅포인트": bettingPoint - winner["points"]})
 
+                    # ====================  [미션]  ====================
+                    # 시즌미션 : 끝까지 가면 내가 다 이겨
+                    if predict_data["총 예측 횟수"] + 1 == 100:
+                        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                        current_predict_season = cur_predict_seasonref.get()
+                        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/시즌미션/끝까지 가면 내가 다 이겨")
+                        mission_bool = ref.get()['완료']
+                        if not mission_bool:
+                            ref.update({"완료": True})
+                            print(f"{winner['name']}의 [끝까지 가면 내가 다 이겨] 미션 완료")
+                    # ====================  [미션]  ====================
                     betted_rate = round(winner['points'] / winner_total_point, 3) if winner_total_point else 0
                     get_bet = round(betted_rate * loser_total_point)
                     get_bet_limit = round(BonusRate * winner['points'])
@@ -741,6 +752,18 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     change_ref.update({"포인트": point + add_points - winner['points']})
                     point_ref.update({"포인트": point + add_points - winner['points']})
 
+                    # ====================  [미션]  ====================
+                    # 시즌미션 : 신의 한 수
+                    if BonusRate >= 3 and winner['points'] >= 500:
+                        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                        current_predict_season = cur_predict_seasonref.get()
+                        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/시즌미션/신의 한 수")
+                        mission_bool = ref.get()['완료']
+                        if not mission_bool:
+                            ref.update({"완료": True})
+                            print(f"{winner['name']}의 [신의 한 수] 미션 완료")
+                    # ====================  [미션]  ====================
+
                 for loser in losers:
                     point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
                     predict_data = point_ref.get()
@@ -753,7 +776,29 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     
                     # 예측 내역 업데이트
                     point_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"], "적중률": f"{round(((predict_data['적중 횟수'] * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": 0, "연패": predict_data["연패"] + 1, "베팅포인트": bettingPoint - loser["points"]})
+                    
+                    # ====================  [미션]  ====================
+                    # 시즌미션 : 끝까지 가면 내가 다 이겨
+                    if predict_data["총 예측 횟수"] + 1 == 100:
+                        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                        current_predict_season = cur_predict_seasonref.get()
+                        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{loser['name']}/미션/시즌미션/끝까지 가면 내가 다 이겨")
+                        mission_bool = ref.get()['완료']
+                        if not mission_bool:
+                            ref.update({"완료": True})
+                            print(f"{loser['name']}의 [끝까지 가면 내가 다 이겨] 미션 완료")
+                    # ====================  [미션]  ====================
 
+                    # ====================  [미션]  ====================
+                    # 시즌미션 : 마이너스의 손
+                    if predict_data["연패"] + 1 == 10:
+                        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{loser['name']}/미션/시즌미션/마이너스의 손")
+                        mission_bool = ref.get()['완료']
+                        if not mission_bool:
+                            ref.update({"완료": True})
+                            print(f"{loser['name']}의 [마이너스의 손] 미션 완료")
+
+                    # ====================  [미션]  ====================
                     
                     # 남은 포인트를 배팅한 비율에 따라 환급받음 (50%)
                     betted_rate = round(loser['points'] / loser_total_point, 3) if loser_total_point else 0
@@ -796,7 +841,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         elif kda < 3:
                             kdaembed = discord.Embed(title=f"{name} KDA 예측 결과", color=discord.Color.red())
 
-                        kdaembed.add_field(name=f"{name}의 KDA", value=f"{player['kills']}/{player['deaths']}/{player['assists']}({'PERFECT' if kda == 999 else kda})", inline=False)
+                        kdaembed.add_field(name=f"{name}의 KDA", value=f"{player['championName']} {player['kills']}/{player['deaths']}/{player['assists']}({'PERFECT' if kda == 999 else kda})", inline=False)
 
                         refperfect = db.reference('승부예측/퍼펙트포인트')
                         perfect_point = refperfect.get()[name]
@@ -806,15 +851,16 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                             winners = kda_votes['up']
                             losers = kda_votes['down'] + (kda_votes['perfect'] if kda != 999 else [])
                             for perfect_winner in perfect_winners:
+                                perfecter_num = len(perfect_winners)
                                 point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{perfect_winner["name"]}')
                                 predict_data = point_ref.get()
                                 today = datetime.today()
                                 if today.weekday() == 6:
-                                    point_ref.update({"포인트": predict_data["포인트"] + (perfect_point * 2)})
-                                    kdaembed.add_field(name="", value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {perfect_point * 2}점(x2)을 획득하셨습니다!", inline=False)
+                                    point_ref.update({"포인트": predict_data["포인트"] + ((perfect_point * 2) / perfecter_num)})
+                                    kdaembed.add_field(name="", value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {((perfect_point * 2) / perfecter_num)}점(({perfect_point} / {perfecter_num}) x 2)을 획득하셨습니다!", inline=False)
                                 else:
                                     point_ref.update({"포인트": predict_data["포인트"] + perfect_point})
-                                    kdaembed.add_field(name="", value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {perfect_point}점을 획득하셨습니다!", inline=False)
+                                    kdaembed.add_field(name="", value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {((perfect_point) / perfecter_num)}점({perfect_point} / {perfecter_num})점을 획득하셨습니다!", inline=False)
                                 
                                 # ====================  [미션]  ====================
                                 # 시즌미션 : 불사대마왕
@@ -857,7 +903,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 kdaembed.add_field(name="", value=f"{loser['name']}님이 KDA 예측에 실패했습니다!", inline=False)
 
                         await channel.send(embed=kdaembed)
-                        refperfect.update({name: perfect_point + 5 if kda != 999 else 300})
+                        refperfect.update({name: perfect_point + 5 if kda != 999 else 500})
                         kda_votes['up'].clear()
                         kda_votes['down'].clear()
                         kda_votes['perfect'].clear()
