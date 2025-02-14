@@ -57,5 +57,3 @@ melon_current_game_state = False
 
 jimo_event = asyncio.Event()
 melon_event = asyncio.Event()
-
-current_test_message = ""
