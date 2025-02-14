@@ -742,7 +742,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         # 추가 데이터
                         "지모승리예측": predict_data.get("지모승리예측", 0) + (1 if name == "지모" else 0),
                         "Melon승리예측": predict_data.get("Melon승리예측", 0) + (1 if name == "Melon" else 0),
-                        "승리예측연속": predict_data["승리예측연속"] + 1,
+                        "승리예측연속": predict_data.get("승리예측연속",0) + 1,
                         "패배예측연속": 0
                     })
                     # 예측 내역 업데이트
@@ -758,7 +758,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         # 추가 데이터
                         "지모승리예측": predict_data.get("지모승리예측", 0) + (1 if name == "지모" else 0),
                         "Melon승리예측": predict_data.get("Melon승리예측", 0) + (1 if name == "Melon" else 0),
-                        "승리예측연속": predict_data["승리예측연속"] + 1,
+                        "승리예측연속": predict_data("승리예측연속",0) + 1,
                         "패배예측연속": 0
                     })
 
@@ -869,10 +869,9 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         "지모패배예측": predict_data.get("지모패배예측", 0) + (1 if name == "지모" else 0),
                         "Melon패배예측": predict_data.get("Melon승리예측", 0) + (1 if name == "Melon" else 0),
                         "승리예측연속": 0,
-                        "패배예측연속": predict_data["패배예측연속"] + 1
+                        "패배예측연속": predict_data.get("패배예측연속",0) + 1
                     })
                     # 예측 내역 업데이트
-                    point_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"], "적중률": f"{round(((predict_data['적중 횟수'] * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": 0, "연패": predict_data["연패"] + 1, "베팅포인트": bettingPoint - loser["points"]})
                     point_ref.update({
                         "포인트": point,
                         "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
@@ -886,7 +885,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         "지모패배예측": predict_data.get("지모패배예측", 0) + (1 if name == "지모" else 0),
                         "Melon패배예측": predict_data.get("Melon승리예측", 0) + (1 if name == "Melon" else 0),
                         "승리예측연속": 0,
-                        "패배예측연속": predict_data["패배예측연속"] + 1
+                        "패배예측연속": predict_data.get("패배예측연속",0) + 1
                     })
                     # ====================  [미션]  ====================
                     # 시즌미션 : 대왕앵무

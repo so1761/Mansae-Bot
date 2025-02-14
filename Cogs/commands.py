@@ -836,7 +836,7 @@ class 확성기모달(Modal, title="확성기 메세지 작성"):
             if not mission_bool:
                 ref.update({"완료": True})
                 print(f"{interaction.user.name}의 [세상을 향한 외침] 미션 완료")
-                await mission_notice(interaction.client, nickname, "세상을 향한 외침")
+                await mission_notice(interaction.client, interaction.user.name, "세상을 향한 외침")
             # ====================  [미션]  ====================
         embed.add_field(name="", value=self.message_input.value, inline=False)
         
