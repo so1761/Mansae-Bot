@@ -735,7 +735,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
                         "적중 횟수": predict_data["적중 횟수"] + 1,
                         "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
-                        "연승": predict_data["연승"] + 1,
+                        "연승": predict_data.get("연승") + 1,
                         "연패": 0,
                         "베팅포인트": bettingPoint - winner["points"],
                         
@@ -758,7 +758,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         # 추가 데이터
                         "지모승리예측": predict_data.get("지모승리예측", 0) + (1 if name == "지모" else 0),
                         "Melon승리예측": predict_data.get("Melon승리예측", 0) + (1 if name == "Melon" else 0),
-                        "승리예측연속": predict_data("승리예측연속",0) + 1,
+                        "승리예측연속": predict_data.get("승리예측연속",0) + 1,
                         "패배예측연속": 0
                     })
 
