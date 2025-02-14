@@ -1055,7 +1055,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     mission = ref.get()
                     mission_bool = ref.get()['완료']
                     if not mission_bool:
-                        mission.update({"완료" : True})
+                        ref.update({"완료" : True})
                         print(f"{nickname}의 [승부예측 1회] 미션 완료")
 
                     # ====================  [미션]  ====================
@@ -1323,7 +1323,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
         await asyncio.sleep(20)  # 20초마다 반복
 
-async def check_remake_status(name, puuid, event, prediction_votes):
+async def check_remake_status(name, puuid, event, prediction_votes,kda_votes):
     channel = bot.get_channel(int(CHANNEL_ID))
     last_game_state = False
 
@@ -1388,6 +1388,9 @@ async def check_remake_status(name, puuid, event, prediction_votes):
                         event.set()
                         prediction_votes['win'].clear()
                         prediction_votes['lose'].clear()
+                        kda_votes['up'].clear()
+                        kda_votes['down'].clear()
+                        kda_votes['perfect'].clear()
 
         last_game_state = current_game_state
         await asyncio.sleep(20)
@@ -1542,8 +1545,8 @@ class MyBot(commands.Bot):
             event=p.melon_event
         ))
 
-        bot.loop.create_task(check_remake_status("지모", JIMO_PUUID, p.jimo_event, p.votes['지모']['prediction']))
-        bot.loop.create_task(check_remake_status("Melon", MELON_PUUID, p.melon_event, p.votes['Melon']['prediction']))
+        bot.loop.create_task(check_remake_status("지모", JIMO_PUUID, p.jimo_event, p.votes['지모']['prediction'],p.votes['지모']['kda']))
+        bot.loop.create_task(check_remake_status("Melon", MELON_PUUID, p.melon_event, p.votes['Melon']['prediction'],p.votes['Melon']['kda']))
 
 bot = MyBot()
 @bot.event
