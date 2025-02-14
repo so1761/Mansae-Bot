@@ -87,7 +87,7 @@ used_items_for_user_melon = {}
 async def mission_notice(name, mission):
     channel = bot.get_channel(int(CHANNEL_ID))
     userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-    userembed.add_field(name="",value=f"{name}님이 [{mission}]미션을 달성했습니다다!", inline=False)
+    userembed.add_field(name="",value=f"{name}님이 [{mission}] 미션을 달성했습니다!", inline=False)
     await channel.send(f"\n",embed = userembed)
 
 class MissionView(View):
