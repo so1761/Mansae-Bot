@@ -193,12 +193,7 @@ class MissionRewardButton(discord.ui.Button):
         if claim_reward(user_name, self.mission_name, self.mission_type):       
             # 버튼 비활성화
             self.disabled = True  
-
-            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{self.mission_type}/{self.mission_name}")
-            mission_point = ref.get("포인트")
-            ref2 = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}")
-            point = ref2.get("포인트")
-            ref2.update({"포인트" : point + mission_point})
+            
 
             await interaction.response.send_message(f"🎉 {self.mission_name} 보상을 받았습니다! ({mission_point}p)", ephemeral=True)
             # `self.view`를 직접 설정하지 않고, interaction에서 가져옴
@@ -247,6 +242,12 @@ def claim_reward(user_name, mission_name, mission_type):
 
     ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}")
     mission_data = ref.get()
+
+    ref1 = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{self.mission_type}/{self.mission_name}")
+    mission_point = ref1.get("포인트")
+    ref2 = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}")
+    point = ref2.get("포인트")
+    ref2.update({"포인트" : point + mission_point})
 
     if mission_data and mission_name in mission_data and not mission_data[mission_name]["보상수령"]:
         ref.child(mission_name).update({"보상수령": True})
