@@ -2489,7 +2489,7 @@ class hello(commands.Cog):
             if dice_num == 77:
                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                 current_predict_season = cur_predict_seasonref.get()
-                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌즌미션/행운의 주인공")
+                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/행운의 주인공")
                 mission_bool = ref.get()['완료']
                 if not mission_bool:
                     ref.update({"완료": True})
