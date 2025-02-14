@@ -723,6 +723,19 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     point_ref.update({"포인트": point, "총 예측 횟수": predict_data["총 예측 횟수"] + 1, "적중 횟수": predict_data["적중 횟수"] + 1, "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%", "연승": predict_data["연승"] + 1, "연패": 0, "베팅포인트": bettingPoint - winner["points"]})
 
                     # ====================  [미션]  ====================
+                    # 일일미션 : 승부예측 1회 적중
+                    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                    current_predict_season = cur_predict_seasonref.get()
+                    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/일일미션/승부예측 1회 적중")
+                    mission_bool = ref.get()['완료']
+                    if not mission_bool:
+                        ref.update({"완료": True})
+                        print(f"{winner['name']}의 [승부예측 1회 적중] 미션 완료")
+
+                    # ====================  [미션]  ====================
+
+
+                    # ====================  [미션]  ====================
                     # 시즌미션 : 끝까지 가면 내가 다 이겨
                     if predict_data["총 예측 횟수"] + 1 == 100:
                         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")

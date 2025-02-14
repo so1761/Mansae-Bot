@@ -2436,7 +2436,9 @@ class hello(commands.Cog):
             "세상을 향한 외침": "📢 세상은 용기 있는 자를 기억한다. 확성기 명령어를 통해 '비익명'으로 메시지 전달하기.",
             "천 리 길도 한 걸음부터": "🚶 가장 위대한 여정도 작은 한 걸음에서 시작된다. 시즌 미션 버튼을 눌러 미션 목록을 확인하기.",
             "내가 보여주는 미래": "🔮 예언자는 미래를 숨기지 않는다. 예측순위 명령어를 통해 '모두에게' 예측 순위표 공개하기.",
-            "신의 한 수": "♟️ 이 한 수로 승부를 결정짓는다. 배율 3 이상에서 500포인트 이상 베팅하고 적중하기."
+            "신의 한 수": "♟️ 이 한 수로 승부를 결정짓는다. 배율 3 이상에서 500포인트 이상 베팅하고 적중하기.",
+            "마이너스의 손": "📉 실패의 끝을 보여줘라. 승부예측 10연속 비적중 달성",
+            "끝까지 가면 내가 다 이겨": "🔄 포기하지 않으면 결국 승리한다. 승부예측 100회."
         }
 
         embed = discord.Embed(title="📜 시즌 미션 상세 정보", color=discord.Color.gold())
@@ -2450,6 +2452,60 @@ class hello(commands.Cog):
                     embed.add_field(name=mission_name, value=description, inline=False)
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
+    
+    @app_commands.command(name="주사위",description="주사위를 굴립니다. 하루에 한 번만 가능합니다.(1 ~ 100)")
+    async def 주사위(self, interaction: discord.Interaction):
+        nickname = interaction.user.name
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/주사위")
+        dice = ref.get()
+
+        if not dice:  # 주사위를 아직 안 굴렸다면
+            dice_num = random.randint(1, 100)
+            ref.set(True)  # 주사위 값 저장
+            embed = discord.Embed(
+                title="🎲 주사위 굴리기!",
+                description=f"{nickname}님이 주사위를 굴렸습니다!",
+                color=discord.Color.blue()
+            )
+            embed.add_field(name="🎲 결과", value=f"**{dice_num}**", inline=False)
+            embed.set_footer(text="내일 다시 도전할 수 있습니다!")
+            # ====================  [미션]  ====================
+            # 일일미션 : 주사위 굴리기
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+            current_predict_season = cur_predict_seasonref.get()
+            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/주사위 굴리기")
+            mission_bool = ref.get()['완료']
+            if not mission_bool:
+                ref.update({"완료": True})
+                print(f"{nickname}의 [주사위 굴리기] 미션 완료")
+
+            # ====================  [미션]  ====================
+
+            # ====================  [미션]  ====================
+            # 시즌미션 : 행운의 주인공
+            if dice_num == 77:
+                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                current_predict_season = cur_predict_seasonref.get()
+                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌즌미션/행운의 주인공")
+                mission_bool = ref.get()['완료']
+                if not mission_bool:
+                    ref.update({"완료": True})
+                    print(f"{nickname}의 [행운의 주인공] 미션 완료")
+
+            # ====================  [미션]  ====================
+        else: 
+            embed = discord.Embed(
+                title="🎲 주사위는 하루에 한 번!",
+                description=f"{nickname}님은 이미 주사위를 굴렸습니다.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text="내일 다시 도전할 수 있습니다!")
+
+        await interaction.response.send_message(embed=embed)
+        
 
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
