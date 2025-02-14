@@ -243,7 +243,7 @@ def claim_reward(user_name, mission_name, mission_type):
     ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}")
     mission_data = ref.get()
 
-    ref1 = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{self.mission_type}/{self.mission_name}")
+    ref1 = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}/{mission_name}")
     mission_point = ref1.get("포인트")
     ref2 = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}")
     point = ref2.get("포인트")
