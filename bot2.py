@@ -190,13 +190,17 @@ class MissionRewardButton(discord.ui.Button):
             await interaction.response.send_message("먼저 미션을 선택하세요!", ephemeral=True)
             return
         
-        if claim_reward(user_name, self.mission_name, self.mission_type):
-            # 버튼 비활성화
-            await interaction.response.send_message(f"🎉 {self.mission_name} 보상을 받았습니다!", ephemeral=True)
-            
+        if claim_reward(user_name, self.mission_name, self.mission_type):       
             # 버튼 비활성화
             self.disabled = True  
 
+            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{self.mission_type}/{self.mission_name}")
+            mission_point = ref.get("포인트")
+            ref2 = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}")
+            point = ref2.get("포인트")
+            ref2.update({"포인트" : point + mission_point})
+
+            await interaction.response.send_message(f"🎉 {self.mission_name} 보상을 받았습니다! ({mission_point}p)", ephemeral=True)
             # `self.view`를 직접 설정하지 않고, interaction에서 가져옴
             view = self.view 
         else:
