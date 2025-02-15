@@ -891,7 +891,7 @@ async def place_bet(bot,which,result,bet_amount):
 async def mission_notice(bot,name, mission):
     channel = bot.get_channel(int(CHANNEL_ID))
     userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-    userembed.add_field(name="",value=f"{name}님이 [{mission}]미션을 달성했습니다다!", inline=False)
+    userembed.add_field(name="",value=f"{name}님이 [{mission}]미션을 달성했습니다!", inline=False)
     await channel.send(f"\n",embed = userembed)  
 
 class hello(commands.Cog):
@@ -1553,7 +1553,10 @@ class hello(commands.Cog):
             view = discord.ui.View()
             view.add_item(see1button)
             view.add_item(see2button)
+            
             async def see1button_callback(interaction:discord.Interaction): # 순위표 버튼을 눌렀을 때의 반응!
+                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                current_predict_season = cur_predict_seasonref.get()
                 refp = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
                 originr = refp.get()
                 point = originr["포인트"]
@@ -1583,13 +1586,15 @@ class hello(commands.Cog):
                         else:
                             embed.add_field(name=f"{idx}. {username}", value=f"포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
 
-                    channel = self.bot.get_channel(int(CHANNEL_ID))
+                    channel = interaction.client.get_channel(1332330634546253915)
                     userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
                     userembed.add_field(name="",value=f"{interaction.user.name}님이 {need_point}포인트를 소모하여 순위표를 열람했습니다! (현재 열람 포인트 : {need_point + 50}(+ 50))", inline=False)
-                    await channel.send(f"\n",embed = userembed)
+                    await channel.send("@everyone\n", embed=embed)
                     await interaction.response.send_message(embed=embed,ephemeral=True)
 
             async def see2button_callback(interaction:discord.Interaction): # 순위표 버튼을 눌렀을 때의 반응!
+                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                current_predict_season = cur_predict_seasonref.get()
                 refp = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
                 originr = refp.get()
                 point = originr["포인트"]
