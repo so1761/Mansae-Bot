@@ -1586,10 +1586,9 @@ class hello(commands.Cog):
                         else:
                             embed.add_field(name=f"{idx}. {username}", value=f"포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
 
-                    channel = interaction.client.get_channel(1332330634546253915)
                     userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
                     userembed.add_field(name="",value=f"{interaction.user.name}님이 {need_point}포인트를 소모하여 순위표를 열람했습니다! (현재 열람 포인트 : {need_point + 50}(+ 50))", inline=False)
-                    await channel.send("@everyone\n", embed=embed)
+                
                     await interaction.response.send_message(embed=embed,ephemeral=True)
 
             async def see2button_callback(interaction:discord.Interaction): # 순위표 버튼을 눌렀을 때의 반응!
@@ -1603,6 +1602,7 @@ class hello(commands.Cog):
                 if point - bettingPoint < need_point:
                     await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {point - bettingPoint} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
                 else:
+                    await interaction.response.defer()  # 응답 지연 처리
                     refp.update({"포인트" : point - need_point})
                     ref = db.reference(f'승부예측/예측시즌/{시즌}/예측포인트')
                     points = ref.get()
@@ -1623,11 +1623,11 @@ class hello(commands.Cog):
                         else:
                             embed.add_field(name=f"{idx}. {username}", value=f"포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
 
+                    notice_channel = interaction.client.get_channel(1332330634546253915)
                     channel = self.bot.get_channel(int(CHANNEL_ID))
                     userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
                     userembed.add_field(name="",value=f"{interaction.user.name}님이 {need_point}포인트를 소모하여 순위표를 전체 열람했습니다!", inline=False)
-                    await channel.send(f"\n",embed = userembed)
-
+                    await notice_channel.send("@everyone\n", embed=embed)
                     # ====================  [미션]  ====================
                     # 시즌미션 : 내가 보여주는 미래
                     cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
@@ -1640,7 +1640,8 @@ class hello(commands.Cog):
                         await mission_notice(interaction.client,interaction.user.name, "내가 보여주는 미래")
                     # ====================  [미션]  ====================
 
-                    await interaction.response.send_message(embed=embed)
+                    await interaction.followup.send(embed = userembed)
+
             see1button.callback = see1button_callback
             see2button.callback = see2button_callback
 
