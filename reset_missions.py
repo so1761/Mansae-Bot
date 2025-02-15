@@ -1,13 +1,18 @@
 import firebase_admin
 from firebase_admin import db
+from firebase_admin import credentials
+from datetime import datetime
 
 cred = credentials.Certificate("mykey.json")
 firebase_admin.initialize_app(cred,{
     'databaseURL' : 'https://mansaebot-default-rtdb.firebaseio.com/'
 })
 
-now = datetime.datetime.now()
+now = datetime.now()
 date_str = now.strftime("[%Y-%m-%d]")  # 로그 날짜 추가
+
+cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
+current_predict_season = cur_predict_seasonref.get()
 
 ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트")
 users = ref.get()
