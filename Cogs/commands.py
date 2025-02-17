@@ -2654,7 +2654,7 @@ class hello(commands.Cog):
         await interaction.response.send_message(embed=embed)
     
     @app_commands.command(name="업적해금", description="1000포인트를 지불하여, 아직 달성하지 않은 시즌미션의 상세 정보까지 전부 확인합니다.")
-    async def get_user_missions(self, interaction: discord.Interaction):
+    async def show_missions(self, interaction: discord.Interaction):
         user_id = interaction.user.name
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
