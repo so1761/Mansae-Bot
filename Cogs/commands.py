@@ -1390,6 +1390,7 @@ class hello(commands.Cog):
     @app_commands.choices(이름=[
     Choice(name='강지모', value='지모'),
     Choice(name='Melon', value='Melon'),
+    Choice(name='고양이', value='고양이')
     ])
     @app_commands.choices(랭크=[
     Choice(name='솔랭', value='솔로랭크'),
@@ -1398,6 +1399,21 @@ class hello(commands.Cog):
     async def 그래프(self, interaction: discord.Interaction, 이름:str, 랭크:str = "솔로랭크"):
         print(f"{interaction.user}가 요청한 그래프 요청 수행 ({이름}, {랭크})")
         # LP 변동량 그래프 그리기
+        if 이름 == "고양이":
+            # ====================  [미션]  ====================
+            # 시즌미션 : 이 모양은 고양이?!
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+            current_predict_season = cur_predict_seasonref.get()
+            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/이 모양은 고양이?!")
+
+            mission_bool = ref.get()['완료']
+            if not mission_bool:
+                ref.update({"완료": True})
+                print(f"{interaction.user.name}의 [이 모양은 고양이?!] 미션 완료")
+                await mission_notice(interaction.client,interaction.user.name,"이 모양은 고양이?!")
+            
+            # ====================  [미션]  ====================
+            await interaction.response.send_message("야옹",ephemeral = True)
         await interaction.response.defer()  # Interaction을 유지
         returnVal = plot_lp_difference_firebase(name = 이름, rank = 랭크)
         
@@ -1579,6 +1595,16 @@ class hello(commands.Cog):
                 if point - bettingPoint < need_point:
                     await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {point - bettingPoint} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)
                 else:
+                    if need_point >= 500:
+                        # ====================  [미션]  ====================
+                        # 시즌미션 : 누구에게도 말할 수 없는 비밀
+                        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/누구에게도 말할 수 없는 비밀")
+                        mission_bool = ref.get()['완료']
+                        if not mission_bool:
+                            ref.update({"완료": True})
+                            print(f"{interaction.user.name}의 [누구에게도 말할 수 없는 비밀] 미션 완료")
+                            await mission_notice(interaction.user.name,"누구에게도 말할 수 없는 비밀")
+                        # ====================  [미션]  ====================
                     refp.update({"포인트" : point - need_point})
                     refhon = db.reference('승부예측')
                     refhon.update({"혼자보기포인트" : need_point + 50})
@@ -1865,14 +1891,84 @@ class hello(commands.Cog):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
 
+
         async def handle_bet(winbutton):
-            if 포인트 <= 0:
+            if 포인트 < 0:
                 await interaction.response.send_message("포인트는 0보다 큰 숫자로 입력해주세요",ephemeral=True)
+                return
+            if 포인트 == 0:
+                # ====================  [미션]  ====================
+                # 시즌미션 : 0은 곧 무한
+                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                current_predict_season = cur_predict_seasonref.get()
+                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/0은 곧 무한")
+
+                mission_bool = ref.get()['완료']
+                if not mission_bool:
+                    ref.update({"완료": True})
+                    print(f"{interaction.user.name}의 [0은 곧 무한] 미션 완료")
+                    await mission_notice(interaction.user.name,"0은 곧 무한")
+
+                # ====================  [미션]  ====================
+                await interaction.response.send_message(f"포인트는 없지만 {이름}의 무한한 가능성에 베팅하셨습니다!",ephemeral=True)
                 return
             if winbutton.disabled == True:
                 await interaction.response.send_message(f"지금은 {이름}에게 베팅할 수 없습니다!",ephemeral=True)
                 return
 
+
+            # ====================  [미션]  ====================
+            # 시즌미션 : 0은 곧 무한
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+            current_predict_season = cur_predict_seasonref.get()
+            shadow_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/다중 그림자분신술')
+            shadow_data = shadow_ref.get()
+        
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+            current_predict_season = cur_predict_seasonref.get()
+            shadow_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/다중 그림자분신술')
+            shadow_ref.update({f"{이름}베팅" : 0})
+
+            mission_bool = shadow_data.get('완료',False)
+            if not mission_bool:
+                bet_num = shadow_data.get("{이름}베팅", 0)
+                if bet_num + 1 == 5:
+                    ref.update({"완료": True})
+                    print(f"{interaction.user.name}의 [다중 그림자분신술] 미션 완료")
+                    await mission_notice(interaction.user.name,"다중 그림자분신술")
+                else:
+                    shadow_ref.update({f"{이름}베팅" : bet_num + 1})
+            # ====================  [미션]  ====================
+
+            if 포인트 == 1:
+                # ====================  [미션]  ====================
+                # 시즌미션 : 크릴새우
+                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                current_predict_season = cur_predict_seasonref.get()
+                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/크릴새우")
+
+                mission_bool = ref.get()['완료']
+                if not mission_bool:
+                    ref.update({"완료": True})
+                    print(f"{interaction.user.name}의 [크릴새우] 미션 완료")
+                    await mission_notice(interaction.user.name,"크릴새우")
+
+                # ====================  [미션]  ====================
+
+            if 포인트 == 2669:
+                # ====================  [미션]  ====================
+                # 시즌미션 : 금지된 숫자
+                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                current_predict_season = cur_predict_seasonref.get()
+                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/금지된 숫자")
+
+                mission_bool = ref.get()['완료']
+                if not mission_bool:
+                    ref.update({"완료": True})
+                    print(f"{interaction.user.name}의 [금지된 숫자] 미션 완료")
+                    await mission_notice(interaction.user.name,"금지된 숫자")
+
+                # ====================  [미션]  ====================
             nickname = interaction.user.name
             if (nickname not in [winner['name'] for winner in p.votes[이름]['prediction']['win']] and
             nickname not in [loser['name'] for loser in p.votes[이름]['prediction']['lose']]):
@@ -1910,7 +2006,7 @@ class hello(commands.Cog):
 
                             
                             # ====================  [미션]  ====================
-                            # 시즌미션 : 모든 것을 건 한방
+                            # 시즌미션 : 도파민 중독
                             
                             mref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
                             mref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}/베팅포인트')
@@ -1920,12 +2016,17 @@ class hello(commands.Cog):
                             if mpoint == mbettingPoint: # 포인트의 전부를 베팅포인트로 넣음
                                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                                 current_predict_season = cur_predict_seasonref.get()
-                                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/모든 것을 건 한방")
-                                mission_bool = ref.get()['완료']
+                                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/도파민 중독")
+                                mission_data = ref.get()
+                                mission_bool = mission_data.get('완료',False)
                                 if not mission_bool:
-                                    ref.update({"완료": True})
-                                    print(f"{nickname}의 [모든 것을 건 한방] 미션 완료")
-                                    await mission_notice(interaction.client, nickname, "모든 것을 건 한방")
+                                    all_in_count = mission_data.get('횟수', 0)
+                                    if all_in_count + 1 == 3:
+                                        ref.update({"완료": True})
+                                        print(f"{nickname}의 [도파민 중독] 미션 완료")
+                                        await mission_notice(interaction.client, nickname, "도파민 중독")
+                                    else:
+                                        ref.update({"횟수" : all_in_count + 1})
                             # ====================  [미션]  ====================
                             
                             return
@@ -1960,7 +2061,7 @@ class hello(commands.Cog):
                             await refresh_prediction(이름,anonymbool,p.votes[이름]['prediction'])
 
                             # ====================  [미션]  ====================
-                            # 시즌미션 : 모든 것을 건 한방
+                            # 시즌미션 : 도파민 중독
                             
                             mref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
                             mref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}/베팅포인트')
@@ -1970,13 +2071,19 @@ class hello(commands.Cog):
                             if mpoint == mbettingPoint: # 포인트의 전부를 베팅포인트로 넣음
                                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                                 current_predict_season = cur_predict_seasonref.get()
-                                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/모든 것을 건 한방")
-                                mission_bool = ref.get()['완료']
+                                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/도파민 중독")
+                                mission_data = ref.get()
+                                mission_bool = mission_data.get('완료',False)
                                 if not mission_bool:
-                                    ref.update({"완료": True})
-                                    print(f"{nickname}의 [모든 것을 건 한방] 미션 완료")
-                                    await mission_notice(interaction.client, nickname, "모든 것을 건 한방")
+                                    all_in_count = mission_data.get('횟수', 0)
+                                    if all_in_count + 1 == 3:
+                                        ref.update({"완료": True})
+                                        print(f"{nickname}의 [도파민 중독] 미션 완료")
+                                        await mission_notice(interaction.client, nickname, "도파민 중독")
+                                    else:
+                                        ref.update({"횟수" : all_in_count + 1})
                             # ====================  [미션]  ====================
+                            
 
                             return
 
@@ -2603,18 +2710,20 @@ class hello(commands.Cog):
             return  # 중복 응답 방지
 
         mission_details = {
-            "모든 것을 건 한방": "🔥 승부사에게 필요한 건 단 한 번의 기회. 자신의 모든 포인트를 베팅하기.",
-            "불사대마왕": "👑 죽음을 모르는 전설이 되어라. KDA 예측에서 퍼펙트를 건 뒤, 적중하기.",
-            "세상을 향한 외침": "📢 세상은 용기 있는 자를 기억한다. 확성기 명령어를 통해 '비익명'으로 메시지 전달하기.",
-            "천 리 길도 한 걸음부터": "🚶 가장 위대한 여정도 작은 한 걸음에서 시작된다. 시즌 미션 버튼을 눌러 미션 목록을 확인하기.",
-            "내가 보여주는 미래": "🔮 예언자는 미래를 숨기지 않는다. 예측순위 명령어를 통해 '모두에게' 예측 순위표 공개하기.",
-            "신의 한 수": "♟️ 이 한 수로 승부를 결정짓는다. 배율 3 이상에서 500포인트 이상 베팅하고 적중하기.",
-            "마이너스의 손": "📉 실패의 끝을 보여줘라. 승부예측 10연속 비적중 달성",
-            "끝까지 가면 내가 다 이겨": "🔄 포기하지 않으면 결국 승리한다. 승부예측 100회.",
-            "행운의 주인공": "🎲 행운의 여신이 나에게 미소를 짓는다. 주사위에서 77 띄우기",
-            "대왕원숭이": "🐵 원숭이의 왕이 되어라. 승부예측 승리에만 10번 연속 예측하기.",
-            "대왕앵무": "🦜 앵무새의 왕이 되어라. 승부예측 패배에만 10번 연속 예측하기.",
-            "지모의 충신": "⚫ 지모를 향한 일편단심. 지모의 승리에 30번 예측하기."
+            "깜잘알": "지모의 승부예측 50번 적중. 지모의 게임결과를 정확히 예측하며 진정한 깜잘알로 거듭나자.",
+            "난 이기는 판만 걸어": "오직 승리예측만으로 5연속 적중. 승리가 아니면 죽음을!",
+            "금지된 숫자": "2669 포인트를 베팅하고 적중. 절대 이 숫자의 의미를 이야기해선 안돼.",
+            "도파민 중독": "올인으로 연속 3번 베팅.",
+            "누구에게도 말할 수 없는 비밀": "혼자보기 포인트가 500 이상일 때 예측순위 혼자보기. 모두에게 보여줄 바엔 혼자 보겠어.",
+            "쿵쿵따": "두 번 연속 실패 후, 다음 예측에서 적중. 앞선 2번의 실패는 다음 성공을 위한 준비 과정이었다.",
+            "정점": "주사위에서 100을 뽑기. 주사위의 정점을 달성하자.",
+            "이럴 줄 알았어": "10데스 이상 판에서 패배를 예측하고 적중. 난 이 판 질 줄 알았음ㅋ",
+            "다중 그림자 분신술": "한 게임에서 5번 베팅. 분신술을 쓴 것처럼 계속 베팅하라",
+            "졌지만 이겼다": "패배를 예측하고, 퍼펙트를 건 뒤 둘 다 적중. 패배한 판에서도 퍼펙트는 나온다.",
+            "0은 곧 무한": "/베팅 명령어로 0포인트 베팅. 설마 0포인트를 베팅하는 사람이 있겠어?",
+            "크릴새우": "/베팅 명령어로 1 포인트 베팅. 크릴새우는 1포인트도 귀하다",
+            "주사위주사위주사위주사위주사위 ": "하루에 /주사위 명령어를 5번 실행. 주사위를 굴리고 싶은 열망이 보인다.",
+            "이 모양은 고양이?!": "숨겨진 명령어 실행. 어쩌면 여기에서 고양이를 찾을 수도 있겠다."
         }
 
         embed = discord.Embed(title="📜 시즌 미션 상세 정보", color=discord.Color.gold())
@@ -2653,6 +2762,16 @@ class hello(commands.Cog):
             embed.add_field(name="🎲 결과", value=f"**{dice_num}**", inline=False)
             embed.set_footer(text="내일 다시 도전할 수 있습니다!")
             # ====================  [미션]  ====================
+            # 시즌미션 : 주사위주사위주사위주사위주사위
+            # 호출 횟수 초기화
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+            current_predict_season = cur_predict_seasonref.get()
+            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/주사위주사위주사위주사위주사위")
+            
+            mission_bool = ref.get()['완료']
+            if not mission_bool:
+                ref.update({"호출" : 0})
+            # ====================  [미션]  ====================
             # 일일미션 : 주사위 굴리기
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
             current_predict_season = cur_predict_seasonref.get()
@@ -2665,16 +2784,16 @@ class hello(commands.Cog):
             # ====================  [미션]  ====================
 
             # ====================  [미션]  ====================
-            # 시즌미션 : 행운의 주인공
-            if dice_num == 77:
+            # 시즌미션 : 정점
+            if dice_num == 100:
                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                 current_predict_season = cur_predict_seasonref.get()
-                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/행운의 주인공")
+                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/정점")
                 mission_bool = ref.get()['완료']
                 if not mission_bool:
                     ref.update({"완료": True})
-                    print(f"{nickname}의 [행운의 주인공] 미션 완료")
-                    await mission_notice(interaction.client, nickname, "행운의 주인공")
+                    print(f"{nickname}의 [정점] 미션 완료")
+                    await mission_notice(interaction.client, nickname, "정점")
             # ====================  [미션]  ====================
         else: 
             embed = discord.Embed(
@@ -2683,6 +2802,25 @@ class hello(commands.Cog):
                 color=discord.Color.red()
             )
             embed.set_footer(text="내일 다시 도전할 수 있습니다!")
+
+            # ====================  [미션]  ====================
+            # 시즌미션 : 주사위주사위주사위주사위주사위 
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+            current_predict_season = cur_predict_seasonref.get()
+            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/주사위주사위주사위주사위주사위")
+            
+            mission_bool = ref.get()['완료']
+            if not mission_bool:
+                mission_data = ref.get()
+                call_num = mission_data.get("호출", 0)
+                if call_num + 1 == 5:
+                    ref.update({"완료": True})
+                    print(f"{nickname}의 [주사위주사위주사위주사위주사위] 미션 완료")
+                    await mission_notice(interaction.client, nickname, "주사위주사위주사위주사위주사위")
+                    ref.update({"호출" : 0})
+                else:
+                    ref.update({"호출" : call_num + 1})
+            # ====================  [미션]  ====================
 
         await interaction.response.send_message(embed=embed)
     
