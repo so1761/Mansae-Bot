@@ -30,5 +30,10 @@ if users:
             mission_ref.update(update_data)  # 모든 미션 초기화
             mission_ref.update(update_data2)
 
-
 print(f"{date_str} 모든 사용자의 일일미션이 초기화되었습니다.")
+
+today = now()
+if today.weekday() == 6:
+    solowatch_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}")
+    solowatch_ref.update({"혼자보기포인트" : 100})
+    print(f"{date_str} 혼자보기 포인트가 100으로 초기화되었습니다.")
