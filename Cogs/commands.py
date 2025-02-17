@@ -1947,8 +1947,8 @@ class hello(commands.Cog):
                             # ====================  [미션]  ====================
                             # 시즌미션 : 모든 것을 건 한방
                             
-                            mref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
-                            mref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}/베팅포인트')
+                            mref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
+                            mref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}/베팅포인트')
                             minfo = mref.get()
                             mbettingPoint = mref2.get()
                             mpoint = minfo['포인트']
