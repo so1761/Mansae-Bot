@@ -2659,7 +2659,7 @@ class hello(commands.Cog):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
-        point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname.name}')
+        point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{user_id}')
         originr = point_ref.get()
         point = originr["포인트"]
         bettingPoint = originr["베팅포인트"]
