@@ -2698,13 +2698,13 @@ class hello(commands.Cog):
                         if 내용공개 == "공개":
                             embed.add_field(
                                 name=f"{selected_mission_name}\n\n",
-                                value=mission_details.get(selected_mission_name, "설명이 없습니다."),
+                                value="\u200b\n" + mission_details.get(selected_mission_name, "설명이 없습니다."),
                                 inline=False
                             )
                         else:
                             embed.add_field(
                                 name=f"{selected_mission_name}",
-                                value="이 업적은 비공개 상태입니다.",
+                                value="\u200b\n" + "이 업적은 비공개 상태입니다.",
                                 inline=False
                             )
                         
