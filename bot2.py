@@ -286,7 +286,6 @@ async def nowgame(puuid, retries=5, delay=5):
                         return False, None  # 랭크 게임이 아닐 경우
 
                     elif response.status == 404:
-                        print(f"[ERROR] 404 Not Found: No active game found for PUUID {puuid}")
                         return False, None  # 현재 게임이 없으면 재시도할 필요 없음
 
                     elif response.status in [500, 502, 503, 504, 524]:  # 524 추가

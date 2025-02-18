@@ -2694,7 +2694,7 @@ class hello(commands.Cog):
                         return
 
         # View 생성 후 select 콜백 함수 추가
-        view = View()
+        view = discord.ui.View()
         select.callback = select_callback
         view.add_item(select)
 
