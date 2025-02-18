@@ -263,27 +263,49 @@ def claim_reward(user_name, mission_name, mission_type):
     
     return False
 
-async def nowgame(puuid):
+async def nowgame(puuid, retries=5, delay=5):
     url = f'https://kr.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/{puuid}'
     headers = {'X-Riot-Token': API_KEY}
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers) as response:
-            if response.status == 200:
-                data = await response.json()
-                game_mode = data.get("gameMode")
-                game_type = data.get("gameType")
-                queue_id = data.get("gameQueueConfigId")
+    for attempt in range(retries):
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        game_mode = data.get("gameMode")
+                        game_type = data.get("gameType")
+                        queue_id = data.get("gameQueueConfigId")
 
-                if game_mode == "CLASSIC" and game_type == "MATCHED":
-                    if queue_id == 420:
-                        return True, "솔로랭크"
-                    elif queue_id == 440:
-                        return True, "자유랭크"
-                
-                return False, None  # 랭크 게임이 아닐 경우
+                        if game_mode == "CLASSIC" and game_type == "MATCHED":
+                            if queue_id == 420:
+                                return True, "솔로랭크"
+                            elif queue_id == 440:
+                                return True, "자유랭크"
+                        
+                        return False, None  # 랭크 게임이 아닐 경우
 
-            return False, None  # API 호출 실패 시
+                    elif response.status == 404:
+                        print(f"[ERROR] 404 Not Found: No active game found for PUUID {puuid}")
+                        return False, None  # 현재 게임이 없으면 재시도할 필요 없음
+
+                    elif response.status in [500, 502, 503, 504, 524]:  # 524 추가
+                        print(f"[WARNING] {response.status} Server error, retrying {attempt + 1}/{retries}...")
+
+                    else:
+                        print(f"[ERROR] Riot API returned status {response.status} in nowgame")
+                        return False, None  # 다른 오류는 재시도하지 않음
+
+        except aiohttp.ClientConnectorError as e:
+            print(f"[ERROR] Connection error: {e}, retrying {attempt + 1}/{retries}...")
+        except Exception as e:
+            print(f"[ERROR] Unexpected error in nowgame: {e}")
+            return False, None
+
+        await asyncio.sleep(delay)  # 재시도 간격 증가
+
+    print("[ERROR] nowgame All retries failed.")
+    return False, None
 
 async def get_summoner_puuid(riot_id, tagline):
     url = f'https://asia.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{riot_id}/{tagline}'
@@ -311,67 +333,111 @@ async def get_summoner_id(puuid):
                 print('Error:', response.status)
                 return None
 
-async def get_summoner_ranks(summoner_id, type="솔랭"):
+async def get_summoner_ranks(summoner_id, type="솔랭", retries=5, delay=5):
     url = f'https://kr.api.riotgames.com/lol/league/v4/entries/by-summoner/{summoner_id}'
     headers = {'X-Riot-Token': API_KEY}
 
-    try:
-      async with aiohttp.ClientSession() as session:
-          async with session.get(url, headers=headers) as response:
-              if response.status == 200:
-                  data = await response.json()
-                  if type == "솔랭":
-                      # queueType이 RANKED_SOLO_5x5인 경우만 가져오기
-                      filtered_data = [entry for entry in data if entry.get("queueType") == "RANKED_SOLO_5x5"]
-                  elif type == "자랭":
-                      # queueType이 RANKED_FLEX_SR인 경우만 가져오기
-                      filtered_data = [entry for entry in data if entry.get("queueType") == "RANKED_FLEX_SR"]
-                  if filtered_data:
-                      return filtered_data[0]  # 첫 번째 티어 정보만 반환
-                  else:
-                      return []
-              elif response.status == 404:
-                  raise NotFoundError("404 Error occurred in get_summoner_ranks")
-              else:
-                  print('get_summoner_ranks Error:', response.status)
-                  return None
-    except aiohttp.ClientConnectorError as e:
-        print(f"get_summoner_ranks Connection error: {e}")
-        return None
-    except Exception as e:
-        print(f"get_summoner_ranks Unexpected error: {e}")
-        return None
+    for attempt in range(retries):
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        if type == "솔랭":
+                            filtered_data = [entry for entry in data if entry.get("queueType") == "RANKED_SOLO_5x5"]
+                        elif type == "자랭":
+                            filtered_data = [entry for entry in data if entry.get("queueType") == "RANKED_FLEX_SR"]
+                        return filtered_data[0] if filtered_data else []
 
-async def get_summoner_recentmatch_id(puuid):
+                    elif response.status == 404:
+                        print("[ERROR] 404 Not Found in get_summoner_ranks")
+                        return None  # 소환사 정보가 없으면 재시도할 필요 없음
+
+                    elif response.status in [500, 502, 503, 504, 524]:  
+                        print(f"[WARNING] {response.status} Server error, retrying {attempt + 1}/{retries}...")  
+                    else:
+                        print(f"[ERROR] get_summoner_ranks Error: {response.status}")
+                        return None  # 다른 오류는 재시도 없이 종료
+
+        except aiohttp.ClientConnectorError as e:
+            print(f"[ERROR] Connection error: {e}, retrying {attempt + 1}/{retries}...")
+        except aiohttp.ClientOSError as e:
+            print(f"[ERROR] Client OSError (Server disconnected): {e}, retrying {attempt + 1}/{retries}...")
+        except Exception as e:
+            print(f"[ERROR] Unexpected error in get_summoner_ranks: {e}, retrying {attempt + 1}/{retries}...")
+
+        await asyncio.sleep(delay)  # 재시도 간격
+
+    print("[ERROR] get_summoner_ranks All retries failed.")
+    return None
+
+async def get_summoner_recentmatch_id(puuid, retries=5, delay=5):
     url = f'https://asia.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids?start=0&count=1'
     headers = {'X-Riot-Token': API_KEY}
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers) as response:
-            if response.status == 200:
-                data = await response.json()
-                return data[0] if data else None
-            else:
-                print('get_summoner_recentmatch_id Error:', response.status)
-                return None
+    for attempt in range(retries):
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        return data[0] if data else None
 
-async def get_summoner_matchinfo(matchid):
+                    elif response.status == 404:
+                        print(f"[ERROR] 404 Not Found: No matches found for PUUID {puuid}")
+                        return None  # PUUID가 잘못된 경우는 재시도할 필요 없음
+
+                    elif response.status in [500, 502, 503, 504, 524]:
+                        print(f"[WARNING] {response.status} Server error, retrying {attempt + 1}/{retries}...")
+                    else:
+                        print(f"[ERROR] Riot API returned status {response.status} in get_summoner_recentmatch_id")
+                        return None
+
+        except aiohttp.ClientConnectorError as e:
+            print(f"[ERROR] Connection error: {e}, retrying {attempt + 1}/{retries}...")
+        except Exception as e:
+            print(f"[ERROR] Unexpected error in get_summoner_recentmatch_id: {e}")
+            return None
+
+        await asyncio.sleep(delay)  # 재시도 간격
+
+    print("[ERROR] get_summoner_recentmatch_id All retries failed.")
+    return None
+
+async def get_summoner_matchinfo(matchid, retries=5, delay=5):
     url = f'https://asia.api.riotgames.com/lol/match/v5/matches/{matchid}'
     headers = {'X-Riot-Token': API_KEY}
 
-    async with aiohttp.ClientSession() as session:
+    for attempt in range(retries):
         try:
-            async with session.get(url, headers=headers) as response:
-                if response.status == 200:
-                    return await response.json()
-                elif response.status == 404:
-                    print(f"[ERROR] Match ID {matchid} not found in get_summoner_matchinfo.")
-                elif response.status == 400:
-                    print(f"[ERROR] Bad Request for match ID {matchid}. Check if it's valid in get_summoner_matchinfo.")
-                else:
-                    print(f"[ERROR] Riot API returned status {response.status} in get_summoner_matchinfo")
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
+                        return await response.json()
+
+                    elif response.status == 404:
+                        print(f"[ERROR] 404 Not Found: Match ID {matchid} not found.")
+                        return None  # 매치 ID가 잘못된 경우는 재시도할 필요 없음
+
+                    elif response.status == 400:
+                        print(f"[ERROR] 400 Bad Request: Invalid match ID {matchid}.")
+                        return None  # 잘못된 요청이라면 재시도할 필요 없음
+
+                    elif response.status in [500, 502, 503, 504, 524]:
+                        print(f"[WARNING] {response.status} Server error, retrying {attempt + 1}/{retries}...")
+                    else:
+                        print(f"[ERROR] Riot API returned status {response.status} in get_summoner_matchinfo")
+                        return None
+
+        except aiohttp.ClientConnectorError as e:
+            print(f"[ERROR] Connection error: {e}, retrying {attempt + 1}/{retries}...")
         except Exception as e:
-            print(f"[ERROR] Exception occurred while fetching match info in get_summoner_matchinfo: {e}")
+            print(f"[ERROR] Unexpected error in get_summoner_matchinfo: {e}")
+            return None
+
+        await asyncio.sleep(delay)  # 재시도 간격
+
+    print("[ERROR] get_summoner_matchinfo All retries failed.")
     return None
 
 async def refresh_prediction(name, anonym, prediction_votes):
