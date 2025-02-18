@@ -2632,7 +2632,75 @@ class hello(commands.Cog):
                     embed.add_field(name=mission_name, value=description, inline=False)
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
-    
+
+    @app_commands.command(name="업적공개", description="달성한 업적을 다른 사람들에게 공개합니다.")
+    @app_commands.choices(내용공개=[
+    Choice(name='공개', value='공개'),
+    Choice(name='비공개', value='시즌미션')
+    ])
+    async def show_user_missions(self, interaction: discord.Interaction, 내용공개:str):
+        user_id = interaction.user.name
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_id}/미션")
+        user_missions = ref.get()
+
+        if not user_missions:
+            await interaction.response.send_message("현재 진행 중인 미션이 없습니다.", ephemeral=True)
+            return  # 중복 응답 방지
+
+        select = discord.ui.Select(placeholder='공개할 업적을 선택하세요')
+
+        mission_details = {
+            "모든 것을 건 한방": "🔥 승부사에게 필요한 건 단 한 번의 기회. 자신의 모든 포인트를 베팅하기.",
+            "불사대마왕": "👑 죽음을 모르는 전설이 되어라. KDA 예측에서 퍼펙트를 건 뒤, 적중하기.",
+            "세상을 향한 외침": "📢 세상은 용기 있는 자를 기억한다. 확성기 명령어를 통해 '비익명'으로 메시지 전달하기.",
+            "천 리 길도 한 걸음부터": "🚶 가장 위대한 여정도 작은 한 걸음에서 시작된다. 시즌 미션 버튼을 눌러 미션 목록을 확인하기.",
+            "내가 보여주는 미래": "🔮 예언자는 미래를 숨기지 않는다. 예측순위 명령어를 통해 '모두에게' 예측 순위표 공개하기.",
+            "신의 한 수": "♟️ 이 한 수로 승부를 결정짓는다. 배율 3 이상에서 500포인트 이상 베팅하고 적중하기.",
+            "마이너스의 손": "📉 실패의 끝을 보여줘라. 승부예측 10연속 비적중 달성",
+            "끝까지 가면 내가 다 이겨": "🔄 포기하지 않으면 결국 승리한다. 승부예측 100회.",
+            "행운의 주인공": "🎲 행운의 여신이 나에게 미소를 짓는다. 주사위에서 77 띄우기",
+            "대왕원숭이": "🐵 원숭이의 왕이 되어라. 승부예측 승리에만 10번 연속 예측하기.",
+            "대왕앵무": "🦜 앵무새의 왕이 되어라. 승부예측 패배에만 10번 연속 예측하기.",
+            "지모의 충신": "⚫ 지모를 향한 일편단심. 지모의 승리에 30번 예측하기."
+        }
+   
+        mission_options = []
+        for mission_type, missions in user_missions.items():
+            for mission_name, mission_data in missions.items():
+                if mission_type == "시즌미션":
+                    if mission_data.get("완료", False):  # 완료된 미션은 "완료"로 표시
+                        # Select 옵션에 추가
+                        description = mission_details.get(mission_name, "설명이 없습니다.")
+                        mission_options.append((mission_name,description))
+
+        # Select 옵션 설정
+        for i, (mission_name, description) in enumerate(mission_options):
+            select.add_option(label=mission_name, value=mission_name, description=description)
+            
+        # Select에 대한 처리하는 이벤트 핸들러를 View에 추가
+        async def select_callback(interaction: discord.Interaction):
+            selected_mission_name = select.values[0]  # 사용자가 선택한 미션명
+
+            # 선택된 미션의 상세 정보를 가져와서 embed에 포함
+            for mission_type, missions in user_missions.items():
+                for mission_name, mission_data in missions.items():
+                    if mission_name == selected_mission_name:
+                        embed = discord.Embed(title="미션", description="미션을 공개했습니다")
+                        embed.add_field(name=mission_name, value=mission_details.get(mission_name, "설명이 없습니다."), inline=False)
+                        await interaction.response.send_message(embed=embed)
+                        return
+
+        # View 생성 후 select 콜백 함수 추가
+        view = View()
+        select.callback = select_callback
+        view.add_item(select)
+
+        # Select 위젯을 포함한 메시지 보내기
+        await interaction.response.send_message("달성한 업적을 선택해주세요.", view=view)
+
     @app_commands.command(name="주사위",description="주사위를 굴립니다. 하루에 한 번만 가능합니다.(1 ~ 100)")
     async def 주사위(self, interaction: discord.Interaction):
         nickname = interaction.user.name
