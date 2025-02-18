@@ -127,8 +127,8 @@ class CheckSeasonMissionButton(Button):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/시즌미션/천 리 길도 한 걸음부터")
-
-        mission_bool = ref.get()['완료']
+        mission_data = ref.get()
+        mission_bool = mission_data.get('완료',0)
         if not mission_bool:
             ref.update({"완료": True})
             print(f"{user_name}의 [천 리 길도 한 걸음부터] 미션 완료")
@@ -683,6 +683,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
             onoffref = db.reference("승부예측/투표온오프") # 투표가 off 되어있을 경우 결과 출력 X
             onoffbool = onoffref.get()
             if not onoffbool:
+                await refresh_prediction(name,False,prediction_votes) # 베팅내역 공개
                 curseasonref = db.reference("전적분석/현재시즌")
                 current_season = curseasonref.get()
 
@@ -764,7 +765,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                 
                 BonusRate = 0 if winnerNum == 0 else round((((winnerNum + loserNum) / winnerNum) - 1) * 0.5, 2) + 1 # 0.5배 배율 적용
                 if BonusRate > 0:
-                    BonusRate += rater['배율']
+                    BonusRate += rater.get('배율',0)
                     BonusRate += streak_bonus_rate + 0.1
 
                 winner_total_point = sum(winner['points'] for winner in winners)
@@ -775,11 +776,11 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
                 if streak_bonus_rate:
                     bonus_parts.append(f"+ 역배 배율 {streak_bonus_rate}")
-                if rater['배율']:
+                if rater.get(배율,0):
                     bonus_parts.append(f"+ 아이템 추가 배율 {rater['배율']}")
 
                 bonus_string = "".join(bonus_parts)  # 둘 다 있으면 "역배 배율 X + 아이템 추가 배율 Y" 형태
-                bonus_string += " +0.1"
+                bonus_string += " + 0.1"
 
                 userembed.add_field(
                     name="", 
@@ -791,17 +792,17 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                 for winner in winners:
                     point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
                     predict_data = point_ref.get()
-                    point = predict_data["포인트"]
-                    bettingPoint = predict_data["베팅포인트"]
+                    point = predict_data.get("포인트",0)
+                    bettingPoint = predict_data.get("베팅포인트",0)
 
                     prediction_value = "승리" if result else "패배"
                     # 예측 내역 변동 데이터
                     change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
                     change_ref.update({
                         "포인트": point,
-                        "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
-                        "적중 횟수": predict_data["적중 횟수"] + 1,
-                        "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
+                        "총 예측 횟수": predict_data.get("총 예측 횟수",0) + 1,
+                        "적중 횟수": predict_data.get("적중 횟수",0) + 1,
+                        "적중률": f"{round((((predict_data.get('적중 횟수',0) + 1) * 100) / (predict_data.get('총 예측 횟수') + 1)), 2)}%",
                         "연승": predict_data.get("연승") + 1,
                         "연패": 0,
                         "베팅포인트": bettingPoint - winner["points"],
@@ -814,10 +815,10 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     # 예측 내역 업데이트
                     point_ref.update({
                         "포인트": point,
-                        "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
-                        "적중 횟수": predict_data["적중 횟수"] + 1,
-                        "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
-                        "연승": predict_data["연승"] + 1,
+                        "총 예측 횟수": predict_data.get("총 예측 횟수",0) + 1,
+                        "적중 횟수": predict_data.get("적중 횟수",0) + 1,
+                        "적중률": f"{round((((predict_data.get('적중 횟수',0) + 1) * 100) / (predict_data.get('총 예측 횟수',0) + 1)), 2)}%",
+                        "연승": predict_data.get("연승",0) + 1,
                         "연패": 0,
                         "베팅포인트": bettingPoint - winner["points"],
                         
@@ -831,7 +832,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     # 시즌미션 : 깜잘알
                     if name == "지모" and predict_data["지모적중"] + 1 == 50:
                         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/시즌미션/깜잘알")
-                        mission_bool = ref.get()['완료']
+                        mission_data = ref.get()
+                        mission_bool = mission_data.get('완료',False)
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{winner['name']}의 [깜잘알] 미션 완료")
@@ -845,7 +847,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
                     if predict_data_mission.get("승리예측연속", 0) >= 5 and predict_data_mission.get("연승", 0) >= 5:
                         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/시즌미션/난 이기는 판만 걸어")
-                        mission_bool = ref.get()['완료']
+                        mission_data = ref.get()
+                        mission_bool = mission_data.get('완료',False)
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{winner['name']}의 [난 이기는 판만 걸어] 미션 완료")
@@ -858,7 +861,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                         current_predict_season = cur_predict_seasonref.get()
                         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/시즌미션/쿵쿵따")
-                        mission_bool = ref.get()['완료']
+                        mission_data = ref.get()
+                        mission_bool = mission_data.get('완료',False)
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{winner['name']}의 [쿵쿵따] 미션 완료")
@@ -871,7 +875,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                     current_predict_season = cur_predict_seasonref.get()
                     ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/일일미션/승부예측 1회 적중")
-                    mission_bool = ref.get()['완료']
+                    mission_data = ref.get()
+                    mission_bool = mission_data.get('완료',False)
                     if not mission_bool:
                         ref.update({"완료": True})
                         print(f"{winner['name']}의 [승부예측 1회 적중] 미션 완료")
@@ -885,13 +890,15 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         get_bet = get_bet_limit
 
                     remain_loser_total_point -= get_bet
-                    streak_text = f"{predict_data['연승'] + 1}연속 적중을 이루어내며 " if predict_data['연승'] + 1 > 1 else ""
+                    
+                    win_streak = predict_data.get('연승', 0) + 1
+                    streak_text = f"{win_streak}연속 적중을 이루어내며 " if win_streak > 1 else ""
                     if result:
-                        add_points = point_change + (calculate_points(predict_data["연승"] + 1)) + round(winner['points'] * BonusRate) + get_bet if predict_data["연승"] + 1 > 1 else point_change + round(winner["points"] * BonusRate) + get_bet
+                        add_points = point_change + (calculate_points(win_streak)) + round(winner['points'] * BonusRate) + get_bet if win_streak > 1 else point_change + round(winner["points"] * BonusRate) + get_bet
                     else:
-                        add_points = -point_change + (calculate_points(predict_data["연승"] + 1)) + round(winner['points'] * BonusRate) + get_bet if predict_data["연승"] + 1 > 1 else -point_change + round(winner["points"] * BonusRate) + get_bet
-                    if predict_data['연승'] + 1 > 1:
-                        userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet})(연속적중 보너스 + {calculate_points(predict_data['연승'] + 1)}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)
+                        add_points = -point_change + (calculate_points(win_streak)) + round(winner['points'] * BonusRate) + get_bet if win_streak > 1 else -point_change + round(winner["points"] * BonusRate) + get_bet
+                    if win_streak > 1:
+                        userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet})(연속적중 보너스 + {calculate_points(win_streak)}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)
                     else:
                         userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)   
                     change_ref.update({"포인트": point + add_points - winner['points']})
@@ -899,19 +906,19 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                 for loser in losers:
                     point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
                     predict_data = point_ref.get()
-                    point = predict_data["포인트"]
-                    bettingPoint = predict_data["베팅포인트"]
+                    point = predict_data.get("포인트",0)
+                    bettingPoint = predict_data.get("베팅포인트",0)
                     
                     prediction_value = "패배" if result else "승리"
                     # 예측 내역 변동 데이터
                     change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
                     change_ref.update({
                         "포인트": point,
-                        "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
-                        "적중 횟수": predict_data["적중 횟수"],
-                        "적중률": f"{round((((predict_data['적중 횟수']) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
+                        "총 예측 횟수": predict_data.get("총 예측 횟수",0) + 1,
+                        "적중 횟수": predict_data.get("적중 횟수",0),
+                        "적중률": f"{round((((predict_data.get('적중 횟수')) * 100) / (predict_data.get('총 예측 횟수',0) + 1)), 2)}%",
                         "연승": 0,
-                        "연패": predict_data["연패"] + 1,
+                        "연패": predict_data.get("연패",0) + 1,
                         "베팅포인트": bettingPoint - loser["points"],
 
                         # 추가 데이터
@@ -921,13 +928,13 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     # 예측 내역 업데이트
                     point_ref.update({
                         "포인트": point,
-                        "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
-                        "적중 횟수": predict_data["적중 횟수"],
-                        "적중률": f"{round((((predict_data['적중 횟수']) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
+                        "총 예측 횟수": predict_data.get("총 예측 횟수",0) + 1,
+                        "적중 횟수": predict_data.get("적중 횟수",0),
+                        "적중률": f"{round((((predict_data.get('적중 횟수')) * 100) / (predict_data.get('총 예측 횟수',0) + 1)), 2)}%",
                         "연승": 0,
-                        "연패": predict_data["연패"] + 1,
+                        "연패": predict_data.get("연패",0) + 1,
                         "베팅포인트": bettingPoint - loser["points"],
-                        
+
                         # 추가 데이터
                         f"{name}{prediction_value}예측": predict_data.get(f"{name}{prediction_value}예측", 0) + 1,
                         f"{prediction_value}예측연속": predict_data.get(f"{prediction_value}예측연속", 0) + 1
@@ -935,7 +942,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
                     # ====================  [미션]  ====================
                     # 시즌미션 : 마이너스의 손
-                    if predict_data["연패"] + 1 == 10:
+                    if predict_data.get("연패",0) + 1 == 10:
                         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{loser['name']}/미션/시즌미션/마이너스의 손")
                         mission_bool = ref.get()['완료']
                         if not mission_bool:
@@ -1244,8 +1251,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 if (nickname not in [user["name"] for user in prediction_votes["win"]]) and (nickname not in [user["name"] for user in prediction_votes["lose"]]):
                     refp = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}')
                     pointr = refp.get()
-                    point = pointr["포인트"]
-                    bettingPoint = pointr["베팅포인트"]
+                    point = pointr.get("포인트",0)
+                    bettingPoint = pointr.get("베팅포인트",0)
                     random_number = random.uniform(0.01, 0.05) # 1% ~ 5% 랜덤 배팅 할 비율을 정합
                     baseRate = round(random_number, 2)
                     basePoint = round(point * baseRate) if point - bettingPoint >= 500 else 0 # 500p 이상 보유 시 자동 베팅
@@ -1290,8 +1297,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     # 미션 : 승부예측 1회
 
                     ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/승부예측 1회")
-                    mission = ref.get()
-                    mission_bool = ref.get()['완료']
+                    mission_data = ref.get()
+                    mission_bool = mission_data.get('완료',False)
                     if not mission_bool:
                         ref.update({"완료" : True})
                         print(f"{nickname}의 [승부예측 1회] 미션 완료")
@@ -1346,18 +1353,19 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         await interaction.response.send_message(f"이미 아이템을 사용했습니다.", ephemeral=True)
                         return
                     
-                    if itemr['배율증가1'] >= 1:
+                    item_num = itemr.get('배율증가1',0)
+                    if item_num >= 1:
                         if winbutton.disabled:
                             await interaction.response.send_message(f"투표가 종료되어 사용할 수 없습니다!",ephemeral=True)
                         else:
-                            refitem.update({'배율증가1' : itemr['배율증가1'] - 1})
+                            refitem.update({'배율증가1' : item_num - 1})
                             refrate = db.reference(f'승부예측/배율증가/{name}')
                             rater = refrate.get()
-                            refrate.update({'배율' : rater['배율'] + 0.1})
+                            refrate.update({'배율' : rater.get('배율',0) + 0.1})
                             userembed.add_field(name="",value=f"누군가가 아이템을 사용하여 배율을 0.1 올렸습니다!", inline=False)
                             await channel.send(f"\n",embed = userembed)
                             await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
-                            await interaction.response.send_message(f"{name}의 배율 0.1 증가 완료! 남은 아이템 : {itemr['배율증가1'] - 1}개",ephemeral=True)
+                            await interaction.response.send_message(f"{name}의 배율 0.1 증가 완료! 남은 아이템 : {item_num - 1}개",ephemeral=True)
                             if name == "지모":
                                 used_items_for_user_jimo[user_id] = True  # 사용자에게 아이템 사용 기록
                             elif name == "Melon":
@@ -1369,18 +1377,20 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     if used_items_for_user_jimo.get(user_id, False):  # 아이템을 이미 사용한 경우
                         await interaction.response.send_message(f"이미 아이템을 사용했습니다.", ephemeral=True)
                         return
-                    if itemr['배율증가3'] >= 1:
+
+                    item_num = itemr.get('배율증가3',0)
+                    if item_num >= 1:
                         if winbutton.disabled:
                             await interaction.response.send_message(f"투표가 종료되어 사용할 수 없습니다!",ephemeral=True)
                         else:
-                            refitem.update({'배율증가3' : itemr['배율증가3'] - 1})
+                            refitem.update({'배율증가3' : item_num - 1})
                             refrate = db.reference(f'승부예측/배율증가/{name}')
                             rater = refrate.get()
-                            refrate.update({'배율' : rater['배율'] + 0.3})
+                            refrate.update({'배율' : rater.get('배율', 0) + 0.3})
                             userembed.add_field(name="",value=f"누군가가 아이템을 사용하여 배율을 0.3 올렸습니다!", inline=False)
                             await channel.send(f"\n",embed = userembed)
                             await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
-                            await interaction.response.send_message(f"{name}의 배율 0.3 증가 완료! 남은 아이템 : {itemr['배율증가3'] - 1}개",ephemeral=True)
+                            await interaction.response.send_message(f"{name}의 배율 0.3 증가 완료! 남은 아이템 : {item_num - 1}개",ephemeral=True)
                             if name == "지모":
                                 used_items_for_user_jimo[user_id] = True  # 사용자에게 아이템 사용 기록
                             elif name == "Melon":
@@ -1392,18 +1402,20 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     if used_items_for_user_jimo.get(user_id, False):  # 아이템을 이미 사용한 경우
                         await interaction.response.send_message(f"이미 아이템을 사용했습니다.", ephemeral=True)
                         return
-                    if itemr['배율증가5'] >= 1:
+
+                    item_num = itemr.get('배율증가5',0)
+                    if item_num >= 1:
                         if winbutton.disabled:
                             await interaction.response.send_message(f"투표가 종료되어 사용할 수 없습니다!",ephemeral=True)
                         else:
-                            refitem.update({'배율증가5' : itemr['배율증가5'] - 1})
+                            refitem.update({'배율증가5' : item_num - 1})
                             refrate = db.reference(f'승부예측/배율증가/{name}')
                             rater = refrate.get()
-                            refrate.update({'배율' : rater['배율'] + 0.5})
+                            refrate.update({'배율' : rater.get('배율', 0) + 0.5})
                             userembed.add_field(name="",value=f"누군가가 아이템을 사용하여 배율을 0.5 올렸습니다!", inline=False)
                             await channel.send(f"\n",embed = userembed)
                             await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
-                            await interaction.response.send_message(f"{name}의 배율 0.5 증가 완료! 남은 아이템 : {itemr['배율증가5'] - 1}개",ephemeral=True)
+                            await interaction.response.send_message(f"{name}의 배율 0.5 증가 완료! 남은 아이템 : {item_num - 1}개",ephemeral=True)
                             if name == "지모":
                                 used_items_for_user_jimo[user_id] = True  # 사용자에게 아이템 사용 기록
                             elif name == "Melon":
@@ -1606,6 +1618,7 @@ async def check_remake_status(name, puuid, event, prediction_votes,kda_votes):
                     participant_id = get_participant_id(match_info, puuid)
 
                     if match_info['info']['participants'][participant_id]['gameEndedInEarlySurrender'] and int(match_info['info']['gameDuration']) <= 240:
+                        await refresh_prediction(name,False,prediction_votes) # 베팅내역 공개
                         userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
                         userembed.add_field(name="게임 종료", value=f"{name}의 랭크게임이 종료되었습니다!\n다시하기\n")
                         await channel.send(embed=userembed)
@@ -1615,14 +1628,14 @@ async def check_remake_status(name, puuid, event, prediction_votes,kda_votes):
                         for winner in winners:
                             ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
                             originr = ref.get()
-                            bettingPoint = originr["베팅포인트"]
+                            bettingPoint = originr.get("베팅포인트",0)
                             bettingPoint -= winner['points']
                             ref.update({"베팅포인트": bettingPoint})
 
                         for loser in losers:
                             ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
                             originr = ref.get()
-                            bettingPoint = originr["베팅포인트"]
+                            bettingPoint = originr.get("베팅포인트",0)
                             bettingPoint -= loser['points']
                             ref.update({"베팅포인트": bettingPoint})
 
