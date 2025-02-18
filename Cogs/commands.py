@@ -2693,12 +2693,11 @@ class hello(commands.Cog):
                             description=f"{interaction.user.name}님이 업적을 공개했습니다!",
                             color=discord.Color.gold()
                         )
-                        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/1828/1828884.png")
                         
                         if 내용공개 == "공개":
                             embed.add_field(
                                 name=f"",
-                                value="\u200b\n",
+                                value="",
                                 inline=False
                             )
                             embed.add_field(
