@@ -2708,7 +2708,7 @@ class hello(commands.Cog):
                         else:
                             embed.add_field(
                                 name=f"",
-                                value="\u200b\n",
+                                value="",
                                 inline=False
                             )
                             embed.add_field(
