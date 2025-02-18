@@ -959,7 +959,6 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         "베팅포인트": bettingPoint - loser["points"],
                         
                         # 추가 데이터
-                        f"{name}적중": predict_data.get(f"{name}적중", 0) + 1,
                         f"{name}{prediction_value}예측": predict_data.get(f"{name}{prediction_value}예측", 0) + 1,
                         f"{prediction_value}예측연속": predict_data.get(f"{prediction_value}예측연속", 0) + 1
                     })
