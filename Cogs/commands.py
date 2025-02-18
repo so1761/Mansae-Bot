@@ -1918,17 +1918,12 @@ class hello(commands.Cog):
 
 
             # ====================  [미션]  ====================
-            # 시즌미션 : 0은 곧 무한
+            # 시즌미션 : 다중 그림자분신술
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
             current_predict_season = cur_predict_seasonref.get()
             shadow_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/다중 그림자분신술')
             shadow_data = shadow_ref.get()
         
-            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-            current_predict_season = cur_predict_seasonref.get()
-            shadow_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/다중 그림자분신술')
-            shadow_ref.update({f"{이름}베팅" : 0})
-
             mission_bool = shadow_data.get('완료',False)
             if not mission_bool:
                 bet_num = shadow_data.get("{이름}베팅", 0)

@@ -1088,6 +1088,17 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         kda_votes['up'].clear()
                         kda_votes['down'].clear()
                         kda_votes['perfect'].clear()
+
+                        # ====================  [미션]  ====================
+                        # 시즌미션 : 다중 그림자분신술
+                        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                        current_predict_season = cur_predict_seasonref.get()
+                        for better in prediction_votes['win'] + prediction_votes['lose']:
+                            shadow_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{better}/미션/시즌미션/다중 그림자분신술')
+                            shadow_ref.update({f"{name}베팅" : 0})
+
+                        # ====================  [미션]  ====================
+
                         event.set()
 
         await asyncio.sleep(20)
@@ -1616,12 +1627,24 @@ async def check_remake_status(name, puuid, event, prediction_votes,kda_votes):
                             bettingPoint -= loser['points']
                             ref.update({"베팅포인트": bettingPoint})
 
-                        event.set()
+                        
                         prediction_votes['win'].clear()
                         prediction_votes['lose'].clear()
                         kda_votes['up'].clear()
                         kda_votes['down'].clear()
                         kda_votes['perfect'].clear()
+
+                        # ====================  [미션]  ====================
+                        # 시즌미션 : 다중 그림자분신술
+                        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                        current_predict_season = cur_predict_seasonref.get()
+                        for better in prediction_votes['win'] + prediction_votes['lose']:
+                            shadow_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{better}/미션/시즌미션/다중 그림자분신술')
+                            shadow_ref.update({f"{name}베팅" : 0})
+
+                        # ====================  [미션]  ====================
+                        
+                        event.set()
 
         last_game_state = current_game_state
         await asyncio.sleep(20)
