@@ -2636,7 +2636,7 @@ class hello(commands.Cog):
     @app_commands.command(name="업적공개", description="달성한 업적을 다른 사람들에게 공개합니다.")
     @app_commands.choices(내용공개=[
     Choice(name='공개', value='공개'),
-    Choice(name='비공개', value='시즌미션')
+    Choice(name='비공개', value='비공개개')
     ])
     async def show_user_missions(self, interaction: discord.Interaction, 내용공개:str):
         user_id = interaction.user.name
@@ -2689,7 +2689,10 @@ class hello(commands.Cog):
                 for mission_name, mission_data in missions.items():
                     if mission_name == selected_mission_name:
                         embed = discord.Embed(title="미션", description="미션을 공개했습니다")
-                        embed.add_field(name=mission_name, value=mission_details.get(mission_name, "설명이 없습니다."), inline=False)
+                        if 내용공개 == "공개":
+                            embed.add_field(name=mission_name, value=mission_details.get(mission_name, "설명이 없습니다."), inline=False)
+                        else:
+                            embed.add_field(name=mission_name, value="비공개", inline=False)
                         await interaction.response.send_message(embed=embed)
                         return
 
@@ -2699,7 +2702,7 @@ class hello(commands.Cog):
         view.add_item(select)
 
         # Select 위젯을 포함한 메시지 보내기
-        await interaction.response.send_message("달성한 업적을 선택해주세요.", view=view)
+        await interaction.response.send_message("달성한 업적을 선택해주세요.", view=view,ephemeral=True)
 
     @app_commands.command(name="주사위",description="주사위를 굴립니다. 하루에 한 번만 가능합니다.(1 ~ 100)")
     async def 주사위(self, interaction: discord.Interaction):
