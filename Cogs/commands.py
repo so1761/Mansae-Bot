@@ -2690,14 +2690,14 @@ class hello(commands.Cog):
                     if mission_name == selected_mission_name:
                         embed = discord.Embed(
                             title="업적 공개!",
-                            description=f"{interaction.user.name}님이 업적을 공개했습니다!\n\n",
+                            description=f"{interaction.user.name}님이 업적을 공개했습니다!" + "\u200b\n",
                             color=discord.Color.gold()
                         )
                         embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/1828/1828884.png")
                         
                         if 내용공개 == "공개":
                             embed.add_field(
-                                name=f"{selected_mission_name}\n\n",
+                                name=f"{selected_mission_name}",
                                 value="\u200b\n" + mission_details.get(selected_mission_name, "설명이 없습니다."),
                                 inline=False
                             )
