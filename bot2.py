@@ -84,11 +84,37 @@ MISSION_CHANNEL_ID = '1339058849247793255'
 used_items_for_user_jimo = {}
 used_items_for_user_melon = {}
 
-async def mission_notice(name, mission):
+async def mission_notice(name, mission, rarity):
     channel = bot.get_channel(int(CHANNEL_ID))
-    userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-    userembed.add_field(name="",value=f"{name}님이 [{mission}] 미션을 달성했습니다!", inline=False)
-    await channel.send(f"\n",embed = userembed)
+    
+    # 희귀도에 따라 임베드 색상과 제목 설정
+    color_map = {
+        "일반": discord.Color.gray(),
+        "희귀": discord.Color.green(),
+        "에픽": discord.Color.blue(),
+        "전설": discord.Color.gold(),
+        "신화": discord.Color.purple(),
+        "히든": discord.Color.dark_red()
+    }
+
+    title_map = {
+        "일반": "[일반] 미션 달성!",
+        "희귀": "[희귀] 미션 달성!",
+        "에픽": "[에픽] 미션 달성!",
+        "전설": "[전설] 미션 달성!",
+        "신화": "[신화] 미션 달성!",
+        "히든": "[히든] 미션 달성!"
+    }
+
+    color = color_map.get(rarity, discord.Color.light_gray())  # 기본 색상은 light_gray
+    title = title_map.get(rarity, "미션 달성!")
+
+    # 임베드 메시지 구성
+    userembed = discord.Embed(title=title, color=color)
+    userembed.add_field(name="", value=f"{name}님이 [{mission}] 미션을 달성했습니다!", inline=False)
+    
+    # 메시지 보내기
+    await channel.send(f"\n", embed=userembed)
 
 class MissionView(View):
     def __init__(self):
@@ -121,20 +147,6 @@ class CheckSeasonMissionButton(Button):
 
     async def callback(self, interaction: discord.Interaction):
         user_name = interaction.user.name
-
-        # ====================  [미션]  ====================
-        # 시즌미션 : 천 리 길도 한 걸음부터
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-        current_predict_season = cur_predict_seasonref.get()
-        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/시즌미션/천 리 길도 한 걸음부터")
-        mission_data = ref.get()
-        mission_bool = mission_data.get('완료',0)
-        if not mission_bool:
-            ref.update({"완료": True})
-            print(f"{user_name}의 [천 리 길도 한 걸음부터] 미션 완료")
-            await mission_notice(user_name,"천 리 길도 한 걸음부터")
-
-        # ====================  [미션]  ====================
 
         mission_data = get_mission_data(user_name, "시즌미션")  # 유저별 미션 상태 불러오기
 
@@ -944,7 +956,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     # 시즌미션 : 마이너스의 손
                     if predict_data.get("연패",0) + 1 == 10:
                         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{loser['name']}/미션/시즌미션/마이너스의 손")
-                        mission_bool = ref.get()['완료']
+                        mission_data = ref.get()
+                        mission_bool = mission_data.get('완료',False)
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{loser['name']}의 [마이너스의 손] 미션 완료")
@@ -960,12 +973,28 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         f"{loser['name']}님이 예측에 실패하여 베팅포인트를 잃었습니다! (베팅 포인트:-{loser['points']}) (환급 포인트: {get_bet})",
                         inline=False
                     )
+
                     if point + get_bet < loser['points']:
                         point_ref.update({"포인트": 0})
                         change_ref.update({"포인트": 0})
                     else:
                         point_ref.update({"포인트": point + get_bet - loser['points']})
                         change_ref.update({"포인트": point + get_bet - loser['points']})
+
+                    after_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
+                    after_predict_data = after_ref.get()
+                    after_point = after_predict_data.get("포인트", 0)
+                    if round(point * 0.2, 2) >= after_point: # 80% 이상 잃었을 경우
+                    # ====================  [미션]  ====================
+                    # 시즌미션 : 이카루스의 추락
+                        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{loser['name']}/미션/시즌미션/이카루스의 추락")
+                        mission_data = ref.get()
+                        mission_bool = mission_data.get('완료',False)
+                        if not mission_bool:
+                            ref.update({"완료": True})
+                            print(f"{loser['name']}의 [이카루스의 추락] 미션 완료")
+                            await mission_notice(loser['name'],"이카루스의 추락")
+                    # ====================  [미션]  ====================
 
                 await channel.send(embed=userembed)
                 prediction_votes['win'].clear()
