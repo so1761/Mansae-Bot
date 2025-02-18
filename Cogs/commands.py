@@ -2636,7 +2636,7 @@ class hello(commands.Cog):
     @app_commands.command(name="업적공개", description="달성한 업적을 다른 사람들에게 공개합니다.")
     @app_commands.choices(내용공개=[
     Choice(name='공개', value='공개'),
-    Choice(name='비공개', value='비공개개')
+    Choice(name='비공개', value='비공개')
     ])
     async def show_user_missions(self, interaction: discord.Interaction, 내용공개:str):
         user_id = interaction.user.name
@@ -2688,11 +2688,26 @@ class hello(commands.Cog):
             for mission_type, missions in user_missions.items():
                 for mission_name, mission_data in missions.items():
                     if mission_name == selected_mission_name:
-                        embed = discord.Embed(title="미션", description="미션을 공개했습니다")
+                        embed = discord.Embed(
+                            title="🏆 업적 공개! 🏆",
+                            description=f"🎉 {interaction.user.name}님이 업적을 공개했습니다! 🎉",
+                            color=discord.Color.gold()
+                        )
+                        embed.set_thumbnail(url="https://cdn-icons-png.flaticon.com/512/1828/1828884.png")
+                        
                         if 내용공개 == "공개":
-                            embed.add_field(name=mission_name, value=mission_details.get(mission_name, "설명이 없습니다."), inline=False)
+                            embed.add_field(
+                                name=f"✨ {selected_mission_name} ✨",
+                                value=mission_details.get(selected_mission_name, "설명이 없습니다."),
+                                inline=False
+                            )
                         else:
-                            embed.add_field(name=mission_name, value="비공개", inline=False)
+                            embed.add_field(
+                                name=f"✨ {selected_mission_name} ✨",
+                                value="🔒 이 업적은 비공개 상태입니다. 🔒",
+                                inline=False
+                            )
+                        
                         await interaction.response.send_message(embed=embed)
                         return
 
