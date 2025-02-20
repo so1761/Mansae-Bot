@@ -340,6 +340,7 @@ async def get_summoner_ranks(summoner_id, type="솔랭", retries=5, delay=5):
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as response:
+                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     if response.status == 200:
                         data = await response.json()
                         if type == "솔랭":
@@ -349,25 +350,29 @@ async def get_summoner_ranks(summoner_id, type="솔랭", retries=5, delay=5):
                         return filtered_data[0] if filtered_data else []
 
                     elif response.status == 404:
-                        print("[ERROR] 404 Not Found in get_summoner_ranks")
+                        print(f"[{now}] [ERROR] 404 Not Found in get_summoner_ranks")
                         return None  # 소환사 정보가 없으면 재시도할 필요 없음
 
                     elif response.status in [500, 502, 503, 504, 524]:  
-                        print(f"[WARNING] {response.status} Server error, retrying {attempt + 1}/{retries}...")  
+                        print(f"[{now}] [WARNING] {response.status} Server error, retrying {attempt + 1}/{retries}...")  
                     else:
-                        print(f"[ERROR] get_summoner_ranks Error: {response.status}")
+                        print(f"[{now}] [ERROR] get_summoner_ranks Error: {response.status}")
                         return None  # 다른 오류는 재시도 없이 종료
 
         except aiohttp.ClientConnectorError as e:
-            print(f"[ERROR] Connection error: {e}, retrying {attempt + 1}/{retries}...")
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{now}] [ERROR] Connection error: {e}, retrying {attempt + 1}/{retries}...")
         except aiohttp.ClientOSError as e:
-            print(f"[ERROR] Client OSError (Server disconnected): {e}, retrying {attempt + 1}/{retries}...")
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{now}] [ERROR] Client OSError (Server disconnected): {e}, retrying {attempt + 1}/{retries}...")
         except Exception as e:
-            print(f"[ERROR] Unexpected error in get_summoner_ranks: {e}, retrying {attempt + 1}/{retries}...")
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{now}] [ERROR] Unexpected error in get_summoner_ranks: {e}, retrying {attempt + 1}/{retries}...")
 
         await asyncio.sleep(delay)  # 재시도 간격
 
-    print("[ERROR] get_summoner_ranks All retries failed.")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print("[{now}] [ERROR] get_summoner_ranks All retries failed.")
     return None
 
 async def get_summoner_recentmatch_id(puuid, retries=5, delay=5):
@@ -378,29 +383,33 @@ async def get_summoner_recentmatch_id(puuid, retries=5, delay=5):
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as response:
+                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     if response.status == 200:
                         data = await response.json()
                         return data[0] if data else None
 
                     elif response.status == 404:
-                        print(f"[ERROR] 404 Not Found: No matches found for PUUID {puuid}")
+                        print(f"[{now}] [ERROR] 404 Not Found: No matches found for PUUID {puuid}")
                         return None  # PUUID가 잘못된 경우는 재시도할 필요 없음
 
                     elif response.status in [500, 502, 503, 504, 524]:
-                        print(f"[WARNING] {response.status} Server error, retrying {attempt + 1}/{retries}...")
+                        print(f"[{now}] [WARNING] {response.status} Server error, retrying {attempt + 1}/{retries}...")
                     else:
-                        print(f"[ERROR] Riot API returned status {response.status} in get_summoner_recentmatch_id")
+                        print(f"[{now}] [ERROR] Riot API returned status {response.status} in get_summoner_recentmatch_id")
                         return None
 
         except aiohttp.ClientConnectorError as e:
-            print(f"[ERROR] Connection error: {e}, retrying {attempt + 1}/{retries}...")
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{now}] [ERROR] Connection error: {e}, retrying {attempt + 1}/{retries}...")
         except Exception as e:
-            print(f"[ERROR] Unexpected error in get_summoner_recentmatch_id: {e}")
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{now}] [ERROR] Unexpected error in get_summoner_recentmatch_id: {e}")
             return None
 
         await asyncio.sleep(delay)  # 재시도 간격
 
-    print("[ERROR] get_summoner_recentmatch_id All retries failed.")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{now}] [ERROR] get_summoner_recentmatch_id All retries failed.")
     return None
 
 async def get_summoner_matchinfo(matchid, retries=5, delay=5):
@@ -411,32 +420,36 @@ async def get_summoner_matchinfo(matchid, retries=5, delay=5):
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as response:
+                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     if response.status == 200:
                         return await response.json()
 
                     elif response.status == 404:
-                        print(f"[ERROR] 404 Not Found: Match ID {matchid} not found.")
+                        print(f"[{now}] [ERROR] 404 Not Found: Match ID {matchid} not found.")
                         return None  # 매치 ID가 잘못된 경우는 재시도할 필요 없음
 
                     elif response.status == 400:
-                        print(f"[ERROR] 400 Bad Request: Invalid match ID {matchid}.")
+                        print(f"[{now}] [ERROR] 400 Bad Request: Invalid match ID {matchid}.")
                         return None  # 잘못된 요청이라면 재시도할 필요 없음
 
                     elif response.status in [500, 502, 503, 504, 524]:
-                        print(f"[WARNING] {response.status} Server error, retrying {attempt + 1}/{retries}...")
+                        print(f"[{now}] [WARNING] {response.status} Server error, retrying {attempt + 1}/{retries}...")
                     else:
-                        print(f"[ERROR] Riot API returned status {response.status} in get_summoner_matchinfo")
+                        print(f"[{now}] [ERROR] Riot API returned status {response.status} in get_summoner_matchinfo")
                         return None
 
         except aiohttp.ClientConnectorError as e:
-            print(f"[ERROR] Connection error: {e}, retrying {attempt + 1}/{retries}...")
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{now}] [ERROR] Connection error: {e}, retrying {attempt + 1}/{retries}...")
         except Exception as e:
-            print(f"[ERROR] Unexpected error in get_summoner_matchinfo: {e}")
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{now}] [ERROR] Unexpected error in get_summoner_matchinfo: {e}")
             return None
 
         await asyncio.sleep(delay)  # 재시도 간격
 
-    print("[ERROR] get_summoner_matchinfo All retries failed.")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{now}] [ERROR] get_summoner_matchinfo All retries failed.")
     return None
 
 async def refresh_prediction(name, anonym, prediction_votes):
