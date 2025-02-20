@@ -71,10 +71,10 @@ class NotFoundError(Exception):
 
 #익명 이름
 ANONYM_NAME_WIN = [
-  '개코원숭이','긴팔원숭이','일본원숭이','붉은고함원숭이','알락꼬리여우원숭이','다이아나원숭이','알렌원숭이','코주부원숭이',
+ '바바리원숭이','회색랑구르','알렌원숭이','코주부원숭이','황금들창코원숭이','안경원숭이','동부콜로부스','붉은잎원숭이','남부돼지꼬리원숭이'
 ]
 ANONYM_NAME_LOSE = [
-  '사랑앵무','왕관앵무','회색앵무','모란앵무','금강앵무','유황앵무','뉴기니아앵무','장미앵무'
+ '카카포','케아','카카리키','아프리카회색앵무','유황앵무','뉴기니아앵무', '빗창앵무','유리앵무'
 ]
 
 CHANNEL_ID = '938728993329397781'
@@ -90,11 +90,11 @@ async def mission_notice(name, mission, rarity):
     # 희귀도에 따라 임베드 색상과 제목 설정
     color_map = {
         "일반": discord.Color.gray(),
-        "희귀": discord.Color.green(),
-        "에픽": discord.Color.blue(),
+        "희귀": discord.Color.blue(),
+        "에픽": discord.Color.purple(),
         "전설": discord.Color.gold(),
-        "신화": discord.Color.purple(),
-        "히든": discord.Color.dark_red()
+        "신화": discord.Color.dark_red(),
+        "히든": discord.Color.from_rgb(100,198,209)
     }
 
     title_map = {
@@ -852,7 +852,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{winner['name']}의 [깜잘알] 미션 완료")
-                            await mission_notice(winner['name'],"깜잘알")
+                            await mission_notice(winner['name'],"깜잘알","전설")
                     # ====================  [미션]  ====================
 
                     # ====================  [미션]  ====================
@@ -867,7 +867,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{winner['name']}의 [난 이기는 판만 걸어] 미션 완료")
-                            await mission_notice(winner['name'],"난 이기는 판만 걸어")
+                            await mission_notice(winner['name'],"난 이기는 판만 걸어","전설")
                     # ====================  [미션]  ====================
 
                     # ====================  [미션]  ====================
@@ -881,7 +881,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{winner['name']}의 [쿵쿵따] 미션 완료")
-                            await mission_notice(winner['name'],"쿵쿵따")
+                            await mission_notice(winner['name'],"쿵쿵따","일반")
 
                     # ====================  [미션]  ====================
 
@@ -967,7 +967,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{loser['name']}의 [마이너스의 손] 미션 완료")
-                            await mission_notice(loser['name'],"마이너스의 손")
+                            await mission_notice(loser['name'],"마이너스의 손","신화")
                     # ====================  [미션]  ====================
                     
                     # 남은 포인트를 배팅한 비율에 따라 환급받음 (50%)
@@ -999,7 +999,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{loser['name']}의 [이카루스의 추락] 미션 완료")
-                            await mission_notice(loser['name'],"이카루스의 추락")
+                            await mission_notice(loser['name'],"이카루스의 추락","에픽")
                     # ====================  [미션]  ====================
 
                 await channel.send(embed=userembed)
@@ -1043,7 +1043,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 if not mission_bool:
                                     ref.update({"완료": True})
                                     print(f"{member}의 [졌지만 이겼다] 미션 완료")
-                                    await mission_notice(member,"졌지만 이겼다")
+                                    await mission_notice(member,"졌지만 이겼다","전설")
 
                         # ====================  [미션]  ====================
 
@@ -1060,7 +1060,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 if not mission_bool:
                                     ref.update({"완료": True})
                                     print(f"{member}의 [이럴 줄 알았어] 미션 완료")
-                                    await mission_notice(member,"이럴 줄 알았어")
+                                    await mission_notice(member,"이럴 줄 알았어","희귀")
 
                         # ====================  [미션]  ====================
 
@@ -1082,19 +1082,6 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 else:
                                     point_ref.update({"포인트": predict_data["포인트"] + round(perfect_point / perfecter_num)})
                                     kdaembed.add_field(name="", value=f"{perfect_winner['name']}님이 KDA 퍼펙트 예측에 성공하여 {round(((perfect_point) / perfecter_num))}점({perfect_point} / {perfecter_num})점을 획득하셨습니다!", inline=False)
-                                
-                                # ====================  [미션]  ====================
-                                # 시즌미션 : 불사대마왕
-                                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                                current_predict_season = cur_predict_seasonref.get()
-                                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{perfect_winner['name']}/미션/시즌미션/불사대마왕")
-                                mission_bool = ref.get()['완료']
-                                if not mission_bool:
-                                    ref.update({"완료": True})
-                                    print(f"{perfect_winner['name']}의 [불사대마왕] 미션 완료")
-                                    await mission_notice(perfect_winner['name'],"불사대마왕")
-
-                                # ====================  [미션]  ====================
 
                             for winner in winners:
                                 point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
