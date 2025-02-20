@@ -271,6 +271,7 @@ async def nowgame(puuid, retries=5, delay=5):
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as response:
+                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     if response.status == 200:
                         data = await response.json()
                         game_mode = data.get("gameMode")
@@ -289,21 +290,24 @@ async def nowgame(puuid, retries=5, delay=5):
                         return False, None  # 현재 게임이 없으면 재시도할 필요 없음
 
                     elif response.status in [500, 502, 503, 504, 524]:  # 524 추가
-                        print(f"[WARNING] {response.status} Server error, retrying {attempt + 1}/{retries}...")
+                        print(f"[{now}] [WARNING] {response.status} Server error, retrying {attempt + 1}/{retries}...")
 
                     else:
-                        print(f"[ERROR] Riot API returned status {response.status} in nowgame")
+                        print(f"[{now}] [ERROR] Riot API returned status {response.status} in nowgame")
                         return False, None  # 다른 오류는 재시도하지 않음
 
         except aiohttp.ClientConnectorError as e:
-            print(f"[ERROR] Connection error: {e}, retrying {attempt + 1}/{retries}...")
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{now}] [ERROR] Connection error: {e}, retrying {attempt + 1}/{retries}...")
         except Exception as e:
-            print(f"[ERROR] Unexpected error in nowgame: {e}")
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{now}] [ERROR] Unexpected error in nowgame: {e}")
             return False, None
 
         await asyncio.sleep(delay)  # 재시도 간격 증가
 
-    print("[ERROR] nowgame All retries failed.")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{now}] [ERROR] nowgame All retries failed.")
     return False, None
 
 async def get_summoner_puuid(riot_id, tagline):
@@ -683,7 +687,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                 last_total_match_solo = current_total_match_solo
                 rank_type = "솔로랭크"
             
-            if current_total_match_flex != last_total_match_flex:
+            elif current_total_match_flex != last_total_match_flex:
                 print(f"{name}의 {current_total_match_solo}번째 자유랭크 게임 완료")
                 string_flex = get_lp_and_tier_difference(last_rank_flex, current_rank_flex,"자유랭크",name)
                 await notice_channel.send(f"\n{name}의 자유랭크 점수 변동이 감지되었습니다!\n{string_flex}")
