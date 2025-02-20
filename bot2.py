@@ -808,6 +808,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     bettingPoint = predict_data.get("베팅포인트",0)
 
                     prediction_value = "승리" if result else "패배"
+                    prediction_opposite_value = "패배" if result else "승리"
                     # 예측 내역 변동 데이터
                     change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
                     change_ref.update({
@@ -822,7 +823,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         # 추가 데이터
                         f"{name}적중": predict_data.get(f"{name}적중", 0) + 1,
                         f"{name}{prediction_value}예측": predict_data.get(f"{name}{prediction_value}예측", 0) + 1,
-                        f"{prediction_value}예측연속": predict_data.get(f"{prediction_value}예측연속", 0) + 1
+                        f"{prediction_value}예측연속": predict_data.get(f"{prediction_value}예측연속", 0) + 1,
+                        f"{prediction_opposite_value}예측연속": 0
                     })
                     # 예측 내역 업데이트
                     point_ref.update({
@@ -837,7 +839,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         # 추가 데이터
                         f"{name}적중": predict_data.get(f"{name}적중", 0) + 1,
                         f"{name}{prediction_value}예측": predict_data.get(f"{name}{prediction_value}예측", 0) + 1,
-                        f"{prediction_value}예측연속": predict_data.get(f"{prediction_value}예측연속", 0) + 1
+                        f"{prediction_value}예측연속": predict_data.get(f"{prediction_value}예측연속", 0) + 1,
+                        f"{prediction_opposite_value}예측연속": 0
                     })
 
                     # ====================  [미션]  ====================
@@ -922,6 +925,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     bettingPoint = predict_data.get("베팅포인트",0)
                     
                     prediction_value = "패배" if result else "승리"
+                    prediction_opposite_value = "승리" if result else "패배"
                     # 예측 내역 변동 데이터
                     change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
                     change_ref.update({
@@ -935,7 +939,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
                         # 추가 데이터
                         f"{name}{prediction_value}예측": predict_data.get(f"{name}{prediction_value}예측", 0) + 1,
-                        f"{prediction_value}예측연속": predict_data.get(f"{prediction_value}예측연속", 0) + 1
+                        f"{prediction_value}예측연속": predict_data.get(f"{prediction_value}예측연속", 0) + 1,
+                        f"{prediction_opposite_value}예측연속": 0
                     })
                     # 예측 내역 업데이트
                     point_ref.update({
@@ -949,7 +954,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
                         # 추가 데이터
                         f"{name}{prediction_value}예측": predict_data.get(f"{name}{prediction_value}예측", 0) + 1,
-                        f"{prediction_value}예측연속": predict_data.get(f"{prediction_value}예측연속", 0) + 1
+                        f"{prediction_value}예측연속": predict_data.get(f"{prediction_value}예측연속", 0) + 1,
+                        f"{prediction_opposite_value}예측연속": 0
                     })
 
                     # ====================  [미션]  ====================

@@ -2024,13 +2024,16 @@ class hello(commands.Cog):
                             minfo = mref.get()
                             mbettingPoint = mref2.get()
                             mpoint = minfo['포인트']
-                            if mpoint == mbettingPoint: # 포인트의 전부를 베팅포인트로 넣음
-                                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                                current_predict_season = cur_predict_seasonref.get()
-                                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/도파민 중독")
-                                mission_data = ref.get()
-                                mission_bool = mission_data.get('완료',False)
-                                if not mission_bool:
+            
+                            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                            current_predict_season = cur_predict_seasonref.get()
+                            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/도파민 중독")
+                            mission_data = ref.get()
+                            mission_bool = mission_data.get('완료',False)
+
+                            
+                            if not mission_bool:
+                                if mpoint == mbettingPoint: # 포인트의 전부를 베팅포인트로 넣음
                                     all_in_count = mission_data.get('횟수', 0)
                                     if all_in_count + 1 == 3:
                                         ref.update({"완료": True})
@@ -2038,6 +2041,9 @@ class hello(commands.Cog):
                                         await mission_notice(interaction.client, nickname, "도파민 중독","신화")
                                     else:
                                         ref.update({"횟수" : all_in_count + 1})
+                                else:
+                                    ref.update({"횟수" : 0}) # 올인 안했을 경우 초기화
+                                    
                             # ====================  [미션]  ====================
                             
                             return
@@ -2079,13 +2085,16 @@ class hello(commands.Cog):
                             minfo = mref.get()
                             mbettingPoint = mref2.get()
                             mpoint = minfo['포인트']
-                            if mpoint == mbettingPoint: # 포인트의 전부를 베팅포인트로 넣음
-                                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                                current_predict_season = cur_predict_seasonref.get()
-                                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/도파민 중독")
-                                mission_data = ref.get()
-                                mission_bool = mission_data.get('완료',False)
-                                if not mission_bool:
+
+                            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                            current_predict_season = cur_predict_seasonref.get()
+                            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/도파민 중독")
+                            mission_data = ref.get()
+                            mission_bool = mission_data.get('완료',False)
+
+                            
+                            if not mission_bool:
+                                if mpoint == mbettingPoint: # 포인트의 전부를 베팅포인트로 넣음
                                     all_in_count = mission_data.get('횟수', 0)
                                     if all_in_count + 1 == 3:
                                         ref.update({"완료": True})
@@ -2093,6 +2102,8 @@ class hello(commands.Cog):
                                         await mission_notice(interaction.client, nickname, "도파민 중독","신화")
                                     else:
                                         ref.update({"횟수" : all_in_count + 1})
+                                else:
+                                    ref.update({"횟수" : 0}) # 올인 안했을 경우 초기화
                             # ====================  [미션]  ====================
                             
 
@@ -2623,18 +2634,18 @@ class hello(commands.Cog):
         mission_details = {
             "깜잘알": "지모의 승부예측 50번 적중. 지모의 게임결과를 정확히 예측하며 진정한 깜잘알로 거듭나자.",
             "난 이기는 판만 걸어": "오직 승리예측만으로 5연속 적중. 승리가 아니면 죽음을!",
-            "금지된 숫자": "2669 포인트를 베팅하고 적중. 절대 이 숫자의 의미를 이야기해선 안돼.",
-            "도파민 중독": "올인으로 연속 3번 베팅.",
+            "금지된 숫자": "2669 포인트를 베팅하고 적중. 절대 이 숫자의 의미를 말해선 안돼.",
+            "도파민 중독": "올인으로 연속 3번 베팅. 걸고, 걸고, 또 건다",
             "누구에게도 말할 수 없는 비밀": "혼자보기 포인트가 500 이상일 때 예측순위 혼자보기. 모두에게 보여줄 바엔 혼자 보겠어.",
             "쿵쿵따": "두 번 연속 실패 후, 다음 예측에서 적중. 앞선 2번의 실패는 다음 성공을 위한 준비 과정이었다.",
             "정점": "주사위에서 100을 뽑기. 주사위의 정점을 달성하자.",
-            "이럴 줄 알았어": "10데스 이상 판에서 패배를 예측하고 적중. 난 이 판 질 줄 알았음ㅋ",
+            "이럴 줄 알았어": "10데스 이상 판에서 패배를 예측하고 적중. 난 이 판 질 줄 알았음...",
             "다중 그림자 분신술": "한 게임에서 5번 베팅. 분신술을 쓴 것처럼 계속 베팅하라",
-            "졌지만 이겼다": "패배를 예측하고, 퍼펙트를 건 뒤 둘 다 적중. 패배한 판에서도 퍼펙트는 나온다.",
+            "졌지만 이겼다": "패배를 예측하고, 퍼펙트를 건 뒤 둘 다 적중. 게임은 졌지만 난 승리했다",
             "0은 곧 무한": "/베팅 명령어로 0포인트 베팅. 설마 0포인트를 베팅하는 사람이 있겠어?",
-            "크릴새우": "/베팅 명령어로 1 포인트 베팅. 크릴새우는 1포인트도 귀하다",
-            "주사위주사위주사위주사위주사위 ": "하루에 /주사위 명령어를 5번 실행. 주사위를 굴리고 싶은 열망이 보인다.",
-            "이 모양은 고양이?!": "숨겨진 명령어 실행. 어쩌면 여기에서 고양이를 찾을 수도 있겠다."
+            "크릴새우": "/베팅 명령어로 1 포인트 베팅. 이게 크릴새우지",
+            "주사위주사위주사위주사위주사위 ": "하루에 /주사위 명령어를 5번 실행. 경고 문구는 가볍게 무시한다",
+            "이 모양은 고양이?!": "/시즌그래프 명령어에서 대상으로 [고양이]를 선택. 누군가의 그래프에서는 고양이가 보인다는 소문이 있다... "
         }
 
         embed = discord.Embed(title="📜 시즌 미션 상세 정보", color=discord.Color.gold())
@@ -2816,23 +2827,32 @@ class hello(commands.Cog):
         point = originr["포인트"]
         bettingPoint = originr["베팅포인트"]
         real_point = point - bettingPoint
-
         need_point = 1000
-        if real_point < need_point:
-            await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {real_point} (베팅포인트 {bettingPoint} 제외) \n"
-                                                    f"필요 포인트 : {need_point}",ephemeral=True)
-            return
-
-        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_id}")
-        ref.update({"업적해금": True})
-
-        embed = discord.Embed(
-            title="업적 해금!",
-            description=f"{user_id}님이 1000포인트를 지불하여 모든 업적의 정보를 열람했습니다!",
-            color=discord.Color.blue()
-        )
         
-        await interaction.response.send_message(embed=embed)
+        today = datetime.today().day  # 오늘 날짜의 일(day) 값 가져오기
+        if today >= 15:
+            if real_point < need_point:
+                await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {real_point} (베팅포인트 {bettingPoint} 제외) \n"
+                                                        f"필요 포인트 : {need_point}",ephemeral=True)
+                return
+
+            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_id}")
+            ref.update({"업적해금": True})
+
+            embed = discord.Embed(
+                title="업적 해금!",
+                description=f"{user_id}님이 1000포인트를 지불하여 업적 정보를 열람했습니다!",
+                color=discord.Color.blue()
+            )
+            
+            await interaction.response.send_message(embed=embed)
+        else:
+            embed = discord.Embed(
+                title="해금 실패!",
+                description=f"업적 해금은 15일 이후부터 가능합니다!",
+                color=discord.Color.red()
+            )
+            await interaction.response.send_message(embed=embed, ephemeral = True)
 
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
