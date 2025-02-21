@@ -320,29 +320,30 @@ class DiceButton(discord.ui.Button):
 class RerollButton(discord.ui.Button):
     def __init__(self, view):
         super().__init__(style=discord.ButtonStyle.success, label="🎲 다시 굴리기")
-        self.custom_view = view
+        self.custom_view = view  # 수정된 부분
 
     async def callback(self, interaction: discord.Interaction):
-        if interaction.user != self.view.user:
+        if interaction.user != self.custom_view.user:  # 수정된 부분
             await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
             return
         for idx in range(5):
-            if not self.view.hold[idx]:
-                self.view.rolls[idx] = random.randint(1, 6)
+            if not self.custom_view.hold[idx]:  # 수정된 부분
+                self.custom_view.rolls[idx] = random.randint(1, 6)
         self.custom_view.reroll_count += 1
         self.custom_view.update_buttons()
         await interaction.response.edit_message(view=self.custom_view)
 
+
 class FinalizeButton(discord.ui.Button):
     def __init__(self, view):
         super().__init__(style=discord.ButtonStyle.danger, label="✅ 확정")
-        self.custom_view = view
+        self.custom_view = view  # 수정된 부분
 
     async def callback(self, interaction: discord.Interaction):
-        if interaction.user != self.custom_view.user:
+        if interaction.user != self.custom_view.user:  # 수정된 부분
             await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
             return
-        result = ', '.join(str(roll) for roll in self.view.rolls)
+        result = ', '.join(str(roll) for roll in self.custom_view.rolls)  # 수정된 부분
         await interaction.response.edit_message(content=f"🎲 최종 주사위 결과: {result}", view=None)
 
 class WarnModal(Modal):
