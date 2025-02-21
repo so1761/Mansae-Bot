@@ -287,9 +287,14 @@ class DiceRollView(discord.ui.View):
         super().__init__(timeout=60)
         self.user = user
         self.rolls = initial_rolls
-        self.hold = [False] * 5
+        self.hold = [False] * 5  # 각 주사위가 hold 상태인지 저장
         self.reroll_count = reroll_count
         self.max_rerolls = 2
+        self.update_buttons()
+
+    def toggle_hold(self, index):
+        """주사위의 hold 상태를 토글합니다."""
+        self.hold[index] = not self.hold[index]
         self.update_buttons()
 
     def update_buttons(self):
