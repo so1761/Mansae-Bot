@@ -304,22 +304,23 @@ class DiceRollView(discord.ui.View):
 
 class DiceButton(discord.ui.Button):
     def __init__(self, index, label, view):
-        super().__init__(style=discord.ButtonStyle.primary, label=label)
+        super().__init__(label=label, style=discord.ButtonStyle.secondary)
         self.index = index
-        self.view = view
+        self.custom_view = view  # 'view' 대신 다른 이름 사용
 
     async def callback(self, interaction: discord.Interaction):
-        if interaction.user != self.view.user:
+        user = interaction.user
+        if user != self.custom_view.user:  # 수정된 이름 사용
             await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
             return
-        self.view.hold[self.index] = not self.view.hold[self.index]
-        self.view.update_buttons()
-        await interaction.response.edit_message(view=self.view)
+
+        self.custom_view.toggle_hold(self.index)
+        await interaction.response.edit_message(view=self.custom_view)
 
 class RerollButton(discord.ui.Button):
     def __init__(self, view):
         super().__init__(style=discord.ButtonStyle.success, label="🎲 다시 굴리기")
-        self.view = view
+        self.custom_view = view
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user != self.view.user:
@@ -328,17 +329,17 @@ class RerollButton(discord.ui.Button):
         for idx in range(5):
             if not self.view.hold[idx]:
                 self.view.rolls[idx] = random.randint(1, 6)
-        self.view.reroll_count += 1
-        self.view.update_buttons()
-        await interaction.response.edit_message(view=self.view)
+        self.custom_view.reroll_count += 1
+        self.custom_view.update_buttons()
+        await interaction.response.edit_message(view=self.custom_view)
 
 class FinalizeButton(discord.ui.Button):
     def __init__(self, view):
         super().__init__(style=discord.ButtonStyle.danger, label="✅ 확정")
-        self.view = view
+        self.custom_view = view
 
     async def callback(self, interaction: discord.Interaction):
-        if interaction.user != self.view.user:
+        if interaction.user != self.custom_view.user:
             await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
             return
         result = ', '.join(str(roll) for roll in self.view.rolls)
