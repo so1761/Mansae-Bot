@@ -311,11 +311,11 @@ class DiceButton(discord.ui.Button):
     def __init__(self, index, label, view):
         super().__init__(label=label, style=discord.ButtonStyle.secondary)
         self.index = index
-        self.custom_view = view  # 'view' 대신 다른 이름 사용
+        self.custom_view = view 
 
     async def callback(self, interaction: discord.Interaction):
         user = interaction.user
-        if user != self.custom_view.user:  # 수정된 이름 사용
+        if user != self.custom_view.user:  
             await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
             return
 
@@ -325,14 +325,14 @@ class DiceButton(discord.ui.Button):
 class RerollButton(discord.ui.Button):
     def __init__(self, view):
         super().__init__(style=discord.ButtonStyle.success, label="🎲 다시 굴리기")
-        self.custom_view = view  # 수정된 부분
+        self.custom_view = view
 
     async def callback(self, interaction: discord.Interaction):
-        if interaction.user != self.custom_view.user:  # 수정된 부분
+        if interaction.user != self.custom_view.user:  
             await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
             return
         for idx in range(5):
-            if not self.custom_view.hold[idx]:  # 수정된 부분
+            if not self.custom_view.hold[idx]:
                 self.custom_view.rolls[idx] = random.randint(1, 6)
         self.custom_view.reroll_count += 1
         self.custom_view.update_buttons()
@@ -342,14 +342,19 @@ class RerollButton(discord.ui.Button):
 class FinalizeButton(discord.ui.Button):
     def __init__(self, view):
         super().__init__(style=discord.ButtonStyle.danger, label="✅ 확정")
-        self.custom_view = view  # 수정된 부분
+        self.custom_view = view 
 
     async def callback(self, interaction: discord.Interaction):
-        if interaction.user != self.custom_view.user:  # 수정된 부분
+        if interaction.user != self.custom_view.user: 
             await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
             return
-        result = ', '.join(str(roll) for roll in self.custom_view.rolls)  # 수정된 부분
-        await interaction.response.edit_message(content=f"🎲 최종 주사위 결과: {result}", view=None)
+        result = ', '.join(str(roll) for roll in self.custom_view.rolls) 
+        embed = discord.Embed(
+            title="🎲 주사위 굴리기!",
+            description=f"{interaction.user.name}님의 주사위: {result}",
+            color=discord.Color.blue()
+        )
+        await interaction.response.edit_message(content="", view=None, embed = embed)
 
 class WarnModal(Modal):
     reason = TextInput(label="경고 사유", placeholder="경고 사유를 입력하세요.")
