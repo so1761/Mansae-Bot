@@ -333,7 +333,7 @@ class RerollButton(discord.ui.Button):
         result = ', '.join(str(roll) for roll in self.custom_view.rolls) 
         embed = discord.Embed(
             title="🎲 주사위 굴리기!",
-            description=f"{interaction.user.name}님의 주사위: {result}",
+            description=f"{interaction.user.name}님의 주사위: **{result}**",
             color=discord.Color.blue()
         )
         await interaction.response.edit_message(view=self.custom_view, embed = embed)
@@ -353,7 +353,7 @@ class FinalizeButton(discord.ui.Button):
         hand = evaluate_hand(self.custom_view.rolls)  # 족보 판별
         embed = discord.Embed(
             title="🎲 주사위 굴리기!",
-            description=f"{interaction.user.name}님의 주사위: {result}\n 족보: {hand}",
+            description=f"{interaction.user.name}님의 주사위: **{result}**\n 족보: **{hand}**",
             color=discord.Color.blue()
         )
         await interaction.response.edit_message(content="", view=None, embed = embed)
@@ -2908,7 +2908,7 @@ class hello(commands.Cog):
         dice_display = ', '.join(str(roll) for roll in initial_rolls)
         embed = discord.Embed(
             title="🎲 주사위 굴리기!",
-            description=f"{interaction.user.name}님의 주사위: {dice_display}",
+            description=f"{interaction.user.name}님의 주사위: **{dice_display}**",
             color=discord.Color.blue()
         )
         await interaction.response.send_message(embed=embed, view=view)
