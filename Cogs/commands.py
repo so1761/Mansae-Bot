@@ -302,47 +302,47 @@ class DiceRollView(discord.ui.View):
         else:
             self.add_item(FinalizeButton(self))
 
-    class DiceButton(discord.ui.Button):
-        def __init__(self, index, label, view):
-            super().__init__(style=discord.ButtonStyle.primary, label=label)
-            self.index = index
-            self.view = view
+class DiceButton(discord.ui.Button):
+    def __init__(self, index, label, view):
+        super().__init__(style=discord.ButtonStyle.primary, label=label)
+        self.index = index
+        self.view = view
 
-        async def callback(self, interaction: discord.Interaction):
-            if interaction.user != self.view.user:
-                await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
-                return
-            self.view.hold[self.index] = not self.view.hold[self.index]
-            self.view.update_buttons()
-            await interaction.response.edit_message(view=self.view)
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user != self.view.user:
+            await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
+            return
+        self.view.hold[self.index] = not self.view.hold[self.index]
+        self.view.update_buttons()
+        await interaction.response.edit_message(view=self.view)
 
-    class RerollButton(discord.ui.Button):
-        def __init__(self, view):
-            super().__init__(style=discord.ButtonStyle.success, label="🎲 다시 굴리기")
-            self.view = view
+class RerollButton(discord.ui.Button):
+    def __init__(self, view):
+        super().__init__(style=discord.ButtonStyle.success, label="🎲 다시 굴리기")
+        self.view = view
 
-        async def callback(self, interaction: discord.Interaction):
-            if interaction.user != self.view.user:
-                await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
-                return
-            for idx in range(5):
-                if not self.view.hold[idx]:
-                    self.view.rolls[idx] = random.randint(1, 6)
-            self.view.reroll_count += 1
-            self.view.update_buttons()
-            await interaction.response.edit_message(view=self.view)
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user != self.view.user:
+            await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
+            return
+        for idx in range(5):
+            if not self.view.hold[idx]:
+                self.view.rolls[idx] = random.randint(1, 6)
+        self.view.reroll_count += 1
+        self.view.update_buttons()
+        await interaction.response.edit_message(view=self.view)
 
-    class FinalizeButton(discord.ui.Button):
-        def __init__(self, view):
-            super().__init__(style=discord.ButtonStyle.danger, label="✅ 확정")
-            self.view = view
+class FinalizeButton(discord.ui.Button):
+    def __init__(self, view):
+        super().__init__(style=discord.ButtonStyle.danger, label="✅ 확정")
+        self.view = view
 
-        async def callback(self, interaction: discord.Interaction):
-            if interaction.user != self.view.user:
-                await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
-                return
-            result = ', '.join(str(roll) for roll in self.view.rolls)
-            await interaction.response.edit_message(content=f"🎲 최종 주사위 결과: {result}", view=None)
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user != self.view.user:
+            await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
+            return
+        result = ', '.join(str(roll) for roll in self.view.rolls)
+        await interaction.response.edit_message(content=f"🎲 최종 주사위 결과: {result}", view=None)
 
 class WarnModal(Modal):
     reason = TextInput(label="경고 사유", placeholder="경고 사유를 입력하세요.")
