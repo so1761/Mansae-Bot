@@ -304,6 +304,7 @@ class DiceRollView(discord.ui.View):
             self.add_item(DiceButton(idx, label, self))
         if self.reroll_count < self.max_rerolls:
             self.add_item(RerollButton(self))
+            self.add_item(FinalizeButton(self))
         else:
             self.add_item(FinalizeButton(self))
 
@@ -336,7 +337,13 @@ class RerollButton(discord.ui.Button):
                 self.custom_view.rolls[idx] = random.randint(1, 6)
         self.custom_view.reroll_count += 1
         self.custom_view.update_buttons()
-        await interaction.response.edit_message(view=self.custom_view)
+        result = ', '.join(str(roll) for roll in self.custom_view.rolls) 
+        embed = discord.Embed(
+            title="🎲 주사위 굴리기!",
+            description=f"{interaction.user.name}님의 주사위: {result}",
+            color=discord.Color.blue()
+        )
+        await interaction.response.edit_message(view=self.custom_view, embed = embed)
 
 
 class FinalizeButton(discord.ui.Button):
