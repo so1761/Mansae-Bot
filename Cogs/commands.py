@@ -2022,7 +2022,7 @@ class hello(commands.Cog):
             })
             # ====================  [미션]  ====================
             # 시즌미션 : 대왕원숭이
-            if predict_data.get("승리예측연속", 0) == 10:
+            if predict_data.get("승리예측연속", 0) + 1 == 10:
                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                 current_predict_season = cur_predict_seasonref.get()
                 ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{이름}/미션/시즌미션/대왕원숭이")
@@ -2036,7 +2036,7 @@ class hello(commands.Cog):
 
             # ====================  [미션]  ====================
             # 시즌미션 : 대왕앵무
-            if predict_data.get("패배예측연속", 0) == 10:
+            if predict_data.get("패배예측연속", 0) + 1 == 10:
                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                 current_predict_season = cur_predict_seasonref.get()
                 ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{이름}/미션/시즌미션/대왕앵무")
@@ -2050,7 +2050,7 @@ class hello(commands.Cog):
 
             # ====================  [미션]  ====================
             # 시즌미션 : 지모의 충신
-            if predict_data.get("지모승리예측", 0) == 30:
+            if predict_data.get("지모승리예측", 0) + 1 == 30:
                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                 current_predict_season = cur_predict_seasonref.get()
                 ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{이름}/미션/시즌미션/지모의 충신")
