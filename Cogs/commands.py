@@ -282,7 +282,7 @@ def get_summoner_matchinfo_nonaysnc(matchid): #matchid로 매치 정보 구하�
         print('Error:', response.status_code)
         return None
 
-class DiceRollView(View):
+class DiceRollView(discord.ui.View):
     def __init__(self, user, initial_rolls, reroll_count=0):
         super().__init__(timeout=60)
         self.user = user
@@ -302,7 +302,7 @@ class DiceRollView(View):
         else:
             self.add_item(FinalizeButton(self))
 
-    class DiceButton(Button):
+    class DiceButton(discord.ui.Button):
         def __init__(self, index, label, view):
             super().__init__(style=discord.ButtonStyle.primary, label=label)
             self.index = index
@@ -316,7 +316,7 @@ class DiceRollView(View):
             self.view.update_buttons()
             await interaction.response.edit_message(view=self.view)
 
-    class RerollButton(Button):
+    class RerollButton(discord.ui.Button):
         def __init__(self, view):
             super().__init__(style=discord.ButtonStyle.success, label="🎲 다시 굴리기")
             self.view = view
@@ -332,7 +332,7 @@ class DiceRollView(View):
             self.view.update_buttons()
             await interaction.response.edit_message(view=self.view)
 
-    class FinalizeButton(Button):
+    class FinalizeButton(discord.ui.Button):
         def __init__(self, view):
             super().__init__(style=discord.ButtonStyle.danger, label="✅ 확정")
             self.view = view
