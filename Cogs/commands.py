@@ -342,20 +342,57 @@ class RerollButton(discord.ui.Button):
 class FinalizeButton(discord.ui.Button):
     def __init__(self, view):
         super().__init__(style=discord.ButtonStyle.danger, label="✅ 확정")
-        self.custom_view = view 
+        self.custom_view = view
 
     async def callback(self, interaction: discord.Interaction):
-        if interaction.user != self.custom_view.user: 
+        if interaction.user != self.custom_view.user:
             await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
             return
-        result = ', '.join(str(roll) for roll in self.custom_view.rolls) 
-        embed = discord.Embed(
-            title="🎲 주사위 굴리기!",
-            description=f"{interaction.user.name}님의 주사위: {result}",
-            color=discord.Color.blue()
+        
+        result = ', '.join(str(roll) for roll in self.custom_view.rolls)
+        hand = evaluate_hand(self.custom_view.rolls)  # 족보 판별
+        await interaction.response.edit_message(
+            content=f"🎲 최종 주사위 결과: {result}\n🏆 족보: {hand}",
+            view=None
         )
-        await interaction.response.edit_message(content="", view=None, embed = embed)
 
+def evaluate_hand(rolls):
+    from collections import Counter
+    
+    counts = Counter(rolls)
+    count_values = sorted(counts.values(), reverse=True)
+    unique_rolls = sorted(set(rolls))
+    rolls_sorted = sorted(rolls)
+
+    # Yahtzee
+    if count_values[0] == 5:
+        return "🎉 Yahtzee!"
+
+    # Large Straight (1-5 or 2-6)
+    elif rolls_sorted == [1, 2, 3, 4, 5] or rolls_sorted == [2, 3, 4, 5, 6]:
+        return "➡️ Large Straight!"
+
+    # Small Straight (any 4 consecutive numbers)
+    elif any(all(num in rolls_sorted for num in seq) for seq in ([1,2,3,4], [2,3,4,5], [3,4,5,6])):
+        return "🡒 Small Straight!"
+
+    # Full House
+    elif count_values == [3, 2]:
+        return "🏠 Full House!"
+
+    # Four of a Kind
+    elif count_values[0] == 4:
+        return "🔥 Four of a Kind!"
+
+    # Three of a Kind
+    elif count_values[0] == 3:
+        return "🎯 Three of a Kind!"
+
+    # Chance
+    else:
+        total = sum(rolls)
+        return f"🎲 Chance! (합계: {total})"
+        
 class WarnModal(Modal):
     reason = TextInput(label="경고 사유", placeholder="경고 사유를 입력하세요.")
 
