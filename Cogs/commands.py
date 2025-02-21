@@ -300,7 +300,7 @@ class DiceRollView(discord.ui.View):
     def update_buttons(self):
         self.clear_items()
         for idx, roll in enumerate(self.rolls):
-            label = f"🎲 {roll}{' ✅' if self.hold[idx] else ''}"
+            label = f"🎲 {roll}{' 🔒' if self.hold[idx] else ''}"
             self.add_item(DiceButton(idx, label, self))
         if self.reroll_count < self.max_rerolls:
             self.add_item(RerollButton(self))
