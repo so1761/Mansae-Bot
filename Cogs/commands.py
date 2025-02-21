@@ -275,6 +275,87 @@ def get_summoner_matchinfo_nonaysnc(matchid): #matchid로 매치 정보 구하�
         print('Error:', response.status_code)
         return None
 
+class DiceRollView(discord.ui.View):
+    def __init__(self, user, initial_rolls, reroll_count=0):
+        super().__init__(timeout=60)
+        self.user = user
+        self.rolls = initial_rolls
+        self.hold = [False] * 5  # 각 주사위가 hold 상태인지 저장
+        self.reroll_count = reroll_count
+        self.max_rerolls = 2
+        self.update_buttons()
+
+    def toggle_hold(self, index):
+        """주사위의 hold 상태를 토글합니다."""
+        self.hold[index] = not self.hold[index]
+        self.update_buttons()
+
+    def update_buttons(self):
+        self.clear_items()
+        for idx, roll in enumerate(self.rolls):
+            label = f"🎲 {roll}{' 🔒' if self.hold[idx] else ''}"
+            self.add_item(DiceButton(idx, label, self))
+        if self.reroll_count < self.max_rerolls:
+            self.add_item(RerollButton(self))
+            self.add_item(FinalizeButton(self))
+        else:
+            self.add_item(FinalizeButton(self))
+
+class DiceButton(discord.ui.Button):
+    def __init__(self, index, label, view):
+        super().__init__(label=label, style=discord.ButtonStyle.secondary)
+        self.index = index
+        self.custom_view = view 
+
+    async def callback(self, interaction: discord.Interaction):
+        user = interaction.user
+        if user != self.custom_view.user:  
+            await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
+            return
+
+        self.custom_view.toggle_hold(self.index)
+        await interaction.response.edit_message(view=self.custom_view)
+
+class RerollButton(discord.ui.Button):
+    def __init__(self, view):
+        super().__init__(style=discord.ButtonStyle.success, label="🎲 다시 굴리기")
+        self.custom_view = view
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user != self.custom_view.user:  
+            await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
+            return
+        for idx in range(5):
+            if not self.custom_view.hold[idx]:
+                self.custom_view.rolls[idx] = random.randint(1, 6)
+        self.custom_view.reroll_count += 1
+        self.custom_view.update_buttons()
+        result = ', '.join(str(roll) for roll in self.custom_view.rolls) 
+        embed = discord.Embed(
+            title="🎲 주사위 굴리기!",
+            description=f"{interaction.user.name}님의 주사위: {result}",
+            color=discord.Color.blue()
+        )
+        await interaction.response.edit_message(view=self.custom_view, embed = embed)
+
+
+class FinalizeButton(discord.ui.Button):
+    def __init__(self, view):
+        super().__init__(style=discord.ButtonStyle.danger, label="✅ 확정")
+        self.custom_view = view 
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user != self.custom_view.user: 
+            await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
+            return
+        result = ', '.join(str(roll) for roll in self.custom_view.rolls) 
+        embed = discord.Embed(
+            title="🎲 주사위 굴리기!",
+            description=f"{interaction.user.name}님의 주사위: {result}",
+            color=discord.Color.blue()
+        )
+        await interaction.response.edit_message(content="", view=None, embed = embed)
+
 class WarnModal(Modal):
     reason = TextInput(label="경고 사유", placeholder="경고 사유를 입력하세요.")
 
@@ -2781,6 +2862,18 @@ class hello(commands.Cog):
 
         await interaction.response.send_message(embed=embed)
     
+    @app_commands.command(name="야추", description="주사위 5개를 굴립니다.")
+    async def 야추(self, interaction: discord.Interaction):
+        initial_rolls = [random.randint(1, 6) for _ in range(5)]
+        view = DiceRollView(interaction.user, initial_rolls)
+        dice_display = ', '.join(str(roll) for roll in initial_rolls)
+        embed = discord.Embed(
+            title="🎲 주사위 굴리기!",
+            description=f"{interaction.user.name}님의 주사위: {dice_display}",
+            color=discord.Color.blue()
+        )
+        await interaction.response.send_message(embed=embed, view=view)
+
     @app_commands.command(name="업적해금", description="1000포인트를 지불하여, 아직 달성하지 않은 시즌미션의 상세 정보까지 전부 확인합니다.")
     async def show_missions(self, interaction: discord.Interaction):
         user_id = interaction.user.name
