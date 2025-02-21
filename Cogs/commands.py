@@ -351,10 +351,12 @@ class FinalizeButton(discord.ui.Button):
         
         result = ', '.join(str(roll) for roll in self.custom_view.rolls)
         hand = evaluate_hand(self.custom_view.rolls)  # 족보 판별
-        await interaction.response.edit_message(
-            content=f"🎲 최종 주사위 결과: {result}\n🏆 족보: {hand}",
-            view=None
+        embed = discord.Embed(
+            title="🎲 주사위 굴리기!",
+            description=f"{interaction.user.name}님의 주사위: {result}\n 족보: {hand}",
+            color=discord.Color.blue()
         )
+        await interaction.response.edit_message(content="", view=None, embed = embed)
 
 def evaluate_hand(rolls):
     from collections import Counter
