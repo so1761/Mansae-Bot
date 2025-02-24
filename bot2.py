@@ -229,6 +229,9 @@ class MissionRewardAllButton(discord.ui.Button):
             await interaction.response.send_message(f"🎉 {self.mission_name} 보상을 모두 받았습니다!", ephemeral=True)
         else:
             await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
+    def update_status(self, completed):
+        if completed:
+            self.disabled = False
 
 class MissionRewardView(discord.ui.View):
     def __init__(self, completed_missions,mission_type):
@@ -240,7 +243,7 @@ class MissionRewardView(discord.ui.View):
         if completed_missions:
             mission_select = MissionSelect(completed_missions,mission_type)
             self.add_item(mission_select)
-
+            self.all_reward_button.update_status(True)
         self.add_item(self.reward_button)  # 보상 버튼 추가
         self.add_item(self.all_reward_button) # 보상 모두받기 버튼 추가
         
