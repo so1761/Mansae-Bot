@@ -1485,7 +1485,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.brand_green())
                     today = datetime.today()
                     if today.weekday() == 6:
-                        p.kda_embed.add_field(name=f"",value=f"일요일엔 점수 2배! KDA 예측 점수 2배 지급!")
+                        embed.add_field(name=f"",value=f"일요일엔 점수 2배! KDA 예측 점수 2배 지급!")
                     embed.add_field(name="퍼펙트 예측성공 포인트", value=perfect_point, inline=False)
 
                     up_predictions = "".join(f"{len(kda_votes['up'])}명")
