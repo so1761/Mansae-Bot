@@ -226,7 +226,7 @@ class MissionRewardAllButton(discord.ui.Button):
 
         if claim_all_reward(user_name,self.mission_type):
             self.disabled = True
-            await interaction.response.send_message(f"🎉 {self.mission_name} 보상을 모두 받았습니다!",ephemeral=True)
+            await interaction.response.send_message(f"🎉 {self.mission_type} 보상을 모두 받았습니다!",ephemeral=True)
         else:
             await interaction.response.send_message("이미 보상을 받았습니다.",ephemeral=True)
     def update_status(self, completed):
