@@ -222,7 +222,7 @@ class MissionRewardAllButton(discord.ui.Button):
         self.mission_type = None
 
     async def callback(self, interaction: discord.Interaction):
-        interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
         user_name = interaction.user.name
 
         if claim_all_reward(user_name,self.mission_type):
