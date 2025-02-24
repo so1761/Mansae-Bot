@@ -212,24 +212,23 @@ class MissionRewardButton(discord.ui.Button):
             self.label = "🎁 보상 받기"
 
 class MissionRewardAllButton(discord.ui.Button):
-    def __init__(self):
+    def __init__(self,mission_type):
         super().__init__(
             label="🎁 보상 모두 받기",
             style=discord.ButtonStyle.primary,
             disabled=True,
             custom_id="reward_all_button"
         )
-        self.mission_type = None
+        self.mission_type = mission_type
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
         user_name = interaction.user.name
 
         if claim_all_reward(user_name,self.mission_type):
             self.disabled = True
-            await interaction.followup.send(f"🎉 {self.mission_name} 보상을 모두 받았습니다!")
+            await interaction.response.send_message(f"🎉 {self.mission_name} 보상을 모두 받았습니다!",ephemeral=True)
         else:
-            await interaction.followup.send("이미 보상을 받았습니다.")
+            await interaction.response.send_message("이미 보상을 받았습니다.",ephemeral=True)
     def update_status(self, completed):
         if completed:
             self.disabled = False
@@ -239,7 +238,7 @@ class MissionRewardView(discord.ui.View):
         super().__init__()
         self.selected_mission = None  # 선택한 미션
         self.reward_button = MissionRewardButton()  # 보상 버튼 추가
-        self.all_reward_button = MissionRewardAllButton() # 일괄 보상 버튼 추가
+        self.all_reward_button = MissionRewardAllButton(mission_type) # 일괄 보상 버튼 추가
         # 미션 선택 드롭다운 추가 (완료한 미션이 있을 경우에만)
         if completed_missions:
             mission_select = MissionSelect(completed_missions,mission_type)
