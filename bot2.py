@@ -296,7 +296,7 @@ def claim_all_reward(user_name, mission_type):
 
     unrewarded_missions = []
     for mission_name, mission_data in user_missions.items():
-        if not mission_data.get("보상수령",False):
+        if not mission_data.get("보상수령",False) and mission_data.get("미션완료",False):
             unrewarded_missions.append(mission_name)
 
     for mission_name in unrewarded_missions:
@@ -835,7 +835,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                 BonusRate = 0 if winnerNum == 0 else round((((winnerNum + loserNum) / winnerNum) - 1) * 0.5, 2) + 1 # 0.5배 배율 적용
                 if BonusRate > 0:
                     BonusRate += rater['배율']
-                    BonusRate += streak_bonus_rate + 0.1
+                    BonusRate += round(streak_bonus_rate + 0.1,2)
 
                 winner_total_point = sum(winner['points'] for winner in winners)
                 loser_total_point = sum(loser['points'] for loser in losers)
@@ -1467,7 +1467,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             refitem.update({'배율증가1' : itemr['배율증가1'] - 1})
                             refrate = db.reference(f'승부예측/배율증가/{name}')
                             rater = refrate.get()
-                            refrate.update({'배율' : rater['배율'] + 0.1})
+                            refrate.update({'배율' : round(rater['배율'] + 0.1, 1)})
                             userembed.add_field(name="",value=f"누군가가 아이템을 사용하여 배율을 0.1 올렸습니다!", inline=False)
                             await channel.send(f"\n",embed = userembed)
                             await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
@@ -1490,7 +1490,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             refitem.update({'배율증가3' : itemr['배율증가3'] - 1})
                             refrate = db.reference(f'승부예측/배율증가/{name}')
                             rater = refrate.get()
-                            refrate.update({'배율' : rater['배율'] + 0.3})
+                            refrate.update({'배율' : round(rater['배율'] + 0.3, 1)})
                             userembed.add_field(name="",value=f"누군가가 아이템을 사용하여 배율을 0.3 올렸습니다!", inline=False)
                             await channel.send(f"\n",embed = userembed)
                             await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
@@ -1513,7 +1513,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             refitem.update({'배율증가5' : itemr['배율증가5'] - 1})
                             refrate = db.reference(f'승부예측/배율증가/{name}')
                             rater = refrate.get()
-                            refrate.update({'배율' : rater['배율'] + 0.5})
+                            refrate.update({'배율' : round(rater['배율'] + 0.5, 1)})
                             userembed.add_field(name="",value=f"누군가가 아이템을 사용하여 배율을 0.5 올렸습니다!", inline=False)
                             await channel.send(f"\n",embed = userembed)
                             await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
