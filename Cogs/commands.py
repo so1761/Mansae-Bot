@@ -2658,22 +2658,21 @@ class hello(commands.Cog):
         itemr = refitem.get()
         
     
-        if itemr.get("자동예측" + 이름 + "승리", 0) > 0:
+        if itemr.get("자동예측" + 이름 + "승리", False):
             item_num = itemr.get("자동예측" + 이름 + "승리", 0)
             refitem.update({
-                f"자동예측{이름}패배": item_num,
-                f"자동예측{이름}승리": 0
+                f"자동예측{이름}패배": False,
+                f"자동예측{이름}승리": True
             })
-            await interaction.response.send_message(f"{이름}의 자동예측을 승리에서 패배로 변경했습니다! 현재 보유중인 [자동예측{이름}패배] : {item_num}개",ephemeral=True) 
-        elif itemr.get("자동예측" + 이름 + "패배", 0) > 0:
-            item_num = itemr.get("자동예측" + 이름 + "패배", 0)
+            await interaction.response.send_message(f"{이름}의 자동예측을 승리에서 패배로 변경했습니다!",ephemeral=True) 
+        elif itemr.get("자동예측" + 이름 + "패배", False):
             refitem.update({
-                f"자동예측{이름}승리": item_num,
-                f"자동예측{이름}패배": 0
+                f"자동예측{이름}승리": False,
+                f"자동예측{이름}패배": True
             })
-            await interaction.response.send_message(f"{이름}의 자동예측을 패배에서 승리로 변경했습니다! 현재 보유중인 [자동예측{이름}승리] : {item_num}개",ephemeral=True) 
+            await interaction.response.send_message(f"{이름}의 자동예측을 패배에서 승리로 변경했습니다!",ephemeral=True) 
         else:
-            await interaction.response.send_message(f"보유한 {이름}의 자동예측이 없습니다!",ephemeral=True)
+            await interaction.response.send_message(f"{이름}에게 자동예측을 하고 있지 않습니다!",ephemeral=True)
             return
         
         
