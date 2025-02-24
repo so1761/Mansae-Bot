@@ -296,7 +296,7 @@ def claim_all_reward(user_name, mission_type):
 
     unrewarded_missions = []
     for mission_name, mission_data in user_missions.items():
-        if not mission_data.get("보상수령",False) and mission_data.get("미션완료",False):
+        if not mission_data.get("보상수령",False) and mission_data.get("완료",False):
             unrewarded_missions.append(mission_name)
 
     for mission_name in unrewarded_missions:
