@@ -211,19 +211,39 @@ class MissionRewardButton(discord.ui.Button):
         else:
             self.label = "🎁 보상 받기"
 
+class MissionRewardAllButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(
+            label="🎁 보상 모두 받기",
+            style=discord.ButtonStyle.primary,
+            disabled=True,
+            custom_id="reward_all_button"
+        )
+        self.mission_type = None
+
+    async def callback(self, interaction: discord.Interaction):
+        user_name = interaction.user.name
+
+        if claim_all_reward(user_name,self.mission_type):
+            self.disabled = True
+            await interaction.response.send_message(f"🎉 {self.mission_name} 보상을 모두 받았습니다!", ephemeral=True)
+        else:
+            await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
+
 class MissionRewardView(discord.ui.View):
     def __init__(self, completed_missions,mission_type):
         super().__init__()
         self.selected_mission = None  # 선택한 미션
         self.reward_button = MissionRewardButton()  # 보상 버튼 추가
-
+        self.all_reward_button = MissionRewardAllButton() # 일괄 보상 버튼 추가
         # 미션 선택 드롭다운 추가 (완료한 미션이 있을 경우에만)
         if completed_missions:
             mission_select = MissionSelect(completed_missions,mission_type)
             self.add_item(mission_select)
 
         self.add_item(self.reward_button)  # 보상 버튼 추가
-
+        self.add_item(self.all_reward_button) # 보상 모두받기 버튼 추가
+        
 def get_mission_data(user_name, mission_type):
     """데이터베이스에서 미션 상태 불러오기"""
     cur_predict_seasonref = db.reference("승부예측/현재예측시즌")  # 현재 진행 중인 예측 시즌 가져오기
@@ -262,6 +282,37 @@ def claim_reward(user_name, mission_name, mission_type):
         return True
     
     return False
+
+def claim_all_reward(user_name, mission_type):
+    """보상 일괄 지급 처리"""
+    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+    current_predict_season = cur_predict_seasonref.get()
+
+    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}")
+    user_missions = ref.get()
+
+    unrewarded_missions = []
+    for mission_name, mission_data in user_missions.items():
+        if not mission_data.get("보상수령",False):
+            unrewarded_missions.append(mission_name)
+
+    for mission_name in unrewarded_missions:
+        ref1 = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}/{mission_name}")
+        mission_data1 = ref1.get()
+        mission_point = mission_data1.get("포인트", 0)  # '포인트'가 없을 경우 기본값 0을 설정
+
+        ref2 = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}")
+        user_data = ref2.get()
+        point = user_data.get("포인트", 0)  # '포인트'가 없을 경우 기본값 0을 설정
+        ref2.update({"포인트" : point + mission_point})
+
+        if user_missions and mission_name in user_missions and not user_missions[mission_name]["보상수령"]:
+            ref.child(mission_name).update({"보상수령": True})
+    
+    if unrewarded_missions:
+        return True
+    else:
+        return False
 
 async def nowgame(puuid, retries=5, delay=5):
     url = f'https://kr.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/{puuid}'
