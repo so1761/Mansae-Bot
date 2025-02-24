@@ -222,13 +222,14 @@ class MissionRewardAllButton(discord.ui.Button):
         self.mission_type = None
 
     async def callback(self, interaction: discord.Interaction):
+        interaction.response.defer(ephemeral=True)
         user_name = interaction.user.name
 
         if claim_all_reward(user_name,self.mission_type):
             self.disabled = True
-            await interaction.response.send_message(f"🎉 {self.mission_name} 보상을 모두 받았습니다!", ephemeral=True)
+            await interaction.followup.send(f"🎉 {self.mission_name} 보상을 모두 받았습니다!")
         else:
-            await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
+            await interaction.followup.send("이미 보상을 받았습니다.")
     def update_status(self, completed):
         if completed:
             self.disabled = False
@@ -292,7 +293,7 @@ def claim_all_reward(user_name, mission_type):
     current_predict_season = cur_predict_seasonref.get()
 
     ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}")
-    user_missions = ref.get()
+    user_missions = ref.get() or {}
 
     unrewarded_missions = []
     for mission_name, mission_data in user_missions.items():
