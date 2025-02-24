@@ -340,7 +340,7 @@ class RerollButton(discord.ui.Button):
         result = ', '.join(str(roll) for roll in self.custom_view.rolls) 
         embed = discord.Embed(
             title="🎲 주사위 굴리기!",
-            description=f"{interaction.user.name}님의 주사위: {result}",
+            description=f"{interaction.user.name}님의 주사위: **{result}**",
             color=discord.Color.blue()
         )
         await interaction.response.edit_message(view=self.custom_view, embed = embed)
@@ -349,19 +349,58 @@ class RerollButton(discord.ui.Button):
 class FinalizeButton(discord.ui.Button):
     def __init__(self, view):
         super().__init__(style=discord.ButtonStyle.danger, label="✅ 확정")
-        self.custom_view = view 
+        self.custom_view = view
 
     async def callback(self, interaction: discord.Interaction):
-        if interaction.user != self.custom_view.user: 
+        if interaction.user != self.custom_view.user:
             await interaction.response.send_message("이 주사위는 당신의 것이 아닙니다!", ephemeral=True)
             return
-        result = ', '.join(str(roll) for roll in self.custom_view.rolls) 
+        
+        result = ', '.join(str(roll) for roll in self.custom_view.rolls)
+        hand = evaluate_hand(self.custom_view.rolls)  # 족보 판별
         embed = discord.Embed(
             title="🎲 주사위 굴리기!",
-            description=f"{interaction.user.name}님의 주사위: {result}",
+            description=f"{interaction.user.name}님의 주사위: **{result}**\n 족보: **{hand}**",
             color=discord.Color.blue()
         )
         await interaction.response.edit_message(content="", view=None, embed = embed)
+
+def evaluate_hand(rolls):
+    from collections import Counter
+    
+    counts = Counter(rolls)
+    count_values = sorted(counts.values(), reverse=True)
+    unique_rolls = sorted(set(rolls))
+    rolls_sorted = sorted(rolls)
+
+    # Yahtzee
+    if count_values[0] == 5:
+        return "🎉 Yahtzee!"
+
+    # Large Straight (1-5 or 2-6)
+    elif rolls_sorted == [1, 2, 3, 4, 5] or rolls_sorted == [2, 3, 4, 5, 6]:
+        return "➡️ Large Straight!"
+
+    # Small Straight (any 4 consecutive numbers)
+    elif any(all(num in rolls_sorted for num in seq) for seq in ([1,2,3,4], [2,3,4,5], [3,4,5,6])):
+        return "🡒 Small Straight!"
+
+    # Full House
+    elif count_values == [3, 2]:
+        return "🏠 Full House!"
+
+    # Four of a Kind
+    elif count_values[0] == 4:
+        return "🔥 Four of a Kind!"
+
+    # Three of a Kind
+    elif count_values[0] == 3:
+        return "🎯 Three of a Kind!"
+
+    # Chance
+    else:
+        total = sum(rolls)
+        return f"🎲 Chance! (합계: {total})"
 
 class WarnModal(Modal):
     reason = TextInput(label="경고 사유", placeholder="경고 사유를 입력하세요.")
@@ -2802,18 +2841,45 @@ class hello(commands.Cog):
             for mission_type, missions in user_missions.items():
                 for mission_name, mission_data in missions.items():
                     if mission_name == selected_mission_name:
-                        embed = discord.Embed(title="미션", description="미션을 공개했습니다")
-                        embed.add_field(name=mission_name, value=mission_details.get(mission_name, "설명이 없습니다."), inline=False)
+                        embed = discord.Embed(
+                            title="업적 공개!",
+                            description=f"{interaction.user.name}님이 업적을 공개했습니다!",
+                            color=discord.Color.gold()
+                        )
+                        
+                        if 내용공개 == "공개":
+                            embed.add_field(
+                                name=f"",
+                                value="",
+                                inline=False
+                            )
+                            embed.add_field(
+                                name=f"{selected_mission_name}",
+                                value="\u200b\n" + mission_details.get(selected_mission_name, "설명이 없습니다."),
+                                inline=False
+                            )
+                        else:
+                            embed.add_field(
+                                name=f"",
+                                value="",
+                                inline=False
+                            )
+                            embed.add_field(
+                                name=f"{selected_mission_name}",
+                                value="\u200b\n" + "이 업적은 비공개 상태입니다.",
+                                inline=False
+                            )
+                        
                         await interaction.response.send_message(embed=embed)
                         return
 
         # View 생성 후 select 콜백 함수 추가
-        view = View()
+        view = discord.ui.View()
         select.callback = select_callback
         view.add_item(select)
 
         # Select 위젯을 포함한 메시지 보내기
-        await interaction.response.send_message("달성한 업적을 선택해주세요.", view=view)
+        await interaction.response.send_message("달성한 업적을 선택해주세요.", view=view,ephemeral=True)
     
     @app_commands.command(name="주사위",description="주사위를 굴립니다. 하루에 한 번만 가능합니다.(1 ~ 100)")
     async def 주사위(self, interaction: discord.Interaction):
@@ -2898,14 +2964,14 @@ class hello(commands.Cog):
         await interaction.response.send_message(embed=embed)
     
 
-    @app_commands.command(name="주사위2", description="주사위 5개를 굴립니다.")
-    async def 주사위2(self, interaction: discord.Interaction):
+    @app_commands.command(name="야추", description="주사위 5개를 굴립니다.")
+    async def 야추(self, interaction: discord.Interaction):
         initial_rolls = [random.randint(1, 6) for _ in range(5)]
         view = DiceRollView(interaction.user, initial_rolls)
         dice_display = ', '.join(str(roll) for roll in initial_rolls)
         embed = discord.Embed(
             title="🎲 주사위 굴리기!",
-            description=f"{interaction.user.name}님의 주사위: {dice_display}",
+            description=f"{interaction.user.name}님의 주사위: **{dice_display}**",
             color=discord.Color.blue()
         )
         await interaction.response.send_message(embed=embed, view=view)
