@@ -571,112 +571,83 @@ class DiceRevealView(discord.ui.View):
 
             userembed = discord.Embed(title="승부 베팅 결과", color=discord.Color.blue())
             if result: # challenger가 승리
+                remained_point = 0 # 환급 포인트
+                challenger_point = self.game_point[self.challenger]
+                opponent_point = self.game_point[self.opponent]
+                
+                if self.giveup[self.opponent]: # 상대가 포기했을 경우
+                    remained_point += opponent_point / 2
+                    opponent_point = opponent_point / 2
+
+                
+                if opponent_point > challenger_point:
+                    get_point = challenger_point * 2 # 받을 포인트
+                    remained_point += opponent_point - challenger_point # 환급 포인트
+                else:
+                    get_point = challenger_point + opponent_point
+
+                userembed.add_field(
+                name="",
+                value=f"{self.opponent_m.mention}님이 승부에서 패배하여 베팅포인트를 잃었습니다! (베팅 포인트:-{opponent_point}) (환급 포인트: {remained_point})",
+                inline=False
+                )
+                userembed.add_field(
+                name="",
+                value=f"{self.challenger_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {challenger_point})",
+                inline=False
+                )
+                
+                point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
+                point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
+                point_data1 = point_ref1.get()
+                point1 = point_data1.get("포인트",0)
+                bettingpoint1 = point_data1.get("베팅포인트",0)
+                point_data2 = point_ref2.get()
+                point2 = point_data2.get("포인트",0)
+                bettingpoint2 = point_data2.get("베팅포인트",0)
+                point_ref1.update({"포인트": point1 - opponent_point + remained_point})
+                point_ref1.update({"베팅포인트": bettingpoint1 - opponent_point})
+                point_ref2.update({"포인트": point2 + get_point - challenger_point})
+                point_ref2.update({"베팅포인트": bettingpoint2 - challenger_point})
+
+            else:
+                remained_point = 0 # 환급 포인트
                 challenger_point = self.game_point[self.challenger]
                 opponent_point = self.game_point[self.opponent]
 
-                if opponent_point > challenger_point:
-                    remained_point = opponent_point - challenger_point # 환급 포인트
-                    get_point = challenger_point * 2 # 받을 포인트
-                    userembed.add_field(
-                    name="",
-                    value=f"{self.opponent_m.mention}님이 승부에서 패배하여 베팅포인트를 잃었습니다! (베팅 포인트:-{opponent_point}) (환급 포인트: {remained_point})",
-                    inline=False
-                    )
-                    userembed.add_field(
-                    name="",
-                    value=f"{self.challenger_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {challenger_point})",
-                    inline=False
-                    )
-                    point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
-                    point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
-                    point_data1 = point_ref1.get()
-                    point1 = point_data1.get("포인트",0)
-                    bettingpoint1 = point_data1.get("베팅포인트",0)
-                    point_data2 = point_ref2.get()
-                    point2 = point_data2.get("포인트",0)
-                    bettingpoint2 = point_data2.get("베팅포인트",0)
-                    point_ref1.update({"포인트": point1 - opponent_point + remained_point})
-                    point_ref1.update({"베팅포인트": bettingpoint1 - opponent_point})
-                    point_ref2.update({"포인트": point2 + get_point - challenger_point})
-                    point_ref2.update({"베팅포인트": bettingpoint2 - challenger_point})
-                else:
-                    get_point = challenger_point + opponent_point # 받을 포인트
-                    userembed.add_field(
-                    name="",
-                    value=f"{self.opponent_m.mention}님이 승부에서 패배하여 베팅포인트를 잃었습니다! (베팅 포인트:-{opponent_point})",
-                    inline=False
-                    )
-                    userembed.add_field(
-                    name="",
-                    value=f"{self.challenger_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {challenger_point})",
-                    inline=False
-                    )
-                    point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
-                    point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
-                    point_data1 = point_ref1.get()
-                    point1 = point_data1.get("포인트",0)
-                    bettingpoint1 = point_data1.get("베팅포인트",0)
-                    point_data2 = point_ref2.get()
-                    bettingpoint2 = point_data2.get("베팅포인트",0)
-                    point2 = point_data2.get("포인트",0)
-                    point_ref1.update({"포인트": point1 - opponent_point})
-                    point_ref1.update({"베팅포인트": bettingpoint1 - opponent_point})
-                    point_ref2.update({"포인트": point2 + get_point - challenger_point})
-                    point_ref2.update({"베팅포인트": bettingpoint2 - challenger_point})
-            else: # opponent가 승리
-                challenger_point = self.game_point[self.challenger]
-                opponent_point = self.game_point[self.opponent]
+                if self.giveup[self.challenger]: # 도전자가 포기했을 경우
+                    remained_point += challenger_point / 2
+                    challenger_point = challenger_point / 2
 
                 if challenger_point > opponent_point:
-                    remained_point = challenger_point - opponent_point # 환급 포인트
                     get_point = opponent_point * 2 # 받을 포인트
-                    userembed.add_field(
-                    name="",
-                    value=f"{self.challenger_m.mention}님이 승부에서 패배하여 베팅포인트를 잃었습니다! (베팅 포인트:-{challenger_point}) (환급 포인트: {remained_point})",
-                    inline=False
-                    )
-                    userembed.add_field(
-                    name="",
-                    value=f"{self.opponent_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {opponent_point})",
-                    inline=False
-                    )
-                    point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
-                    point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
-                    point_data1 = point_ref1.get()
-                    point1 = point_data1.get("포인트",0)
-                    bettingpoint1 = point_data1.get("베팅포인트",0)
-                    point_data2 = point_ref2.get()
-                    bettingpoint2 = point_data2.get("베팅포인트",0)
-                    point2 = point_data2.get("포인트",0)
-                    point_ref1.update({"포인트": point1 + get_point - opponent_point})
-                    point_ref1.update({"베팅포인트": bettingpoint1 - opponent_point})
-                    point_ref2.update({"포인트": point2 - challenger_point + remained_point})
-                    point_ref2.update({"베팅포인트": bettingpoint2 - challenger_point})
+                    remained_point += challenger_point - opponent_point # 환급 포인트
                 else:
-                    get_point = challenger_point + opponent_point # 받을 포인트
-                    userembed.add_field(
-                    name="",
-                    value=f"{self.challenger_m.mention}님이 승부에서 패배하여 베팅포인트를 잃었습니다! (베팅 포인트:-{challenger_point})",
-                    inline=False
-                    )
-                    userembed.add_field(
-                    name="",
-                    value=f"{self.opponent_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {opponent_point})",
-                    inline=False
-                    )
+                    get_point = opponent_point * 2 # 받을 포인트
 
-                    point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
-                    point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
-                    point_data1 = point_ref1.get()
-                    point1 = point_data1.get("포인트",0)
-                    bettingpoint1 = point_data1.get("베팅포인트",0)
-                    point_data2 = point_ref2.get()
-                    bettingpoint2 = point_data2.get("베팅포인트",0)
-                    point2 = point_data2.get("포인트",0)
-                    point_ref1.update({"포인트": point1 + get_point - opponent_point})
-                    point_ref1.update({"베팅포인트": bettingpoint1 - opponent_point})
-                    point_ref2.update({"포인트": point2 - challenger_point})
-                    point_ref2.update({"베팅포인트": bettingpoint2 - challenger_point})
+                userembed.add_field(
+                name="",
+                value=f"{self.challenger_m.mention}님이 승부에서 패배하여 베팅포인트를 잃었습니다! (베팅 포인트:-{challenger_point}) (환급 포인트: {remained_point})",
+                inline=False
+                )
+                userembed.add_field(
+                name="",
+                value=f"{self.opponent_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {opponent_point})",
+                inline=False
+                )
+                point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
+                point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
+                point_data1 = point_ref1.get()
+                point1 = point_data1.get("포인트",0)
+                bettingpoint1 = point_data1.get("베팅포인트",0)
+                point_data2 = point_ref2.get()
+                bettingpoint2 = point_data2.get("베팅포인트",0)
+                point2 = point_data2.get("포인트",0)
+                point_ref1.update({"포인트": point1 + get_point - opponent_point})
+                point_ref1.update({"베팅포인트": bettingpoint1 - opponent_point})
+                point_ref2.update({"포인트": point2 - challenger_point + remained_point})
+                point_ref2.update({"베팅포인트": bettingpoint2 - challenger_point})
+                
 
             await self.message.channel.send(embed = userembed)
 
