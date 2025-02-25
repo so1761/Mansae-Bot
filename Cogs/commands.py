@@ -235,7 +235,7 @@ class DiceRevealView(discord.ui.View):
         self.challenger_m = challenger
         self.opponent_m = opponent
         self.dice_results = dice_results
-        self.revealed = {challenger: False, opponent.name: False}
+        self.revealed = {challenger.name: False, opponent.name: False}
 
     @discord.ui.button(label="주사위 확인", style=discord.ButtonStyle.gray)
     async def check_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -3596,8 +3596,6 @@ class hello(commands.Cog):
                     await p.battle_message.edit(embed = prediction_embed)
 
                     await channel.send(f"\n", embed=bettingembed)
-                
-                await channel.send(f"\n", embed=userembed)
 
                 # ====================  [미션]  ====================
                 # 미션 : 승부예측 1회
