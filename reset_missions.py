@@ -24,6 +24,11 @@ if users:
         daily_missions = mission_ref.get()
 
         dice_ref.update({"주사위" : 0})
+
+        dice_ref.update({"배틀여부" : False})
+
+        p.votes['배틀']['name']['challenger'] = ""
+        p.votes['배틀']['name']['상대'] = ""
         if daily_missions:
             update_data = {mission_name + "/완료": 0 for mission_name in daily_missions}
             update_data2 = {mission_name + "/보상수령": 0 for mission_name in daily_missions}

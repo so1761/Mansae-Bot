@@ -23,6 +23,16 @@ votes = {
             "down": [],
             "perfect": []
         }
+    },
+    "배틀": {
+        "prediction": {
+            "win": [],
+            "lose": []
+        },
+        "name":{
+            "challenger": "",
+            "상대": ""
+        }
     }
 }
 
@@ -36,6 +46,8 @@ kda2_embed = discord.Embed()
 jimo_winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label="승리")
 
 melon_winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label="승리")
+
+battle_winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label="승리")
 
 global current_message_jimo
 global current_message_melon
@@ -57,3 +69,6 @@ melon_current_game_state = False
 
 jimo_event = asyncio.Event()
 melon_event = asyncio.Event()
+battle_event = asyncio.Event()
+
+battle_message = ""
