@@ -259,7 +259,7 @@ class DiceRevealView(discord.ui.View):
         await interaction.response.send_message(content = "",embed = userembed, ephemeral=True)
 
     @discord.ui.button(label="베팅", style=discord.ButtonStyle.primary)
-    async def reveal_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def bet(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.name not in [self.challenger, self.opponent]:
             userembed = discord.Embed(title = "베팅 불가!",color = discord.Color.red())
             userembed.add_field(name="",value="참가자만 베팅할 수 있습니다!")
@@ -276,7 +276,7 @@ class DiceRevealView(discord.ui.View):
         self.message.edit(embed = diceview_embed)
 
     @discord.ui.button(label="포기", style=discord.ButtonStyle.danger)
-    async def reveal_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def give_up(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.name not in [self.challenger, self.opponent]:
             userembed = discord.Embed(title = "포기 불가!",color = discord.Color.red())
             userembed.add_field(name="",value="참가자만 포기할 수 있습니다!")
@@ -3807,9 +3807,9 @@ class hello(commands.Cog):
         }
 
         diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
-        diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲")
-        diceview_embed.add_field(name = f"{challenger_m.mention}", value = f"{game_point[challenger]}포인트")
-        diceview_embed.add_field(name = f"{상대.mention}", value = f"{game_point[상대.name]}포인트")
+        diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲", inline=False)
+        diceview_embed.add_field(name = f"{challenger}", value = f"{game_point[challenger]}포인트", inline=True)
+        diceview_embed.add_field(name = f"{상대}", value = f"{game_point[상대.name]}포인트", inline=True)
             
         dice_view = DiceRevealView(challenger_m, 상대, dice_results, game_point)
         dice_view.message = await channel.send(content = "", view = dice_view, embed = diceview_embed)
