@@ -2,17 +2,36 @@ import firebase_admin
 from firebase_admin import db
 from firebase_admin import credentials
 from datetime import datetime
+import requests
+import os
+from dotenv import load_dotenv
 
 cred = credentials.Certificate("mykey.json")
 firebase_admin.initialize_app(cred,{
     'databaseURL' : 'https://mansaebot-default-rtdb.firebaseio.com/'
 })
 
-mref = db.reference(f'승부예측/예측시즌/정규시즌1/예측포인트/toe_kyung')
-mref2 = db.reference(f'승부예측/예측시즌/정규시즌1/예측포인트/toe_kyung/베팅포인트')
-minfo = mref.get()
-mbettingPoint = mref2.get()
-mpoint = minfo['포인트']
-print(f"Point : {mpoint}, BettingPoint : {mbettingPoint}")
-if mpoint == mbettingPoint: # 포인트의 전부를 베팅포인트로 넣음
-    print("달성!")
+load_dotenv()
+
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+
+data = {
+    "content": "🎲 주사위 정산!",
+    "embeds": [
+        {
+            "title": "🎯 주사위 정산",
+            "description": "어제 굴린 주사위 중 가장 높은 숫자는 **6**입니다!",
+            "color": 0x00ff00,  # 초록색
+            "fields": [
+                {
+                    "name": "결과",
+                    "value": "**6** 🎉"
+                }
+            ],
+            "footer": {
+                "text": "Dice Bot",
+                "icon_url": "https://i.imgur.com/your-icon.png"  # 아이콘 URL
+            }
+        }
+    ]
+}
