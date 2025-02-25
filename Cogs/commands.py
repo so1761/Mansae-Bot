@@ -232,23 +232,23 @@ class DiceRevealView(discord.ui.View):
         self.challenger = challenger
         self.opponent = opponent
         self.dice_results = dice_results
-        self.revealed = {challenger.id: False, opponent.id: False}
+        self.revealed = {challenger: False, opponent: False}
 
     @discord.ui.button(label="주사위 확인", style=discord.ButtonStyle.gray)
     async def check_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user not in [self.challenger, self.opponent]:
+        if interaction.user.name not in [self.challenger, self.opponent]:
             userembed = discord.Embed(title = "확인 불가!",color = discord.Color.red())
             userembed.add_field(name="",value="참가자만 주사위를 확인할 수 있습니다!")
             await interaction.response.send_message(content = "", embed = userembed, ephemeral = True)
             return
 
         userembed = discord.Embed(title = "주사위 확인!",color = discord.Color.red())
-        userembed.add_field(name="",value=f"당신의 주사위 숫자는 **{self.dice_results[interaction.user.id]}**입니다! 🎲")
+        userembed.add_field(name="",value=f"당신의 주사위 숫자는 **{self.dice_results[interaction.user.name]}**입니다! 🎲")
         await interaction.response.send_message(content = "",embed = userembed, ephemeral=True)
 
     @discord.ui.button(label="숫자 공개", style=discord.ButtonStyle.green)
     async def reveal_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user not in [self.challenger, self.opponent]:
+        if interaction.user.name not in [self.challenger, self.opponent]:
             userembed = discord.Embed(title = "공개 불가!",color = discord.Color.red())
             userembed.add_field(name="",value="참가자만 숫자를 공개할 수 있습니다!")
             await interaction.response.send_message(content = "", embed = userembed, ephemeral = True)
@@ -256,15 +256,15 @@ class DiceRevealView(discord.ui.View):
 
         self.revealed[interaction.user.id] = True
         userembed = discord.Embed(title = "주사위 공개!",color = discord.Color.red())
-        userembed.add_field(name="",value=f"{interaction.user.display_name}의 주사위 숫자: **{self.dice_results[interaction.user.id]}** 🎲")
+        userembed.add_field(name="",value=f"{interaction.user.display_name}의 주사위 숫자: **{self.dice_results[interaction.user.name]}** 🎲")
         await interaction.response.send_message(content = "", embed = userembed)
 
         if all(self.revealed.values()):
             await self.announce_winner()
 
     async def announce_winner(self):
-        ch_dice = self.dice_results[self.challenger.id]
-        op_dice = self.dice_results[self.opponent.id]
+        ch_dice = self.dice_results[self.challenger]
+        op_dice = self.dice_results[self.opponent]
 
         result = True
         if ch_dice > op_dice:
@@ -3475,7 +3475,7 @@ class hello(commands.Cog):
         # 대결 요청
         view = DuelRequestView(challenger, 상대)
         battleembed = discord.Embed(title="대결 요청!", color = discord.Color.blue())
-        battleembed.add_field(name="", value=f"{상대.mention}, {challenger}의 대결 요청! 수락하시겠습니까? 🎲")
+        battleembed.add_field(name="", value=f"{상대.mention}, {challenger.mention}의 대결 요청! 수락하시겠습니까? 🎲")
         # 메시지 전송
         await interaction.response.send_message(content="", view=view, embed=battleembed)
 
@@ -3615,7 +3615,7 @@ class hello(commands.Cog):
         prediction_view.add_item(p.battle_winbutton)
         prediction_view.add_item(losebutton)
         # 베팅 단계 
-        p.battle_message = await channel.send(f"🎲 {challenger} vs {상대}의 주사위 승부가 감지되었습니다!\n승부예측을 해보세요!", view=prediction_view, embed = prediction_embed)
+        p.battle_message = await channel.send(f"{challenger.mention} vs {상대.mention}의 주사위 승부가 감지되었습니다!🎲 \n승부예측을 해보세요!", view=prediction_view, embed = prediction_embed)
 
         await asyncio.gather(
             disable_buttons(),
@@ -3624,8 +3624,8 @@ class hello(commands.Cog):
 
         # 주사위 굴리기
         dice_results = {
-            challenger.id: random.randint(1, 100),
-            상대.id: random.randint(1, 100)
+            challenger: random.randint(1, 100),
+            상대: random.randint(1, 100)
         }
 
         diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
