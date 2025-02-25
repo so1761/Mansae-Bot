@@ -161,13 +161,16 @@ def give_item(nickname, item_name, amount):
     refitem.update({item_name: item_data.get(item_name, 0) + amount})
 
 class BettingModal(Modal):
-    def __init__(self, user: discord.User, game_point,game):
+    def __init__(self, user: discord.User, challenger, opponent, game_point,game):
         # 모달에 사용자 이름을 추가하고 포인트 입력 필드 설정
         self.user = user
         super().__init__(title=f"{self.user.display_name}님, 베팅할 포인트를 입력해주세요!")
         self.add_item(TextInput(label="베팅할 포인트", placeholder="포인트를 입력하세요", required=True, min_length=1))
+        self.challenger = challenger
+        self.opponent = opponent
         self.game_point = game_point
         self.game = game
+        
     async def on_submit(self, interaction: discord.Interaction):
         # 포인트 입력값 처리
         bet_amount = self.children[0].value
@@ -195,6 +198,12 @@ class BettingModal(Modal):
             userembed = discord.Embed(title="베팅 완료!", color=discord.Color.green())
             userembed.add_field(name="", value=f"{self.user.display_name}님이 {bet_amount} 포인트를 베팅했습니다! 🎲")
             await interaction.response.send_message(embed=userembed)
+
+        diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
+        diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲",inline=False)
+        diceview_embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
+        diceview_embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
+        await self.message.edit(embed = diceview_embed)
 
 duels = {}  # 진행 중인 대결 정보를 저장
 
@@ -267,13 +276,8 @@ class DiceRevealView(discord.ui.View):
             return
 
         # 모달 생성
-        modal = BettingModal(user=interaction.user, game_point = self.game_point, game = self)
+        modal = BettingModal(user=interaction.user, challenger = self.challenger, opponent = self.opponent, game_point = self.game_point, game = self)
         await interaction.response.send_modal(modal)
-        diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
-        diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲")
-        diceview_embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트")
-        diceview_embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트")
-        await self.message.edit(embed = diceview_embed)
 
     @discord.ui.button(label="포기", style=discord.ButtonStyle.danger)
     async def give_up(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -327,6 +331,13 @@ class DiceRevealView(discord.ui.View):
         userembed = discord.Embed(title = "주사위 공개!",color = discord.Color.red())
         userembed.add_field(name="",value=f"{self.opponent_m.display_name}의 주사위 숫자: **{self.dice_results[self.opponent]}** 🎲")
         await self.message.channel.send(embed = userembed)
+
+        # 게임 결과 발표 후, 버튼 비활성화
+        for button in self.children:  # 모든 버튼에 대해
+            button.disabled = True
+
+        # 버튼을 비활성화 한 후, 뷰 업데이트
+        await self.message.edit(view=self)
 
         result = True
         if ch_dice > op_dice:
@@ -563,10 +574,14 @@ class DiceRevealView(discord.ui.View):
                     point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
                     point_data1 = point_ref1.get()
                     point1 = point_data1.get("포인트",0)
+                    bettingpoint1 = point_data1.get("베팅포인트",0)
                     point_data2 = point_ref2.get()
                     point2 = point_data2.get("포인트",0)
+                    bettingpoint2 = point_data2.get("베팅포인트",0)
                     point_ref1.update({"포인트": point1 - opponent_point + remained_point})
+                    point_ref1.update({"베팅포인트": bettingpoint1 - opponent_point})
                     point_ref2.update({"포인트": point2 + get_point - challenger_point})
+                    point_ref2.update({"베팅포인트": bettingpoint2 - challenger_point})
                 else:
                     get_point = challenger_point + opponent_point # 받을 포인트
                     userembed.add_field(
@@ -576,17 +591,21 @@ class DiceRevealView(discord.ui.View):
                     )
                     userembed.add_field(
                     name="",
-                    value=f"{self.challenger_m.mention}님이 승부에서 승리하여 {get_point}를 획득하셨습니다! (베팅 포인트: {challenger_point})",
+                    value=f"{self.challenger_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {challenger_point})",
                     inline=False
                     )
                     point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
                     point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
                     point_data1 = point_ref1.get()
                     point1 = point_data1.get("포인트",0)
+                    bettingpoint1 = point_data1.get("베팅포인트",0)
                     point_data2 = point_ref2.get()
+                    bettingpoint2 = point_data2.get("베팅포인트",0)
                     point2 = point_data2.get("포인트",0)
                     point_ref1.update({"포인트": point1 - opponent_point})
+                    point_ref1.update({"베팅포인트": bettingpoint1 - opponent_point})
                     point_ref2.update({"포인트": point2 + get_point - challenger_point})
+                    point_ref2.update({"베팅포인트": bettingpoint2 - challenger_point})
             else: # opponent가 승리
                 challenger_point = self.game_point[self.challenger]
                 opponent_point = self.game_point[self.opponent]
@@ -601,17 +620,21 @@ class DiceRevealView(discord.ui.View):
                     )
                     userembed.add_field(
                     name="",
-                    value=f"{self.opponent_m.mention}님이 승부에서 승리하여 {get_point}를 획득하셨습니다! (베팅 포인트: {opponent_point})",
+                    value=f"{self.opponent_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {opponent_point})",
                     inline=False
                     )
                     point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
                     point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
                     point_data1 = point_ref1.get()
                     point1 = point_data1.get("포인트",0)
+                    bettingpoint1 = point_data1.get("베팅포인트",0)
                     point_data2 = point_ref2.get()
+                    bettingpoint2 = point_data2.get("베팅포인트",0)
                     point2 = point_data2.get("포인트",0)
                     point_ref1.update({"포인트": point1 + get_point - opponent_point})
+                    point_ref1.update({"베팅포인트": bettingpoint1 - opponent_point})
                     point_ref2.update({"포인트": point2 - challenger_point + remained_point})
+                    point_ref2.update({"베팅포인트": bettingpoint2 - challenger_point})
                 else:
                     get_point = challenger_point + opponent_point # 받을 포인트
                     userembed.add_field(
@@ -621,7 +644,7 @@ class DiceRevealView(discord.ui.View):
                     )
                     userembed.add_field(
                     name="",
-                    value=f"{self.opponent_m.mention}님이 승부에서 승리하여 {get_point}를 획득하셨습니다! (베팅 포인트: {opponent_point})",
+                    value=f"{self.opponent_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {opponent_point})",
                     inline=False
                     )
 
@@ -629,10 +652,14 @@ class DiceRevealView(discord.ui.View):
                     point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
                     point_data1 = point_ref1.get()
                     point1 = point_data1.get("포인트",0)
+                    bettingpoint1 = point_data1.get("베팅포인트",0)
                     point_data2 = point_ref2.get()
+                    bettingpoint2 = point_data2.get("베팅포인트",0)
                     point2 = point_data2.get("포인트",0)
                     point_ref1.update({"포인트": point1 + get_point - opponent_point})
+                    point_ref1.update({"베팅포인트": bettingpoint1 - opponent_point})
                     point_ref2.update({"포인트": point2 - challenger_point})
+                    point_ref2.update({"베팅포인트": bettingpoint2 - challenger_point})
 
             await self.message.channel.send(embed = userembed)
 
