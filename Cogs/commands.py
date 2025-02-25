@@ -3483,11 +3483,14 @@ class hello(commands.Cog):
         view.message = await interaction.original_response()
 
         done, pending = await asyncio.wait(
-            [view.start_timer(), view.event.wait()],
-            return_when=asyncio.FIRST_COMPLETED  # 첫 번째 코루틴이 끝나면 반환
+            [
+                asyncio.create_task(view.start_timer()),
+                asyncio.create_task(view.event.wait())
+            ],
+            return_when=asyncio.FIRST_COMPLETED  # 첫 번째로 끝나는 코루틴을 기다림
         )
 
-        # 아직 끝나지 않은 코루틴 취소
+        # 아직 끝나지 않은 태스크 취소
         for task in pending:
             task.cancel()
         
