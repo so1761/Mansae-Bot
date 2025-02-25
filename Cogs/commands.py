@@ -161,13 +161,13 @@ def give_item(nickname, item_name, amount):
     refitem.update({item_name: item_data.get(item_name, 0) + amount})
 
 class BettingModal(Modal):
-    def __init__(self, user: discord.User, game_point):
+    def __init__(self, user: discord.User, game_point,game):
         # 모달에 사용자 이름을 추가하고 포인트 입력 필드 설정
         self.user = user
         super().__init__(title=f"{self.user.display_name}님, 베팅할 포인트를 입력해주세요!")
         self.add_item(TextInput(label="베팅할 포인트", placeholder="포인트를 입력하세요", required=True, min_length=1))
         self.game_point = game_point
-
+        self.game = game
     async def on_submit(self, interaction: discord.Interaction):
         # 포인트 입력값 처리
         bet_amount = self.children[0].value
@@ -187,8 +187,8 @@ class BettingModal(Modal):
         if info['포인트'] - bettingPoint < bet_amount:
             await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
         else:
-            
-            self.game_point[self.user.name] += bet_amount  # 포인트 수정
+            # 포인트 수정
+            await self.game.update_game_point(self.user, bet_amount)
             ref.update({"베팅포인트" : bettingPoint + bet_amount}) # 파이어베이스에 베팅포인트 추가
             
             # 베팅한 포인트 처리
@@ -267,12 +267,12 @@ class DiceRevealView(discord.ui.View):
             return
 
         # 모달 생성
-        modal = BettingModal(user=interaction.user, game_point = self.game_point)
+        modal = BettingModal(user=interaction.user, game_point = self.game_point, game = self)
         await interaction.response.send_modal(modal)
         diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
         diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲")
-        diceview_embed.add_field(name = f"{self.challenger_m.mention}", value = f"{self.game_point[self.challenger]}포인트")
-        diceview_embed.add_field(name = f"{self.opponent_m.mention}", value = f"{self.game_point[self.opponent]}포인트")
+        diceview_embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트")
+        diceview_embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트")
         await self.message.edit(embed = diceview_embed)
 
     @discord.ui.button(label="포기", style=discord.ButtonStyle.danger)
@@ -310,6 +310,11 @@ class DiceRevealView(discord.ui.View):
         if all(self.revealed.values()):
             await self.announce_winner()
     
+    async def update_game_point(self, user, bet_amount):
+        # 게임 포인트를 외부에서 수정
+        if user.name in self.game_point:
+            self.game_point[user.name] += bet_amount
+            print(f"Game point for {user.display_name} updated: {self.game_point[user.name]}")
     
     async def announce_winner(self):
         ch_dice = self.dice_results[self.challenger]
@@ -463,6 +468,7 @@ class DiceRevealView(discord.ui.View):
                 point = predict_data["포인트"]
                 bettingPoint = predict_data["베팅포인트"]
                 
+                loser_total_point = sum(loser['points'] for loser in losers)
                 # 예측 내역 변동 데이터
                 change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
                 change_ref.update({
