@@ -12,30 +12,46 @@ firebase_admin.initialize_app(cred,{
 })
 
 load_dotenv()
-
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
+cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+current_predict_season = cur_predict_seasonref.get()
+
+refname = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트")
+name_data = refname.get()
+
+dice_nums = []
+for nickname, point_data in name_data.items():
+    refdice = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/주사위")
+    dice_nums.append(refdice.get(),nickname)
+
+max_dice_num = max(dice_nums, key=lambda x: x[0])[0]
+
+winners = [name for num, name in dice_nums if num == max_dice_num]
+
+if len(winners) == 1:
+    point_message = f"{', '.join([f'**{winner}**' for winner in winners])}에게 **{max_dice_num}**포인트 지급! 🎉"
+else:
+    point_message = f"**{winners[0]}**님에게 **{max_dice_num}**포인트 지급! 🎉"
 data = {
-    "content": "🎲 주사위 정산!",
+    "content": "",
     "embeds": [
         {
             "title": "🎯 주사위 정산",
-            "description": "어제 굴린 주사위 중 가장 높은 숫자는 **6**입니다!",
+            "description": f"어제 굴린 주사위 중 가장 높은 숫자는 **{max_dice_num}**입니다!",
             "color": 0x00ff00,  # 초록색
             "fields": [
                 {
                     "name": "결과",
-                    "value": "**6** 🎉"
+                    "value": point_message
                 }
             ],
             "footer": {
                 "text": "Dice Bot",
-                "icon_url": "https://i.imgur.com/your-icon.png"  # 아이콘 URL
             }
         }
     ]
 }
-
 
 response = requests.post(WEBHOOK_URL, json=data)
 

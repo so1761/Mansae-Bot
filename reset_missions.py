@@ -23,10 +23,10 @@ if users:
         dice_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/")
         daily_missions = mission_ref.get()
 
-        dice_ref.update({"주사위" : False})
+        dice_ref.update({"주사위" : 0})
         if daily_missions:
-            update_data = {mission_name + "/완료": False for mission_name in daily_missions}
-            update_data2 = {mission_name + "/보상수령": False for mission_name in daily_missions}
+            update_data = {mission_name + "/완료": 0 for mission_name in daily_missions}
+            update_data2 = {mission_name + "/보상수령": 0 for mission_name in daily_missions}
             mission_ref.update(update_data)  # 모든 미션 초기화
             mission_ref.update(update_data2)
 

@@ -2859,7 +2859,7 @@ class hello(commands.Cog):
 
         if not dice:  # 주사위를 아직 안 굴렸다면
             dice_num = random.randint(1, 100)
-            ref.set(True)  # 주사위 값 저장
+            ref.set(dice_num)  # 주사위 값 저장
             embed = discord.Embed(
                 title="🎲 주사위 굴리기!",
                 description=f"{nickname}님이 주사위를 굴렸습니다!",
