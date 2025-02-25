@@ -236,7 +236,7 @@ class DiceRevealView(discord.ui.View):
 
     @discord.ui.button(label="주사위 확인", style=discord.ButtonStyle.gray)
     async def check_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.name not in [self.challenger, self.opponent]:
+        if interaction.user.name not in [self.challenger, self.opponent.name]:
             userembed = discord.Embed(title = "확인 불가!",color = discord.Color.red())
             userembed.add_field(name="",value="참가자만 주사위를 확인할 수 있습니다!")
             await interaction.response.send_message(content = "", embed = userembed, ephemeral = True)
