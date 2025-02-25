@@ -3476,7 +3476,7 @@ class hello(commands.Cog):
         battleembed = discord.Embed(title="대결 요청!", color = discord.Color.blue())
         battleembed.add_field(name="", value=f"{상대.mention}, {challenger}의 대결 요청! 수락하시겠습니까? 🎲")
         view.message = await interaction.response.send_message(content = "", view=view, embed = battleembed)
-        view.start_timer()
+        await view.start_timer()
 
         await view.wait()
 
