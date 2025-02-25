@@ -3482,10 +3482,14 @@ class hello(commands.Cog):
         # 전송된 메시지 객체 가져오기
         view.message = await interaction.original_response()
 
-        await asyncio.gather(
-            view.start_timer(),
-            view.event.wait()
+        done, pending = await asyncio.wait(
+            [view.start_timer(), view.event.wait()],
+            return_when=asyncio.FIRST_COMPLETED  # 첫 번째 코루틴이 끝나면 반환
         )
+
+        # 아직 끝나지 않은 코루틴 취소
+        for task in pending:
+            task.cancel()
         
         if not view.request_accepted:
             return
