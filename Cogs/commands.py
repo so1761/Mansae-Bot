@@ -3044,15 +3044,15 @@ class hello(commands.Cog):
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="주사위대결",description="포인트를 걸고 숫자야구 게임을 진행합니다")
-    async def duel(self, interaction:discord.Interaction, opponent: discord.Member):
+    async def duel(self, interaction:discord.Interaction, 상대: discord.Member):
         challenger = interaction.user.name
-        if opponent == challenger:
+        if 상대 == challenger:
             await interaction.response.send_message("자기 자신에게 도전할 수 없습니다! ❌")
             return
 
         # 대결 요청
-        view = DuelRequestView(challenger, opponent)
-        view.message = await interaction.response.send_message(f"{opponent.mention}, {challenger.display_name}의 대결 요청! 수락하시겠습니까? 🎲", view=view)
+        view = DuelRequestView(challenger, 상대)
+        view.message = await interaction.response.send_message(f"{상대.mention}, {challenger}의 대결 요청! 수락하시겠습니까? 🎲", view=view)
 
         await view.wait()
 
@@ -3060,7 +3060,7 @@ class hello(commands.Cog):
             return
 
         # 베팅 단계
-        betting_view = BettingView(challenger, opponent)
+        betting_view = BettingView(challenger, 상대)
         betting_view.message = await interaction.response.send_message(f"🎲 **베팅 시간!** 누구의 승리를 예상하시나요? (3분) 🎲", view=betting_view)
 
         await betting_view.wait()
@@ -3068,10 +3068,10 @@ class hello(commands.Cog):
         # 주사위 굴리기
         dice_results = {
             challenger.id: random.randint(1, 100),
-            opponent.id: random.randint(1, 100)
+            상대.id: random.randint(1, 100)
         }
 
-        dice_view = DiceRevealView(challenger, opponent, dice_results)
+        dice_view = DiceRevealView(challenger, 상대, dice_results)
         dice_view.message = interaction.response.send_message("주사위 결과를 확인하세요! 🎲", view=dice_view)
 
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
