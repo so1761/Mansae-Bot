@@ -178,7 +178,7 @@ class DuelRequestView(discord.ui.View):
         
         battleembed = discord.Embed(title="요청 만료!", color=discord.Color.blue())
         battleembed.add_field(name="", value="대결 요청이 만료되었습니다. ⏰")
-        await self.message.edit(content="", embed=battleembed)
+        await self.message.edit(content="", embed=battleembed,view = self)
         self.event.set()
 
     @discord.ui.button(label="수락", style=discord.ButtonStyle.green)
@@ -193,7 +193,7 @@ class DuelRequestView(discord.ui.View):
 
         battleembed = discord.Embed(title="대결 수락!", color = discord.Color.blue())
         battleembed.add_field(name="", value=f"{self.opponent.mention}님이 대결을 수락했습니다!")
-        await interaction.response.edit_message(embed = battleembed)
+        await interaction.response.edit_message(embed = battleembed, view = self)
         self.event.set()
 
 class BettingView(discord.ui.View):
@@ -3481,9 +3481,12 @@ class hello(commands.Cog):
 
         # 전송된 메시지 객체 가져오기
         view.message = await interaction.original_response()
-        await view.start_timer()
 
-        await view.event.wait()
+        await asyncio.gather(
+            view.start_timer(),
+            view.event.wait()
+        )
+        
 
         if not view.request_accepted:
             return
