@@ -72,4 +72,3 @@ melon_event = asyncio.Event()
 battle_event = asyncio.Event()
 
 battle_message = ""
-battle_betting_message = ""
