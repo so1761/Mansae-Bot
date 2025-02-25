@@ -193,7 +193,7 @@ class BettingView(discord.ui.View):
         self.bets = {}  # {user_id: bet_on}
 
     @discord.ui.button(label="챌린저에게 베팅", style=discord.ButtonStyle.blurple)
-    async def bet_challenger(self, interaction: discord.Interaction, button: Button):
+    async def bet_challenger(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user in [self.challenger, self.opponent]:
             await interaction.response.send_message("참가자는 베팅할 수 없습니다!", ephemeral=True)
             return
@@ -202,7 +202,7 @@ class BettingView(discord.ui.View):
         await interaction.response.send_message(f"{self.challenger.display_name}에게 베팅했습니다! 🎲", ephemeral=True)
 
     @discord.ui.button(label="상대에게 베팅", style=discord.ButtonStyle.blurple)
-    async def bet_opponent(self, interaction: discord.Interaction, button: Button):
+    async def bet_opponent(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user in [self.challenger, self.opponent]:
             await interaction.response.send_message("참가자는 베팅할 수 없습니다!", ephemeral=True)
             return
@@ -224,7 +224,7 @@ class DiceRevealView(discord.ui.View):
         self.revealed = {challenger.id: False, opponent.id: False}
 
     @discord.ui.button(label="주사위 확인", style=discord.ButtonStyle.gray)
-    async def check_dice(self, interaction: discord.Interaction, button: Button):
+    async def check_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user not in [self.challenger, self.opponent]:
             await interaction.response.send_message("참가자만 주사위를 확인할 수 있습니다!", ephemeral=True)
             return
@@ -233,7 +233,7 @@ class DiceRevealView(discord.ui.View):
         await interaction.response.send_message("DM으로 주사위 결과를 보냈습니다! 💌", ephemeral=True)
 
     @discord.ui.button(label="숫자 공개", style=discord.ButtonStyle.green)
-    async def reveal_dice(self, interaction: discord.Interaction, button: Button):
+    async def reveal_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user not in [self.challenger, self.opponent]:
             await interaction.response.send_message("참가자만 숫자를 공개할 수 있습니다!", ephemeral=True)
             return
