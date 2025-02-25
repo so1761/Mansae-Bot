@@ -23,7 +23,7 @@ name_data = refname.get()
 dice_nums = []
 for nickname, point_data in name_data.items():
     refdice = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/주사위")
-    dice_nums.append(refdice.get(),nickname)
+    dice_nums.append((refdice.get(),nickname))
 
 max_dice_num = max(dice_nums, key=lambda x: x[0])[0]
 
