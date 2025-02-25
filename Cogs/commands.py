@@ -178,7 +178,7 @@ class DuelRequestView(discord.ui.View):
         
         battleembed = discord.Embed(title="요청 만료!", color=discord.Color.blue())
         battleembed.add_field(name="", value="대결 요청이 만료되었습니다. ⏰")
-        await self.message.edit(content="", embed=battleembed,view = self)
+        await self.message.edit(embed=battleembed,view = self)
         self.event.set()
 
     @discord.ui.button(label="수락", style=discord.ButtonStyle.green)
@@ -3609,7 +3609,7 @@ class hello(commands.Cog):
         prediction_embed.add_field(name=f"{상대} 승리 예측", value=lose_predictions, inline=True)
 
         prediction_view = discord.ui.View()
-        prediction_view.add_item(winbutton)
+        prediction_view.add_item(p.battle_winbutton)
         prediction_view.add_item(losebutton)
         # 베팅 단계 
         p.battle_message = await channel.send(f"🎲 {challenger} vs {상대}의 주사위 승부가 감지되었습니다!\n승부예측을 해보세요!", view=prediction_view, embed = prediction_embed)
