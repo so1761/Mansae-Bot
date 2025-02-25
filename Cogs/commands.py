@@ -162,19 +162,23 @@ def give_item(nickname, item_name, amount):
 duels = {}  # 진행 중인 대결 정보를 저장
 
 class DuelRequestView(discord.ui.View):
-    async def __init__(self, challenger, opponent):
+    def __init__(self, challenger, opponent):
         super().__init__()  # 3분 타이머
         self.challenger = challenger
         self.opponent = opponent
         self.request_accepted = False
-
+        self.message = None
+    
+    async def start_timer(self):
         await asyncio.sleep(180)
-        for child in self.children:
-            child.disabled = True
+        if not self.request_accepted:
+            for child in self.children:
+                child.disabled = True
         
-        battleembed = discord.Embed(title="요청 만료!", color = discord.Color.blue())
-        battleembed.add_field(name="", value=f"대결 요청이 만료되었습니다. ⏰")
-        await self.message.edit(content="",embed = battleembed)
+        battleembed = discord.Embed(title="요청 만료!", color=discord.Color.blue())
+        battleembed.add_field(name="", value="대결 요청이 만료되었습니다. ⏰")
+        await self.message.edit(content="", embed=battleembed)
+        self.stop()
 
     @discord.ui.button(label="수락", style=discord.ButtonStyle.green)
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -3472,6 +3476,7 @@ class hello(commands.Cog):
         battleembed = discord.Embed(title="대결 요청!", color = discord.Color.blue())
         battleembed.add_field(name="", value=f"{상대.mention}, {challenger}의 대결 요청! 수락하시겠습니까? 🎲")
         view.message = await interaction.response.send_message(content = "", view=view, embed = battleembed)
+        view.start_timer()
 
         await view.wait()
 
