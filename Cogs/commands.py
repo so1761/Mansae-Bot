@@ -3487,7 +3487,6 @@ class hello(commands.Cog):
             view.event.wait()
         )
         
-
         if not view.request_accepted:
             return
 
@@ -3499,7 +3498,7 @@ class hello(commands.Cog):
             p.battle_winbutton.disabled = True
             losebutton.disabled = True
             prediction_view = discord.ui.View()
-            prediction_view.add_item(winbutton)
+            prediction_view.add_item(p.battle_winbutton)
             prediction_view.add_item(losebutton)
             await p.battle_message.edit(view = prediction_view)
             p.battle_event.set()
