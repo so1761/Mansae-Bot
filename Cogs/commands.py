@@ -3045,7 +3045,7 @@ class hello(commands.Cog):
 
     @app_commands.command(name="주사위대결",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     async def duel(self, interaction:discord.Interaction, opponent: discord.Member):
-        challenger = ctx.author
+        challenger = interaction.user.name
         if opponent == challenger:
             await interaction.response.send_message("자기 자신에게 도전할 수 없습니다! ❌")
             return
