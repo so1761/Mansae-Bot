@@ -11,6 +11,7 @@ import mplfinance as mpf
 import prediction_vote as p
 import subprocess
 import os
+import math
 from discord.ui import Modal, TextInput
 from discord import TextStyle
 from firebase_admin import db
@@ -254,7 +255,7 @@ class DiceRevealView(discord.ui.View):
             await interaction.response.send_message(content = "", embed = userembed, ephemeral = True)
             return
 
-        self.revealed[interaction.user.id] = True
+        self.revealed[interaction.user.name] = True
         userembed = discord.Embed(title = "주사위 공개!",color = discord.Color.red())
         userembed.add_field(name="",value=f"{interaction.user.display_name}의 주사위 숫자: **{self.dice_results[interaction.user.name]}** 🎲")
         await interaction.response.send_message(content = "", embed = userembed)
@@ -278,10 +279,10 @@ class DiceRevealView(discord.ui.View):
 
         if dice_winner:
             userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-            userembed.add_field(name="게임 종료", value=f"{name}의 게임이 종료되었습니다!\n {dice_winner.mention}의 승리!")
+            userembed.add_field(name="게임 종료", value=f"주사위 대결이 종료되었습니다!\n {dice_winner.mention}의 승리!")
 
-            winners = votes['배틀']['prediction']['win'] if result else votes['배틀']['prediction']['lose']
-            losers = votes['배틀']['prediction']['lose'] if result else votes['배틀']['prediction']['win']
+            winners = p.votes['배틀']['prediction']['win'] if result else p.votes['배틀']['prediction']['lose']
+            losers = p.votes['배틀']['prediction']['lose'] if result else p.votes['배틀']['prediction']['win']
             winnerNum = len(winners)
             loserNum = len(losers)
 
@@ -2550,7 +2551,7 @@ class hello(commands.Cog):
                             return
 
                 # 패배 예측에서 닉네임 찾기
-                for loser in p.votes[이름]['prediction']['lose']:
+                for loser in p.votes['배틀']['prediction']['lose']:
                     if loser['name'] == nickname:
                         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                         current_predict_season = cur_predict_seasonref.get()
@@ -3516,7 +3517,7 @@ class hello(commands.Cog):
             if interaction:
                 nickname = interaction.user.name
                 await interaction.response.defer()  # 응답 지연 (버튼 눌렀을 때 오류 방지)
-            if nickname == challenger or 상대:
+            if nickname == challenger or nickname == 상대:
                 userembed = discord.Embed(title = "메세지", color = discord.Color.blue())
                 userembed.add_field(name="자신에게 투표 불가!", value="자신의 승부에는 투표할 수 없습니다!")
                 await interaction.followup.send(embed=userembed, ephemeral=True)
