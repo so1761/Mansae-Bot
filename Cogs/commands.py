@@ -3658,7 +3658,7 @@ class hello(commands.Cog):
         losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label=f"{상대} 승리")
 
         async def disable_buttons():
-            await asyncio.sleep(180)  # 1분 대기
+            await asyncio.sleep(60)  # 1분 대기
             p.battle_winbutton.disabled = True
             losebutton.disabled = True
             prediction_view = discord.ui.View()
