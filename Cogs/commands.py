@@ -162,12 +162,19 @@ def give_item(nickname, item_name, amount):
 duels = {}  # 진행 중인 대결 정보를 저장
 
 class DuelRequestView(discord.ui.View):
-    def __init__(self, challenger, opponent):
+    async def __init__(self, challenger, opponent):
         super().__init__()  # 3분 타이머
         self.challenger = challenger
         self.opponent = opponent
         self.request_accepted = False
 
+        await asyncio.sleep(180)
+        for child in self.children:
+            child.disabled = True
+        
+        battleembed = discord.Embed(title="요청 만료!", color = discord.Color.blue())
+        battleembed.add_field(name="", value=f"대결 요청이 만료되었습니다. ⏰")
+        await self.message.edit(content="",embed = battleembed)
 
     @discord.ui.button(label="수락", style=discord.ButtonStyle.green)
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -178,13 +185,11 @@ class DuelRequestView(discord.ui.View):
         self.request_accepted = True
         for child in self.children:
             child.disabled = True
-        await interaction.response.edit_message(content=f"{self.opponent.mention}이(가) 대결을 수락했습니다!", view=self)
-        self.stop()
 
-    async def on_timeout(self):
-        for child in self.children:
-            child.disabled = True
-        await self.message.edit(content="대결 요청이 만료되었습니다. ⏰", view=self)
+        battleembed = discord.Embed(title="대결 수락!", color = discord.Color.blue())
+        battleembed.add_field(name="", value=f"{self.opponent.mention}님이 대결을 수락했습니다!")
+        await interaction.response.edit_message(embed = battleembed)
+        self.stop()
 
 class BettingView(discord.ui.View):
     def __init__(self, challenger, opponent):
