@@ -227,25 +227,25 @@ class DiceRevealView(discord.ui.View):
     @discord.ui.button(label="주사위 확인", style=discord.ButtonStyle.gray)
     async def check_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user not in [self.challenger, self.opponent]:
-            userembed = discord.Embed(title = "확인 불가!",color = discord.Color.red)
+            userembed = discord.Embed(title = "확인 불가!",color = discord.Color.red())
             userembed.add_field(name="",value="참가자만 주사위를 확인할 수 있습니다!")
             await interaction.response.send_message(content = "", embed = userembed, ephemeral = True)
             return
 
-        userembed = discord.Embed(title = "주사위 확인!",color = discord.Color.red)
+        userembed = discord.Embed(title = "주사위 확인!",color = discord.Color.red())
         userembed.add_field(name="",value=f"당신의 주사위 숫자는 **{self.dice_results[interaction.user.id]}**입니다! 🎲")
         await interaction.response.send_message(content = "",embed = userembed, ephemeral=True)
 
     @discord.ui.button(label="숫자 공개", style=discord.ButtonStyle.green)
     async def reveal_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user not in [self.challenger, self.opponent]:
-            userembed = discord.Embed(title = "공개 불가!",color = discord.Color.red)
+            userembed = discord.Embed(title = "공개 불가!",color = discord.Color.red())
             userembed.add_field(name="",value="참가자만 숫자를 공개할 수 있습니다!")
             await interaction.response.send_message(content = "", embed = userembed, ephemeral = True)
             return
 
         self.revealed[interaction.user.id] = True
-        userembed = discord.Embed(title = "주사위 공개!",color = discord.Color.red)
+        userembed = discord.Embed(title = "주사위 공개!",color = discord.Color.red())
         userembed.add_field(name="",value=f"{interaction.user.display_name}의 주사위 숫자: **{self.dice_results[interaction.user.id]}** 🎲")
         await interaction.response.send_message(content = "", embed = userembed)
 
@@ -3464,7 +3464,7 @@ class hello(commands.Cog):
         
         # 대결 요청
         view = DuelRequestView(challenger, 상대)
-        battleembed = discord.Embed(title="대결 요청!", color = discord.Color.blue)
+        battleembed = discord.Embed(title="대결 요청!", color = discord.Color.blue())
         battleembed.add_field(name="", value=f"{상대.mention}, {challenger}의 대결 요청! 수락하시겠습니까? 🎲")
         view.message = await interaction.response.send_message(content = "", view=view, embed = battleembed)
 
@@ -3492,7 +3492,7 @@ class hello(commands.Cog):
                 nickname = interaction.user.name
                 await interaction.response.defer()  # 응답 지연 (버튼 눌렀을 때 오류 방지)
             if nickname == challenger or 상대:
-                userembed = discord.Embed(title = "메세지", color = discord.Color.blue)
+                userembed = discord.Embed(title = "메세지", color = discord.Color.blue())
                 userembed.add_field(name="자신에게 투표 불가!", value="자신의 승부에는 투표할 수 없습니다!")
                 await interaction.followup.send(embed=userembed, ephemeral=True)
                 return
@@ -3538,7 +3538,7 @@ class hello(commands.Cog):
 
                 prediction_value = challenger if prediction_type == "win" else 상대
 
-                userembed = discord.Embed(title="메세지", color=discord.Color.blue)
+                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
                 userembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에게 투표하셨습니다.", inline=True)
                 if basePoint != 0:
                     bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
@@ -3604,7 +3604,7 @@ class hello(commands.Cog):
             상대.id: random.randint(1, 100)
         }
 
-        diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue)
+        diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
         diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲")
         dice_view = DiceRevealView(challenger, 상대, dice_results)
         dice_view.message = await channel.send(content = "", view = dice_view, embed = diceview_embed)
