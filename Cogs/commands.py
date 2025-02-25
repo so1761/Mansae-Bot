@@ -188,7 +188,7 @@ class BettingModal(Modal):
             await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
         else:
             
-            self.game_point[self.user] += bet_amount  # 포인트 수정
+            self.game_point[self.user.name] += bet_amount  # 포인트 수정
             ref.update({"베팅포인트" : bettingPoint + bet_amount}) # 파이어베이스에 베팅포인트 추가
             
             # 베팅한 포인트 처리
@@ -273,7 +273,7 @@ class DiceRevealView(discord.ui.View):
         diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲")
         diceview_embed.add_field(name = f"{self.challenger_m.mention}", value = f"{self.game_point[self.challenger]}포인트")
         diceview_embed.add_field(name = f"{self.opponent_m.mention}", value = f"{self.game_point[self.opponent]}포인트")
-        self.message.edit(embed = diceview_embed)
+        await self.message.edit(embed = diceview_embed)
 
     @discord.ui.button(label="포기", style=discord.ButtonStyle.danger)
     async def give_up(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -550,7 +550,7 @@ class DiceRevealView(discord.ui.View):
                     )
                     userembed.add_field(
                     name="",
-                    value=f"{self.challenger_m.mention}님이 승부에서 승리하여 {get_point}를 획득하셨습니다! (베팅 포인트: {challenger_point})",
+                    value=f"{self.challenger_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {challenger_point})",
                     inline=False
                     )
                     point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
@@ -3666,7 +3666,7 @@ class hello(commands.Cog):
             if interaction:
                 nickname = interaction.user.name
                 await interaction.response.defer()  # 응답 지연 (버튼 눌렀을 때 오류 방지)
-            if nickname == challenger or nickname == 상대:
+            if nickname == challenger or nickname == 상대.name:
                 userembed = discord.Embed(title = "메세지", color = discord.Color.blue())
                 userembed.add_field(name="자신에게 투표 불가!", value="자신의 승부에는 투표할 수 없습니다!")
                 await interaction.followup.send(embed=userembed, ephemeral=True)
