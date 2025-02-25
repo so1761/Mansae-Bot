@@ -3456,6 +3456,7 @@ class hello(commands.Cog):
     @app_commands.command(name="주사위대결",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     async def duel(self, interaction:discord.Interaction, 상대: discord.Member):
         challenger = interaction.user.name
+        challenger_m = interaction.user
         if 상대 == challenger:
             await interaction.response.send_message("자기 자신에게 도전할 수 없습니다! ❌")
             return
@@ -3475,7 +3476,7 @@ class hello(commands.Cog):
         # 대결 요청
         view = DuelRequestView(challenger, 상대)
         battleembed = discord.Embed(title="대결 요청!", color = discord.Color.blue())
-        battleembed.add_field(name="", value=f"{상대.mention}, {challenger.mention}의 대결 요청! 수락하시겠습니까? 🎲")
+        battleembed.add_field(name="", value=f"{상대.mention}, {challenger_m.mention}의 대결 요청! 수락하시겠습니까? 🎲")
         # 메시지 전송
         await interaction.response.send_message(content="", view=view, embed=battleembed)
 
@@ -3615,7 +3616,7 @@ class hello(commands.Cog):
         prediction_view.add_item(p.battle_winbutton)
         prediction_view.add_item(losebutton)
         # 베팅 단계 
-        p.battle_message = await channel.send(f"{challenger.mention} vs {상대.mention}의 주사위 승부가 감지되었습니다!🎲 \n승부예측을 해보세요!", view=prediction_view, embed = prediction_embed)
+        p.battle_message = await channel.send(f"{challenger_m.mention} vs {상대.mention}의 주사위 승부가 감지되었습니다!🎲 \n승부예측을 해보세요!", view=prediction_view, embed = prediction_embed)
 
         await asyncio.gather(
             disable_buttons(),
