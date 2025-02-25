@@ -168,7 +168,8 @@ class DuelRequestView(discord.ui.View):
         self.opponent = opponent
         self.request_accepted = False
         self.message = None
-    
+        self.event = asyncio.Event()
+
     async def start_timer(self):
         await asyncio.sleep(180)
         if not self.request_accepted:
@@ -178,7 +179,7 @@ class DuelRequestView(discord.ui.View):
         battleembed = discord.Embed(title="요청 만료!", color=discord.Color.blue())
         battleembed.add_field(name="", value="대결 요청이 만료되었습니다. ⏰")
         await self.message.edit(content="", embed=battleembed)
-        self.stop()
+        self.event.set()
 
     @discord.ui.button(label="수락", style=discord.ButtonStyle.green)
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -193,7 +194,7 @@ class DuelRequestView(discord.ui.View):
         battleembed = discord.Embed(title="대결 수락!", color = discord.Color.blue())
         battleembed.add_field(name="", value=f"{self.opponent.mention}님이 대결을 수락했습니다!")
         await interaction.response.edit_message(embed = battleembed)
-        self.stop()
+        self.event.set()
 
 class BettingView(discord.ui.View):
     def __init__(self, challenger, opponent):
@@ -3482,7 +3483,7 @@ class hello(commands.Cog):
         view.message = await interaction.original_response()
         await view.start_timer()
 
-        await view.wait()
+        await view.event.wait()
 
         if not view.request_accepted:
             return
