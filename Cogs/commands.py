@@ -497,6 +497,7 @@ class DiceRevealView(discord.ui.View):
                 bettingPoint = predict_data["베팅포인트"]
                 
                 loser_total_point = sum(loser['points'] for loser in losers)
+                remain_loser_total_point = loser_total_point
                 # 예측 내역 변동 데이터
                 change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
                 change_ref.update({
