@@ -169,7 +169,7 @@ class DuelRequestView(discord.ui.View):
         self.request_accepted = False
 
     @discord.ui.button(label="수락", style=discord.ButtonStyle.green)
-    async def accept(self, interaction: discord.Interaction, button: Button):
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user != self.opponent:
             await interaction.response.send_message("이 버튼은 지목된 사람만 누를 수 있습니다!", ephemeral=True)
             return
@@ -3047,12 +3047,12 @@ class hello(commands.Cog):
     async def duel(self, interaction:discord.Interaction, opponent: discord.Member):
         challenger = ctx.author
         if opponent == challenger:
-            await ctx.send("자기 자신에게 도전할 수 없습니다! ❌")
+            await interaction.response.send_message("자기 자신에게 도전할 수 없습니다! ❌")
             return
 
         # 대결 요청
         view = DuelRequestView(challenger, opponent)
-        view.message = await ctx.send(f"{opponent.mention}, {challenger.display_name}의 대결 요청! 수락하시겠습니까? 🎲", view=view)
+        view.message = await interaction.response.send_message(f"{opponent.mention}, {challenger.display_name}의 대결 요청! 수락하시겠습니까? 🎲", view=view)
 
         await view.wait()
 
@@ -3061,14 +3061,14 @@ class hello(commands.Cog):
 
         # 베팅 단계
         betting_view = BettingView(challenger, opponent)
-        betting_view.message = await ctx.send(f"🎲 **베팅 시간!** 누구의 승리를 예상하시나요? (3분) 🎲", view=betting_view)
+        betting_view.message = await interaction.response.send_message(f"🎲 **베팅 시간!** 누구의 승리를 예상하시나요? (3분) 🎲", view=betting_view)
 
         await betting_view.wait()
 
         # 주사위 굴리기
         dice_results = {
-            challenger.id: random.randint(1, 6),
-            opponent.id: random.randint(1, 6)
+            challenger.id: random.randint(1, 100),
+            opponent.id: random.randint(1, 100)
         }
 
         dice_view = DiceRevealView(challenger, opponent, dice_results)
