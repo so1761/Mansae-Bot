@@ -161,7 +161,7 @@ def give_item(nickname, item_name, amount):
     refitem.update({item_name: item_data.get(item_name, 0) + amount})
 
 class BettingModal(Modal):
-    def __init__(self, user: discord.User, challenger, opponent, game_point,game):
+    def __init__(self, user: discord.User, challenger, opponent, game_point,game, message):
         # 모달에 사용자 이름을 추가하고 포인트 입력 필드 설정
         self.user = user
         super().__init__(title=f"{self.user.display_name}님, 베팅할 포인트를 입력해주세요!")
@@ -170,6 +170,7 @@ class BettingModal(Modal):
         self.opponent = opponent
         self.game_point = game_point
         self.game = game
+        self.message = message
         
     async def on_submit(self, interaction: discord.Interaction):
         # 포인트 입력값 처리
@@ -242,6 +243,21 @@ class DuelRequestView(discord.ui.View):
         await interaction.response.edit_message(embed = battleembed, view = self)
         self.event.set()
 
+    @discord.ui.button(label="거절", style=discord.ButtonStyle.danger)
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.opponent:
+            await interaction.response.send_message("이 버튼은 지목된 사람만 누를 수 있습니다!", ephemeral=True)
+            return
+
+        self.request_accepted = False
+        for child in self.children:
+            child.disabled = True
+
+        battleembed = discord.Embed(title="대결 거절!", color = discord.Color.blue())
+        battleembed.add_field(name="", value=f"{self.opponent.mention}님이 대결을 거절했습니다!")
+        await interaction.response.edit_message(embed = battleembed, view = self)
+        self.event.set()
+
 class DiceRevealView(discord.ui.View):
     def __init__(self, challenger, opponent, dice_results, game_point): 
         super().__init__()
@@ -276,7 +292,7 @@ class DiceRevealView(discord.ui.View):
             return
 
         # 모달 생성
-        modal = BettingModal(user=interaction.user, challenger = self.challenger, opponent = self.opponent, game_point = self.game_point, game = self)
+        modal = BettingModal(user=interaction.user, challenger = self.challenger, opponent = self.opponent, game_point = self.game_point, game = self, message = self.message)
         await interaction.response.send_modal(modal)
 
     @discord.ui.button(label="포기", style=discord.ButtonStyle.danger)
@@ -354,6 +370,7 @@ class DiceRevealView(discord.ui.View):
             result = False
         elif self.giveup[self.opponent]: # 상대가 포기했을 경우
             dice_winner = self.challenger_m
+            result = True
 
         if dice_winner:
             userembed = discord.Embed(title="메세지", color=discord.Color.blue())
@@ -3636,11 +3653,12 @@ class hello(commands.Cog):
     async def duel(self, interaction:discord.Interaction, 상대: discord.Member):
         challenger = interaction.user.name
         challenger_m = interaction.user
-        if 상대 == challenger:
+        if 상대.name == challenger:
             warnembed = discord.Embed(title="실패",color = discord.Color.red())
             warnembed.add_field(name="",value="자기 자신에게 도전할 수 없습니다! ❌")
             await interaction.response.send_message(embed = warnembed)
             return
+
 
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
@@ -3655,6 +3673,28 @@ class hello(commands.Cog):
             await interaction.response.send_message("",embed = warnembed)
             return
 
+        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}')
+        originr = ref.get()
+        point = originr["포인트"]
+        bettingPoint = originr["베팅포인트"]
+        real_point = point - bettingPoint
+
+        if real_point < 100:
+            warnembed = discord.Embed(title="실패",color = discord.Color.red())
+            warnembed.add_field(name="",value=f"{challenger}님의 포인트가 100포인트 미만입니다! ❌")
+            await interaction.response.send_message("",embed = warnembed)
+            return
+        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}')
+        originr = ref.get()
+        point = originr["포인트"]
+        bettingPoint = originr["베팅포인트"]
+        real_point = point - bettingPoint
+
+        if real_point < 100:
+            warnembed = discord.Embed(title="실패",color = discord.Color.red())
+            warnembed.add_field(name="",value=f"{상대.name}님의 포인트가 100포인트 미만입니다! ❌")
+            await interaction.response.send_message("",embed = warnembed)
+            return
         
         # 대결 요청
         view = DuelRequestView(challenger, 상대)
@@ -3835,9 +3875,22 @@ class hello(commands.Cog):
         }
 
         game_point = {
-            challenger : 0, 
-            상대.name : 0
+            challenger : 100, 
+            상대.name : 100
         }
+
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}')
+        ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}/베팅포인트')
+        bettingPoint = ref2.get()
+        ref.update({"베팅포인트" : bettingPoint + 100})
+
+        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}')
+        ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}/베팅포인트')
+        bettingPoint = ref2.get()
+        ref.update({"베팅포인트" : bettingPoint + 100})
 
         diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
         diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲", inline=False)
