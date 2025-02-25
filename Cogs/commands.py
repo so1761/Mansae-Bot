@@ -230,8 +230,10 @@ class BettingView(discord.ui.View):
 class DiceRevealView(discord.ui.View):
     def __init__(self, challenger, opponent, dice_results):
         super().__init__()
-        self.challenger = challenger
+        self.challenger = challenger.name
         self.opponent = opponent.name
+        self.challenger_m = challenger
+        self.opponent_m = opponent
         self.dice_results = dice_results
         self.revealed = {challenger: False, opponent.name: False}
 
@@ -269,10 +271,10 @@ class DiceRevealView(discord.ui.View):
 
         result = True
         if ch_dice > op_dice:
-            dice_winner = self.challenger
+            dice_winner = self.challenger_m
             result = True
         elif op_dice > ch_dice:
-            dice_winner = self.opponent
+            dice_winner = self.opponent_m
             result = False
         else:
             dice_winner = None
@@ -3566,9 +3568,33 @@ class hello(commands.Cog):
 
                 userembed = discord.Embed(title="메세지", color=discord.Color.blue())
                 userembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에게 투표하셨습니다.", inline=True)
+                await channel.send(f"\n", embed=userembed)
+
                 if basePoint != 0:
                     bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
                     bettingembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에게 {basePoint}포인트를 베팅했습니다!", inline=False)
+
+                    p.votes['배틀']['prediction'][prediction_type][myindex]['points'] += basePoint
+                    # 새로고침
+                    prediction_embed = discord.Embed(title="예측 현황", color=0x000000) # Black
+
+                    win_predictions = "\n".join(
+                                f"{winner['name']}: {winner['points']}포인트" for winner in p.votes['배틀']['prediction']["win"]) or "없음"
+                    lose_predictions = "\n".join(
+                        f"{loser['name']}: {loser['points']}포인트" for loser in p.votes['배틀']['prediction']["lose"]) or "없음"
+
+                    winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label=f"{challenger} 승리")
+                    losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label=f"{상대} 승리")
+
+                    winner_total_point = sum(winner["points"] for winner in p.votes['배틀']['prediction']["win"])
+                    loser_total_point = sum(loser["points"] for loser in p.votes['배틀']['prediction']["lose"])
+                    prediction_embed.add_field(name="총 포인트", value=f"{challenger}: {winner_total_point}포인트 | {상대}: {loser_total_point}포인트", inline=False)
+
+                    prediction_embed.add_field(name=f"{challenger} 승리 예측", value=win_predictions, inline=True)
+                    prediction_embed.add_field(name=f"{상대} 승리 예측", value=lose_predictions, inline=True)
+
+                    await p.battle_message.edit(embed = prediction_embed)
+
                     await channel.send(f"\n", embed=bettingembed)
                 
                 await channel.send(f"\n", embed=userembed)
@@ -3632,7 +3658,7 @@ class hello(commands.Cog):
 
         diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
         diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲")
-        dice_view = DiceRevealView(challenger, 상대, dice_results)
+        dice_view = DiceRevealView(challenger_m, 상대, dice_results)
         dice_view.message = await channel.send(content = "", view = dice_view, embed = diceview_embed)
 
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
