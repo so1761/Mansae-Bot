@@ -244,7 +244,7 @@ class DuelRequestView(discord.ui.View):
         self.event.set()
 
     @discord.ui.button(label="거절", style=discord.ButtonStyle.danger)
-    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def deny(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user != self.opponent:
             await interaction.response.send_message("이 버튼은 지목된 사람만 누를 수 있습니다!", ephemeral=True)
             return
