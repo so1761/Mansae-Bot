@@ -161,7 +161,7 @@ def give_item(nickname, item_name, amount):
 
 duels = {}  # 진행 중인 대결 정보를 저장
 
-class DuelRequestView(View):
+class DuelRequestView(discord.ui.View):
     def __init__(self, challenger, opponent):
         super().__init__(timeout=180)  # 3분 타이머
         self.challenger = challenger
@@ -185,7 +185,7 @@ class DuelRequestView(View):
             child.disabled = True
         await self.message.edit(content="대결 요청이 만료되었습니다. ⏰", view=self)
 
-class BettingView(View):
+class BettingView(discord.ui.View):
     def __init__(self, challenger, opponent):
         super().__init__(timeout=180)  # 3분 타이머
         self.challenger = challenger
@@ -215,7 +215,7 @@ class BettingView(View):
             child.disabled = True
         await self.message.edit(content="베팅 시간이 종료되었습니다. 🕒", view=self)
 
-class DiceRevealView(View):
+class DiceRevealView(discord.ui.View):
     def __init__(self, challenger, opponent, dice_results):
         super().__init__()
         self.challenger = challenger
