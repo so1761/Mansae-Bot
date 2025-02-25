@@ -35,3 +35,11 @@ data = {
         }
     ]
 }
+
+
+response = requests.post(WEBHOOK_URL, json=data)
+
+if response.status_code == 204:
+    print("✅ Embed 메시지 전송 성공!")
+else:
+    print(f"❌ 메시지 전송 실패! 상태 코드: {response.status_code}")
