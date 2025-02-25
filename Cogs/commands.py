@@ -471,11 +471,11 @@ class DiceRevealView(discord.ui.View):
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
             current_predict_season = cur_predict_seasonref.get()
 
-            battleref = db.reference(승부예측/예측시즌/{current_predict_season}/예측포인트/{p.votes['배틀']['name']['challenger']})
+            battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{p.votes['배틀']['name']['challenger']}")
             battle_data = battleref.get()
             battleref.update({"배틀여부" : True})
 
-            battleref = db.reference(승부예측/예측시즌/{current_predict_season}/예측포인트/{p.votes['배틀']['name']['상대']})
+            battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{p.votes['배틀']['name']['상대']}")
             battle_data = battleref.get()
             battleref.update({"배틀여부" : True})
 
@@ -507,11 +507,11 @@ class DiceRevealView(discord.ui.View):
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
             current_predict_season = cur_predict_seasonref.get()
 
-            battleref = db.reference(승부예측/예측시즌/{current_predict_season}/예측포인트/{p.votes['배틀']['name']['challenger']})
+            battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{p.votes['배틀']['name']['challenger']}")
             battle_data = battleref.get()
             battleref.update({"배틀여부" : True})
 
-            battleref = db.reference(승부예측/예측시즌/{current_predict_season}/예측포인트/{p.votes['배틀']['name']['상대']})
+            battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{p.votes['배틀']['name']['상대']}")
             battle_data = battleref.get()
             battleref.update({"배틀여부" : True})
 
@@ -3626,7 +3626,7 @@ class hello(commands.Cog):
         # 주사위 굴리기
         dice_results = {
             challenger: random.randint(1, 100),
-            상대: random.randint(1, 100)
+            상대.name: random.randint(1, 100)
         }
 
         diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
