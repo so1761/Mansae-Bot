@@ -159,6 +159,107 @@ def give_item(nickname, item_name, amount):
 
     refitem.update({item_name: item_data.get(item_name, 0) + amount})
 
+duels = {}  # 진행 중인 대결 정보를 저장
+
+class DuelRequestView(View):
+    def __init__(self, challenger, opponent):
+        super().__init__(timeout=180)  # 3분 타이머
+        self.challenger = challenger
+        self.opponent = opponent
+        self.request_accepted = False
+
+    @discord.ui.button(label="수락", style=discord.ButtonStyle.green)
+    async def accept(self, interaction: discord.Interaction, button: Button):
+        if interaction.user != self.opponent:
+            await interaction.response.send_message("이 버튼은 지목된 사람만 누를 수 있습니다!", ephemeral=True)
+            return
+
+        self.request_accepted = True
+        for child in self.children:
+            child.disabled = True
+        await interaction.response.edit_message(content=f"{self.opponent.mention}이(가) 대결을 수락했습니다!", view=self)
+        self.stop()
+
+    async def on_timeout(self):
+        for child in self.children:
+            child.disabled = True
+        await self.message.edit(content="대결 요청이 만료되었습니다. ⏰", view=self)
+
+class BettingView(View):
+    def __init__(self, challenger, opponent):
+        super().__init__(timeout=180)  # 3분 타이머
+        self.challenger = challenger
+        self.opponent = opponent
+        self.bets = {}  # {user_id: bet_on}
+
+    @discord.ui.button(label="챌린저에게 베팅", style=discord.ButtonStyle.blurple)
+    async def bet_challenger(self, interaction: discord.Interaction, button: Button):
+        if interaction.user in [self.challenger, self.opponent]:
+            await interaction.response.send_message("참가자는 베팅할 수 없습니다!", ephemeral=True)
+            return
+
+        self.bets[interaction.user.id] = self.challenger
+        await interaction.response.send_message(f"{self.challenger.display_name}에게 베팅했습니다! 🎲", ephemeral=True)
+
+    @discord.ui.button(label="상대에게 베팅", style=discord.ButtonStyle.blurple)
+    async def bet_opponent(self, interaction: discord.Interaction, button: Button):
+        if interaction.user in [self.challenger, self.opponent]:
+            await interaction.response.send_message("참가자는 베팅할 수 없습니다!", ephemeral=True)
+            return
+
+        self.bets[interaction.user.id] = self.opponent
+        await interaction.response.send_message(f"{self.opponent.display_name}에게 베팅했습니다! 🎲", ephemeral=True)
+
+    async def on_timeout(self):
+        for child in self.children:
+            child.disabled = True
+        await self.message.edit(content="베팅 시간이 종료되었습니다. 🕒", view=self)
+
+class DiceRevealView(View):
+    def __init__(self, challenger, opponent, dice_results):
+        super().__init__()
+        self.challenger = challenger
+        self.opponent = opponent
+        self.dice_results = dice_results
+        self.revealed = {challenger.id: False, opponent.id: False}
+
+    @discord.ui.button(label="주사위 확인", style=discord.ButtonStyle.gray)
+    async def check_dice(self, interaction: discord.Interaction, button: Button):
+        if interaction.user not in [self.challenger, self.opponent]:
+            await interaction.response.send_message("참가자만 주사위를 확인할 수 있습니다!", ephemeral=True)
+            return
+
+        await interaction.user.send(f"당신의 주사위 숫자는 **{self.dice_results[interaction.user.id]}**입니다! 🎲")
+        await interaction.response.send_message("DM으로 주사위 결과를 보냈습니다! 💌", ephemeral=True)
+
+    @discord.ui.button(label="숫자 공개", style=discord.ButtonStyle.green)
+    async def reveal_dice(self, interaction: discord.Interaction, button: Button):
+        if interaction.user not in [self.challenger, self.opponent]:
+            await interaction.response.send_message("참가자만 숫자를 공개할 수 있습니다!", ephemeral=True)
+            return
+
+        self.revealed[interaction.user.id] = True
+        await interaction.response.send_message(f"{interaction.user.display_name}의 주사위 숫자: **{self.dice_results[interaction.user.id]}** 🎲")
+
+        if all(self.revealed.values()):
+            await self.announce_winner()
+
+    async def announce_winner(self):
+        ch_dice = self.dice_results[self.challenger.id]
+        op_dice = self.dice_results[self.opponent.id]
+
+        if ch_dice > op_dice:
+            winner = self.challenger
+        elif op_dice > ch_dice:
+            winner = self.opponent
+        else:
+            winner = None
+
+        if winner:
+            await self.message.channel.send(f"🎉 {winner.mention}이(가) 승리했습니다! 포인트 지급! 🏆")
+        else:
+            await self.message.channel.send("무승부입니다! 🤝")
+
 async def add_missions_to_all_users(mission_name,point,mission_type):
     cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
     current_predict_season = cur_predict_seasonref.get()
@@ -2941,6 +3042,37 @@ class hello(commands.Cog):
         )
         
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(name="주사위대결",description="포인트를 걸고 숫자야구 게임을 진행합니다")
+    async def duel(self, interaction:discord.Interaction, opponent: discord.Member):
+        challenger = ctx.author
+        if opponent == challenger:
+            await ctx.send("자기 자신에게 도전할 수 없습니다! ❌")
+            return
+
+        # 대결 요청
+        view = DuelRequestView(challenger, opponent)
+        view.message = await ctx.send(f"{opponent.mention}, {challenger.display_name}의 대결 요청! 수락하시겠습니까? 🎲", view=view)
+
+        await view.wait()
+
+        if not view.request_accepted:
+            return
+
+        # 베팅 단계
+        betting_view = BettingView(challenger, opponent)
+        betting_view.message = await ctx.send(f"🎲 **베팅 시간!** 누구의 승리를 예상하시나요? (3분) 🎲", view=betting_view)
+
+        await betting_view.wait()
+
+        # 주사위 굴리기
+        dice_results = {
+            challenger.id: random.randint(1, 6),
+            opponent.id: random.randint(1, 6)
+        }
+
+        dice_view = DiceRevealView(challenger, opponent, dice_results)
+        dice_view.message = interaction.response.send_message("주사위 결과를 확인하세요! 🎲", view=dice_view)
 
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
