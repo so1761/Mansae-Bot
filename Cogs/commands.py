@@ -3453,7 +3453,7 @@ class hello(commands.Cog):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
-        battleref = db.reference(승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger})
+        battleref = db.reference("승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}")
         battle_data = battleref.get()
         battled = battle_data.get("배틀여부",False)
 
