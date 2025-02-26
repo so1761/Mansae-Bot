@@ -3641,7 +3641,7 @@ class hello(commands.Cog):
         
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="주사위대결",description="포인트를 걸고 숫자야구 게임을 진행합니다")
+    @app_commands.command(name="주사위대결",description="포인트를 걸고 주사위대결을 진행합니다")
     async def duel(self, interaction:discord.Interaction, 상대: discord.Member):
         challenger = interaction.user.name
         challenger_m = interaction.user

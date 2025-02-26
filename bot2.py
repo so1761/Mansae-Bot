@@ -849,7 +849,9 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     bonus_parts.append(f"+ 아이템 추가 배율 {rater['배율']}")
 
                 bonus_string = "".join(bonus_parts)  # 둘 다 있으면 "역배 배율 X + 아이템 추가 배율 Y" 형태
-                bonus_string += " +0.1"
+                bonus_string += " + 0.1"
+
+                BonusRate = round(BonusRate, 2)
 
                 userembed.add_field(
                     name="", 
