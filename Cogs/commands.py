@@ -159,7 +159,513 @@ def give_item(nickname, item_name, amount):
 
     refitem.update({item_name: item_data.get(item_name, 0) + amount})
 
-async def add_missions_to_all_users(mission_name,point,mission_type,rarity = None):
+class BettingModal(Modal):
+    def __init__(self, user: discord.User, challenger, opponent, game_point,game, message):
+        # 모달에 사용자 이름을 추가하고 포인트 입력 필드 설정
+        self.user = user
+        super().__init__(title=f"{self.user.display_name}님, 베팅할 포인트를 입력해주세요!")
+        self.add_item(TextInput(label="베팅할 포인트", placeholder="포인트를 입력하세요", required=True, min_length=1))
+        self.challenger = challenger
+        self.opponent = opponent
+        self.game_point = game_point
+        self.game = game
+        self.message = message
+        
+    async def on_submit(self, interaction: discord.Interaction):
+        # 포인트 입력값 처리
+        bet_amount = self.children[0].value
+        if not bet_amount.isdigit() or int(bet_amount) <= 0:
+            await interaction.response.send_message(content="유효한 포인트를 입력해주세요!", ephemeral=True)
+            return
+
+        bet_amount = int(bet_amount)
+
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+        current_predict_season = cur_predict_seasonref.get()
+        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
+        ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/베팅포인트')
+        bettingPoint = ref2.get()
+        info = ref.get()
+
+        if info['포인트'] - bettingPoint < bet_amount:
+            await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
+        else:
+            # 포인트 수정
+            await self.game.update_game_point(self.user, bet_amount)
+            ref.update({"베팅포인트" : bettingPoint + bet_amount}) # 파이어베이스에 베팅포인트 추가
+            
+            # 베팅한 포인트 처리
+            userembed = discord.Embed(title="베팅 완료!", color=discord.Color.green())
+            userembed.add_field(name="", value=f"{self.user.display_name}님이 {bet_amount} 포인트를 베팅했습니다! 🎲")
+            await interaction.response.send_message(embed=userembed)
+
+        diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
+        diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲",inline=False)
+        diceview_embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
+        diceview_embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
+        await self.message.edit(embed = diceview_embed)
+
+duels = {}  # 진행 중인 대결 정보를 저장
+
+class DuelRequestView(discord.ui.View):
+    def __init__(self, challenger, opponent):
+        super().__init__()  # 3분 타이머
+        self.challenger = challenger
+        self.opponent = opponent
+        self.request_accepted = False
+        self.message = None
+        self.event = asyncio.Event()
+
+    async def start_timer(self):
+        await asyncio.sleep(180)
+        if not self.request_accepted:
+            for child in self.children:
+                child.disabled = True
+        
+        battleembed = discord.Embed(title="요청 만료!", color=discord.Color.blue())
+        battleembed.add_field(name="", value="대결 요청이 만료되었습니다. ⏰")
+        await self.message.edit(embed=battleembed,view = self)
+        self.event.set()
+
+    @discord.ui.button(label="수락", style=discord.ButtonStyle.green)
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.opponent:
+            await interaction.response.send_message("이 버튼은 지목된 사람만 누를 수 있습니다!", ephemeral=True)
+            return
+
+        self.request_accepted = True
+        for child in self.children:
+            child.disabled = True
+
+        battleembed = discord.Embed(title="대결 수락!", color = discord.Color.blue())
+        battleembed.add_field(name="", value=f"{self.opponent.mention}님이 대결을 수락했습니다!")
+        await interaction.response.edit_message(embed = battleembed, view = self)
+        self.event.set()
+
+    @discord.ui.button(label="거절", style=discord.ButtonStyle.danger)
+    async def deny(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user != self.opponent:
+            await interaction.response.send_message("이 버튼은 지목된 사람만 누를 수 있습니다!", ephemeral=True)
+            return
+
+        self.request_accepted = False
+        for child in self.children:
+            child.disabled = True
+
+        battleembed = discord.Embed(title="대결 거절!", color = discord.Color.blue())
+        battleembed.add_field(name="", value=f"{self.opponent.mention}님이 대결을 거절했습니다!")
+        await interaction.response.edit_message(embed = battleembed, view = self)
+        self.event.set()
+
+class DiceRevealView(discord.ui.View):
+    def __init__(self, challenger, opponent, dice_results, game_point): 
+        super().__init__()
+        self.challenger = challenger.name
+        self.opponent = opponent.name
+        self.challenger_m = challenger
+        self.opponent_m = opponent
+        self.dice_results = dice_results
+        self.game_point = game_point
+        self.revealed = {challenger.name: False, opponent.name: False}
+        self.giveup = {challenger.name: False, opponent.name: False}
+        self.message = ""
+        self.keep_alive_task = None  # 메시지 갱신 태스크 저장용
+
+    async def start_timer(self):
+        """5분 타이머 진행 + 1분 전 알림 메시지 출력"""
+        await asyncio.sleep(240)  # 4분 기다림
+        userembed = discord.Embed(title = "종료 임박!",color = discord.Color.red())
+        userembed.add_field(name="",value="⏳ 베팅이 **1분 뒤 종료**됩니다!")
+        await self.message.channel.send(embed = userembed)
+        await asyncio.sleep(60)  # 추가 1분 대기
+        await self.announce_winner()
+
+    @discord.ui.button(label="주사위 확인", style=discord.ButtonStyle.gray)
+    async def check_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.name not in [self.challenger, self.opponent]:
+            userembed = discord.Embed(title = "확인 불가!",color = discord.Color.red())
+            userembed.add_field(name="",value="참가자만 주사위를 확인할 수 있습니다!")
+            await interaction.response.send_message(content = "", embed = userembed, ephemeral = True)
+            return
+
+        userembed = discord.Embed(title = "주사위 확인!",color = discord.Color.red())
+        userembed.add_field(name="",value=f"당신의 주사위 숫자는 **{self.dice_results[interaction.user.name]}**입니다! 🎲")
+        await interaction.response.send_message(content = "",embed = userembed, ephemeral=True)
+
+    @discord.ui.button(label="베팅", style=discord.ButtonStyle.primary)
+    async def bet(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.name not in [self.challenger, self.opponent]:
+            userembed = discord.Embed(title = "베팅 불가!",color = discord.Color.red())
+            userembed.add_field(name="",value="참가자만 베팅할 수 있습니다!")
+            await interaction.response.send_message(content = "", embed = userembed, ephemeral = True)
+            return
+
+        # 모달 생성
+        modal = BettingModal(user=interaction.user, challenger = self.challenger, opponent = self.opponent, game_point = self.game_point, game = self, message = self.message)
+        await interaction.response.send_modal(modal)
+
+    @discord.ui.button(label="포기", style=discord.ButtonStyle.danger)
+    async def give_up(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.name not in [self.challenger, self.opponent]:
+            userembed = discord.Embed(title = "포기 불가!",color = discord.Color.red())
+            userembed.add_field(name="",value="참가자만 포기할 수 있습니다!")
+            await interaction.response.send_message(content = "", embed = userembed, ephemeral = True)
+            return
+
+        userembed = discord.Embed(title = "승부 포기...",color = discord.Color.red())
+        userembed.add_field(name="",value=f"{interaction.user.display_name}님이 승부를 포기했습니다! 🎲")
+
+        await interaction.response.send_message(embed = userembed)
+
+        self.giveup[interaction.user.name] = True
+        
+        await self.announce_winner()
+
+    @discord.ui.button(label="준비 완료", style=discord.ButtonStyle.green)
+    async def reveal_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.name not in [self.challenger, self.opponent]:
+            userembed = discord.Embed(title = "준비 완료 불가!",color = discord.Color.red())
+            userembed.add_field(name="",value="참가자만 준비를 완료할 수 있습니다!")
+            await interaction.response.send_message(content = "", embed = userembed, ephemeral = True)
+            return
+
+        self.revealed[interaction.user.name] = True
+
+        userembed = discord.Embed(title = "준비 완료!",color = discord.Color.red())
+        userembed.add_field(name="",value=f"{interaction.user.display_name}님이 결과 발표 준비를 완료했습니다! 🎲")
+
+        await interaction.response.send_message(embed = userembed)
+
+        if all(self.revealed.values()):
+            await self.announce_winner()
+    
+    async def update_game_point(self, user, bet_amount):
+        # 게임 포인트를 외부에서 수정
+        if user.name in self.game_point:
+            self.game_point[user.name] += bet_amount
+            print(f"Game point for {user.display_name} updated: {self.game_point[user.name]}")
+    
+    async def announce_winner(self):
+        ch_dice = self.dice_results[self.challenger]
+        op_dice = self.dice_results[self.opponent]
+
+        userembed = discord.Embed(title = "주사위 공개!",color = discord.Color.red())
+        userembed.add_field(name="",value=f"{self.challenger_m.display_name}의 주사위 숫자: **{self.dice_results[self.challenger]}** 🎲")
+        await self.message.channel.send(embed = userembed)
+        
+        userembed = discord.Embed(title = "주사위 공개!",color = discord.Color.red())
+        userembed.add_field(name="",value=f"{self.opponent_m.display_name}의 주사위 숫자: **{self.dice_results[self.opponent]}** 🎲")
+        await self.message.channel.send(embed = userembed)
+
+        if self.keep_alive_task:
+            self.keep_alive_task.cancel()
+
+        # 게임 결과 발표 후, 버튼 비활성화
+        for button in self.children:  # 모든 버튼에 대해
+            button.disabled = True
+
+        # 버튼을 비활성화 한 후, 뷰 업데이트
+        await self.message.edit(view=self)
+
+        result = True
+        if ch_dice > op_dice:
+            dice_winner = self.challenger_m
+            result = True
+        elif op_dice > ch_dice:
+            dice_winner = self.opponent_m
+            result = False
+        else:
+            dice_winner = None
+
+        if self.giveup[self.challenger]: # 도전자가 포기했을 경우
+            dice_winner = self.opponent_m
+            result = False
+        elif self.giveup[self.opponent]: # 상대가 포기했을 경우
+            dice_winner = self.challenger_m
+            result = True
+
+        if dice_winner:
+            userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+            userembed.add_field(name="게임 종료", value=f"주사위 대결이 종료되었습니다!\n {dice_winner.mention}의 승리!")
+
+            winners = p.votes['배틀']['prediction']['win'] if result else p.votes['배틀']['prediction']['lose']
+            losers = p.votes['배틀']['prediction']['lose'] if result else p.votes['배틀']['prediction']['win']
+            winnerNum = len(winners)
+            loserNum = len(losers)
+
+            BonusRate = 0 if winnerNum == 0 else round((((winnerNum + loserNum) / winnerNum) - 1) * 0.5, 2) + 1 # 0.5배 배율 적용
+            if BonusRate > 0:
+                BonusRate += 0.1
+
+            BonusRate = round(BonusRate,2)
+
+            userembed.add_field(
+                name="", 
+                value=f"베팅 배율: {BonusRate}배" if BonusRate == 0 else 
+                f"베팅 배율: {BonusRate}배!((({winnerNum + loserNum}/{winnerNum} - 1) x 0.5 + 1) + 0.1)", 
+                inline=False
+            )
+
+            current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
+            current_date = current_datetime.strftime("%Y-%m-%d")
+            current_time = current_datetime.strftime("%H:%M:%S")
+
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+            current_predict_season = cur_predict_seasonref.get()
+
+            for winner in winners:
+                point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
+                predict_data = point_ref.get()
+                point = predict_data["포인트"]
+                bettingPoint = predict_data["베팅포인트"]
+
+                prediction_value = "승리" if result else "패배"
+                prediction_opposite_value = "패배" if result else "승리"
+                # 예측 내역 변동 데이터
+                change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
+                change_ref.update({
+                    "포인트": point,
+                    "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
+                    "적중 횟수": predict_data["적중 횟수"] + 1,
+                    "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
+                    "연승": predict_data.get("연승") + 1,
+                    "연패": 0,
+                    "베팅포인트": bettingPoint - winner["points"]        
+                })
+                # 예측 내역 업데이트
+                point_ref.update({
+                    "포인트": point,
+                    "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
+                    "적중 횟수": predict_data["적중 횟수"] + 1,
+                    "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
+                    "연승": predict_data["연승"] + 1,
+                    "연패": 0,
+                    "베팅포인트": bettingPoint - winner["points"]
+                })
+
+                # ====================  [미션]  ====================
+                # 일일미션 : 승부예측 1회 적중
+                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                current_predict_season = cur_predict_seasonref.get()
+                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/일일미션/승부예측 1회 적중")
+                mission_bool = ref.get()['완료']
+                if not mission_bool:
+                    ref.update({"완료": True})
+                    print(f"{winner['name']}의 [승부예측 1회 적중] 미션 완료")
+
+                # ====================  [미션]  ====================
+
+                winner_total_point = sum(winner['points'] for winner in winners)
+                loser_total_point = sum(loser['points'] for loser in losers)
+                remain_loser_total_point = loser_total_point
+
+                betted_rate = round(winner['points'] / winner_total_point, 3) if winner_total_point else 0
+                get_bet = round(betted_rate * loser_total_point)
+                get_bet_limit = round(BonusRate * winner['points'])
+                if get_bet >= get_bet_limit:
+                    get_bet = get_bet_limit
+
+                remain_loser_total_point -= get_bet
+                streak_text = f"{predict_data['연승'] + 1}연속 적중을 이루어내며 " if predict_data['연승'] + 1 > 1 else ""
+
+                add_points = 20 + (calculate_points(predict_data["연승"] + 1)) + round(winner['points'] * BonusRate) + get_bet if predict_data["연승"] + 1 > 1 else 20 + round(winner["points"] * BonusRate) + get_bet
+                if predict_data['연승'] + 1 > 1:
+                    userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet})(연속적중 보너스 + {calculate_points(predict_data['연승'] + 1)}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)
+                else:
+                    userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)   
+                change_ref.update({"포인트": point + add_points - winner['points']})
+                point_ref.update({"포인트": point + add_points - winner['points']})
+
+            for loser in losers:
+                point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
+                predict_data = point_ref.get()
+                point = predict_data["포인트"]
+                bettingPoint = predict_data["베팅포인트"]
+                
+                loser_total_point = sum(loser['points'] for loser in losers)
+                remain_loser_total_point = loser_total_point
+                # 예측 내역 변동 데이터
+                change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
+                change_ref.update({
+                    "포인트": point,
+                    "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
+                    "적중 횟수": predict_data["적중 횟수"],
+                    "적중률": f"{round((((predict_data['적중 횟수']) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
+                    "연승": 0,
+                    "연패": predict_data["연패"] + 1,
+                    "베팅포인트": bettingPoint - loser["points"],
+                })
+                # 예측 내역 업데이트
+                point_ref.update({
+                    "포인트": point,
+                    "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
+                    "적중 횟수": predict_data["적중 횟수"],
+                    "적중률": f"{round((((predict_data['적중 횟수']) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
+                    "연승": 0,
+                    "연패": predict_data["연패"] + 1,
+                    "베팅포인트": bettingPoint - loser["points"],
+                })
+
+                # ====================  [미션]  ====================
+                # 시즌미션 : 마이너스의 손
+                if predict_data["연패"] + 1 == 10:
+                    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{loser['name']}/미션/시즌미션/마이너스의 손")
+                    mission_bool = ref.get()['완료']
+                    if not mission_bool:
+                        ref.update({"완료": True})
+                        print(f"{loser['name']}의 [마이너스의 손] 미션 완료")
+                        await mission_notice(loser['name'],"마이너스의 손")
+                # ====================  [미션]  ====================
+                
+                # 남은 포인트를 배팅한 비율에 따라 환급받음 (50%)
+                betted_rate = round(loser['points'] / loser_total_point, 3) if loser_total_point else 0
+                get_bet = round(betted_rate * remain_loser_total_point * 0.5)
+                userembed.add_field(
+                    name="",
+                    value=f"{loser['name']}님이 예측에 실패하였습니다! " if loser['points'] == 0 else 
+                    f"{loser['name']}님이 예측에 실패하여 베팅포인트를 잃었습니다! (베팅 포인트:-{loser['points']}) (환급 포인트: {get_bet})",
+                    inline=False
+                )
+                if point + get_bet < loser['points']:
+                    point_ref.update({"포인트": 0})
+                    change_ref.update({"포인트": 0})
+                else:
+                    point_ref.update({"포인트": point + get_bet - loser['points']})
+                    change_ref.update({"포인트": point + get_bet - loser['points']})
+
+            await self.message.channel.send(embed = userembed)
+            p.votes['배틀']['prediction']['win'].clear()
+            p.votes['배틀']['prediction']['lose'].clear()
+            
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+            current_predict_season = cur_predict_seasonref.get()
+
+            battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{p.votes['배틀']['name']['challenger']}")
+            battleref.update({"배틀여부" : True})
+
+            userembed = discord.Embed(title="승부 베팅 결과", color=discord.Color.blue())
+            if result: # challenger가 승리
+                remained_point = 0 # 환급 포인트
+                challenger_point = self.game_point[self.challenger]
+                original_opponent_point = self.game_point[self.opponent]
+                opponent_point = self.game_point[self.opponent]
+                
+                if self.giveup[self.opponent]: # 상대가 포기했을 경우
+                    remained_point += round(opponent_point / 2)
+                    opponent_point = round(opponent_point / 2)
+
+                
+                if opponent_point > challenger_point:
+                    get_point = challenger_point * 2 # 받을 포인트
+                    remained_point += opponent_point - challenger_point # 환급 포인트
+                else:
+                    get_point = challenger_point + opponent_point
+
+                userembed.add_field(
+                name="",
+                value=f"{self.opponent_m.mention}님이 승부에서 패배하여 베팅포인트를 잃었습니다! (베팅 포인트:-{original_opponent_point}) (환급 포인트: {remained_point})",
+                inline=False
+                )
+                userembed.add_field(
+                name="",
+                value=f"{self.challenger_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {challenger_point})",
+                inline=False
+                )
+                
+                point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
+                point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
+                point_data1 = point_ref1.get()
+                point1 = point_data1.get("포인트",0)
+                bettingpoint1 = point_data1.get("베팅포인트",0)
+                point_data2 = point_ref2.get()
+                point2 = point_data2.get("포인트",0)
+                bettingpoint2 = point_data2.get("베팅포인트",0)
+                point_ref1.update({"포인트": point1 - original_opponent_point + remained_point})
+                point_ref1.update({"베팅포인트": bettingpoint1 - original_opponent_point})
+                point_ref2.update({"포인트": point2 + get_point - challenger_point})
+                point_ref2.update({"베팅포인트": bettingpoint2 - challenger_point})
+
+            else:
+                remained_point = 0 # 환급 포인트
+                challenger_point = self.game_point[self.challenger]
+                original_challenger_point = self.game_point[self.challenger]
+                opponent_point = self.game_point[self.opponent]
+
+                if self.giveup[self.challenger]: # 도전자가 포기했을 경우
+                    remained_point += round(challenger_point / 2)
+                    challenger_point = round(challenger_point / 2)
+
+                if challenger_point > opponent_point:
+                    get_point = opponent_point * 2 # 받을 포인트
+                    remained_point += challenger_point - opponent_point # 환급 포인트
+                else:
+                    get_point = opponent_point + challenger_point # 받을 포인트
+
+                userembed.add_field(
+                name="",
+                value=f"{self.challenger_m.mention}님이 승부에서 패배하여 베팅포인트를 잃었습니다! (베팅 포인트:-{original_challenger_point}) (환급 포인트: {remained_point})",
+                inline=False
+                )
+                userembed.add_field(
+                name="",
+                value=f"{self.opponent_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {opponent_point})",
+                inline=False
+                )
+                point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
+                point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
+                point_data1 = point_ref1.get()
+                point1 = point_data1.get("포인트",0)
+                bettingpoint1 = point_data1.get("베팅포인트",0)
+                point_data2 = point_ref2.get()
+                bettingpoint2 = point_data2.get("베팅포인트",0)
+                point2 = point_data2.get("포인트",0)
+                point_ref1.update({"포인트": point1 + get_point - opponent_point})
+                point_ref1.update({"베팅포인트": bettingpoint1 - opponent_point})
+                point_ref2.update({"포인트": point2 - original_challenger_point + remained_point})
+                point_ref2.update({"베팅포인트": bettingpoint2 - original_challenger_point})
+                
+
+            await self.message.channel.send(embed = userembed)
+
+            p.votes['배틀']['name']['challenger'] = ""
+            p.votes['배틀']['name']['상대'] = ""
+        else:
+            userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+            userembed.add_field(name="게임 종료", value=f"배틀이 종료되었습니다!\n무승부!🤝\n")
+            await self.message.channel.send(embed=userembed)
+
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+            current_predict_season = cur_predict_seasonref.get()
+
+            winners = p.votes['배틀']['prediction']['win']
+            losers = p.votes['배틀']['prediction']['lose']
+            for winner in winners:
+                ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
+                originr = ref.get()
+                bettingPoint = originr["베팅포인트"]
+                bettingPoint -= winner['points']
+                ref.update({"베팅포인트": bettingPoint})
+
+            for loser in losers:
+                ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
+                originr = ref.get()
+                bettingPoint = originr["베팅포인트"]
+                bettingPoint -= loser['points']
+                ref.update({"베팅포인트": bettingPoint})
+
+            p.votes['배틀']['prediction']['win'].clear()
+            p.votes['배틀']['prediction']['lose'].clear()
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+            current_predict_season = cur_predict_seasonref.get()
+
+            battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{p.votes['배틀']['name']['challenger']}")
+            battleref.update({"배틀여부" : True})
+            
+            self.game_point.clear()
+            p.votes['배틀']['name']['challenger'] = ""
+            p.votes['배틀']['name']['상대'] = ""
+
+async def add_missions_to_all_users(mission_name,point,mission_type):
     cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
     current_predict_season = cur_predict_seasonref.get()
     # '예측포인트' 경로 아래의 모든 유저들 가져오기
@@ -175,20 +681,11 @@ async def add_missions_to_all_users(mission_name,point,mission_type,rarity = Non
             # 미션 타입에 해당하는 기존 미션 목록을 가져와서 ID 생성
             mission_type_data = user_data.get("미션", {}).get(mission_type, {})
 
-            if rarity:
-                # 새로운 미션 이름과 관련된 데이터
-                new_mission = {
-                    "완료": False,
-                    "보상수령": False,
-                    "희귀도": rarity,
-                    "포인트": point
-                }
-            else:
-                new_mission = {
-                    "완료": False,
-                    "보상수령": False,
-                    "포인트": point
-                }
+            new_mission = {
+                "완료": False,
+                "보상수령": False,
+                "포인트": point
+            }
             # 미션 이름을 키로 사용하여 미션 추가
             user_daily_missions_ref.child(mission_name).set(new_mission)
         return True
@@ -2805,18 +3302,18 @@ class hello(commands.Cog):
         mission_details = {
             "깜잘알": "지모의 승부예측 50번 적중. 지모의 게임결과를 정확히 예측하며 진정한 깜잘알로 거듭나자.",
             "난 이기는 판만 걸어": "오직 승리예측만으로 5연속 적중. 승리가 아니면 죽음을!",
-            "금지된 숫자": "2669 포인트를 베팅하고 적중. 절대 이 숫자의 의미를 이야기해선 안돼.",
-            "도파민 중독": "올인으로 연속 3번 베팅.",
+            "금지된 숫자": "2669 포인트를 베팅하고 적중. 절대 이 숫자의 의미를 말해선 안돼.",
+            "도파민 중독": "올인으로 연속 3번 베팅. 걸고, 걸고, 또 건다",
             "누구에게도 말할 수 없는 비밀": "혼자보기 포인트가 500 이상일 때 예측순위 혼자보기. 모두에게 보여줄 바엔 혼자 보겠어.",
             "쿵쿵따": "두 번 연속 실패 후, 다음 예측에서 적중. 앞선 2번의 실패는 다음 성공을 위한 준비 과정이었다.",
             "정점": "주사위에서 100을 뽑기. 주사위의 정점을 달성하자.",
-            "이럴 줄 알았어": "10데스 이상 판에서 패배를 예측하고 적중. 난 이 판 질 줄 알았음ㅋ",
+            "이럴 줄 알았어": "10데스 이상 판에서 패배를 예측하고 적중. 난 이 판 질 줄 알았음...",
             "다중 그림자 분신술": "한 게임에서 5번 베팅. 분신술을 쓴 것처럼 계속 베팅하라",
-            "졌지만 이겼다": "패배를 예측하고, 퍼펙트를 건 뒤 둘 다 적중. 패배한 판에서도 퍼펙트는 나온다.",
+            "졌지만 이겼다": "패배를 예측하고, 퍼펙트를 건 뒤 둘 다 적중. 게임은 졌지만 난 승리했다",
             "0은 곧 무한": "/베팅 명령어로 0포인트 베팅. 설마 0포인트를 베팅하는 사람이 있겠어?",
-            "크릴새우": "/베팅 명령어로 1 포인트 베팅. 크릴새우는 1포인트도 귀하다",
-            "주사위주사위주사위주사위주사위 ": "하루에 /주사위 명령어를 5번 실행. 주사위를 굴리고 싶은 열망이 보인다.",
-            "이 모양은 고양이?!": "숨겨진 명령어 실행. 어쩌면 여기에서 고양이를 찾을 수도 있겠다."
+            "크릴새우": "/베팅 명령어로 1 포인트 베팅. 이게 크릴새우지",
+            "주사위주사위주사위주사위주사위 ": "하루에 /주사위 명령어를 5번 실행. 경고 문구는 가볍게 무시한다",
+            "이 모양은 고양이?!": "/시즌그래프 명령어에서 대상으로 [고양이]를 선택. 누군가의 그래프에서는 고양이가 보인다는 소문이 있다... "
         }
    
         mission_options = []
@@ -2891,7 +3388,7 @@ class hello(commands.Cog):
 
         if not dice:  # 주사위를 아직 안 굴렸다면
             dice_num = random.randint(1, 100)
-            ref.set(True)  # 주사위 값 저장
+            ref.set(dice_num)  # 주사위 값 저장
             embed = discord.Embed(
                 title="🎲 주사위 굴리기!",
                 description=f"{nickname}님이 주사위를 굴렸습니다!",
@@ -3012,6 +3509,258 @@ class hello(commands.Cog):
                 color=discord.Color.red()
             )
             await interaction.response.send_message(embed=embed, ephemeral = True)
+
+    @app_commands.command(name="주사위대결",description="포인트를 걸고 주사위대결을 진행합니다")
+    async def duel(self, interaction:discord.Interaction, 상대: discord.Member):
+        challenger = interaction.user.name
+        challenger_m = interaction.user
+        if 상대.name == challenger:
+            warnembed = discord.Embed(title="실패",color = discord.Color.red())
+            warnembed.add_field(name="",value="자기 자신에게 도전할 수 없습니다! ❌")
+            await interaction.response.send_message(embed = warnembed)
+            return
+
+
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}")
+        battle_data = battleref.get()
+        battled = battle_data.get("배틀여부",False)
+
+        if battled:
+            warnembed = discord.Embed(title="실패",color = discord.Color.red())
+            warnembed.add_field(name="",value="하루에 한번만 대결 신청할 수 있습니다! ❌")
+            await interaction.response.send_message("",embed = warnembed)
+            return
+
+        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}')
+        originr = ref.get()
+        point = originr["포인트"]
+        bettingPoint = originr["베팅포인트"]
+        real_point = point - bettingPoint
+
+        if real_point < 100:
+            warnembed = discord.Embed(title="실패",color = discord.Color.red())
+            warnembed.add_field(name="",value=f"{challenger}님의 포인트가 100포인트 미만입니다! ❌")
+            await interaction.response.send_message("",embed = warnembed)
+            return
+        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}')
+        originr = ref.get()
+        point = originr["포인트"]
+        bettingPoint = originr["베팅포인트"]
+        real_point = point - bettingPoint
+
+        if real_point < 100:
+            warnembed = discord.Embed(title="실패",color = discord.Color.red())
+            warnembed.add_field(name="",value=f"{상대.name}님의 포인트가 100포인트 미만입니다! ❌")
+            await interaction.response.send_message("",embed = warnembed)
+            return
+        
+        # 대결 요청
+        view = DuelRequestView(challenger, 상대)
+        battleembed = discord.Embed(title="대결 요청!", color = discord.Color.blue())
+        battleembed.add_field(name="", value=f"{상대.mention}, {challenger_m.mention}의 대결 요청! 수락하시겠습니까? 🎲")
+        # 메시지 전송
+        await interaction.response.send_message(content="", view=view, embed=battleembed)
+
+        # 전송된 메시지 객체 가져오기
+        view.message = await interaction.original_response()
+
+        done, pending = await asyncio.wait(
+            [
+                asyncio.create_task(view.start_timer()),
+                asyncio.create_task(view.event.wait())
+            ],
+            return_when=asyncio.FIRST_COMPLETED  # 첫 번째로 끝나는 코루틴을 기다림
+        )
+
+        # 아직 끝나지 않은 태스크 취소
+        for task in pending:
+            task.cancel()
+        
+        if not view.request_accepted:
+            return
+
+        p.battle_winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label=f"{challenger} 승리")
+        losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label=f"{상대} 승리")
+
+        async def disable_buttons():
+            await asyncio.sleep(60)  # 1분 대기
+            p.battle_winbutton.disabled = True
+            losebutton.disabled = True
+            prediction_view = discord.ui.View()
+            prediction_view.add_item(p.battle_winbutton)
+            prediction_view.add_item(losebutton)
+            await p.battle_message.edit(view = prediction_view)
+            p.battle_event.set()
+
+
+        async def bet_button_callback(interaction: discord.Interaction = None, prediction_type: str = "", nickname: str = None):
+            if interaction:
+                nickname = interaction.user.name
+                await interaction.response.defer()  # 응답 지연 (버튼 눌렀을 때 오류 방지)
+            if nickname == challenger or nickname == 상대.name:
+                userembed = discord.Embed(title = "메세지", color = discord.Color.blue())
+                userembed.add_field(name="자신에게 투표 불가!", value="자신의 승부에는 투표할 수 없습니다!")
+                await interaction.followup.send(embed=userembed, ephemeral=True)
+                return
+            if (nickname not in [user["name"] for user in p.votes['배틀']['prediction']['win']]) and (nickname not in [user["name"] for user in p.votes['배틀']['prediction']["lose"]]):
+                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                current_predict_season = cur_predict_seasonref.get()
+                refp = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}')
+                pointr = refp.get()
+                point = pointr["포인트"]
+                bettingPoint = pointr["베팅포인트"]
+                random_number = random.uniform(0.01, 0.05) # 1% ~ 5% 랜덤 배팅 할 비율을 정합
+                baseRate = round(random_number, 2)
+                basePoint = round(point * baseRate) if point - bettingPoint >= 500 else 0 # 500p 이상 보유 시 자동 베팅
+                if basePoint > 0:
+                    basePoint = math.ceil(basePoint / 10) * 10  # 10 단위로 무조건 올림
+                refp.update({"베팅포인트": bettingPoint + basePoint})
+                p.votes['배틀']['prediction'][prediction_type].append({"name": nickname, 'points': 0})
+                myindex = len(p.votes['배틀']['prediction'][prediction_type]) - 1 # 투표자의 위치 파악
+
+                # 새로고침
+                prediction_embed = discord.Embed(title="예측 현황", color=0x000000) # Black
+
+                win_predictions = "\n".join(
+                            f"{winner['name']}: {winner['points']}포인트" for winner in p.votes['배틀']['prediction']["win"]) or "없음"
+                lose_predictions = "\n".join(
+                    f"{loser['name']}: {loser['points']}포인트" for loser in p.votes['배틀']['prediction']["lose"]) or "없음"
+
+                winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label=f"{challenger} 승리")
+                losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label=f"{상대} 승리")
+
+                winner_total_point = sum(winner["points"] for winner in p.votes['배틀']['prediction']["win"])
+                loser_total_point = sum(loser["points"] for loser in p.votes['배틀']['prediction']["lose"])
+                prediction_embed.add_field(name="총 포인트", value=f"{challenger}: {winner_total_point}포인트 | {상대}: {loser_total_point}포인트", inline=False)
+
+                prediction_embed.add_field(name=f"{challenger} 승리 예측", value=win_predictions, inline=True)
+                prediction_embed.add_field(name=f"{상대} 승리 예측", value=lose_predictions, inline=True)
+
+                await p.battle_message.edit(embed = prediction_embed)
+
+                prediction_view = discord.ui.View()
+                prediction_view.add_item(winbutton)
+                prediction_view.add_item(losebutton)
+
+                prediction_value = challenger if prediction_type == "win" else 상대
+
+                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                userembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에게 투표하셨습니다.", inline=True)
+                await channel.send(f"\n", embed=userembed)
+
+                if basePoint != 0:
+                    bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+                    bettingembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에게 {basePoint}포인트를 베팅했습니다!", inline=False)
+
+                    p.votes['배틀']['prediction'][prediction_type][myindex]['points'] += basePoint
+                    # 새로고침
+                    prediction_embed = discord.Embed(title="예측 현황", color=0x000000) # Black
+
+                    win_predictions = "\n".join(
+                                f"{winner['name']}: {winner['points']}포인트" for winner in p.votes['배틀']['prediction']["win"]) or "없음"
+                    lose_predictions = "\n".join(
+                        f"{loser['name']}: {loser['points']}포인트" for loser in p.votes['배틀']['prediction']["lose"]) or "없음"
+
+                    winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label=f"{challenger} 승리")
+                    losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label=f"{상대} 승리")
+
+                    winner_total_point = sum(winner["points"] for winner in p.votes['배틀']['prediction']["win"])
+                    loser_total_point = sum(loser["points"] for loser in p.votes['배틀']['prediction']["lose"])
+                    prediction_embed.add_field(name="총 포인트", value=f"{challenger}: {winner_total_point}포인트 | {상대}: {loser_total_point}포인트", inline=False)
+
+                    prediction_embed.add_field(name=f"{challenger} 승리 예측", value=win_predictions, inline=True)
+                    prediction_embed.add_field(name=f"{상대} 승리 예측", value=lose_predictions, inline=True)
+
+                    await p.battle_message.edit(embed = prediction_embed)
+
+                    await channel.send(f"\n", embed=bettingembed)
+
+                # ====================  [미션]  ====================
+                # 미션 : 승부예측 1회
+
+                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/승부예측 1회")
+                mission = ref.get()
+                mission_bool = ref.get()['완료']
+                if not mission_bool:
+                    ref.update({"완료" : True})
+                    print(f"{nickname}의 [승부예측 1회] 미션 완료")
+
+                # ====================  [미션]  ====================
+
+            else:
+                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                userembed.add_field(name="", value=f"{nickname}님은 이미 투표하셨습니다", inline=True)
+                if interaction:
+                    await interaction.followup.send(embed=userembed, ephemeral=True)
+
+        channel = self.bot.get_channel(int(CHANNEL_ID))
+        
+        prediction_embed = discord.Embed(title="예측 현황", color=0x000000) # Black
+
+        win_predictions = "\n".join(
+            f"{winner['name']}: {winner['points']}포인트" for winner in p.votes['배틀']['prediction']["win"]) or "없음"
+        lose_predictions = "\n".join(
+            f"{loser['name']}: {loser['points']}포인트" for loser in p.votes['배틀']['prediction']["lose"]) or "없음"
+
+        p.votes['배틀']['name']['challenger'] = challenger
+        p.votes['배틀']['name']['상대'] = 상대
+
+        p.battle_winbutton.callback = lambda interaction: bet_button_callback(interaction, 'win')
+        losebutton.callback = lambda interaction: bet_button_callback(interaction, 'lose')
+
+        winner_total_point = sum(winner["points"] for winner in p.votes['배틀']['prediction']["win"])
+        loser_total_point = sum(loser["points"] for loser in p.votes['배틀']['prediction']["lose"])
+        prediction_embed.add_field(name="총 포인트", value=f"{challenger}: {winner_total_point}포인트 | {상대}: {loser_total_point}포인트", inline=False)
+
+        prediction_embed.add_field(name=f"{challenger} 승리 예측", value=win_predictions, inline=True)
+        prediction_embed.add_field(name=f"{상대} 승리 예측", value=lose_predictions, inline=True)
+
+        prediction_view = discord.ui.View()
+        prediction_view.add_item(p.battle_winbutton)
+        prediction_view.add_item(losebutton)
+        # 베팅 단계 
+        p.battle_message = await channel.send(f"{challenger_m.mention} vs {상대.mention}의 주사위 승부가 감지되었습니다!🎲 \n승부예측을 해보세요!", view=prediction_view, embed = prediction_embed)
+
+        await asyncio.gather(
+            disable_buttons(),
+            p.battle_event.wait()  # 이 작업은 event가 set될 때까지 대기
+        )
+
+        # 주사위 굴리기
+        dice_results = {
+            challenger: random.randint(1, 100),
+            상대.name: random.randint(1, 100)
+        }
+
+        game_point = {
+            challenger : 100, 
+            상대.name : 100
+        }
+
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}')
+        ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}/베팅포인트')
+        bettingPoint = ref2.get()
+        ref.update({"베팅포인트" : bettingPoint + 100})
+
+        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}')
+        ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}/베팅포인트')
+        bettingPoint = ref2.get()
+        ref.update({"베팅포인트" : bettingPoint + 100})
+
+        diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
+        diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲", inline=False)
+        diceview_embed.add_field(name = f"{challenger}", value = f"{game_point[challenger]}포인트", inline=True)
+        diceview_embed.add_field(name = f"{상대}", value = f"{game_point[상대.name]}포인트", inline=True)
+            
+        dice_view = DiceRevealView(challenger_m, 상대, dice_results, game_point)
+        dice_view.message = await channel.send(content = "", view = dice_view, embed = diceview_embed)
+        await dice_view.start_timer()
 
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
