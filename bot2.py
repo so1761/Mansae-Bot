@@ -1101,6 +1101,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
                         kdaembed.add_field(name=f"{name}의 KDA", value=f"{player['championName']} {player['kills']}/{player['deaths']}/{player['assists']}({'PERFECT' if kda == 999 else kda})", inline=False)
                         
+                        
+                        
                         # ====================  [미션]  ====================
                         # 시즌미션 : 졌지만 이겼다
 
@@ -1184,6 +1186,18 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 kdaembed.add_field(name="", value=f"{loser['name']}님이 KDA 예측에 실패했습니다!", inline=False)
 
                         await channel.send(embed=kdaembed)
+                        
+                        penta_kills = player.get("pentakills", 0)
+                        if penta_kills:
+                            pentaembed = discord.Embed(title=f"펜타킬 달성!", color=discord.Color.gold())
+                            pentaembed.add_field(name="펜타킬 달성 횟수", value=f"{penta_kills}회", inline = False)
+                            for player in kda_votes['down'] + kda_votes['up'] + kda_votes['perfect']:
+                                point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{player["name"]}')
+                                predict_data = point_ref.get() 
+                                pentaembed.add_field(name="", value=f"{player['name']}님이 {name}의 펜타킬 달성으로 {penta_kills * 1000}포인트를 얻었습니다!", inline = False)
+                                point_ref.update({"포인트": predict_data["포인트"] + penta_kills * 1000})
+                            await channel.send(embed=pentaembed)
+
                         refperfect.update({name: perfect_point + 5 if kda != 999 else 500})
                         kda_votes['up'].clear()
                         kda_votes['down'].clear()
