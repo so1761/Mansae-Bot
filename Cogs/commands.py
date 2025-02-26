@@ -674,6 +674,9 @@ class DiceRevealView(discord.ui.View):
             userembed.add_field(name="게임 종료", value=f"배틀이 종료되었습니다!\n무승부!🤝\n")
             await self.message.channel.send(embed=userembed)
 
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+            current_predict_season = cur_predict_seasonref.get()
+
             winners = p.votes['배틀']['prediction']['win']
             losers = p.votes['배틀']['prediction']['lose']
             for winner in winners:
@@ -697,7 +700,8 @@ class DiceRevealView(discord.ui.View):
 
             battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{p.votes['배틀']['name']['challenger']}")
             battleref.update({"배틀여부" : True})
-
+            
+            self.game_point.clear()
             p.votes['배틀']['name']['challenger'] = ""
             p.votes['배틀']['name']['상대'] = ""
 
@@ -2265,7 +2269,8 @@ class hello(commands.Cog):
 
                     userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
                     userembed.add_field(name="",value=f"{interaction.user.name}님이 {need_point}포인트를 소모하여 순위표를 열람했습니다! (현재 열람 포인트 : {need_point + 50}(+ 50))", inline=False)
-                
+                    channel = self.bot.get_channel(int(CHANNEL_ID))
+                    await channel.send(embed=userembed)
                     await interaction.response.send_message(embed=embed,ephemeral=True)
 
             async def see2button_callback(interaction:discord.Interaction): # 순위표 버튼을 눌렀을 때의 반응!
