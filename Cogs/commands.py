@@ -270,6 +270,16 @@ class DiceRevealView(discord.ui.View):
         self.revealed = {challenger.name: False, opponent.name: False}
         self.giveup = {challenger.name: False, opponent.name: False}
         self.message = ""
+        self.keep_alive_task = None  # 메시지 갱신 태스크 저장용
+
+    async def start_timer(self):
+        """5분 타이머 진행 + 1분 전 알림 메시지 출력"""
+        await asyncio.sleep(240)  # 4분 기다림
+        userembed = discord.Embed(title = "종료 임박!",color = discord.Color.red())
+        userembed.add_field(name="",value="⏳ 베팅이 **1분 뒤 종료**됩니다!")
+        await self.message.channel.send(embed = userembed)
+        await asyncio.sleep(60)  # 추가 1분 대기
+        await self.announce_winner()
 
     @discord.ui.button(label="주사위 확인", style=discord.ButtonStyle.gray)
     async def check_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -347,6 +357,9 @@ class DiceRevealView(discord.ui.View):
         userembed = discord.Embed(title = "주사위 공개!",color = discord.Color.red())
         userembed.add_field(name="",value=f"{self.opponent_m.display_name}의 주사위 숫자: **{self.dice_results[self.opponent]}** 🎲")
         await self.message.channel.send(embed = userembed)
+
+        if self.keep_alive_task:
+            self.keep_alive_task.cancel()
 
         # 게임 결과 발표 후, 버튼 비활성화
         for button in self.children:  # 모든 버튼에 대해
@@ -3873,6 +3886,7 @@ class hello(commands.Cog):
             
         dice_view = DiceRevealView(challenger_m, 상대, dice_results, game_point)
         dice_view.message = await channel.send(content = "", view = dice_view, embed = diceview_embed)
+        await dice_view.start_timer()
 
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")

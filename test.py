@@ -53,6 +53,13 @@ data = {
     ]
 }
 
+# 포인트 지급
+for winner in winners:
+    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner}/")
+    point_data = ref.get()
+    point = point_data.get("포인트")
+    ref.update({"포인트" : point + max_dice_num})
+
 response = requests.post(WEBHOOK_URL, json=data)
 
 if response.status_code == 204:
