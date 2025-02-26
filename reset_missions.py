@@ -1,7 +1,9 @@
 import firebase_admin
+import prediction_vote as p
 from firebase_admin import db
 from firebase_admin import credentials
 from datetime import datetime
+
 
 cred = credentials.Certificate("mykey.json")
 firebase_admin.initialize_app(cred,{
