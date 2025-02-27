@@ -1,6 +1,7 @@
 import firebase_admin
 import prediction_vote as p
 import os
+import requests
 from firebase_admin import db
 from firebase_admin import credentials
 from datetime import datetime
