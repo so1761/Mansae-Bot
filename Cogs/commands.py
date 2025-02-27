@@ -2102,7 +2102,7 @@ class hello(commands.Cog):
             # 시즌미션 : 이 모양은 고양이?!
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
             current_predict_season = cur_predict_seasonref.get()
-            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/이 모양은 고양이?!")
+            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/이 모양은 고양이%3F%21")
 
             mission_data = ref.get()
             mission_bool = mission_data.get('완료',False)
