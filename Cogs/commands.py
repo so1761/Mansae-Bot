@@ -2125,6 +2125,7 @@ class hello(commands.Cog):
             
             # ====================  [미션]  ====================
             await interaction.response.send_message("야옹",ephemeral = True)
+            return
         await interaction.response.defer()  # Interaction을 유지
         returnVal = plot_lp_difference_firebase(season = 시즌, name = 이름, rank = 랭크)
 
