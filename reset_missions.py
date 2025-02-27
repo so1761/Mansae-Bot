@@ -3,6 +3,7 @@ import prediction_vote as p
 from firebase_admin import db
 from firebase_admin import credentials
 from datetime import datetime
+from dotenv import load_dotenv
 
 load_dotenv()
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
