@@ -2383,7 +2383,7 @@ class hello(commands.Cog):
 
             rank = 1
 
-            for idx, (username, info) in enumerate(top, start=1):
+            for username, info in top:
                 if info['총 예측 횟수'] > 0:
                     if info['연승'] > 0:
                         embed.add_field(name=f"{rank}. {username}", value=f"연속적중 {info['연승']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
@@ -2391,8 +2391,8 @@ class hello(commands.Cog):
                         embed.add_field(name=f"{rank}. {username}", value=f"연속비적중 {info['연패']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
                     else:
                         embed.add_field(name=f"{rank}. {username}", value=f"포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
-                rank += 1
-                
+                    rank += 1
+
             await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name='포인트',description="자신의 승부예측 포인트를 알려줍니다")
