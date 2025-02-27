@@ -2341,12 +2341,13 @@ class hello(commands.Cog):
                     embed = discord.Embed(title=f'승부예측 순위', color = discord.Color.blue())
 
                     for idx, (username, info) in enumerate(top, start=1):
-                        if info['연승'] > 0:
-                            embed.add_field(name=f"{idx}. {username}", value=f"연속적중 {info['연승']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
-                        elif info['연패'] > 0:
-                            embed.add_field(name=f"{idx}. {username}", value=f"연속비적중 {info['연패']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
-                        else:
-                            embed.add_field(name=f"{idx}. {username}", value=f"포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
+                        if info['총 예측 횟수'] > 0:
+                            if info['연승'] > 0:
+                                embed.add_field(name=f"{idx}. {username}", value=f"연속적중 {info['연승']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
+                            elif info['연패'] > 0:
+                                embed.add_field(name=f"{idx}. {username}", value=f"연속비적중 {info['연패']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
+                            else:
+                                embed.add_field(name=f"{idx}. {username}", value=f"포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
 
                     notice_channel = interaction.client.get_channel(1332330634546253915)
                     channel = self.bot.get_channel(int(CHANNEL_ID))
@@ -2373,12 +2374,13 @@ class hello(commands.Cog):
             embed = discord.Embed(title=f'승부예측 순위', color = discord.Color.blue())
 
             for idx, (username, info) in enumerate(top, start=1):
-                if info['연승'] > 0:
-                    embed.add_field(name=f"{idx}. {username}", value=f"연속적중 {info['연승']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
-                elif info['연패'] > 0:
-                    embed.add_field(name=f"{idx}. {username}", value=f"연속비적중 {info['연패']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
-                else:
-                    embed.add_field(name=f"{idx}. {username}", value=f"포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
+                if info['총 예측 횟수'] > 0:
+                    if info['연승'] > 0:
+                        embed.add_field(name=f"{idx}. {username}", value=f"연속적중 {info['연승']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
+                    elif info['연패'] > 0:
+                        embed.add_field(name=f"{idx}. {username}", value=f"연속비적중 {info['연패']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
+                    else:
+                        embed.add_field(name=f"{idx}. {username}", value=f"포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
             await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name='포인트',description="자신의 승부예측 포인트를 알려줍니다")
