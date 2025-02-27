@@ -2236,7 +2236,8 @@ class hello(commands.Cog):
     Choice(name='예측시즌 1', value='예측시즌1'),
     Choice(name='예측시즌 2', value='예측시즌2'),
     Choice(name='예측시즌 3', value='예측시즌3'),
-    Choice(name='정규시즌 1', value='정규시즌1')
+    Choice(name='정규시즌 1', value='정규시즌1'),
+    Choice(name='정규시즌 1', value='정규시즌2')
     ])
     async def 예측순위(self, interaction: discord.Interaction, 시즌:str):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
