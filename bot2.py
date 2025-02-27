@@ -1082,6 +1082,17 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                 elif name == "Melon":
                     used_items_for_user_melon.clear()
                 refrate.update({'배율' : 0}) # 배율 0으로 초기화
+
+                # ====================  [미션]  ====================
+                # 시즌미션 : 다중 그림자분신술
+                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                current_predict_season = cur_predict_seasonref.get()
+                for better in prediction_votes['win'] + prediction_votes['lose']:
+                    shadow_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{better}/미션/시즌미션/다중 그림자분신술')
+                    shadow_ref.update({f"{name}베팅" : 0})
+
+                # ====================  [미션]  ====================
+
                 # KDA 예측
                 match_id = await get_summoner_recentmatch_id(puuid)
                 match_info = await get_summoner_matchinfo(match_id)
@@ -1203,15 +1214,6 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         kda_votes['down'].clear()
                         kda_votes['perfect'].clear()
 
-                        # ====================  [미션]  ====================
-                        # 시즌미션 : 다중 그림자분신술
-                        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                        current_predict_season = cur_predict_seasonref.get()
-                        for better in prediction_votes['win'] + prediction_votes['lose']:
-                            shadow_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{better}/미션/시즌미션/다중 그림자분신술')
-                            shadow_ref.update({f"{name}베팅" : 0})
-
-                        # ====================  [미션]  ====================
 
                         event.set()
 
@@ -1748,12 +1750,6 @@ async def check_remake_status(name, puuid, event, prediction_votes,kda_votes):
                             ref.update({"베팅포인트": bettingPoint})
 
                         
-                        prediction_votes['win'].clear()
-                        prediction_votes['lose'].clear()
-                        kda_votes['up'].clear()
-                        kda_votes['down'].clear()
-                        kda_votes['perfect'].clear()
-
                         # ====================  [미션]  ====================
                         # 시즌미션 : 다중 그림자분신술
                         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
@@ -1763,6 +1759,14 @@ async def check_remake_status(name, puuid, event, prediction_votes,kda_votes):
                             shadow_ref.update({f"{name}베팅" : 0})
 
                         # ====================  [미션]  ====================
+
+                        prediction_votes['win'].clear()
+                        prediction_votes['lose'].clear()
+                        kda_votes['up'].clear()
+                        kda_votes['down'].clear()
+                        kda_votes['perfect'].clear()
+
+                        
                         
                         event.set()
 
