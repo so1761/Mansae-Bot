@@ -444,6 +444,21 @@ class DiceRevealView(discord.ui.View):
                 })
 
                 # ====================  [미션]  ====================
+                # 시즌미션 : 쿵쿵따
+                if predict_data.get("연패", 0) == 2: # 2연패 였다면
+                    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                    current_predict_season = cur_predict_seasonref.get()
+                    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/시즌미션/쿵쿵따")
+                    mission_data = ref.get()
+                    mission_bool = mission_data.get('완료',False)
+                    if not mission_bool:
+                        ref.update({"완료": True})
+                        print(f"{winner['name']}의 [쿵쿵따] 미션 완료")
+                        await mission_notice(winner['name'],"쿵쿵따","일반")
+
+                # ====================  [미션]  ====================
+
+                # ====================  [미션]  ====================
                 # 일일미션 : 승부예측 1회 적중
                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                 current_predict_season = cur_predict_seasonref.get()
@@ -532,6 +547,21 @@ class DiceRevealView(discord.ui.View):
                 else:
                     point_ref.update({"포인트": point + get_bet - loser['points']})
                     change_ref.update({"포인트": point + get_bet - loser['points']})
+
+                after_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
+                after_predict_data = after_ref.get()
+                after_point = after_predict_data.get("포인트", 0)
+                if round(point * 0.2, 2) >= after_point: # 80% 이상 잃었을 경우
+                # ====================  [미션]  ====================
+                # 시즌미션 : 이카루스의 추락
+                    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{loser['name']}/미션/시즌미션/이카루스의 추락")
+                    mission_data = ref.get()
+                    mission_bool = mission_data.get('완료',False)
+                    if not mission_bool:
+                        ref.update({"완료": True})
+                        print(f"{loser['name']}의 [이카루스의 추락] 미션 완료")
+                        await mission_notice(loser['name'],"이카루스의 추락","에픽")
+                # ====================  [미션]  ====================
 
             await self.message.channel.send(embed = userembed)
             p.votes['배틀']['prediction']['win'].clear()
