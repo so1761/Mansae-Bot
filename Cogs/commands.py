@@ -3192,16 +3192,16 @@ class hello(commands.Cog):
         
     
         if itemr.get("자동예측" + 이름 + "승리", False):
-            item_num = itemr.get("자동예측" + 이름 + "승리", 0)
+            item_num = itemr.get("자동예측" + 이름 + "승리", False)
             refitem.update({
-                f"자동예측{이름}패배": False,
-                f"자동예측{이름}승리": True
+                f"자동예측{이름}패배": True,
+                f"자동예측{이름}승리": False
             })
             await interaction.response.send_message(f"{이름}의 자동예측을 승리에서 패배로 변경했습니다!",ephemeral=True) 
         elif itemr.get("자동예측" + 이름 + "패배", False):
             refitem.update({
-                f"자동예측{이름}승리": False,
-                f"자동예측{이름}패배": True
+                f"자동예측{이름}승리": True,
+                f"자동예측{이름}패배": False
             })
             await interaction.response.send_message(f"{이름}의 자동예측을 패배에서 승리로 변경했습니다!",ephemeral=True) 
         else:
