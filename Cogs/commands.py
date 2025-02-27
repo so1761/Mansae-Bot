@@ -1551,7 +1551,7 @@ async def mission_notice(bot, name, mission, rarity):
     
     # 희귀도에 따라 임베드 색상과 제목 설정
     color_map = {
-        "일반": discord.Color.gray(),
+        "일반": discord.Color.light_gray(),
         "희귀": discord.Color.blue(),
         "에픽": discord.Color.purple(),
         "전설": discord.Color.gold(),
