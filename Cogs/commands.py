@@ -2303,14 +2303,18 @@ class hello(commands.Cog):
 
                     embed = discord.Embed(title=f'승부예측 순위', color = discord.Color.blue())
 
-                    for idx, (username, info) in enumerate(top, start=1):
+                    rank = 1
+
+                    for username, info in top:
                         if info['총 예측 횟수'] > 0:
                             if info['연승'] > 0:
-                                embed.add_field(name=f"{idx}. {username}", value=f"연속적중 {info['연승']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
+                                embed.add_field(name=f"{rank}. {username}", value=f"연속적중 {info['연승']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
                             elif info['연패'] > 0:
-                                embed.add_field(name=f"{idx}. {username}", value=f"연속비적중 {info['연패']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
+                                embed.add_field(name=f"{rank}. {username}", value=f"연속비적중 {info['연패']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
                             else:
-                                embed.add_field(name=f"{idx}. {username}", value=f"포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
+                                embed.add_field(name=f"{rank}. {username}", value=f"포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
+                        rank += 1
+                    
                     userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
                     userembed.add_field(name="",value=f"{interaction.user.name}님이 {need_point}포인트를 소모하여 순위표를 열람했습니다! (현재 열람 포인트 : {need_point + 50}(+ 50))", inline=False)
                 
@@ -2340,15 +2344,19 @@ class hello(commands.Cog):
 
                     embed = discord.Embed(title=f'승부예측 순위', color = discord.Color.blue())
 
-                    for idx, (username, info) in enumerate(top, start=1):
+                    rank = 1
+
+                    for username, info in top, start:
                         if info['총 예측 횟수'] > 0:
                             if info['연승'] > 0:
-                                embed.add_field(name=f"{idx}. {username}", value=f"연속적중 {info['연승']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
+                                embed.add_field(name=f"{rank}. {username}", value=f"연속적중 {info['연승']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
                             elif info['연패'] > 0:
-                                embed.add_field(name=f"{idx}. {username}", value=f"연속비적중 {info['연패']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
+                                embed.add_field(name=f"{rank}. {username}", value=f"연속비적중 {info['연패']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
                             else:
-                                embed.add_field(name=f"{idx}. {username}", value=f"포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
-
+                                embed.add_field(name=f"{rank}. {username}", value=f"포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
+                        rank += 1  
+                    
+                    
                     notice_channel = interaction.client.get_channel(1332330634546253915)
                     channel = self.bot.get_channel(int(CHANNEL_ID))
                     userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
