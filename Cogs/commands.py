@@ -2105,6 +2105,14 @@ class hello(commands.Cog):
             ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/이 모양은 고양이%3F%21")
 
             mission_data = ref.get()
+            if mission_data is None:
+                ref.set({
+                    "보상수령": False,
+                    "완료": False,
+                    "희귀도": "히든",
+                    "포인트": 1000  # 기본 포인트 값 설정
+                })
+                mission_data = ref.get()
             mission_bool = mission_data.get('완료',False)
             if not mission_bool:
                 ref.update({"보상수령": False,
