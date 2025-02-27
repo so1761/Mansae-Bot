@@ -3053,7 +3053,12 @@ class hello(commands.Cog):
             embed.description = "현재 보유 중인 아이템이 없습니다. 🫥"
         else:
             for item_name, count in itemr.items():
-                embed.add_field(name=f"🎁 {item_name}", value=f"개수: {count}", inline=False)
+                if isinstance(count, bool):
+                    display_value = "활성" if count else "비활성"
+                else:
+                    display_value = f"개수: {count}"
+                
+                embed.add_field(name=f"🎁 {item_name}", value=display_value, inline=False)
 
         await interaction.response.send_message(embed=embed,ephemeral=True)
 
