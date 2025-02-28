@@ -1113,10 +1113,10 @@ def plot_prediction_graph(season=None,name=None):
                     # 날짜와 시간 문자열을 합쳐 datetime 객체로 변환 (예: "YYYY-MM-DD HH:MM:SS")
                     dt_str = f"{date_str} {time_str}"
                     try:
-                        dt = datetime.datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+                        dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
                     except ValueError:
                         # 시간 포맷이 다르다면 적절히 수정 필요
-                        dt = datetime.datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
+                        dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
                     timestamps.append(dt)
                     points.append(point_value)
 
