@@ -1142,6 +1142,55 @@ async def plot_prediction_graph(season=None,name=None):
     plt.close()
     return 0
     
+
+async def plot_prediction_candle_graph(시즌:str, 이름:str):
+    """
+    Firebase에서 특정 닉네임의 포인트 변동 로그 데이터를 읽어와,
+    각 로그의 날짜와 포인트 정보를 리스트(dict) 형태로 반환합니다.
+    """
+    log_ref = db.reference(f"승부예측/예측시즌/{시즌}/예측포인트변동로그")
+    logs = log_ref.get()
+    
+    data = []
+    if logs:
+        for date_str, times in logs.items():
+            for time_str, nicknames in times.items():
+                # 해당 시간에 target_nickname 데이터가 있는지 확인 (없을 수도 있음)
+                if 이름 in nicknames:
+                    entry = nicknames[이름]
+                    # entry가 dict이면 "포인트" 키에서 값을, 아니면 그대로 값 사용
+                    point = entry.get("포인트", 0) if isinstance(entry, dict) else entry
+                    # 날짜와 시간 문자열을 합쳐 datetime 객체로 변환
+                    dt_str = f"{date_str} {time_str}"
+                    try:
+                        dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+                    except ValueError:
+                        dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
+                    data.append({"Date": dt, "Points": point})
+    if not data:
+        print(f"{이름}의 데이터가 없습니다.")
+        return -1
+
+    # pandas DataFrame 생성
+    df = pd.DataFrame(data)
+    # 날짜를 인덱스로 지정 (정렬 필수)
+    df.set_index("Date", inplace=True)
+    df.sort_index(inplace=True)
+    
+    # 날짜별로 resample해서 OHLC 계산
+    # 여기서는 일별로 그룹화하는 예시입니다. 필요에 따라 'H' (시간별) 등으로 변경 가능.
+    ohlc = df['Points'].resample('D').ohlc()
+    
+    # 한글이 깨지지 않도록 폰트 설정 (NanumGothic이 설치되어 있어야 합니다)
+    plt.rcParams['font.family'] = 'NanumGothic'
+    plt.rcParams['axes.unicode_minus'] = False  # 음수 기호 깨짐 방지
+
+    # mplfinance를 사용해 캔들 차트 그리기
+    mpf.plot(ohlc, type='candle', style='charles',
+             title=f"{이름}님의 포인트 변동 캔들차트",
+             ylabel="포인트", volume=False,
+             savefig="prediction_candle_graph.png")
+
 async def plot_candle_graph(시즌:str, 이름:str, 랭크:str):
     ref = db.reference(f'전적분석/{시즌}/점수변동/{이름}/{랭크}')
     data = ref.get()
@@ -2287,6 +2336,24 @@ class hello(commands.Cog):
         
         # 그래프 이미지 파일을 Discord 메시지로 전송
         await interaction.followup.send(file=discord.File('prediction_graph.png'))
+
+    @app_commands.command(name="예측시즌캔들그래프",description="예측시즌 점수를 캔들그래프로 보여줍니다")
+    @app_commands.describe(시즌 = "시즌을 선택하세요")
+    @app_commands.choices(시즌=[
+    Choice(name='정규시즌1', value='정규시즌1'),
+    Choice(name='정규시즌2', value='정규시즌2')
+    ])
+    async def 예측시즌그래프(self, interaction: discord.Interaction, 이름: discord.Member, 시즌:str):
+        
+        await interaction.response.defer()  # Interaction을 유지
+        name = 이름.name
+        result = await plot_prediction_candle_graph(시즌,name)
+        if result == -1:
+            await interaction.followup.send("해당 시즌 데이터가 존재하지 않습니다.")
+            return
+        
+        # 그래프 이미지 파일을 Discord 메시지로 전송
+        await interaction.followup.send(file=discord.File('prediction_candle_graph.png'))
 
     @app_commands.command(name="예측순위",description="승부예측 포인트 순위를 보여줍니다")
     @app_commands.describe(시즌 = "시즌을 선택하세요")
