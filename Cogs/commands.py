@@ -1138,7 +1138,7 @@ def plot_prediction_graph(season=None,name=None):
 
     # 그림을 파일로 저장
     plt.savefig('prediction_graph.png')
-    plt.close(fig)
+    plt.close()
 
 async def plot_candle_graph(시즌:str, 이름:str, 랭크:str):
     ref = db.reference(f'전적분석/{시즌}/점수변동/{이름}/{랭크}')
