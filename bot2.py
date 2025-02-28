@@ -858,7 +858,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
                 if streak_bonus_rate:
                     bonus_parts.append(f"+ 역배 배율 {streak_bonus_rate}")
-                if rater.get(배율,0):
+                if rater.get("배율",0):
                     bonus_parts.append(f"+ 아이템 추가 배율 {rater['배율']}")
 
                 bonus_string = "".join(bonus_parts)  # 둘 다 있으면 "역배 배율 X + 아이템 추가 배율 Y" 형태
