@@ -1119,7 +1119,7 @@ async def plot_prediction_graph(season=None,name=None):
                         dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
                     timestamps.append(dt)
                     points.append(point_value)
-    
+
     # 시간 순으로 정렬
     data = sorted(zip(timestamps, points), key=lambda x: x[0])
     if data:
@@ -2276,10 +2276,10 @@ class hello(commands.Cog):
     Choice(name='정규시즌1', value='정규시즌1'),
     Choice(name='정규시즌2', value='정규시즌2')
     ])
-    async def 예측시즌그래프(self, interaction: discord.Interaction, 시즌:str):
+    async def 예측시즌그래프(self, interaction: discord.Interaction, 이름: discord.Member, 시즌:str):
         
         await interaction.response.defer()  # Interaction을 유지
-        name = interaction.user.name
+        name = 이름.name
         result = await plot_prediction_graph(시즌,name)
         if result == None:
             await interaction.followup.send("해당 시즌 데이터가 존재하지 않습니다.")
