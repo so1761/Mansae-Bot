@@ -272,14 +272,23 @@ class DiceRevealView(discord.ui.View):
         self.message = ""
         self.keep_alive_task = None  # 메시지 갱신 태스크 저장용
 
-    async def start_timer(self):
-        """5분 타이머 진행 + 1분 전 알림 메시지 출력"""
-        await asyncio.sleep(240)  # 4분 기다림
-        userembed = discord.Embed(title = "종료 임박!",color = discord.Color.red())
-        userembed.add_field(name="",value="⏳ 베팅이 **1분 뒤 종료**됩니다!")
-        await self.message.channel.send(embed = userembed)
-        await asyncio.sleep(60)  # 추가 1분 대기
-        await self.announce_winner()
+    async def timer_task(self):
+        """5분 타이머 진행 + 1분 전 알림 메시지 출력 (백그라운드 태스크)"""
+        try:
+            await asyncio.sleep(240)  # 4분 대기
+            userembed = discord.Embed(title="종료 임박!", color=discord.Color.red())
+            userembed.add_field(name="", value="⏳ 베팅이 **1분 뒤 종료**됩니다!")
+            await self.message.channel.send(embed=userembed)
+            await asyncio.sleep(60)  # 추가 1분 대기
+            await self.announce_winner()
+        except asyncio.CancelledError:
+            # 타이머가 취소되었을 경우 예외 무시
+            print("타이머가 취소되었습니다.")
+            return
+
+    def start_timer(self):
+        """타이머 백그라운드 태스크 시작"""
+        self.keep_alive_task = asyncio.create_task(self.timer_task())
 
     @discord.ui.button(label="주사위 확인", style=discord.ButtonStyle.gray)
     async def check_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -338,6 +347,8 @@ class DiceRevealView(discord.ui.View):
         await interaction.response.send_message(embed = userembed)
 
         if all(self.revealed.values()):
+            if self.keep_alive_task: 
+                self.keep_alive_task.cancel()
             await self.announce_winner()
     
     async def update_game_point(self, user, bet_amount):
@@ -1077,6 +1088,59 @@ def plot_lp_difference_firebase(season=None,name=None,rank=None):
     plt.savefig('lp_graph.png')
     plt.close()
     return 0
+
+def plot_prediction_graph(season=None,name=None):
+    # 로그 데이터가 저장된 경로
+    log_ref = db.reference(f"승부예측/예측시즌/{season}/예측포인트변동로그")
+    logs = log_ref.get()
+
+    # 분석할 대상 닉네임 (원하는 닉네임으로 수정)
+    target_nickname = name
+
+    timestamps = []
+    points = []
+
+    # 로그는 {날짜: {시간: {닉네임: {포인트: value, ...} or value}}} 형태라고 가정
+    if logs:
+        for date_str, times in logs.items():
+            # date_str 예: "2025-02-28" (포맷에 맞게 수정)
+            for time_str, nicknames in times.items():
+                # 해당 시간에 target_nickname이 있는지 확인
+                if target_nickname in nicknames:
+                    log_entry = nicknames[target_nickname]
+                    # log_entry가 dict이면 "포인트" 키를 통해 값을 추출, 그렇지 않으면 직접 값 사용
+                    point_value = log_entry.get("포인트", 0) if isinstance(log_entry, dict) else log_entry
+                    # 날짜와 시간 문자열을 합쳐 datetime 객체로 변환 (예: "YYYY-MM-DD HH:MM:SS")
+                    dt_str = f"{date_str} {time_str}"
+                    try:
+                        dt = datetime.datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+                    except ValueError:
+                        # 시간 포맷이 다르다면 적절히 수정 필요
+                        dt = datetime.datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
+                    timestamps.append(dt)
+                    points.append(point_value)
+
+    # 시간 순으로 정렬
+    data = sorted(zip(timestamps, points), key=lambda x: x[0])
+    if data:
+        sorted_timestamps, sorted_points = zip(*data)
+    else:
+        sorted_timestamps, sorted_points = [], []
+
+    # matplotlib를 이용해 그래프 그리기
+    plt.figure(figsize=(10, 5))
+    plt.plot(sorted_timestamps, sorted_points, marker='o', linestyle='-')
+    plt.title(f"{target_nickname}님의 포인트 변동 그래프")
+    plt.xlabel("시간")
+    plt.ylabel("포인트")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    file_path = "prediction_graph.png"
+
+    # 그림을 파일로 저장
+    fig.savefig(file_path)
+    plt.close(fig)
 
 async def plot_candle_graph(시즌:str, 이름:str, 랭크:str):
     ref = db.reference(f'전적분석/{시즌}/점수변동/{이름}/{랭크}')
@@ -2205,6 +2269,24 @@ class hello(commands.Cog):
         
         # 그래프 이미지 파일을 Discord 메시지로 전송
         await interaction.followup.send(file=discord.File('candle_graph.png'),embed = result)
+
+    @app_commands.command(name="예측시즌그래프",description="예측시즌 점수를 캔들그래프로 보여줍니다")
+    @app_commands.describe(시즌 = "시즌을 선택하세요",이름='누구의 그래프를 볼지 선택하세요')
+    @app_commands.choices(시즌=[
+    Choice(name='정규시즌1', value='정규시즌1'),
+    Choice(name='정규시즌2', value='정규시즌2')
+    ])
+    async def 예측시즌그래프(self, interaction: discord.Interaction, 시즌:str):
+        
+        await interaction.response.defer()  # Interaction을 유지
+        name = interaction.user.name
+        result = await plot_prediction_graph(시즌,name)
+        if result == None:
+            await interaction.response.send_message("해당 시즌 데이터가 존재하지 않습니다.")
+            return
+        
+        # 그래프 이미지 파일을 Discord 메시지로 전송
+        await interaction.followup.send(file=discord.File('prediction_graph.png'))
 
     @app_commands.command(name="예측순위",description="승부예측 포인트 순위를 보여줍니다")
     @app_commands.describe(시즌 = "시즌을 선택하세요")
