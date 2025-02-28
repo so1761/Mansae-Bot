@@ -1119,7 +1119,7 @@ async def plot_prediction_graph(season=None,name=None):
                         dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
                     timestamps.append(dt)
                     points.append(point_value)
-
+    
     # 시간 순으로 정렬
     data = sorted(zip(timestamps, points), key=lambda x: x[0])
     if data:
@@ -1140,7 +1140,8 @@ async def plot_prediction_graph(season=None,name=None):
     # 그림을 파일로 저장
     plt.savefig('prediction_graph.png')
     plt.close()
-
+    return 0
+    
 async def plot_candle_graph(시즌:str, 이름:str, 랭크:str):
     ref = db.reference(f'전적분석/{시즌}/점수변동/{이름}/{랭크}')
     data = ref.get()
@@ -2281,7 +2282,7 @@ class hello(commands.Cog):
         name = interaction.user.name
         result = await plot_prediction_graph(시즌,name)
         if result == None:
-            await interaction.response.send_message("해당 시즌 데이터가 존재하지 않습니다.")
+            await interaction.followup.send("해당 시즌 데이터가 존재하지 않습니다.")
             return
         
         # 그래프 이미지 파일을 Discord 메시지로 전송
