@@ -1089,7 +1089,7 @@ def plot_lp_difference_firebase(season=None,name=None,rank=None):
     plt.close()
     return 0
 
-def plot_prediction_graph(season=None,name=None):
+async def plot_prediction_graph(season=None,name=None):
     # 로그 데이터가 저장된 경로
     log_ref = db.reference(f"승부예측/예측시즌/{season}/예측포인트변동로그")
     logs = log_ref.get()
@@ -1127,6 +1127,7 @@ def plot_prediction_graph(season=None,name=None):
     else:
         sorted_timestamps, sorted_points = [], []
 
+    plt.rcParams['font.family'] = 'NanumGothic'
     # matplotlib를 이용해 그래프 그리기
     plt.figure(figsize=(10, 5))
     plt.plot(sorted_timestamps, sorted_points, marker='o', linestyle='-')
