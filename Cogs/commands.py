@@ -2270,8 +2270,8 @@ class hello(commands.Cog):
         # 그래프 이미지 파일을 Discord 메시지로 전송
         await interaction.followup.send(file=discord.File('candle_graph.png'),embed = result)
 
-    @app_commands.command(name="예측시즌그래프",description="예측시즌 점수를 캔들그래프로 보여줍니다")
-    @app_commands.describe(시즌 = "시즌을 선택하세요",이름='누구의 그래프를 볼지 선택하세요')
+    @app_commands.command(name="예측시즌그래프",description="예측시즌 점수를 그래프로 보여줍니다")
+    @app_commands.describe(시즌 = "시즌을 선택하세요")
     @app_commands.choices(시즌=[
     Choice(name='정규시즌1', value='정규시즌1'),
     Choice(name='정규시즌2', value='정규시즌2')
