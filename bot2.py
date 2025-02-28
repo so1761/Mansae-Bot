@@ -1502,7 +1502,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             elif name == "Melon":
                                 used_items_for_user_melon[user_id] = True
                     else:
-                        interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
+                        await interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
                 async def betbutton3_callback(interaction: discord.Interaction):
                     user_id = interaction.user.id  # 사용자 ID
                     if used_items_for_user_jimo.get(user_id, False):  # 아이템을 이미 사용한 경우
@@ -1525,7 +1525,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             elif name == "Melon":
                                 used_items_for_user_melon[user_id] = True
                     else:
-                        interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
+                        await interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
                 betbutton1.callback = betbutton1_callback
                 betbutton2.callback = betbutton2_callback
                 betbutton3.callback = betbutton3_callback
