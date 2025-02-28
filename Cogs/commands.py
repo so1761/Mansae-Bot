@@ -1185,10 +1185,15 @@ async def plot_prediction_candle_graph(시즌:str, 이름:str):
     plt.rcParams['font.family'] = 'NanumGothic'
     plt.rcParams['axes.unicode_minus'] = False  # 음수 기호 깨짐 방지
 
+    def make_mpf_style():
+        # marketcolors 설정
+        mc = mpf.make_marketcolors(up='red', down='blue')
+        # 스타일 설정
+        return mpf.make_mpf_style(base_mpf_style = "binance",marketcolors=mc)
     # mplfinance를 사용해 캔들 차트 그리기
-    mpf.plot(ohlc, type='candle', style='charles',
-             title=f"{이름}님의 포인트 변동 캔들차트",
-             ylabel="포인트", volume=False,
+    mpf.plot(ohlc, type='candle', style=make_mpf_style(),
+             title=f"{이름} point change",
+             ylabel="point", volume=False,
              savefig="prediction_candle_graph.png")
 
 async def plot_candle_graph(시즌:str, 이름:str, 랭크:str):
