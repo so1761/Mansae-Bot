@@ -1136,10 +1136,8 @@ def plot_prediction_graph(season=None,name=None):
     plt.xticks(rotation=45)
     plt.tight_layout()
 
-    file_path = "prediction_graph.png"
-
     # 그림을 파일로 저장
-    fig.savefig(file_path)
+    plt.savefig('prediction_graph.png')
     plt.close(fig)
 
 async def plot_candle_graph(시즌:str, 이름:str, 랭크:str):
