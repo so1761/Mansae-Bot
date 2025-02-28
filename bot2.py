@@ -89,7 +89,7 @@ async def mission_notice(name, mission, rarity):
     
     # 희귀도에 따라 임베드 색상과 제목 설정
     color_map = {
-        "일반": discord.Color.gray(),
+        "일반": discord.Color.light_gray(),
         "희귀": discord.Color.blue(),
         "에픽": discord.Color.purple(),
         "전설": discord.Color.gold(),
@@ -1062,7 +1062,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     after_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
                     after_predict_data = after_ref.get()
                     after_point = after_predict_data.get("포인트", 0)
-                    if round(point * 0.2, 2) >= after_point: # 80% 이상 잃었을 경우
+                    if round(point * 0.2, 2) >= after_point and round(point * 0.8, 2) >= 1000: # 80% 이상 잃었을 경우 & 1000포인트 이상 잃었을 경우
                     # ====================  [미션]  ====================
                     # 시즌미션 : 이카루스의 추락
                         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{loser['name']}/미션/시즌미션/이카루스의 추락")
