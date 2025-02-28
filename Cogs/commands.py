@@ -11,6 +11,7 @@ import mplfinance as mpf
 import prediction_vote as p
 import subprocess
 import os
+import math
 from discord.ui import Modal, TextInput
 from discord import TextStyle
 from firebase_admin import db
@@ -2346,7 +2347,7 @@ class hello(commands.Cog):
 
                     rank = 1
 
-                    for username, info in top, start:
+                    for username, info in top:
                         if info['총 예측 횟수'] > 0:
                             if info['연승'] > 0:
                                 embed.add_field(name=f"{rank}. {username}", value=f"연속적중 {info['연승']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
