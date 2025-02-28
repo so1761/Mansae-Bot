@@ -2343,7 +2343,7 @@ class hello(commands.Cog):
     Choice(name='정규시즌1', value='정규시즌1'),
     Choice(name='정규시즌2', value='정규시즌2')
     ])
-    async def 예측시즌그래프(self, interaction: discord.Interaction, 이름: discord.Member, 시즌:str):
+    async def 예측시즌캔들그래프(self, interaction: discord.Interaction, 이름: discord.Member, 시즌:str):
         
         await interaction.response.defer()  # Interaction을 유지
         name = 이름.name
