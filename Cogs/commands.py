@@ -945,7 +945,7 @@ class WarnModal(Modal):
         WARNING_EMOJI = '⚠️'  # 경고 이모지
 
         # 임베드 생성
-        embed = discord.Embed(title="경고 기록", color=discord.Color.red())
+        embed = discord.Embed(title="🚨 경고 기록", color=discord.Color.red())
         embed.add_field(name="경고 대상", value=warned_user.mention, inline=True)
         embed.add_field(name="경고 발령자", value=moderator.mention, inline=True)
         embed.add_field(name="경고 사유", value=reason, inline=False)
@@ -967,6 +967,62 @@ class WarnModal(Modal):
             await interaction.response.send_message(embed=embed, view = view)
         else:
             await interaction.response.send_message("경고 채널을 찾을 수 없습니다.", ephemeral=True)
+
+
+class WarnCommandModal(discord.ui.Modal, title="경고 기록"):
+    def __init__(self, bot: commands.Bot, member: discord.Member):
+        super().__init__()
+        self.bot = bot
+        self.member = member
+
+        self.reason = discord.ui.TextInput(label="경고 사유", placeholder="경고 사유를 입력하세요.", max_length=100)
+        self.details = discord.ui.TextInput(label="자세한 경위", style=discord.TextStyle.paragraph, placeholder="상세 설명 입력...", max_length=1000)
+
+        self.add_item(self.reason)
+        self.add_item(self.details)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        warn_channel = WARNING_CHANNEL_ID
+        if not warn_channel:
+            await interaction.response.send_message("⚠️ 경고 채널을 찾을 수 없습니다.", ephemeral=True)
+            return
+        
+        embed = discord.Embed(title="🚨 경고 기록", color=discord.Color.red())
+        embed.add_field(name="경고 대상", value=self.member.mention, inline=False)
+        embed.add_field(name="경고 사유", value=self.reason.value, inline=False)
+        embed.add_field(name="자세한 경위", value=self.details.value, inline=False)
+        embed.set_footer(text=f"경고 발송자: {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+
+        await warn_channel.send(embed=embed)
+        await interaction.response.send_message(f"{self.member.mention}에게 경고를 부여했습니다.", ephemeral=True)
+
+class WarnCommandView(discord.ui.View):
+    def __init__(self, bot: commands.Bot):
+        super().__init__()
+        self.bot = bot
+
+        self.select = discord.ui.Select(
+            placeholder="경고할 멤버를 선택하세요.",
+            min_values=1,
+            max_values=1,
+            options=[]
+        )
+        self.select.callback = self.select_callback
+        self.add_item(self.select)
+
+    async def select_callback(self, interaction: discord.Interaction):
+        member_id = int(self.select.values[0])
+        member = interaction.guild.get_member(member_id)
+        if member:
+            await interaction.response.send_modal(WarnModal(self.bot, member))
+        else:
+            await interaction.response.send_message("⚠️ 해당 멤버를 찾을 수 없습니다.", ephemeral=True)
+
+    async def populate_members(self, guild: discord.Guild):
+        self.select.options = [
+            discord.SelectOption(label=member.display_name, value=str(member.id))
+            for member in guild.members if not member.bot
+        ]
 
 def plot_lp_difference_firebase(season=None,name=None,rank=None):
 
@@ -3823,6 +3879,21 @@ class hello(commands.Cog):
         dice_view = DiceRevealView(challenger_m, 상대, dice_results, game_point)
         dice_view.message = await channel.send(content = "", view = dice_view, embed = diceview_embed)
         await dice_view.start_timer()
+
+    @app_commands.command(name="경고", description="서버 멤버에게 경고를 부여합니다.")
+    async def warn(self, interaction: discord.Interaction):
+        # 경고 처리 로직
+        allowed_role_name = "1등 ✨"
+        #allowed_role_name = "관리자"
+        # 사용자의 역할 확인
+        user_roles = [role.name for role in interaction.user.roles]
+        if allowed_role_name in user_roles:
+            view = WarnCommandView(self.bot)
+            await view.populate_members(interaction.guild)
+            await interaction.response.send_message("경고할 멤버를 선택하세요.", view=view, ephemeral=True)
+        else:
+            await interaction.response.send_message("경고는 1등만 부여할 수 있습니다.")
+        
 
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
