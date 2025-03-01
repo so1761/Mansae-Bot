@@ -1180,6 +1180,22 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                     kdaembed.add_field(name="", value=f"{winner['name']}님이 KDA 예측에 성공하여 20점을 획득하셨습니다!", inline=False)
                             for loser in losers:
                                 kdaembed.add_field(name="", value=f"{loser['name']}님이 KDA 예측에 실패했습니다!", inline=False)
+                        elif kda == 3:
+                            winners = kda_votes['up'] + kda_votes['down']
+                            losers = kda_votes['perfect']
+
+                            for winner in winners:
+                                point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
+                                predict_data = point_ref.get()
+                                today = datetime.today()
+                                if today.weekday() == 6:
+                                    point_ref.update({"포인트": predict_data["포인트"] + 40})
+                                    kdaembed.add_field(name="", value=f"{winner['name']}님이 KDA 예측에 성공하여 40점(x2)을 획득하셨습니다!", inline=False)
+                                else:
+                                    point_ref.update({"포인트": predict_data["포인트"] + 20})
+                                    kdaembed.add_field(name="", value=f"{winner['name']}님이 KDA 예측에 성공하여 20점을 획득하셨습니다!", inline=False)
+                            for loser in losers:
+                                kdaembed.add_field(name="", value=f"{loser['name']}님이 KDA 예측에 실패했습니다!", inline=False)
                         else:
                             winners = kda_votes['down']
                             losers = kda_votes['up'] + kda_votes['perfect']
