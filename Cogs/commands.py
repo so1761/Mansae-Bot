@@ -982,7 +982,7 @@ class WarnCommandModal(discord.ui.Modal, title="경고 기록"):
         self.add_item(self.details)
 
     async def on_submit(self, interaction: discord.Interaction):
-        warn_channel = WARNING_CHANNEL_ID
+        warn_channel = interaction.client.get_channel(WARNING_CHANNEL_ID)
         if not warn_channel:
             await interaction.response.send_message("⚠️ 경고 채널을 찾을 수 없습니다.", ephemeral=True)
             return
