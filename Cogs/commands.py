@@ -987,6 +987,8 @@ class WarnCommandModal(discord.ui.Modal, title="경고 기록"):
             await interaction.response.send_message("⚠️ 경고 채널을 찾을 수 없습니다.", ephemeral=True)
             return
         
+        channel = interaction.client.get_channel(self.message.channel.id)
+
         embed = discord.Embed(title="🚨 경고 기록", color=discord.Color.red())
         embed.add_field(name="경고 대상", value=self.member.mention, inline=False)
         embed.add_field(name="경고 사유", value=self.reason.value, inline=False)
@@ -994,6 +996,7 @@ class WarnCommandModal(discord.ui.Modal, title="경고 기록"):
         embed.set_footer(text=f"경고 발송자: {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
 
         await warn_channel.send(embed=embed)
+        await channel.send(embed=embed)
         await interaction.response.send_message(f"{self.member.mention}에게 경고를 부여했습니다.", ephemeral=True)
 
 class WarnCommandView(discord.ui.View):
