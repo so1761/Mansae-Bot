@@ -272,14 +272,23 @@ class DiceRevealView(discord.ui.View):
         self.message = ""
         self.keep_alive_task = None  # 메시지 갱신 태스크 저장용
 
-    async def start_timer(self):
-        """5분 타이머 진행 + 1분 전 알림 메시지 출력"""
-        await asyncio.sleep(240)  # 4분 기다림
-        userembed = discord.Embed(title = "종료 임박!",color = discord.Color.red())
-        userembed.add_field(name="",value="⏳ 베팅이 **1분 뒤 종료**됩니다!")
-        await self.message.channel.send(embed = userembed)
-        await asyncio.sleep(60)  # 추가 1분 대기
-        await self.announce_winner()
+    async def timer_task(self):
+        """5분 타이머 진행 + 1분 전 알림 메시지 출력 (백그라운드 태스크)"""
+        try:
+            await asyncio.sleep(240)  # 4분 대기
+            userembed = discord.Embed(title="종료 임박!", color=discord.Color.red())
+            userembed.add_field(name="", value="⏳ 베팅이 **1분 뒤 종료**됩니다!")
+            await self.message.channel.send(embed=userembed)
+            await asyncio.sleep(60)  # 추가 1분 대기
+            await self.announce_winner()
+        except asyncio.CancelledError:
+            # 타이머가 취소되었을 경우 예외 무시
+            print("타이머가 취소되었습니다.")
+            return
+
+    def start_timer(self):
+        """타이머 백그라운드 태스크 시작"""
+        self.keep_alive_task = asyncio.create_task(self.timer_task())
 
     @discord.ui.button(label="주사위 확인", style=discord.ButtonStyle.gray)
     async def check_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
