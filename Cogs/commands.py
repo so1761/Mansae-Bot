@@ -1014,7 +1014,7 @@ class WarnCommandView(discord.ui.View):
         member_id = int(self.select.values[0])
         member = interaction.guild.get_member(member_id)
         if member:
-            await interaction.response.send_modal(WarnModal(self.bot, member))
+            await interaction.response.send_modal(WarnCommandModal(self.bot, member))
         else:
             await interaction.response.send_message("⚠️ 해당 멤버를 찾을 수 없습니다.", ephemeral=True)
 
