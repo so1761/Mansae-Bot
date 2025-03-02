@@ -2356,7 +2356,7 @@ class hello(commands.Cog):
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{interaction.user.name}의 [누구에게도 말할 수 없는 비밀] 미션 완료")
-                            await mission_notice(interaction.user.name,"누구에게도 말할 수 없는 비밀","전설")
+                            await mission_notice(interaction.client,interaction.user.name,"누구에게도 말할 수 없는 비밀","전설")
                         # ====================  [미션]  ====================
                     refp.update({"포인트" : point - need_point})
                     refhon = db.reference('승부예측')
@@ -2663,7 +2663,7 @@ class hello(commands.Cog):
                 if not mission_bool:
                     ref.update({"완료": True})
                     print(f"{interaction.user.name}의 [0은 곧 무한] 미션 완료")
-                    await mission_notice(interaction.user.name,"0은 곧 무한","희귀")
+                    await mission_notice(interaction.client,interaction.user.name,"0은 곧 무한","희귀")
 
                 # ====================  [미션]  ====================
                 await interaction.response.send_message(f"포인트는 없지만 {이름}의 무한한 가능성에 베팅하셨습니다!",ephemeral=True)
@@ -2686,7 +2686,7 @@ class hello(commands.Cog):
                 if bet_num + 1 == 5:
                     ref.update({"완료": True})
                     print(f"{interaction.user.name}의 [다중 그림자분신술] 미션 완료")
-                    await mission_notice(interaction.user.name,"다중 그림자분신술","에픽")
+                    await mission_notice(interaction.client,interaction.user.name,"다중 그림자분신술","에픽")
                 else:
                     shadow_ref.update({f"{이름}베팅" : bet_num + 1})
             # ====================  [미션]  ====================
@@ -2702,7 +2702,7 @@ class hello(commands.Cog):
                 if not mission_bool:
                     ref.update({"완료": True})
                     print(f"{interaction.user.name}의 [크릴새우] 미션 완료")
-                    await mission_notice(interaction.user.name,"크릴새우","희귀")
+                    await mission_notice(interaction.client,interaction.user.name,"크릴새우","희귀")
 
                 # ====================  [미션]  ====================
 
@@ -2717,7 +2717,7 @@ class hello(commands.Cog):
                 if not mission_bool:
                     ref.update({"완료": True})
                     print(f"{interaction.user.name}의 [금지된 숫자] 미션 완료")
-                    await mission_notice(interaction.user.name,"금지된 숫자","희귀")
+                    await mission_notice(interaction.client,interaction.user.name,"금지된 숫자","희귀")
 
                 # ====================  [미션]  ====================
             nickname = interaction.user.name
