@@ -72,10 +72,10 @@ RANK_MAP = {
 
 #익명 이름
 ANONYM_NAME_WIN = [
-  '개코원숭이','긴팔원숭이','일본원숭이','붉은고함원숭이','알락꼬리여우원숭이','다이아나원숭이','알렌원숭이','코주부원숭이',
+ '바바리원숭이','회색랑구르','알렌원숭이','코주부원숭이','황금들창코원숭이','안경원숭이','동부콜로부스','붉은잎원숭이','남부돼지꼬리원숭이'
 ]
 ANONYM_NAME_LOSE = [
-  '사랑앵무','왕관앵무','회색앵무','모란앵무','금강앵무','유황앵무','뉴기니아앵무','장미앵무'
+ '카카포','케아','카카리키','아프리카회색앵무','유황앵무','뉴기니아앵무', '빗창앵무','유리앵무'
 ]
 
 CHANNEL_ID = '938728993329397781'
@@ -2193,7 +2193,7 @@ class hello(commands.Cog):
                 await mission_notice(interaction.client,interaction.user.name,"이 모양은 고양이?!","히든")
             
             # ====================  [미션]  ====================
-            await interaction.response.send_message("야옹",ephemeral = True)
+            await interaction.response.send_message("야옹", file=discord.File("cat.jpg"), ephemeral=True)
             return
         await interaction.response.defer()  # Interaction을 유지
         returnVal = plot_lp_difference_firebase(season = 시즌, name = 이름, rank = 랭크)
@@ -2652,6 +2652,9 @@ class hello(commands.Cog):
             if 포인트 < 0:
                 await interaction.response.send_message("포인트는 0보다 큰 숫자로 입력해주세요",ephemeral=True)
                 return
+            if winbutton.disabled == True:
+                await interaction.response.send_message(f"지금은 {이름}에게 베팅할 수 없습니다!",ephemeral=True)
+                return
             if 포인트 == 0:
                 # ====================  [미션]  ====================
                 # 시즌미션 : 0은 곧 무한
@@ -2668,58 +2671,8 @@ class hello(commands.Cog):
                 # ====================  [미션]  ====================
                 await interaction.response.send_message(f"포인트는 없지만 {이름}의 무한한 가능성에 베팅하셨습니다!",ephemeral=True)
                 return
-            if winbutton.disabled == True:
-                await interaction.response.send_message(f"지금은 {이름}에게 베팅할 수 없습니다!",ephemeral=True)
-                return
+            
 
-
-            # ====================  [미션]  ====================
-            # 시즌미션 : 다중 그림자분신술
-            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-            current_predict_season = cur_predict_seasonref.get()
-            shadow_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/다중 그림자분신술')
-            shadow_data = shadow_ref.get()
-        
-            mission_bool = shadow_data.get('완료',False)
-            if not mission_bool:
-                bet_num = shadow_data.get("{이름}베팅", 0)
-                if bet_num + 1 == 5:
-                    ref.update({"완료": True})
-                    print(f"{interaction.user.name}의 [다중 그림자분신술] 미션 완료")
-                    await mission_notice(interaction.client,interaction.user.name,"다중 그림자분신술","에픽")
-                else:
-                    shadow_ref.update({f"{이름}베팅" : bet_num + 1})
-            # ====================  [미션]  ====================
-
-            if 포인트 == 1:
-                # ====================  [미션]  ====================
-                # 시즌미션 : 크릴새우
-                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                current_predict_season = cur_predict_seasonref.get()
-                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/크릴새우")
-
-                mission_bool = ref.get()['완료']
-                if not mission_bool:
-                    ref.update({"완료": True})
-                    print(f"{interaction.user.name}의 [크릴새우] 미션 완료")
-                    await mission_notice(interaction.client,interaction.user.name,"크릴새우","희귀")
-
-                # ====================  [미션]  ====================
-
-            if 포인트 == 2669:
-                # ====================  [미션]  ====================
-                # 시즌미션 : 금지된 숫자
-                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                current_predict_season = cur_predict_seasonref.get()
-                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/금지된 숫자")
-
-                mission_bool = ref.get()['완료']
-                if not mission_bool:
-                    ref.update({"완료": True})
-                    print(f"{interaction.user.name}의 [금지된 숫자] 미션 완료")
-                    await mission_notice(interaction.client,interaction.user.name,"금지된 숫자","희귀")
-
-                # ====================  [미션]  ====================
             nickname = interaction.user.name
             if (nickname not in [winner['name'] for winner in p.votes[이름]['prediction']['win']] and
             nickname not in [loser['name'] for loser in p.votes[이름]['prediction']['lose']]):
@@ -2737,6 +2690,40 @@ class hello(commands.Cog):
                         if info['포인트'] - bettingPoint < 포인트:
                             await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
                         else:
+                            if 포인트 >= 100:
+                                # ====================  [미션]  ====================
+                                # 시즌미션 : 다중 그림자분신술
+                                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                                current_predict_season = cur_predict_seasonref.get()
+                                shadow_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/다중 그림자분신술')
+                                shadow_data = shadow_ref.get()
+                            
+                                mission_bool = shadow_data.get('완료',False)
+                                if not mission_bool:
+                                    bet_num = shadow_data.get("{이름}베팅", 0)
+                                    if bet_num + 1 == 5:
+                                        ref.update({"완료": True})
+                                        print(f"{interaction.user.name}의 [다중 그림자분신술] 미션 완료")
+                                        await mission_notice(interaction.client,interaction.user.name,"다중 그림자분신술","에픽")
+                                    else:
+                                        shadow_ref.update({f"{이름}베팅" : bet_num + 1})
+                                # ====================  [미션]  ====================
+
+                            if 포인트 == 1:
+                                # ====================  [미션]  ====================
+                                # 시즌미션 : 크릴새우
+                                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                                current_predict_season = cur_predict_seasonref.get()
+                                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/크릴새우")
+
+                                mission_bool = ref.get()['완료']
+                                if not mission_bool:
+                                    ref.update({"완료": True})
+                                    print(f"{interaction.user.name}의 [크릴새우] 미션 완료")
+                                    await mission_notice(interaction.client,interaction.user.name,"크릴새우","희귀")
+
+                                # ====================  [미션]  ====================
+                                    
                             winner['points'] += 포인트  # 포인트 수정
                             ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
                             userembed = discord.Embed(title="메세지", color=discord.Color.blue())
@@ -2801,6 +2788,40 @@ class hello(commands.Cog):
                         if info['포인트'] - bettingPoint < 포인트:
                             await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
                         else:
+                            if 포인트 >= 100:
+                                # ====================  [미션]  ====================
+                                # 시즌미션 : 다중 그림자분신술
+                                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                                current_predict_season = cur_predict_seasonref.get()
+                                shadow_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/다중 그림자분신술')
+                                shadow_data = shadow_ref.get()
+                            
+                                mission_bool = shadow_data.get('완료',False)
+                                if not mission_bool:
+                                    bet_num = shadow_data.get("{이름}베팅", 0)
+                                    if bet_num + 1 == 5:
+                                        ref.update({"완료": True})
+                                        print(f"{interaction.user.name}의 [다중 그림자분신술] 미션 완료")
+                                        await mission_notice(interaction.client,interaction.user.name,"다중 그림자분신술","에픽")
+                                    else:
+                                        shadow_ref.update({f"{이름}베팅" : bet_num + 1})
+                                # ====================  [미션]  ====================
+
+                            if 포인트 == 1:
+                                # ====================  [미션]  ====================
+                                # 시즌미션 : 크릴새우
+                                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                                current_predict_season = cur_predict_seasonref.get()
+                                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/크릴새우")
+
+                                mission_bool = ref.get()['완료']
+                                if not mission_bool:
+                                    ref.update({"완료": True})
+                                    print(f"{interaction.user.name}의 [크릴새우] 미션 완료")
+                                    await mission_notice(interaction.client,interaction.user.name,"크릴새우","희귀")
+
+                                # ====================  [미션]  ====================
+                                    
                             loser['points'] += 포인트  # 포인트 수정
                             ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
                             userembed = discord.Embed(title="메세지", color=discord.Color.blue())
@@ -3384,7 +3405,7 @@ class hello(commands.Cog):
             "쿵쿵따": "두 번 연속 실패 후, 다음 예측에서 적중 💥. 앞선 2번의 실패는 다음 성공을 위한 준비 과정이었다 💪.",
             "정점": "주사위에서 100을 뽑기 🎲. 주사위의 정점을 달성하자 🏆.",
             "이럴 줄 알았어": "10데스 이상 판에서 패배를 예측하고 적중 🥲. 난 이 판 질 줄 알았음... 😎",
-            "다중 그림자분신술": "한 게임에서 5번 베팅 🌀. 분신술을 쓴 것처럼 계속 베팅하라 🔮.",
+            "다중 그림자분신술": "한 게임에서 100포인트 이상 5번 베팅 🌀. 분신술을 쓴 것처럼 계속 베팅하라 🔮.",
             "졌지만 이겼다": "패배를 예측하고, 퍼펙트를 건 뒤 둘 다 적중 🥇. 게임은 졌지만 난 승리했다 👑.",
             "0은 곧 무한": "/베팅 명령어로 0포인트 베팅 🔢. 설마 0포인트를 베팅하는 사람이 있겠어? 🤨",
             "크릴새우": "/베팅 명령어로 1 포인트 베팅 🦐. 이게 크릴새우지 🦑.",
@@ -3437,7 +3458,7 @@ class hello(commands.Cog):
             "쿵쿵따": "두 번 연속 실패 후, 다음 예측에서 적중 💥. 앞선 2번의 실패는 다음 성공을 위한 준비 과정이었다 💪.",
             "정점": "주사위에서 100을 뽑기 🎲. 주사위의 정점을 달성하자 🏆.",
             "이럴 줄 알았어": "10데스 이상 판에서 패배를 예측하고 적중 🥲. 난 이 판 질 줄 알았음... 😎",
-            "다중 그림자분신술": "한 게임에서 5번 베팅 🌀. 분신술을 쓴 것처럼 계속 베팅하라 🔮.",
+            "다중 그림자분신술": "한 게임에서 100포인트 이상 5번 베팅 🌀. 분신술을 쓴 것처럼 계속 베팅하라 🔮.",
             "졌지만 이겼다": "패배를 예측하고, 퍼펙트를 건 뒤 둘 다 적중 🥇. 게임은 졌지만 난 승리했다 👑.",
             "0은 곧 무한": "/베팅 명령어로 0포인트 베팅 🔢. 설마 0포인트를 베팅하는 사람이 있겠어? 🤨",
             "크릴새우": "/베팅 명령어로 1 포인트 베팅 🦐. 이게 크릴새우지 🦑.",
@@ -3889,8 +3910,8 @@ class hello(commands.Cog):
         diceview_embed.add_field(name = f"{상대}", value = f"{game_point[상대.name]}포인트", inline=True)
             
         dice_view = DiceRevealView(challenger_m, 상대, dice_results, game_point)
-        dice_view.message = await channel.send(content = "", view = dice_view, embed = diceview_embed)
         await dice_view.start_timer()
+        dice_view.message = await channel.send(content = "", view = dice_view, embed = diceview_embed)
 
     @app_commands.command(name="경고", description="서버 멤버에게 경고를 부여합니다.")
     async def warn(self, interaction: discord.Interaction):

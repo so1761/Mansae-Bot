@@ -914,6 +914,21 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         f"{prediction_value}예측연속": predict_data.get(f"{prediction_value}예측연속", 0) + 1,
                         f"{prediction_opposite_value}예측연속": 0
                     })
+                    
+                    if winner['points'] == 2669:
+                        # ====================  [미션]  ====================
+                        # 시즌미션 : 금지된 숫자
+                        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                        current_predict_season = cur_predict_seasonref.get()
+                        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner}/미션/시즌미션/금지된 숫자")
+
+                        mission_bool = ref.get()['완료']
+                        if not mission_bool:
+                            ref.update({"완료": True})
+                            print(f"{winner}의 [금지된 숫자] 미션 완료")
+                            await mission_notice(winner,"금지된 숫자","에픽")
+
+                        # ====================  [미션]  ====================
 
                     # ====================  [미션]  ====================
                     # 시즌미션 : 깜잘알
@@ -1075,8 +1090,6 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     # ====================  [미션]  ====================
 
                 await channel.send(embed=userembed)
-                prediction_votes['win'].clear()
-                prediction_votes['lose'].clear()
                 if name == "지모":
                     used_items_for_user_jimo.clear()
                 elif name == "Melon":
@@ -1145,7 +1158,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 if not mission_bool:
                                     ref.update({"완료": True})
                                     print(f"{member}의 [이럴 줄 알았어] 미션 완료")
-                                    await mission_notice(member,"이럴 줄 알았어","희귀")
+                                    await mission_notice(member,"이럴 줄 알았어","일반")
 
                         # ====================  [미션]  ====================
 
@@ -1229,7 +1242,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         kda_votes['up'].clear()
                         kda_votes['down'].clear()
                         kda_votes['perfect'].clear()
-
+                        prediction_votes['win'].clear()
+                        prediction_votes['lose'].clear()
 
                         event.set()
 
