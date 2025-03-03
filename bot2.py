@@ -1133,7 +1133,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         if not result and kda == 999: # 패배 & 퍼펙트
                             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                             current_predict_season = cur_predict_seasonref.get()
-                            common_members = set(prediction_votes.get('lose', [])) & set(kda_votes.get('perfect', []))
+                            common_members = set(prediction_votes.get('lose', {}).keys()) & set(kda_votes.get('perfect', {}).keys())
                             for member in common_members:
                                 ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{member}/미션/시즌미션/졌지만 이겼다")
                                 mission_data = ref.get() or {}  # None 방지
