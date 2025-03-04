@@ -733,8 +733,72 @@ class ItemBuyButton(discord.ui.Button):
             await interaction.response.send_message("먼저 아이템을 선택하세요!", ephemeral=True)
             return
 
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+        current_predict_season = cur_predict_seasonref.get()
+        point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
+        predict_data = point_ref.get()
+        point = predict_data["포인트"]
+        bettingPoint = predict_data["베팅포인트"]
+        real_point = point - bettingPoint
+
+        item_menu = {
+            "배율증가 0.1": 250 if round(real_point * 0.05) < 250 else round(real_point * 0.05),
+            "배율증가 0.3": 500 if round(real_point * 0.1) < 500 else round(real_point * 0.1),
+            "배율증가 0.5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
+            "배율감소 0.1": 250 if round(real_point * 0.05) < 250 else round(real_point * 0.05),
+            "배율감소 0.3": 500 if round(real_point * 0.1) < 500 else round(real_point * 0.1),
+            "배율감소 0.5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
+            "주사위 초기화": 100,
+            "주사위배틀기회 추가": 100,
+            "완전 익명화": 1000
+        }
+
+        if real_point < item_menu[self.item_name]: # 포인트가 적을 경우
+            await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트 : {real_point}P | 필요 포인트 : {item_menu[self.item_name]}",ephemeral=True)
+            return
+        
+        async def rate():
+            give_item(interaction.user.name,self.item_name,1)
+            return
+
+        async def dice_refresh():
+            dice_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/")
+            dice_ref.update({"주사위" : 0})
+            return
+
+        async def dice_battle_refresh():
+            dice_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/")
+            dice_ref.update({"배틀여부" : False})
+            return
+        
+        async def complete_annoymous():
+            return -1
+
+        cases = {
+            "배율증가 0.1": rate,
+            "배율증가 0.3": rate,
+            "배율증가 0.5": rate,
+            "배율감소 0.1": rate,
+            "배율감소 0.3": rate,
+            "배율감소 0.5": rate,
+            "주사위 초기화": dice_refresh,
+            "주사위배틀기회 추가": dice_battle_refresh,
+            "완전 익명화": complete_annoymous
+        }
+
+        returnVal = cases.get(
+            self.item_name,
+            print("아이템 구매 오류 발생")
+        )()
+
+        if returnVal == -1:
+            await interaction.response.send_message(f"이 아이템은 아직 구현되지 않았습니다!",ephemeral=True)
+            return
         self.disabled = True
-        await interaction.response.send_message(f"{self.item_name}을 구매했습니다!",ephemeral=True)
+
+        point_ref.update({"포인트" : point - n})
+
+        await interaction.response.send_message(f"[{self.item_name}]아이템을 구매했습니다!\n현재 포인트 : {real_point - item_menu[self.item_name]}P (-{item_menu[self.item_name]}P)",ephemeral=True)
 
     def update_label(self):
         if self.item_name:
@@ -752,7 +816,8 @@ class ItemSelect(discord.ui.Select):
             discord.SelectOption(label = "배율감소 0.3", value = "배율감소 0.3", description = "배율을 0.3 감소시킵니다. 현재 포인트의 10% 혹은 500p로 구매 가능합니다."),
             discord.SelectOption(label = "배율감소 0.5", value = "배율감소 0.5", description = "배율을 0.5 감소시킵니다. 현재 포인트의 20% 혹은 1000p로 구매 가능합니다."),
             discord.SelectOption(label = "주사위 초기화", value = "주사위 초기화", description = "현재 주사위 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다."),
-            discord.SelectOption(label = "주사위배틀기회 추가", value = "주사위배틀기회 추가", description = "주사위 배틀을 완료한 경우에 구매하면, 다시 한번 배틀을 신청할 수 있습니다. 100p로 구매 가능합니다.")
+            discord.SelectOption(label = "주사위배틀기회 추가", value = "주사위배틀기회 추가", description = "주사위 배틀을 완료한 경우에 구매하면, 다시 한번 배틀을 신청할 수 있습니다. 100p로 구매 가능합니다."),
+            discord.SelectOption(label = "완전 익명화", value = "완전 익명화", description = "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다.")
         ]
         super().__init__(
             placeholder = '구매할 아이템을 선택하세요.',
@@ -781,6 +846,7 @@ class ItemSelect(discord.ui.Select):
             "배율감소 0.5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
             "주사위 초기화": 100,
             "주사위배틀기회 추가": 100,
+            "완전 익명화": 1000
         }
 
         description = {
@@ -792,6 +858,7 @@ class ItemSelect(discord.ui.Select):
             "배율감소 0.5": "배율을 0.5 감소시킵니다. 현재 포인트의 20% 혹은 1000p로 구매 가능합니다.",
             "주사위 초기화": "현재 주사위 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다.",
             "주사위배틀기회 추가": "주사위 배틀을 완료한 경우에 구매하면, 다시 한번 배틀을 신청할 수 있습니다. 100p로 구매 가능합니다.",
+            "완전 익명화": "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다."
         }
         
         item_price = item_menu[selected_item]
