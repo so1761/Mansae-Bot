@@ -796,9 +796,9 @@ class ItemSelect(discord.ui.Select):
         
         item_price = item_menu[selected_item]
         shop_embed = discord.Embed(title = '구매할 아이템을 선택하세요', color = 0xfffff)
-        shop_embed.add_field(name = f'{interaction.user.name}의 현재 포인트', value = f'**{point - bettingPoint}P** (베팅포인트 **{bettingPoint}P** 제외)')
-        shop_embed.add_field(name = f'아이템 가격', value = f'**{item_price}P**')
-        shop_embed.add_field(name = f'설명', value = f'**{description[selected_item]}**')
+        shop_embed.add_field(name = f'{interaction.user.name}의 현재 포인트', value = f'**{point - bettingPoint}P** (베팅포인트 **{bettingPoint}P** 제외)', inline = False)
+        shop_embed.add_field(name = f'아이템 가격', value = f'**{item_price}P**', inline = False)
+        shop_embed.add_field(name = f'설명', value = f'**{description[selected_item]}**', inline = False)
 
         buy_button = next(
             (item for item in self.view.children if isinstance(item, ItemBuyButton)),
