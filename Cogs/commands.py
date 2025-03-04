@@ -760,14 +760,17 @@ class ItemBuyButton(discord.ui.Button):
         class NumberInputModal(discord.ui.Modal, title="개수 입력"):
             def __init__(self, item_name: str):
                 super().__init__(title=f"{item_name} 입력")  # 모달 제목 변경 가능
-                self.item_name = item_name  # 저장
+                self.item_name = item_name  # 아이템 이름 저장
 
-                # 입력 필드 추가
+                # 입력 필드 생성
                 self.number = discord.ui.TextInput(
                     label=f"{item_name}의 수량을 입력하세요",
                     style=discord.TextStyle.short,
                     required=True
                 )
+
+                # ✅ TextInput을 명시적으로 추가
+                self.add_item(self.number)
 
             async def on_submit(self, interaction: discord.Interaction):
                 try:
