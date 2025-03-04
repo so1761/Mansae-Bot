@@ -757,49 +757,28 @@ class ItemBuyButton(discord.ui.Button):
             await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트 : {real_point}P | 필요 포인트 : {item_menu[self.item_name]}",ephemeral=True)
             return
         
-        async def rate():
-            give_item(interaction.user.name,self.item_name,1)
-            return
+        class NumberInputModal(discord.ui.Modal, title="개수 입력"):
+            number = discord.ui.TextInput(label="구매할 개수를 입력하세요", style=discord.TextStyle.short, required=True)
 
-        async def dice_refresh():
-            dice_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/")
-            dice_ref.update({"주사위" : 0})
-            return
+            async def on_submit(self, interaction: discord.Interaction):
+                try:
+                    num = int(self.number.value)  # 입력값을 정수로 변환
+                    if real_point < (item_menu[self.item_name] * num): # 포인트가 적을 경우
+                        await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트 : {real_point}P | 필요 포인트 : {item_menu[self.item_name] * num}",ephemeral=True)
+                        return
+                    else:
+                        give_item(interaction.user.name,self.item_name,num)
+                        point_ref.update({"포인트" : point - (item_menu[self.item_name] * num)})
+                        await interaction.response.send_message(f"[{self.item_name}]아이템을 {num}개 구매했습니다!\n현재 포인트 : {real_point - (item_menu[self.item_name] * num)}P (-{item_menu[self.item_name] * num}P)",ephemeral=True)
+                except ValueError:
+                    await interaction.response.send_message("올바른 숫자를 입력해주세요!", ephemeral=True)
 
-        async def dice_battle_refresh():
-            dice_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/")
-            dice_ref.update({"배틀여부" : False})
-            return
-        
-        async def complete_annoymous():
-            return -1
-
-        cases = {
-            "배율증가 0.1": rate,
-            "배율증가 0.3": rate,
-            "배율증가 0.5": rate,
-            "배율감소 0.1": rate,
-            "배율감소 0.3": rate,
-            "배율감소 0.5": rate,
-            "주사위 초기화": dice_refresh,
-            "주사위배틀기회 추가": dice_battle_refresh,
-            "완전 익명화": complete_annoymous
-        }
-
-        returnVal = cases.get(
-            self.item_name,
-            print("아이템 구매 오류 발생")
-        )()
-
-        if returnVal == -1:
-            await interaction.response.send_message(f"이 아이템은 아직 구현되지 않았습니다!",ephemeral=True)
-            return
+        await interaction.response.send_modal(NumberInputModal())
         self.disabled = True
-
-        point_ref.update({"포인트" : point - n})
-
-        await interaction.response.send_message(f"[{self.item_name}]아이템을 구매했습니다!\n현재 포인트 : {real_point - item_menu[self.item_name]}P (-{item_menu[self.item_name]}P)",ephemeral=True)
-
+        shop_embed = discord.Embed(title = '구매할 아이템을 선택하세요', color = 0xfffff)
+        shop_embed.add_field(name = f'{interaction.user.name}의 현재 포인트', value = f'**{point - bettingPoint}P** (베팅포인트 **{bettingPoint}P** 제외)', inline = False)
+        await interaction.response.edit_message(embed = shop_embed, view = self.view)
+        
     def update_label(self):
         if self.item_name:
             self.label = f"[{self.item_name}] 구매"
