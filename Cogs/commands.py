@@ -782,11 +782,23 @@ class ItemSelect(discord.ui.Select):
             "주사위 초기화": 100,
             "주사위배틀기회 추가": 100,
         }
+
+        description = {
+            "배율증가 0.1": "배율을 0.1 증가시킵니다. 현재 포인트의 5% 혹은 250p로 구매 가능합니다.",
+            "배율증가 0.3": "배율을 0.3 증가시킵니다. 현재 포인트의 10% 혹은 500p로 구매 가능합니다.",
+            "배율증가 0.5": "배율을 0.3 증가시킵니다. 현재 포인트의 20% 혹은 1000p로 구매 가능합니다.",
+            "배율감소 0.1": "배율을 0.3 증가시킵니다. 현재 포인트의 5% 혹은 250p로 구매 가능합니다.",
+            "배율감소 0.3": "배율을 0.3 증가시킵니다. 현재 포인트의 10% 혹은 500p로 구매 가능합니다.",
+            "배율감소 0.5": "배율을 0.3 증가시킵니다. 현재 포인트의 20% 혹은 1000p로 구매 가능합니다.",
+            "주사위 초기화": "현재 주사위 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다.",
+            "주사위배틀기회 추가": "주사위 배틀을 완료한 경우에 구매하면, 다시 한번 배틀을 신청할 수 있습니다. 100p로 구매 가능합니다.",
+        }
         
         item_price = item_menu[selected_item]
         shop_embed = discord.Embed(title = '구매할 아이템을 선택하세요', color = 0xfffff)
         shop_embed.add_field(name = f'{interaction.user.name}의 현재 포인트', value = f'**{point - bettingPoint}P** (베팅포인트 **{bettingPoint}P** 제외)')
-        shop_embed.add_field(f"아이템 가격 : {item_price}P")
+        shop_embed.add_field(name = f'아이템 가격', value = f'**{item_price}P**')
+        shop_embed.add_field(name = f'설명', value = f'**{description[selected_item]}**')
 
         buy_button = next(
             (item for item in self.view.children if isinstance(item, ItemBuyButton)),
