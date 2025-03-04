@@ -758,7 +758,9 @@ class ItemBuyButton(discord.ui.Button):
             return
         
         class NumberInputModal(discord.ui.Modal, title="개수 입력"):
-            number = discord.ui.TextInput(label="구매할 개수를 입력하세요", style=discord.TextStyle.short, required=True)
+            def __init__(self, item_name):
+                self.item_name = item_name
+                self.number = discord.ui.TextInput(label="구매할 아이템 개수를 입력하세요", style=discord.TextStyle.short, required=True)
 
             async def on_submit(self, interaction: discord.Interaction):
                 try:
@@ -773,12 +775,12 @@ class ItemBuyButton(discord.ui.Button):
                 except ValueError:
                     await interaction.response.send_message("올바른 숫자를 입력해주세요!", ephemeral=True)
 
-        await interaction.response.send_modal(NumberInputModal())
+        await interaction.response.send_modal(NumberInputModal(self.item_name))
         self.disabled = True
         shop_embed = discord.Embed(title = '구매할 아이템을 선택하세요', color = 0xfffff)
         shop_embed.add_field(name = f'{interaction.user.name}의 현재 포인트', value = f'**{point - bettingPoint}P** (베팅포인트 **{bettingPoint}P** 제외)', inline = False)
         await interaction.response.edit_message(embed = shop_embed, view = self.view)
-        
+
     def update_label(self):
         if self.item_name:
             self.label = f"[{self.item_name}] 구매"
