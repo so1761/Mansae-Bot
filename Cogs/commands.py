@@ -759,6 +759,7 @@ class ItemBuyButton(discord.ui.Button):
         
         class NumberInputModal(discord.ui.Modal, title="개수 입력"):
             def __init__(self, item_name):
+                super().__init__()
                 self.item_name = item_name
                 number = discord.ui.TextInput(label="구매할 아이템 개수를 입력하세요", style=discord.TextStyle.short, required=True)
 
