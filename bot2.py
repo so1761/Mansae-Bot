@@ -1101,7 +1101,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                 current_predict_season = cur_predict_seasonref.get()
                 for better in prediction_votes['win'] + prediction_votes['lose']:
-                    shadow_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{better['name']}/미션/시즌미션/다중 그림자분신술')
+                    shadow_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{better["name"]}/미션/시즌미션/다중 그림자분신술')
                     shadow_ref.update({f"{name}베팅" : 0})
 
                 # ====================  [미션]  ====================
