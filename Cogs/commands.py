@@ -707,6 +707,75 @@ class DiceRevealView(discord.ui.View):
             p.votes['배틀']['name']['challenger'] = ""
             p.votes['배틀']['name']['상대'] = ""
 
+class ItemBuyView(discord.ui.View):
+    def __init__(self):
+        super().__init__()
+        self.selected_item = None
+        self.buy_button = ItemBuyButton()
+
+        item_select = ItemSelect()
+        self.add_item(item_select)
+
+        self.add_item(self.buy_button)
+
+class ItemBuyButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(
+            label = "아이템 구매",
+            style = discord.ButtonStyle.success,
+            disabled = True,
+            custom_id = "buy_button"
+        )
+        self.item_name = None
+    async def callback(self, interaction: discord.Interaction):
+        user_name = interaction.user.name
+        if not self.item_name:
+            await interaction.response.send_message("먼저 아이템을 선택하세요!", ephemeral=True)
+            return
+
+        self.disabled = True
+        await interaction.response.send_message(f"{self.item_name}을 구매했습니다!",ephemeral=True)
+
+    def update_label(self):
+        if self.mission_name:
+            self.label = f"[{self.item_name}] 구매"
+        else:
+            self.label = "아이템 구매"
+
+class ItemSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label = "배율증가 0.1", value = "배율증가 0.1", description = "배율을 0.1 증가시킵니다. 현재 포인트의 5% 혹은 500p로 구매 가능합니다."),
+            discord.SelectOption(label = "배율증가 0.3", value = "배율증가 0.3", description = "배율을 0.3 증가시킵니다. 현재 포인트의 10% 혹은 1000p로 구매 가능합니다."),
+            discord.SelectOption(label = "배율증가 0.5", value = "배율증가 0.5", description = "배율을 0.5 증가시킵니다. 현재 포인트의 20% 혹은 2000p로 구매 가능합니다."),
+            discord.SelectOption(label = "배율감소 0.1", value = "배율감소 0.1", description = "배율을 0.1 감소시킵니다. 현재 포인트의 5% 혹은 500p로 구매 가능합니다."),
+            discord.SelectOption(label = "배율감소 0.3", value = "배율감소 0.3", description = "배율을 0.3 감소시킵니다. 현재 포인트의 10% 혹은 1000p로 구매 가능합니다."),
+            discord.SelectOption(label = "배율감소 0.5", value = "배율감소 0.5", description = "배율을 0.5 감소시킵니다. 현재 포인트의 20% 혹은 2000p로 구매 가능합니다."),
+            discord.SelectOption(label = "주사위 초기화", value = "주사위 초기화", description = "현재 주사위 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다."),
+            discord.SelectOption(label = "주사위배틀기회 추가", value = "주사위배틀기회 추가", description = "주사위 배틀을 완료한 경우에 구매하면, 다시 한번 배틀을 신청할 수 있습니다. 100p로 구매 가능합니다.")
+        ]
+        super().__init__(
+            placeholder = '구매할 아이템을 선택하세요.',
+            min_values = 1,
+            max_values = 1,
+            options = options
+        )
+    
+    async def callback(self, interaction: discord.Interaction):
+        selected_item = self.values[0]
+
+        buy_button = next(
+            (item for item in self.view.children if isinstance(item, ItemBuyButton)),
+            None
+        )
+
+        if buy_button:
+            buy_button.item_name = selected_item
+            buy_button.update_label()
+            buy_button.disabled = False
+
+        await interaction.response.edit_message(view = self.view)
+
 async def add_missions_to_all_users(mission_name,point,mission_type):
     cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
     current_predict_season = cur_predict_seasonref.get()
@@ -3537,7 +3606,7 @@ class hello(commands.Cog):
             "0은 곧 무한": "/베팅 명령어로 0포인트 베팅 🔢. 설마 0포인트를 베팅하는 사람이 있겠어? 🤨",
             "크릴새우": "/베팅 명령어로 1 포인트 베팅 🦐. 이게 크릴새우지 🦑.",
             "주사위주사위주사위주사위주사위": "하루에 /주사위 명령어를 5번 실행 🎲. 경고 문구는 가볍게 무시한다 🚫.",
-            "이카루스의 추락": "너무 높이 날면 떨어지는 법 🕊️. 단 한 번에 80% 이상의 포인트를 잃고, 이카루스처럼 추락하는 순간을 경험하라 🪂.",
+            "이카루스의 추락": "너무 높이 날면 떨어지는 법 🕊️. 단 한 번에 80% 이상의 포인트(1000포인트 이상)를 잃고, 이카루스처럼 추락하는 순간을 경험하라 🪂.",
             "이 모양은 고양이?!": "/시즌그래프 명령어에서 대상으로 [고양이]를 선택 🐾. 누군가의 그래프에서는 고양이가 보인다는 소문이 있다... 🐱"
         }
    
@@ -4000,8 +4069,21 @@ class hello(commands.Cog):
             await interaction.response.send_message("경고할 멤버를 선택하세요.", view=view, ephemeral=True)
         else:
             await interaction.response.send_message("경고는 1등만 부여할 수 있습니다.")
-        
+    
+    @app_commands.command(name="아이템구매", description="다양한 아이템을 구매합니다.")
+    async def item_shop(self, interaction: discord.Interaction):
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+        current_predict_season = cur_predict_seasonref.get()
+        point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
+        predict_data = point_ref.get()
+        point = predict_data["포인트"]
+        bettingPoint = predict_data["베팅포인트"]
 
+        shop_embed = discord.Embed(title = '구매할 아이템을 선택하세요', color = 0xfffff)
+        shop_embed.add_field(name = 'f{interaction.user.name}의 현재 포인트', value = f'**{point - bettingPoint}P** (베팅포인트 **{bettingPoint}P** 제외)')
+        view = ItemBuyView()
+        await interaction.response.send_message(embed = shop_embed, view = view)
+        
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
     @app_commands.choices(상대=[
