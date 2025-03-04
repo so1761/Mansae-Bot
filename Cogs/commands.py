@@ -4147,8 +4147,8 @@ class hello(commands.Cog):
         diceview_embed.add_field(name = f"{상대}", value = f"{game_point[상대.name]}포인트", inline=True)
             
         dice_view = DiceRevealView(challenger_m, 상대, dice_results, game_point)
-        await dice_view.start_timer()
         dice_view.message = await channel.send(content = "", view = dice_view, embed = diceview_embed)
+        await dice_view.start_timer()
 
     @app_commands.command(name="경고", description="서버 멤버에게 경고를 부여합니다.")
     async def warn(self, interaction: discord.Interaction):
