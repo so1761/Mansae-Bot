@@ -270,7 +270,7 @@ class DiceRevealView(discord.ui.View):
         self.revealed = {challenger.name: False, opponent.name: False}
         self.giveup = {challenger.name: False, opponent.name: False}
         self.message = ""
-        self.keep_alive_task = None  # 메시지 갱신 태스크 저장용
+        self.keep_alive_task = None # 메시지 갱신 태스크 저장용
 
     async def timer_task(self):
         """5분 타이머 진행 + 1분 전 알림 메시지 출력 (백그라운드 태스크)"""
@@ -347,6 +347,8 @@ class DiceRevealView(discord.ui.View):
         await interaction.response.send_message(embed = userembed)
 
         if all(self.revealed.values()):
+            if self.keep_alive_task: 
+                self.keep_alive_task.cancel()
             await self.announce_winner()
     
     async def update_game_point(self, user, bet_amount):
@@ -1134,6 +1136,57 @@ def plot_lp_difference_firebase(season=None,name=None,rank=None):
     plt.savefig('lp_graph.png')
     plt.close()
     return 0
+
+def plot_prediction_graph(season=None,name=None):
+    # 로그 데이터가 저장된 경로
+    log_ref = db.reference(f"승부예측/예측시즌/{season}/예측포인트변동로그")
+    logs = log_ref.get()
+
+    # 분석할 대상 닉네임 (원하는 닉네임으로 수정)
+    target_nickname = name
+
+    timestamps = []
+    points = []
+
+    # 로그는 {날짜: {시간: {닉네임: {포인트: value, ...} or value}}} 형태라고 가정
+    if logs:
+        for date_str, times in logs.items():
+            # date_str 예: "2025-02-28" (포맷에 맞게 수정)
+            for time_str, nicknames in times.items():
+                # 해당 시간에 target_nickname이 있는지 확인
+                if target_nickname in nicknames:
+                    log_entry = nicknames[target_nickname]
+                    # log_entry가 dict이면 "포인트" 키를 통해 값을 추출, 그렇지 않으면 직접 값 사용
+                    point_value = log_entry.get("포인트", 0) if isinstance(log_entry, dict) else log_entry
+                    # 날짜와 시간 문자열을 합쳐 datetime 객체로 변환 (예: "YYYY-MM-DD HH:MM:SS")
+                    dt_str = f"{date_str} {time_str}"
+                    try:
+                        dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+                    except ValueError:
+                        # 시간 포맷이 다르다면 적절히 수정 필요
+                        dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
+                    timestamps.append(dt)
+                    points.append(point_value)
+
+    # 시간 순으로 정렬
+    data = sorted(zip(timestamps, points), key=lambda x: x[0])
+    if data:
+        sorted_timestamps, sorted_points = zip(*data)
+    else:
+        sorted_timestamps, sorted_points = [], []
+
+    # matplotlib를 이용해 그래프 그리기
+    plt.figure(figsize=(10, 5))
+    plt.plot(sorted_timestamps, sorted_points, marker='o', linestyle='-')
+    plt.title(f"{target_nickname}님의 포인트 변동 그래프")
+    plt.xlabel("시간")
+    plt.ylabel("포인트")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    # 그림을 파일로 저장
+    plt.savefig('prediction_graph.png')
+    plt.close()
 
 async def plot_candle_graph(시즌:str, 이름:str, 랭크:str):
     ref = db.reference(f'전적분석/{시즌}/점수변동/{이름}/{랭크}')
@@ -2308,6 +2361,26 @@ class hello(commands.Cog):
         # 그래프 이미지 파일을 Discord 메시지로 전송
         await interaction.followup.send(file=discord.File('candle_graph.png'),embed = result)
 
+    '''
+    @app_commands.command(name="예측시즌그래프",description="예측시즌 점수를 캔들그래프로 보여줍니다")
+    @app_commands.describe(시즌 = "시즌을 선택하세요",이름='누구의 그래프를 볼지 선택하세요')
+    @app_commands.choices(시즌=[
+    Choice(name='정규시즌1', value='정규시즌1'),
+    Choice(name='정규시즌2', value='정규시즌2')
+    ])
+    async def 예측시즌그래프(self, interaction: discord.Interaction, 시즌:str):
+        
+        await interaction.response.defer()  # Interaction을 유지
+        name = interaction.user.name
+        result = await plot_prediction_graph(시즌,name)
+        if result == None:
+            await interaction.response.send_message("해당 시즌 데이터가 존재하지 않습니다.")
+            return
+        
+        # 그래프 이미지 파일을 Discord 메시지로 전송
+        await interaction.followup.send(file=discord.File('prediction_graph.png'))
+    '''
+
     @app_commands.command(name="예측순위",description="승부예측 포인트 순위를 보여줍니다")
     @app_commands.describe(시즌 = "시즌을 선택하세요")
     @app_commands.choices(시즌=[
@@ -2382,11 +2455,12 @@ class hello(commands.Cog):
                                 embed.add_field(name=f"{rank}. {username}", value=f"연속비적중 {info['연패']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
                             else:
                                 embed.add_field(name=f"{rank}. {username}", value=f"포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
-                        rank += 1
+                            rank += 1
                     
                     userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
                     userembed.add_field(name="",value=f"{interaction.user.name}님이 {need_point}포인트를 소모하여 순위표를 열람했습니다! (현재 열람 포인트 : {need_point + 50}(+ 50))", inline=False)
-                
+                    channel = interaction.client.get_channel(int(CHANNEL_ID))
+                    await channel.send(embed=userembed)
                     await interaction.response.send_message(embed=embed,ephemeral=True)
 
             async def see2button_callback(interaction:discord.Interaction): # 순위표 버튼을 눌렀을 때의 반응!
@@ -2423,11 +2497,11 @@ class hello(commands.Cog):
                                 embed.add_field(name=f"{rank}. {username}", value=f"연속비적중 {info['연패']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
                             else:
                                 embed.add_field(name=f"{rank}. {username}", value=f"포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
-                        rank += 1  
+                            rank += 1  
                     
                     
                     notice_channel = interaction.client.get_channel(1332330634546253915)
-                    channel = self.bot.get_channel(int(CHANNEL_ID))
+                    channel = interaction.client.get_channel(int(CHANNEL_ID))
                     userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
                     userembed.add_field(name="",value=f"{interaction.user.name}님이 {need_point}포인트를 소모하여 순위표를 전체 열람했습니다!", inline=False)
                     await notice_channel.send("@everyone\n", embed=embed)

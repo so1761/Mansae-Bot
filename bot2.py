@@ -1355,7 +1355,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         delay = random.uniform(1, 5) # 1초부터 5초까지 랜덤 시간
                         await asyncio.sleep(delay)
                         await bet_button_callback(None,'lose',ANONYM_NAME_LOSE,autoloser)
-                        print(f"{nickname}의 자동예측지모패배")
+                        print(f"{autoloser}의 자동예측지모패배")
                 elif name == "Melon":
                     for autowinner in auto_bet_users["자동예측Melon승리"]:
                         delay = random.uniform(1, 5) # 1초부터 5초까지 랜덤 시간
@@ -1764,7 +1764,7 @@ async def check_remake_status(name, puuid, event, prediction_votes,kda_votes):
                         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                         current_predict_season = cur_predict_seasonref.get()
                         for better in prediction_votes['win'] + prediction_votes['lose']:
-                            shadow_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{better}/미션/시즌미션/다중 그림자분신술')
+                            shadow_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{better["name"]}/미션/시즌미션/다중 그림자분신술')
                             shadow_ref.update({f"{name}베팅" : 0})
 
                         # ====================  [미션]  ====================
