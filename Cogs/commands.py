@@ -737,7 +737,7 @@ class ItemBuyButton(discord.ui.Button):
         await interaction.response.send_message(f"{self.item_name}을 구매했습니다!",ephemeral=True)
 
     def update_label(self):
-        if self.mission_name:
+        if self.item_name:
             self.label = f"[{self.item_name}] 구매"
         else:
             self.label = "아이템 구매"
