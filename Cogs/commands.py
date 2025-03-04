@@ -779,7 +779,7 @@ class ItemBuyButton(discord.ui.Button):
                         await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트 : {real_point}P | 필요 포인트 : {item_menu[self.item_name] * num}",ephemeral=True)
                         return
                     else:
-                        give_item(interaction.user.name,self.item_name,num)
+                        give_item(interaction.user.name,self.item_name, num)
                         point_ref.update({"포인트" : point - (item_menu[self.item_name] * num)})
                         await interaction.response.send_message(f"[{self.item_name}]아이템을 {num}개 구매했습니다!\n현재 포인트 : {real_point - (item_menu[self.item_name] * num)}P (-{item_menu[self.item_name] * num}P)",ephemeral=True)
                 except ValueError:
