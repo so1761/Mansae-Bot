@@ -4080,9 +4080,9 @@ class hello(commands.Cog):
         bettingPoint = predict_data["베팅포인트"]
 
         shop_embed = discord.Embed(title = '구매할 아이템을 선택하세요', color = 0xfffff)
-        shop_embed.add_field(name = 'f{interaction.user.name}의 현재 포인트', value = f'**{point - bettingPoint}P** (베팅포인트 **{bettingPoint}P** 제외)')
+        shop_embed.add_field(name = f'{interaction.user.name}의 현재 포인트', value = f'**{point - bettingPoint}P** (베팅포인트 **{bettingPoint}P** 제외)')
         view = ItemBuyView()
-        await interaction.response.send_message(embed = shop_embed, view = view)
+        await interaction.response.send_message(embed = shop_embed, view = view, ephemeral = True)
         
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     @app_commands.describe(포인트 = "포인트를 입력하세요")
