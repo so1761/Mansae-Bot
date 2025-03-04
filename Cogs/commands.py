@@ -711,7 +711,6 @@ class ItemBuyView(discord.ui.View):
     def __init__(self):
         super().__init__()
         self.selected_item = None
-        self.embed = embed
         self.buy_button = ItemBuyButton()
 
         item_select = ItemSelect()
