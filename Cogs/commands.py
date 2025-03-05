@@ -256,6 +256,8 @@ class DuelRequestView(discord.ui.View):
         battleembed = discord.Embed(title="대결 거절!", color = discord.Color.blue())
         battleembed.add_field(name="", value=f"{self.opponent.mention}님이 대결을 거절했습니다!")
         await interaction.response.edit_message(embed = battleembed, view = self)
+        battle_ref = db.reference("승부예측/대결진행여부")
+        battle_ref.set(False)
         self.event.set()
 
 class DiceRevealView(discord.ui.View):
@@ -358,6 +360,10 @@ class DiceRevealView(discord.ui.View):
             print(f"Game point for {user.display_name} updated: {self.game_point[user.name]}")
     
     async def announce_winner(self):
+
+        battle_ref = db.reference("승부예측/대결진행여부")
+        battle_ref.set(False)
+        
         ch_dice = self.dice_results[self.challenger]
         op_dice = self.dice_results[self.opponent]
 
@@ -3938,6 +3944,15 @@ class hello(commands.Cog):
             await interaction.response.send_message(embed = warnembed)
             return
 
+        battle_ref = db.reference("승부예측/대결진행여부")
+        is_battle = battle_ref.get()
+
+        if is_battle:
+            warnembed = discord.Embed(title="실패",color = discord.Color.red())
+            warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+            await interaction.response.send_message(embed = warnembed)
+            return
+
 
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
@@ -3955,12 +3970,12 @@ class hello(commands.Cog):
                 userembed.add_field(name="",value=f"{challenger}님이 아이템을 사용하여 주사위 대결을 추가로 신청했습니다!", inline=False)
                 channel = interaction.client.get_channel(int(CHANNEL_ID))
                 await channel.send(embed=userembed)
+                battle_ref.set(True)
             else:
-
                 warnembed = discord.Embed(title="실패",color = discord.Color.red())
                 warnembed.add_field(name="",value="하루에 한번만 대결 신청할 수 있습니다! ❌")
                 await interaction.response.send_message("",embed = warnembed)
-            return
+                return
 
         ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}')
         originr = ref.get()
@@ -3991,6 +4006,7 @@ class hello(commands.Cog):
         battleembed.add_field(name="", value=f"{상대.mention}, {challenger_m.mention}의 대결 요청! 수락하시겠습니까? 🎲")
         # 메시지 전송
         await interaction.response.send_message(content="", view=view, embed=battleembed)
+        battle_ref.set(True)
 
         # 전송된 메시지 객체 가져오기
         view.message = await interaction.original_response()
