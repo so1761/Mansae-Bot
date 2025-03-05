@@ -3885,7 +3885,7 @@ class hello(commands.Cog):
             mission_data = ref_mission.get()
             mission_bool = mission_data.get('완료',False)
             if not mission_bool:
-                mission_data = ref.get()
+                mission_data = ref_mission.get()
                 call_num = mission_data.get("호출", 0)
                 if call_num + 1 == 5:
                     ref.update({"완료": True})
