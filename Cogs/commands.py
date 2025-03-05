@@ -381,9 +381,6 @@ class DiceRevealView(discord.ui.View):
     async def announce_winner(self):
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
-        
-        if self.keep_alive_task:
-            self.keep_alive_task.cancel()
 
         ch_dice = self.dice_results[self.challenger]
         op_dice = self.dice_results[self.opponent]
