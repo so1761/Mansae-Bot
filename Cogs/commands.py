@@ -273,7 +273,7 @@ class DuelRequestView(discord.ui.View):
         self.event.set()
 
 class DiceRevealView(discord.ui.View):
-    def __init__(self, challenger, opponent, dice_results, game_point): 
+    def __init__(self, challenger, opponent, dice_results, game_point, channel): 
         super().__init__()
         self.challenger = challenger.name
         self.opponent = opponent.name
@@ -285,6 +285,7 @@ class DiceRevealView(discord.ui.View):
         self.giveup = {challenger.name: False, opponent.name: False}
         self.message = ""
         self.keep_alive_task = None # 메시지 갱신 태스크 저장용
+        self.channel = channel
 
     async def timer_task(self):
         """5분 타이머 진행 + 1분 전 알림 메시지 출력 (백그라운드 태스크)"""
@@ -594,8 +595,7 @@ class DiceRevealView(discord.ui.View):
                         await mission_notice(loser['name'],"이카루스의 추락","에픽")
                 # ====================  [미션]  ====================
 
-            channel = self.bot.get_channel(int(CHANNEL_ID)) #tts 채널
-            await channel.send(embed = userembed)
+            await self.channel.send(embed = userembed)
             p.votes['배틀']['prediction']['win'].clear()
             p.votes['배틀']['prediction']['lose'].clear()
             
@@ -686,16 +686,14 @@ class DiceRevealView(discord.ui.View):
                 point_ref2.update({"포인트": point2 - original_challenger_point + remained_point})
                 point_ref2.update({"베팅포인트": bettingpoint2 - original_challenger_point})
                 
-            channel = self.bot.get_channel(int(CHANNEL_ID)) #tts 채널
-            await channel.send(embed = userembed)
+            await self.channel.send(embed = userembed)
 
             p.votes['배틀']['name']['challenger'] = ""
             p.votes['배틀']['name']['상대'] = ""
         else:
             userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
             userembed.add_field(name="게임 종료", value=f"배틀이 종료되었습니다!\n무승부!🤝\n")
-            channel = self.bot.get_channel(int(CHANNEL_ID)) #tts 채널
-            await channel.send(embed = userembed)
+            await self.channel.send(embed = userembed)
 
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
             current_predict_season = cur_predict_seasonref.get()
@@ -4225,8 +4223,9 @@ class hello(commands.Cog):
         thread = await interaction.channel.create_thread(
         name=f"{challenger_m.display_name} vs {상대.display_name} 주사위 대결",
         type=discord.ChannelType.public_thread
-        )    
-        dice_view = DiceRevealView(challenger_m, 상대, dice_results, game_point)
+        )
+        tts_channel = self.bot.get_channel(int(CHANNEL_ID)) #tts 채널  
+        dice_view = DiceRevealView(challenger_m, 상대, dice_results, game_point,tts_channel)
         dice_view.message = await thread.send(content = "", view = dice_view, embed = diceview_embed)
         await dice_view.start_timer()
 
