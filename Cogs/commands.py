@@ -4988,7 +4988,7 @@ class hello(commands.Cog):
                 await interaction.response.send_modal(modal)
 
         thread = await interaction.channel.create_thread(
-        name=f"{challenger} vs {상대.name} 숫자야구 대결",
+        name=f"{challenger_m.display_name} vs {상대.display_name} 숫자야구 대결",
         type=discord.ChannelType.public_thread
         )
         await BaseballGameView(challenger_m, 상대, game_point).start_game(thread)
