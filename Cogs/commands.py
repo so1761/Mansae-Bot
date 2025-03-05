@@ -4544,7 +4544,7 @@ class hello(commands.Cog):
 
         class BaseballGameView(discord.ui.View):
             def __init__(self, challenger, opponent, game_point):
-                super().__init__()
+                super().__init__(timeout = None)
                 self.players = [challenger, opponent]
                 self.numbers = {challenger.name: self.generate_numbers(), opponent.name: self.generate_numbers()}
                 self.turn = 1  # 상대(1) → 도전자(0)
@@ -4611,6 +4611,8 @@ class hello(commands.Cog):
                 if strikes == 3:
                     embed.color = discord.Color.gold()
                     embed.add_field(name="🏆 승리!", value=f"{player.mention}님이 **정답을 맞췄습니다!** 🎉")
+
+                    await interaction.channel.send(embed=embed)
 
                     cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                     current_predict_season = cur_predict_seasonref.get()
@@ -4813,8 +4815,8 @@ class hello(commands.Cog):
                                     print(f"{loser['name']}의 [이카루스의 추락] 미션 완료")
                                     await mission_notice(loser['name'],"이카루스의 추락","에픽")
                             # ====================  [미션]  ====================
-
-                        channel = interaction.client.get_channel(CHANNEL_ID) #tts 채널
+                        
+                        channel = interaction.client.get_channel(int(CHANNEL_ID)) #tts 채널
                         await channel.send(embed = userembed)
                         p.votes['배틀']['prediction']['win'].clear()
                         p.votes['배틀']['prediction']['lose'].clear()
@@ -4897,7 +4899,7 @@ class hello(commands.Cog):
                             point_ref2.update({"포인트": point2 - original_challenger_point + remained_point})
                             point_ref2.update({"베팅포인트": bettingpoint2 - original_challenger_point})
                             
-                        channel = interaction.client.get_channel(CHANNEL_ID) #tts 채널
+                        channel = interaction.client.get_channel(int(CHANNEL_ID)) #tts 채널
                         await channel.send(embed = userembed)
 
                         p.votes['배틀']['name']['challenger'] = ""
@@ -4964,6 +4966,8 @@ class hello(commands.Cog):
 
             @discord.ui.button(label="숫자 맞추기", style=discord.ButtonStyle.success)
             async def guess_numbers(self, interaction: discord.Interaction, button: discord.ui.Button):
+                new_view = BaseballGameView()  # 새 View 생성
+                await interaction.message.edit(view=new_view)  # 기존 메시지 업데이트
                 """모달을 열어 숫자 입력 받기"""
                 if interaction.user != self.players[self.turn]:
                     await interaction.response.send_message("🚫 **지금은 상대의 턴입니다!**", ephemeral=True)
