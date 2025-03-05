@@ -290,7 +290,7 @@ class DiceRevealView(discord.ui.View):
             print("타이머가 취소되었습니다.")
             return
 
-    def start_timer(self):
+    async def start_timer(self):
         """타이머 백그라운드 태스크 시작"""
         self.keep_alive_task = asyncio.create_task(self.timer_task())
 
