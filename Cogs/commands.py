@@ -161,7 +161,7 @@ def give_item(nickname, item_name, amount):
     refitem.update({item_name: item_data.get(item_name, 0) + amount})
 
 class BettingModal(Modal):
-    def __init__(self, user: discord.User, challenger, opponent, game_point, game, message):
+    def __init__(self, user: discord.User, challenger, opponent, game_point, game, message, what):
         # 모달에 사용자 이름을 추가하고 포인트 입력 필드 설정
         self.user = user
         super().__init__(title=f"{self.user.display_name}님, 베팅할 포인트를 입력해주세요!")
@@ -171,6 +171,7 @@ class BettingModal(Modal):
         self.game_point = game_point
         self.game = game
         self.message = message
+        self.what = what
         
     async def on_submit(self, interaction: discord.Interaction):
         # 포인트 입력값 처리
@@ -200,11 +201,20 @@ class BettingModal(Modal):
             userembed.add_field(name="", value=f"{self.user.display_name}님이 {bet_amount} 포인트를 베팅했습니다! 🎲")
             await interaction.response.send_message(embed=userembed)
 
-        diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
-        diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲",inline=False)
-        diceview_embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
-        diceview_embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
-        await self.message.edit(embed = diceview_embed)
+        if what == "주사위":
+            diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
+            diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲",inline=False)
+            diceview_embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
+            diceview_embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
+            await self.message.edit(embed = diceview_embed)
+        elif what == "숫자야구":
+            player = self.game.players[self.game.turn]
+
+            embed = discord.Embed(title="⚾ 숫자야구 진행 중!", color=discord.Color.green())
+            embed.add_field(name="턴", value=f"🎯 {player.mention}님의 턴입니다!", inline=False)
+            embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
+            embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
+            await self.message.edit(embed=embed)
 
 duels = {}  # 진행 중인 대결 정보를 저장
 
@@ -315,7 +325,7 @@ class DiceRevealView(discord.ui.View):
             return
 
         # 모달 생성
-        modal = BettingModal(user=interaction.user, challenger = self.challenger, opponent = self.opponent, game_point = self.game_point, game = self, message = self.message)
+        modal = BettingModal(user=interaction.user, challenger = self.challenger, opponent = self.opponent, game_point = self.game_point, game = self, message = self.message, what = "")
         await interaction.response.send_modal(modal)
 
     @discord.ui.button(label="포기", style=discord.ButtonStyle.danger)
@@ -4530,7 +4540,7 @@ class hello(commands.Cog):
                     return
 
                 guess = list(map(int, guess))
-                result = self.game.check_guess(self.player, guess)
+                result = await self.game.check_guess(self.player, guess)
 
                 await interaction.response.send_message(embed=result)
                 await self.game.next_turn()  # 턴 넘기기
@@ -4970,7 +4980,7 @@ class hello(commands.Cog):
                 modal = BettingModal(user=interaction.user, challenger = self.challenger, opponent = self.opponent, game_point = self.game_point, game = self, message = self.message)
                 await interaction.response.send_modal(modal)
 
-        game = await BaseballGameView(challenger_m, 상대, game_point).start_game(channel)
+        await BaseballGameView(challenger_m, 상대, game_point).start_game(channel)
 
         
         
