@@ -201,13 +201,13 @@ class BettingModal(Modal):
             userembed.add_field(name="", value=f"{self.user.display_name}님이 {bet_amount} 포인트를 베팅했습니다! 🎲")
             await interaction.response.send_message(embed=userembed)
 
-        if what == "주사위":
+        if self.what == "주사위":
             diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
             diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲",inline=False)
             diceview_embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
             diceview_embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
             await self.message.edit(embed = diceview_embed)
-        elif what == "숫자야구":
+        elif self.what == "숫자야구":
             player = self.game.players[self.game.turn]
 
             embed = discord.Embed(title="⚾ 숫자야구 진행 중!", color=discord.Color.green())
@@ -4610,7 +4610,10 @@ class hello(commands.Cog):
                 if strikes == 3:
                     embed.color = discord.Color.gold()
                     embed.add_field(name="🏆 승리!", value=f"{player.mention}님이 **정답을 맞췄습니다!** 🎉")
- 
+
+                    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                    current_predict_season = cur_predict_seasonref.get()
+
                     battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}/숫자야구배틀여부")
                     battle_data = battleref.get()
                     battled = battle_data.get("숫자야구배틀여부",False)
