@@ -365,6 +365,9 @@ class DiceRevealView(discord.ui.View):
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
         
+        if self.keep_alive_task:
+            self.keep_alive_task.cancel()
+
         ch_dice = self.dice_results[self.challenger]
         op_dice = self.dice_results[self.opponent]
 
@@ -375,9 +378,6 @@ class DiceRevealView(discord.ui.View):
         userembed = discord.Embed(title = "주사위 공개!",color = discord.Color.red())
         userembed.add_field(name="",value=f"{self.opponent_m.display_name}의 주사위 숫자: **{self.dice_results[self.opponent]}** 🎲")
         await self.message.channel.send(embed = userembed)
-
-        if self.keep_alive_task:
-            self.keep_alive_task.cancel()
 
         # 게임 결과 발표 후, 버튼 비활성화
         for button in self.children:  # 모든 버튼에 대해
@@ -3967,7 +3967,6 @@ class hello(commands.Cog):
             item_data = item_ref.get() or {} 
             battle_refresh = item_data.get("주사위대결기회 추가", 0)
             if battle_refresh:
-                item_ref.update({"주사위대결기회 추가": battle_refresh - 1})
                 userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
                 userembed.add_field(name="",value=f"{challenger}님이 아이템을 사용하여 주사위 대결을 추가로 신청했습니다!", inline=False)
                 channel = interaction.client.get_channel(int(CHANNEL_ID))
@@ -4028,6 +4027,11 @@ class hello(commands.Cog):
         if not view.request_accepted:
             return
 
+        item_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}/아이템")
+        item_data = item_ref.get() or {} 
+        battle_refresh = item_data.get("주사위대결기회 추가", 0)
+        if battle_refresh:
+            item_ref.update({"주사위대결기회 추가": battle_refresh - 1})
         p.battle_winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label=f"{challenger} 승리")
         losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label=f"{상대} 승리")
 
