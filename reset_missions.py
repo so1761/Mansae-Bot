@@ -82,6 +82,17 @@ if users:
 
         dice_ref.update({"주사위" : 0})
 
+        # ====================  [미션]  ====================
+        # 시즌미션 : 주사위주사위주사위주사위주사위
+        # 호출 횟수 초기화
+        dice_mission_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/주사위주사위주사위주사위주사위")
+        
+        mission_data = ref.get() or {}
+        mission_bool = mission_data.get('완료',0)
+        if not mission_bool:
+            ref.update({"호출" : 0})
+        # ====================  [미션]  ====================
+
         dice_ref.update({"배틀여부" : False})
 
         p.votes['배틀']['name']['challenger'] = ""

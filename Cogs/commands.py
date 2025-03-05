@@ -749,7 +749,7 @@ class ItemBuyButton(discord.ui.Button):
             "배율감소3": 500 if round(real_point * 0.1) < 500 else round(real_point * 0.1),
             "배율감소5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
             "주사위 초기화": 100,
-            "주사위배틀기회 추가": 100,
+            "주사위대결기회 추가": 100,
             "완전 익명화": 1000
         }
 
@@ -781,7 +781,7 @@ class ItemBuyButton(discord.ui.Button):
                     else:
                         give_item(interaction.user.name,self.item_name, num)
                         point_ref.update({"포인트" : point - (item_menu[self.item_name] * num)})
-                        await interaction.response.send_message(f"[{self.item_name}]아이템을 {num}개 구매했습니다!\n현재 포인트 : {real_point - (item_menu[self.item_name] * num)}P (-{item_menu[self.item_name] * num}P)",ephemeral=True)
+                        await interaction.response.send_message(f"[{self.item_name}] 아이템을 {num}개 구매했습니다!\n현재 포인트 : {real_point - (item_menu[self.item_name] * num)}P (-{item_menu[self.item_name] * num}P)",ephemeral=True)
                 except ValueError:
                     await interaction.response.send_message("올바른 숫자를 입력해주세요!", ephemeral=True)
 
@@ -807,7 +807,7 @@ class ItemSelect(discord.ui.Select):
             discord.SelectOption(label = "배율감소 0.3", value = "배율감소3", description = "배율을 0.3 감소시킵니다. 현재 포인트의 10% 혹은 500p로 구매 가능합니다."),
             discord.SelectOption(label = "배율감소 0.5", value = "배율감소5", description = "배율을 0.5 감소시킵니다. 현재 포인트의 20% 혹은 1000p로 구매 가능합니다."),
             discord.SelectOption(label = "주사위 초기화", value = "주사위 초기화", description = "현재 주사위 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다."),
-            discord.SelectOption(label = "주사위배틀기회 추가", value = "주사위배틀기회 추가", description = "주사위 배틀을 완료한 경우에 구매하면, 다시 한번 배틀을 신청할 수 있습니다. 100p로 구매 가능합니다."),
+            discord.SelectOption(label = "주사위대결기회 추가", value = "주사위대결기회 추가", description = "주사위 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다."),
             discord.SelectOption(label = "완전 익명화", value = "완전 익명화", description = "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다.")
         ]
         super().__init__(
@@ -836,7 +836,7 @@ class ItemSelect(discord.ui.Select):
             "배율감소3": 500 if round(real_point * 0.1) < 500 else round(real_point * 0.1),
             "배율감소5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
             "주사위 초기화": 100,
-            "주사위배틀기회 추가": 100,
+            "주사위대결기회 추가": 100,
             "완전 익명화": 1000
         }
 
@@ -848,7 +848,7 @@ class ItemSelect(discord.ui.Select):
             "배율감소3": "배율을 0.3 감소시킵니다. 현재 포인트의 10% 혹은 500p로 구매 가능합니다.",
             "배율감소5": "배율을 0.5 감소시킵니다. 현재 포인트의 20% 혹은 1000p로 구매 가능합니다.",
             "주사위 초기화": "현재 주사위 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다.",
-            "주사위배틀기회 추가": "주사위 배틀을 완료한 경우에 구매하면, 다시 한번 배틀을 신청할 수 있습니다. 100p로 구매 가능합니다.",
+            "주사위대결기회 추가": "주사위 배틀을 완료한 경우에 구매하면, 다시 한번 배틀을 신청할 수 있습니다. 100p로 구매 가능합니다.",
             "완전 익명화": "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다."
         }
         
@@ -3785,22 +3785,33 @@ class hello(commands.Cog):
             )
             embed.add_field(name="🎲 결과", value=f"**{dice_num}**", inline=False)
             embed.set_footer(text="내일 다시 도전할 수 있습니다!")
+            
             # ====================  [미션]  ====================
-            # 시즌미션 : 주사위주사위주사위주사위주사위
-            # 호출 횟수 초기화
+            # 시즌미션 : 주사위주사위주사위주사위주사위 
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
             current_predict_season = cur_predict_seasonref.get()
-            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/주사위주사위주사위주사위주사위")
+            ref_mission = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/주사위주사위주사위주사위주사위")
             
-            mission_bool = ref.get()['완료']
+            mission_data = ref_mission.get()
+            mission_bool = mission_data.get('완료',False)
             if not mission_bool:
-                ref.update({"호출" : 0})
+                mission_data = ref_mission.get() or {}
+                call_num = mission_data.get("호출", 0)
+                if call_num + 1 == 5:
+                    ref_mission.update({"완료": True})
+                    print(f"{nickname}의 [주사위주사위주사위주사위주사위] 미션 완료")
+                    await mission_notice(interaction.client, nickname, "주사위주사위주사위주사위주사위","에픽")
+                    ref_mission.update({"호출" : 0})
+                else:
+                    ref_mission.update({"호출" : call_num + 1})
             # ====================  [미션]  ====================
+
             # 일일미션 : 주사위 굴리기
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
             current_predict_season = cur_predict_seasonref.get()
             ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/주사위 굴리기")
-            mission_bool = ref.get()['완료']
+            mission_data = ref.get() or {}
+            mission_bool = mission_data.get('완료',0)
             if not mission_bool:
                 ref.update({"완료": True})
                 print(f"{nickname}의 [주사위 굴리기] 미션 완료")
@@ -3812,28 +3823,46 @@ class hello(commands.Cog):
             if dice_num == 100:
                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                 current_predict_season = cur_predict_seasonref.get()
-                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/정점")
-                mission_bool = ref.get()['완료']
+                ref_mission = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/정점")
+                mission_data = ref_mission.get() or {}
+                mission_bool = mission_data.get('완료',0)
                 if not mission_bool:
-                    ref.update({"완료": True})
+                    ref_mission.update({"완료": True})
                     print(f"{nickname}의 [정점] 미션 완료")
                     await mission_notice(interaction.client, nickname, "정점","에픽")
             # ====================  [미션]  ====================
-        else: 
-            embed = discord.Embed(
-                title="🎲 주사위는 하루에 한 번!",
-                description=f"{nickname}님은 이미 주사위를 굴렸습니다.",
-                color=discord.Color.red()
-            )
-            embed.set_footer(text="내일 다시 도전할 수 있습니다!")
+        else:
+            ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+            item_data = ref.get()
+            dice_refresh = item_data.get('주사위 초기화', 0)
+            if dice_refresh:
+                ref_item.set({'주사위 초기화': dice_refresh - 1})
+                dice_num = random.randint(1, 100)
+                ref.set(dice_num)  # 주사위 값 저장
+                embed = discord.Embed(
+                    title="🎲 주사위 굴리기!",
+                    description=f"{nickname}님이 아이템을 사용하여 주사위를 다시 굴렸습니다!",
+                    color=discord.Color.blue()
+                )
+            else:
+                embed.add_field(name="🎲 결과", value=f"**{dice_num}**", inline=False)
+                embed.set_footer(text="내일 다시 도전할 수 있습니다!")
+
+                embed = discord.Embed(
+                    title="🎲 주사위는 하루에 한 번!",
+                    description=f"{nickname}님은 이미 주사위를 굴렸습니다.",
+                    color=discord.Color.red()
+                )
+                embed.set_footer(text="내일 다시 도전할 수 있습니다!")
 
             # ====================  [미션]  ====================
             # 시즌미션 : 주사위주사위주사위주사위주사위 
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
             current_predict_season = cur_predict_seasonref.get()
-            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/주사위주사위주사위주사위주사위")
+            ref_mission = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/주사위주사위주사위주사위주사위")
             
-            mission_bool = ref.get()['완료']
+            mission_data = ref_mission.get()
+            mission_bool = mission_data.get('완료',False)
             if not mission_bool:
                 mission_data = ref.get()
                 call_num = mission_data.get("호출", 0)
@@ -3918,9 +3947,19 @@ class hello(commands.Cog):
         battled = battle_data.get("배틀여부",False)
 
         if battled:
-            warnembed = discord.Embed(title="실패",color = discord.Color.red())
-            warnembed.add_field(name="",value="하루에 한번만 대결 신청할 수 있습니다! ❌")
-            await interaction.response.send_message("",embed = warnembed)
+            item_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}/아이템")
+            battle_refresh = item_ref.get("주사위대결기회 추가", 0)
+            if battle_refresh:
+                item_ref.update({"주사위대결기회 추가": battle_refresh - 1})
+                userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
+                userembed.add_field(name="",value=f"{challenger}님이 아이템을 사용하여 주사위 대결을 추가로 신청했습니다!", inline=False)
+                channel = interaction.client.get_channel(int(CHANNEL_ID))
+                await channel.send(embed=userembed)
+            else:
+
+                warnembed = discord.Embed(title="실패",color = discord.Color.red())
+                warnembed.add_field(name="",value="하루에 한번만 대결 신청할 수 있습니다! ❌")
+                await interaction.response.send_message("",embed = warnembed)
             return
 
         ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}')
