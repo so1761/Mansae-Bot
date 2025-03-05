@@ -4644,7 +4644,7 @@ class hello(commands.Cog):
                 modal = BettingModal(user=interaction.user, challenger = self.challenger, opponent = self.opponent, game_point = self.game_point, game = self, message = self.message)
                 await interaction.response.send_modal(modal)
 
-        game = BaseballGameView(challenger_m, 상대, game_point).start_game(channel)
+        game = await BaseballGameView(challenger_m, 상대, game_point).start_game(channel)
 
         if game.winner:
             if game.winner.name == challenger:
@@ -4655,9 +4655,6 @@ class hello(commands.Cog):
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
         
-
-
-
 
 
         # 게임 결과 발표 후, 버튼 비활성화
