@@ -806,9 +806,6 @@ class ItemBuyButton(discord.ui.Button):
 
         await interaction.response.send_modal(NumberInputModal(self.item_name))
         self.disabled = True
-        shop_embed = discord.Embed(title = '구매할 아이템을 선택하세요', color = 0xfffff)
-        shop_embed.add_field(name = f'{interaction.user.name}의 현재 포인트', value = f'**{point - bettingPoint}P** (베팅포인트 **{bettingPoint}P** 제외)', inline = False)
-        await interaction.response.edit_message(embed = shop_embed, view = self.view)
 
     def update_label(self):
         if self.item_name:
