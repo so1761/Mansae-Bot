@@ -226,6 +226,8 @@ class DuelRequestView(discord.ui.View):
         battleembed = discord.Embed(title="요청 만료!", color=discord.Color.blue())
         battleembed.add_field(name="", value="대결 요청이 만료되었습니다. ⏰")
         await self.message.edit(embed=battleembed,view = self)
+        battle_ref = db.reference("승부예측/대결진행여부")
+        battle_ref.set(False)
         self.event.set()
 
     @discord.ui.button(label="수락", style=discord.ButtonStyle.green)
@@ -360,7 +362,6 @@ class DiceRevealView(discord.ui.View):
             print(f"Game point for {user.display_name} updated: {self.game_point[user.name]}")
     
     async def announce_winner(self):
-
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
         
