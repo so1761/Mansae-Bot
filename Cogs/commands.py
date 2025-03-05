@@ -3228,6 +3228,7 @@ class hello(commands.Cog):
                 userembed.add_field(name="",value=f"{이름}님이 예측에 실패하여 베팅포인트를 잃었습니다! (베팅 포인트:-{베팅금액})(환급 포인트: {환급금액})", inline=False)
                 point_ref.update({"포인트": point - 베팅금액 + 환급금액})
 
+            await interaction.response.send_message(embed=userembed)
         else:
             print(f"{interaction.user.name}의 패배 명령어 요청")
             interaction.response.send_message("권한이 없습니다",ephemeral=True)
