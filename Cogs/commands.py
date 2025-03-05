@@ -343,12 +343,20 @@ class DiceRevealView(discord.ui.View):
             await interaction.response.send_message(content = "", embed = userembed, ephemeral = True)
             return
 
-        self.revealed[interaction.user.name] = True
+        if not self.revealed[interaction.user.name]:
+            self.revealed[interaction.user.name] = True
 
-        userembed = discord.Embed(title = "준비 완료!",color = discord.Color.red())
-        userembed.add_field(name="",value=f"{interaction.user.display_name}님이 결과 발표 준비를 완료했습니다! 🎲")
+            userembed = discord.Embed(title = "준비 완료!",color = discord.Color.red())
+            userembed.add_field(name="",value=f"{interaction.user.display_name}님이 결과 발표 준비를 완료했습니다! 🎲")
 
-        await interaction.response.send_message(embed = userembed)
+            await interaction.response.send_message(embed = userembed)
+        else:
+            self.revealed[interaction.user.name] = False
+
+            userembed = discord.Embed(title = "준비 취소!",color = discord.Color.red())
+            userembed.add_field(name="",value=f"{interaction.user.display_name}님이 결과 발표 준비를 취소했습니다! 🎲")
+
+            await interaction.response.send_message(embed = userembed)
 
         if all(self.revealed.values()):
             if self.keep_alive_task: 
