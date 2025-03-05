@@ -4580,7 +4580,7 @@ class hello(commands.Cog):
                     embed.add_field(name="⏳ 턴 자동 변경!", value="3분 동안 입력이 없어 턴이 변경되었습니다.", inline=False)
                 embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
                 embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
-                
+
                 await self.message.edit(embed=embed, view=self)
                 await self.start_turn_timer()
 
@@ -4604,6 +4604,7 @@ class hello(commands.Cog):
                     embed.add_field(name="결과", value=result, inline=False)
 
                 return embed
+                
             async def update_game_point(self, user, bet_amount):
                 # 게임 포인트를 외부에서 수정
                 if user.name in self.game_point:
