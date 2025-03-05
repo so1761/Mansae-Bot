@@ -4030,7 +4030,7 @@ class hello(commands.Cog):
         item_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}/아이템")
         item_data = item_ref.get() or {} 
         battle_refresh = item_data.get("주사위대결기회 추가", 0)
-        if battle_refresh:
+        if battle_refresh and battled:
             item_ref.update({"주사위대결기회 추가": battle_refresh - 1})
         p.battle_winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label=f"{challenger} 승리")
         losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label=f"{상대} 승리")
