@@ -4544,8 +4544,10 @@ class hello(commands.Cog):
                 self.message = None
                 self.turn_timer = None
                 self.game_point = game_point
-                self.challenger = challenger
-                self.opponent = opponent
+                self.challenger = challenger.name
+                self.opponent = opponent.name
+                self.challenger_m = challenger
+                self.opponent_m = opponent
                 self.winner = None
 
             def generate_numbers(self):
