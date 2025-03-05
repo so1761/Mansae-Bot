@@ -452,8 +452,6 @@ class DiceRevealView(discord.ui.View):
                 point = predict_data["포인트"]
                 bettingPoint = predict_data["베팅포인트"]
 
-                prediction_value = "승리" if result else "패배"
-                prediction_opposite_value = "패배" if result else "승리"
                 # 예측 내역 변동 데이터
                 change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
                 change_ref.update({
@@ -596,7 +594,8 @@ class DiceRevealView(discord.ui.View):
                         await mission_notice(loser['name'],"이카루스의 추락","에픽")
                 # ====================  [미션]  ====================
 
-            await self.message.channel.send(embed = userembed)
+            channel = self.bot.get_channel(int(CHANNEL_ID)) #tts 채널
+            await channel.send(embed = userembed)
             p.votes['배틀']['prediction']['win'].clear()
             p.votes['배틀']['prediction']['lose'].clear()
             
@@ -687,15 +686,16 @@ class DiceRevealView(discord.ui.View):
                 point_ref2.update({"포인트": point2 - original_challenger_point + remained_point})
                 point_ref2.update({"베팅포인트": bettingpoint2 - original_challenger_point})
                 
-
-            await self.message.channel.send(embed = userembed)
+            channel = self.bot.get_channel(int(CHANNEL_ID)) #tts 채널
+            await channel.send(embed = userembed)
 
             p.votes['배틀']['name']['challenger'] = ""
             p.votes['배틀']['name']['상대'] = ""
         else:
             userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
             userembed.add_field(name="게임 종료", value=f"배틀이 종료되었습니다!\n무승부!🤝\n")
-            await self.message.channel.send(embed=userembed)
+            channel = self.bot.get_channel(int(CHANNEL_ID)) #tts 채널
+            await channel.send(embed = userembed)
 
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
             current_predict_season = cur_predict_seasonref.get()
@@ -4221,9 +4221,13 @@ class hello(commands.Cog):
         diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲", inline=False)
         diceview_embed.add_field(name = f"{challenger}", value = f"{game_point[challenger]}포인트", inline=True)
         diceview_embed.add_field(name = f"{상대}", value = f"{game_point[상대.name]}포인트", inline=True)
-            
+
+        thread = await interaction.channel.create_thread(
+        name=f"{challenger_m.display_name} vs {상대.display_name} 주사위 대결",
+        type=discord.ChannelType.public_thread
+        )    
         dice_view = DiceRevealView(challenger_m, 상대, dice_results, game_point)
-        dice_view.message = await channel.send(content = "", view = dice_view, embed = diceview_embed)
+        dice_view.message = await thread.send(content = "", view = dice_view, embed = diceview_embed)
         await dice_view.start_timer()
 
     @app_commands.command(name="경고", description="서버 멤버에게 경고를 부여합니다.")
@@ -4552,6 +4556,7 @@ class hello(commands.Cog):
                 self.opponent = opponent.name
                 self.challenger_m = challenger
                 self.opponent_m = opponent
+                self.channel = None
 
             def generate_numbers(self):
                 return random.sample(range(10), 3)
@@ -4563,6 +4568,7 @@ class hello(commands.Cog):
                 embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
                 embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
                 self.message = await channel.send(embed=embed, view=self)
+                self.channel = channel
                 await self.start_turn_timer()
 
             async def start_turn_timer(self):
@@ -4609,7 +4615,7 @@ class hello(commands.Cog):
                     embed.color = discord.Color.gold()
                     embed.add_field(name="🏆 승리!", value=f"{player.mention}님이 **정답을 맞췄습니다!** 🎉")
 
-                    await interaction.channel.send(embed=embed)
+                    await self.channel.send(embed=embed)
 
                     cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                     current_predict_season = cur_predict_seasonref.get()
@@ -4638,7 +4644,7 @@ class hello(commands.Cog):
 
                     if baseball_winner:
                         userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                        userembed.add_field(name="게임 종료", value=f"주사위 대결이 종료되었습니다!\n {baseball_winner.mention}의 승리!")
+                        userembed.add_field(name="게임 종료", value=f"숫자야구 대결이 종료되었습니다!\n {baseball_winner.mention}의 승리!")
 
                         winners = p.votes['배틀']['prediction']['win'] if result else p.votes['배틀']['prediction']['lose']
                         losers = p.votes['배틀']['prediction']['lose'] if result else p.votes['배틀']['prediction']['win']
