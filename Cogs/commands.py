@@ -325,7 +325,7 @@ class DiceRevealView(discord.ui.View):
             return
 
         # 모달 생성
-        modal = BettingModal(user=interaction.user, challenger = self.challenger, opponent = self.opponent, game_point = self.game_point, game = self, message = self.message, what = "")
+        modal = BettingModal(user=interaction.user, challenger = self.challenger, opponent = self.opponent, game_point = self.game_point, game = self, message = self.message, what = "주사위")
         await interaction.response.send_modal(modal)
 
     @discord.ui.button(label="포기", style=discord.ButtonStyle.danger)
@@ -4611,8 +4611,8 @@ class hello(commands.Cog):
                     embed.color = discord.Color.gold()
                     embed.add_field(name="🏆 승리!", value=f"{player.mention}님이 **정답을 맞췄습니다!** 🎉")
  
-                    battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}/숫자야구배틀여부")
-                    battle_data = battlere
+                    battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}/숫자야구배틀여부")
+                    battle_data = battleref.get()
                     battled = battle_data.get("숫자야구배틀여부",False)
 
                     self.turn_timer.cancel() # 턴 타이머 종료
@@ -4977,7 +4977,7 @@ class hello(commands.Cog):
                     return
 
                 # 모달 생성
-                modal = BettingModal(user=interaction.user, challenger = self.challenger, opponent = self.opponent, game_point = self.game_point, game = self, message = self.message)
+                modal = BettingModal(user=interaction.user, challenger = self.challenger, opponent = self.opponent, game_point = self.game_point, game = self, message = self.message, what = "숫자야구")
                 await interaction.response.send_modal(modal)
 
         await BaseballGameView(challenger_m, 상대, game_point).start_game(channel)
