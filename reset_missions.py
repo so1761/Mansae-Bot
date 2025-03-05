@@ -94,6 +94,7 @@ if users:
         # ====================  [미션]  ====================
 
         dice_ref.update({"배틀여부" : False})
+        dice_ref.update({"숫자야구배틀여부" : False})
 
         p.votes['배틀']['name']['challenger'] = ""
         p.votes['배틀']['name']['상대'] = ""
