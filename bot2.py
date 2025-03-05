@@ -922,7 +922,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         current_predict_season = cur_predict_seasonref.get()
                         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner}/미션/시즌미션/금지된 숫자")
 
-                        mission_bool = ref.get()['완료']
+                        mission_data = ref.get()
+                        mission_bool = mission_data.get('완료',False)
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{winner}의 [금지된 숫자] 미션 완료")

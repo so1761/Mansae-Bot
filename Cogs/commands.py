@@ -742,12 +742,12 @@ class ItemBuyButton(discord.ui.Button):
         real_point = point - bettingPoint
 
         item_menu = {
-            "배율증가 0.1": 250 if round(real_point * 0.05) < 250 else round(real_point * 0.05),
-            "배율증가 0.3": 500 if round(real_point * 0.1) < 500 else round(real_point * 0.1),
-            "배율증가 0.5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
-            "배율감소 0.1": 250 if round(real_point * 0.05) < 250 else round(real_point * 0.05),
-            "배율감소 0.3": 500 if round(real_point * 0.1) < 500 else round(real_point * 0.1),
-            "배율감소 0.5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
+            "배율증가1": 250 if round(real_point * 0.05) < 250 else round(real_point * 0.05),
+            "배율증가3": 500 if round(real_point * 0.1) < 500 else round(real_point * 0.1),
+            "배율증가5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
+            "배율감소1": 250 if round(real_point * 0.05) < 250 else round(real_point * 0.05),
+            "배율감소3": 500 if round(real_point * 0.1) < 500 else round(real_point * 0.1),
+            "배율감소5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
             "주사위 초기화": 100,
             "주사위배틀기회 추가": 100,
             "완전 익명화": 1000
@@ -800,12 +800,12 @@ class ItemBuyButton(discord.ui.Button):
 class ItemSelect(discord.ui.Select):
     def __init__(self):
         options = [
-            discord.SelectOption(label = "배율증가 0.1", value = "배율증가 0.1", description = "배율을 0.1 증가시킵니다. 현재 포인트의 5% 혹은 250p로 구매 가능합니다."),
-            discord.SelectOption(label = "배율증가 0.3", value = "배율증가 0.3", description = "배율을 0.3 증가시킵니다. 현재 포인트의 10% 혹은 500p로 구매 가능합니다."),
-            discord.SelectOption(label = "배율증가 0.5", value = "배율증가 0.5", description = "배율을 0.5 증가시킵니다. 현재 포인트의 20% 혹은 1000p로 구매 가능합니다."),
-            discord.SelectOption(label = "배율감소 0.1", value = "배율감소 0.1", description = "배율을 0.1 감소시킵니다. 현재 포인트의 5% 혹은 250p로 구매 가능합니다."),
-            discord.SelectOption(label = "배율감소 0.3", value = "배율감소 0.3", description = "배율을 0.3 감소시킵니다. 현재 포인트의 10% 혹은 500p로 구매 가능합니다."),
-            discord.SelectOption(label = "배율감소 0.5", value = "배율감소 0.5", description = "배율을 0.5 감소시킵니다. 현재 포인트의 20% 혹은 1000p로 구매 가능합니다."),
+            discord.SelectOption(label = "배율증가 0.1", value = "배율증가1", description = "배율을 0.1 증가시킵니다. 현재 포인트의 5% 혹은 250p로 구매 가능합니다."),
+            discord.SelectOption(label = "배율증가 0.3", value = "배율증가3", description = "배율을 0.3 증가시킵니다. 현재 포인트의 10% 혹은 500p로 구매 가능합니다."),
+            discord.SelectOption(label = "배율증가 0.5", value = "배율증가5", description = "배율을 0.5 증가시킵니다. 현재 포인트의 20% 혹은 1000p로 구매 가능합니다."),
+            discord.SelectOption(label = "배율감소 0.1", value = "배율감소1", description = "배율을 0.1 감소시킵니다. 현재 포인트의 5% 혹은 250p로 구매 가능합니다."),
+            discord.SelectOption(label = "배율감소 0.3", value = "배율감소3", description = "배율을 0.3 감소시킵니다. 현재 포인트의 10% 혹은 500p로 구매 가능합니다."),
+            discord.SelectOption(label = "배율감소 0.5", value = "배율감소5", description = "배율을 0.5 감소시킵니다. 현재 포인트의 20% 혹은 1000p로 구매 가능합니다."),
             discord.SelectOption(label = "주사위 초기화", value = "주사위 초기화", description = "현재 주사위 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다."),
             discord.SelectOption(label = "주사위배틀기회 추가", value = "주사위배틀기회 추가", description = "주사위 배틀을 완료한 경우에 구매하면, 다시 한번 배틀을 신청할 수 있습니다. 100p로 구매 가능합니다."),
             discord.SelectOption(label = "완전 익명화", value = "완전 익명화", description = "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다.")
@@ -829,24 +829,24 @@ class ItemSelect(discord.ui.Select):
 
         real_point = point - bettingPoint
         item_menu = {
-            "배율증가 0.1": 250 if round(real_point * 0.05) < 250 else round(real_point * 0.05),
-            "배율증가 0.3": 500 if round(real_point * 0.1) < 500 else round(real_point * 0.1),
-            "배율증가 0.5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
-            "배율감소 0.1": 250 if round(real_point * 0.05) < 250 else round(real_point * 0.05),
-            "배율감소 0.3": 500 if round(real_point * 0.1) < 500 else round(real_point * 0.1),
-            "배율감소 0.5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
+            "배율증가1": 250 if round(real_point * 0.05) < 250 else round(real_point * 0.05),
+            "배율증가3": 500 if round(real_point * 0.1) < 500 else round(real_point * 0.1),
+            "배율증가5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
+            "배율감소1": 250 if round(real_point * 0.05) < 250 else round(real_point * 0.05),
+            "배율감소3": 500 if round(real_point * 0.1) < 500 else round(real_point * 0.1),
+            "배율감소5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
             "주사위 초기화": 100,
             "주사위배틀기회 추가": 100,
             "완전 익명화": 1000
         }
 
         description = {
-            "배율증가 0.1": "배율을 0.1 증가시킵니다. 현재 포인트의 5% 혹은 250p로 구매 가능합니다.",
-            "배율증가 0.3": "배율을 0.3 증가시킵니다. 현재 포인트의 10% 혹은 500p로 구매 가능합니다.",
-            "배율증가 0.5": "배율을 0.5 증가시킵니다. 현재 포인트의 20% 혹은 1000p로 구매 가능합니다.",
-            "배율감소 0.1": "배율을 0.1 감소시킵니다. 현재 포인트의 5% 혹은 250p로 구매 가능합니다.",
-            "배율감소 0.3": "배율을 0.3 감소시킵니다. 현재 포인트의 10% 혹은 500p로 구매 가능합니다.",
-            "배율감소 0.5": "배율을 0.5 감소시킵니다. 현재 포인트의 20% 혹은 1000p로 구매 가능합니다.",
+            "배율증가1": "배율을 0.1 증가시킵니다. 현재 포인트의 5% 혹은 250p로 구매 가능합니다.",
+            "배율증가3": "배율을 0.3 증가시킵니다. 현재 포인트의 10% 혹은 500p로 구매 가능합니다.",
+            "배율증가5": "배율을 0.5 증가시킵니다. 현재 포인트의 20% 혹은 1000p로 구매 가능합니다.",
+            "배율감소1": "배율을 0.1 감소시킵니다. 현재 포인트의 5% 혹은 250p로 구매 가능합니다.",
+            "배율감소3": "배율을 0.3 감소시킵니다. 현재 포인트의 10% 혹은 500p로 구매 가능합니다.",
+            "배율감소5": "배율을 0.5 감소시킵니다. 현재 포인트의 20% 혹은 1000p로 구매 가능합니다.",
             "주사위 초기화": "현재 주사위 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다.",
             "주사위배틀기회 추가": "주사위 배틀을 완료한 경우에 구매하면, 다시 한번 배틀을 신청할 수 있습니다. 100p로 구매 가능합니다.",
             "완전 익명화": "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다."
