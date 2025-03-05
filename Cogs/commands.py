@@ -3866,10 +3866,9 @@ class hello(commands.Cog):
                     description=f"{nickname}님이 아이템을 사용하여 주사위를 다시 굴렸습니다!",
                     color=discord.Color.blue()
                 )
-            else:
                 embed.add_field(name="🎲 결과", value=f"**{dice_num}**", inline=False)
                 embed.set_footer(text="내일 다시 도전할 수 있습니다!")
-
+            else:
                 embed = discord.Embed(
                     title="🎲 주사위는 하루에 한 번!",
                     description=f"{nickname}님은 이미 주사위를 굴렸습니다.",
