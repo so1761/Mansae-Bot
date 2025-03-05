@@ -4500,9 +4500,6 @@ class hello(commands.Cog):
             p.battle_event.wait()  # 이 작업은 event가 set될 때까지 대기
         )
 
-        def generate_numbers():
-            return random.sample(range(10), 3) 
-
         game_point = {
             challenger : 100, 
             상대.name : 100
@@ -4604,7 +4601,11 @@ class hello(commands.Cog):
                 strikes = sum(1 for i in range(3) if guess[i] == answer[i])
                 balls = sum(1 for i in range(3) if guess[i] in answer) - strikes
                 
-                embed = discord.Embed(title="🎲 숫자 맞추기 결과", color=discord.Color.orange())
+                player = self.players[self.turn]
+                if player.name == self.challenger:
+                    embed = discord.Embed(title=f"{player}의 숫자 맞추기 결과", color=discord.Color.red())
+                else:
+                    embed = discord.Embed(title=f"{player}의 숫자 맞추기 결과", color=discord.Color.blue())
                 embed.add_field(name="입력값", value="".join(map(str, guess)), inline=False)
                 
                 if strikes == 3:
@@ -4615,8 +4616,7 @@ class hello(commands.Cog):
                     current_predict_season = cur_predict_seasonref.get()
 
                     battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}/숫자야구배틀여부")
-                    battle_data = battleref.get()
-                    battled = battle_data.get("숫자야구배틀여부",False)
+                    battleref.set(True)
 
                     self.turn_timer.cancel() # 턴 타이머 종료
                     embed = discord.Embed(title="⚾ 숫자야구 종료!", color=discord.Color.green())
@@ -4672,8 +4672,6 @@ class hello(commands.Cog):
                             point = predict_data["포인트"]
                             bettingPoint = predict_data["베팅포인트"]
 
-                            prediction_value = "승리" if result else "패배"
-                            prediction_opposite_value = "패배" if result else "승리"
                             # 예측 내역 변동 데이터
                             change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
                             change_ref.update({
@@ -4816,7 +4814,8 @@ class hello(commands.Cog):
                                     await mission_notice(loser['name'],"이카루스의 추락","에픽")
                             # ====================  [미션]  ====================
 
-                        await self.message.channel.send(embed = userembed)
+                        channel = interaction.client.get_channel(CHANNEL_ID) #tts 채널
+                        await channel.send(embed = userembed)
                         p.votes['배틀']['prediction']['win'].clear()
                         p.votes['배틀']['prediction']['lose'].clear()
                         
@@ -4898,15 +4897,16 @@ class hello(commands.Cog):
                             point_ref2.update({"포인트": point2 - original_challenger_point + remained_point})
                             point_ref2.update({"베팅포인트": bettingpoint2 - original_challenger_point})
                             
-
-                        await self.message.channel.send(embed = userembed)
+                        channel = interaction.client.get_channel(CHANNEL_ID) #tts 채널
+                        await channel.send(embed = userembed)
 
                         p.votes['배틀']['name']['challenger'] = ""
                         p.votes['배틀']['name']['상대'] = ""
                     else:
                         userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
                         userembed.add_field(name="게임 종료", value=f"배틀이 종료되었습니다!\n무승부!🤝\n")
-                        await self.message.channel.send(embed=userembed)
+                        channel = interaction.client.get_channel(CHANNEL_ID) #tts 채널
+                        await channel.send(embed=userembed)
 
                         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
                         current_predict_season = cur_predict_seasonref.get()
@@ -4983,7 +4983,12 @@ class hello(commands.Cog):
                 modal = BettingModal(user=interaction.user, challenger = self.challenger, opponent = self.opponent, game_point = self.game_point, game = self, message = self.message, what = "숫자야구")
                 await interaction.response.send_modal(modal)
 
-        await BaseballGameView(challenger_m, 상대, game_point).start_game(channel)
+        thread = await interaction.channel.create_thread(
+        name=f"{challenger} vs {상대.name} 숫자야구 대결",
+        type=discord.ChannelType.public_thread
+        )
+        await interaction.response.send_message(f"{challenger_m.mention} vs {상대.mention}의 숫자야구 대결이 (<{thread.jump_url}>)에서 시작되었습니다!")
+        await BaseballGameView(challenger_m, 상대, game_point).start_game(thread)
 
         
         
