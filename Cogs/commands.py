@@ -4987,7 +4987,6 @@ class hello(commands.Cog):
         name=f"{challenger} vs {상대.name} 숫자야구 대결",
         type=discord.ChannelType.public_thread
         )
-        await interaction.response.send_message(f"{challenger_m.mention} vs {상대.mention}의 숫자야구 대결이 (<{thread.jump_url}>)에서 시작되었습니다!")
         await BaseballGameView(challenger_m, 상대, game_point).start_game(thread)
 
         
