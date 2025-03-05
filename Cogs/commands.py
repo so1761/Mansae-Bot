@@ -4966,8 +4966,6 @@ class hello(commands.Cog):
 
             @discord.ui.button(label="숫자 맞추기", style=discord.ButtonStyle.success)
             async def guess_numbers(self, interaction: discord.Interaction, button: discord.ui.Button):
-                new_view = BaseballGameView()  # 새 View 생성
-                await interaction.message.edit(view=new_view)  # 기존 메시지 업데이트
                 """모달을 열어 숫자 입력 받기"""
                 if interaction.user != self.players[self.turn]:
                     await interaction.response.send_message("🚫 **지금은 상대의 턴입니다!**", ephemeral=True)
