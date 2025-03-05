@@ -179,7 +179,8 @@ class BettingModal(Modal):
         if not bet_amount.isdigit() or int(bet_amount) <= 0:
             await interaction.response.send_message(content="유효한 포인트를 입력해주세요!", ephemeral=True)
             return
-
+        
+        await interaction.response.defer()
         bet_amount = int(bet_amount)
 
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
@@ -190,7 +191,7 @@ class BettingModal(Modal):
         info = ref.get()
 
         if info['포인트'] - bettingPoint < bet_amount:
-            await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
+            await interaction.followup.send(f"포인트가 부족합니다!\n현재 포인트: {info['포인트'] - bettingPoint}(베팅 금액 {bettingPoint}P) 제외",ephemeral=True)
         else:
             # 포인트 수정
             await self.game.update_game_point(self.user, bet_amount)
@@ -199,7 +200,7 @@ class BettingModal(Modal):
             # 베팅한 포인트 처리
             userembed = discord.Embed(title="베팅 완료!", color=discord.Color.green())
             userembed.add_field(name="", value=f"{self.user.display_name}님이 {bet_amount} 포인트를 베팅했습니다! 🎲")
-            await interaction.response.send_message(embed=userembed)
+            await interaction.followup.send(embed=userembed)
 
         if self.what == "주사위":
             diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
@@ -209,7 +210,6 @@ class BettingModal(Modal):
             await self.message.edit(embed = diceview_embed)
         elif self.what == "숫자야구":
             player = self.game.players[self.game.turn]
-
             embed = discord.Embed(title="⚾ 숫자야구 진행 중!", color=discord.Color.green())
             embed.add_field(name="턴", value=f"🎯 {player.mention}님의 턴입니다!", inline=False)
             embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
@@ -324,7 +324,7 @@ class DiceRevealView(discord.ui.View):
             userembed.add_field(name="",value="참가자만 베팅할 수 있습니다!")
             await interaction.response.send_message(content = "", embed = userembed, ephemeral = True)
             return
-
+        
         # 모달 생성
         modal = BettingModal(user=interaction.user, challenger = self.challenger, opponent = self.opponent, game_point = self.game_point, game = self, message = self.message, what = "주사위")
         await interaction.response.send_modal(modal)
@@ -343,7 +343,9 @@ class DiceRevealView(discord.ui.View):
         await interaction.response.send_message(embed = userembed)
 
         self.giveup[interaction.user.name] = True
-        
+
+        if self.keep_alive_task: 
+                self.keep_alive_task.cancel()
         await self.announce_winner()
 
     @discord.ui.button(label="준비 완료", style=discord.ButtonStyle.green)
@@ -2955,7 +2957,7 @@ class hello(commands.Cog):
                                 if not mission_bool:
                                     bet_num = shadow_data.get(f"{이름}베팅", 0)
                                     if bet_num + 1 == 5:
-                                        ref.update({"완료": True})
+                                        shadow_ref.update({"완료": True})
                                         print(f"{interaction.user.name}의 [다중 그림자분신술] 미션 완료")
                                         await mission_notice(interaction.client,interaction.user.name,"다중 그림자분신술","에픽")
                                     else:
@@ -3849,7 +3851,7 @@ class hello(commands.Cog):
             # ====================  [미션]  ====================
         else:
             ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
-            item_data = ref.get()
+            item_data = ref_item.get()
             dice_refresh = item_data.get('주사위 초기화', 0)
             if dice_refresh:
                 ref_item.set({'주사위 초기화': dice_refresh - 1})
