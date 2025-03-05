@@ -228,7 +228,7 @@ class DuelRequestView(discord.ui.View):
         self.event = asyncio.Event()
 
     async def start_timer(self):
-        await asyncio.sleep(180)
+        await asyncio.sleep(60)
         if not self.request_accepted:
             for child in self.children:
                 child.disabled = True
