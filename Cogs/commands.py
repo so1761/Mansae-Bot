@@ -3964,7 +3964,8 @@ class hello(commands.Cog):
 
         if battled:
             item_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}/아이템")
-            battle_refresh = item_ref.get("주사위대결기회 추가", 0)
+            item_data = item_ref.get() or {} 
+            battle_refresh = item_data.get("주사위대결기회 추가", 0)
             if battle_refresh:
                 item_ref.update({"주사위대결기회 추가": battle_refresh - 1})
                 userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
