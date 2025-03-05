@@ -2953,7 +2953,7 @@ class hello(commands.Cog):
                             
                                 mission_bool = shadow_data.get('완료',False)
                                 if not mission_bool:
-                                    bet_num = shadow_data.get("{이름}베팅", 0)
+                                    bet_num = shadow_data.get(f"{이름}베팅", 0)
                                     if bet_num + 1 == 5:
                                         ref.update({"완료": True})
                                         print(f"{interaction.user.name}의 [다중 그림자분신술] 미션 완료")
