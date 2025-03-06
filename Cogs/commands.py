@@ -1011,8 +1011,8 @@ def update_prediction_embed(p, challenger, 상대):
     winner_total_point = sum(winner["points"] for winner in p.votes['배틀']['prediction']["win"])
     loser_total_point = sum(loser["points"] for loser in p.votes['배틀']['prediction']["lose"])
     prediction_embed.add_field(name="총 포인트", value=f"{challenger.name}: {winner_total_point}포인트 | {상대.name}: {loser_total_point}포인트", inline=False)
-    prediction_embed.add_field(name=f"{challenger.mention} 승리 예측", value=win_predictions, inline=True)
-    prediction_embed.add_field(name=f"{상대.mention} 승리 예측", value=lose_predictions, inline=True)
+    prediction_embed.add_field(name=f"{challenger.display_name} 승리 예측", value=win_predictions, inline=True)
+    prediction_embed.add_field(name=f"{상대.display_name} 승리 예측", value=lose_predictions, inline=True)
 
     return prediction_embed
 
@@ -4596,8 +4596,7 @@ class hello(commands.Cog):
                 embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
                 embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
 
-                new_view = BaseballGameView(self,self.opponent_m, self.game_point)
-                await self.message.edit(embed=embed, view=new_view)
+                await self.message.edit(embed=embed, view=self)
                 await self.start_turn_timer()
 
             async def check_guess(self, player, guess):
