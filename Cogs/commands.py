@@ -769,7 +769,7 @@ class ItemBuyButton(discord.ui.Button):
             "배율감소1": 250 if round(real_point * 0.05) < 250 else round(real_point * 0.05),
             "배율감소3": 500 if round(real_point * 0.1) < 500 else round(real_point * 0.1),
             "배율감소5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
-            "주사위 초기화": 100,
+            "주사위 초기화": 20,
             "주사위대결기회 추가": 100,
             "숫자야구대결기회 추가": 100,
             "완전 익명화": 1000
