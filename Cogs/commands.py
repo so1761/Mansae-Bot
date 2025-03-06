@@ -4536,10 +4536,11 @@ class hello(commands.Cog):
                     return
 
                 guess = list(map(int, guess))
-                result = await self.game.check_guess(self.player, guess)
+                result, end = await self.game.check_guess(self.player, guess)
 
                 await interaction.response.send_message(embed=result)
-                await self.game.next_turn()  # 턴 넘기기
+                if not end:
+                    await self.game.next_turn()  # 턴 넘기기
 
         class BaseballGameView(discord.ui.View):
             def __init__(self, challenger, opponent, game_point):
@@ -4580,7 +4581,10 @@ class hello(commands.Cog):
                     await asyncio.sleep(120)  # 2분 대기
                     if self.turn_timer.done():  # 취소되었는지 확인
                         return
-                    await self.next_turn(timeout=True)
+                    embed = discord.Embed(title=f"턴 변경!", color=discord.Color.light_gray())
+                    embed.add_field(name = "", value = "2분 동안 입력이 없어 턴이 변경되었습니다.", inline = False)
+                    await self.channel.send(embed=embed)
+                    await self.next_turn(timeout=True)         
                 except asyncio.CancelledError:
                     pass
 
@@ -4603,7 +4607,8 @@ class hello(commands.Cog):
                 """입력된 숫자를 비교하고 결과를 반환"""
                 opponent = self.players[(self.players.index(player) + 1) % 2]  # 상대 플레이어
                 answer = self.numbers[opponent.name]
-                
+                end = False
+
                 strikes = sum(1 for i in range(3) if guess[i] == answer[i])
                 balls = sum(1 for i in range(3) if guess[i] in answer) - strikes
                 
@@ -4615,10 +4620,9 @@ class hello(commands.Cog):
                 embed.add_field(name="입력값", value="".join(map(str, guess)), inline=False)
                 
                 if strikes == 3:
+                    end = True
                     embed.color = discord.Color.gold()
                     embed.add_field(name="🏆 승리!", value=f"{player.mention}님이 **정답을 맞췄습니다!** 🎉")
-
-                    await self.channel.send(embed=embed)
 
                     cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                     current_predict_season = cur_predict_seasonref.get()
@@ -4627,14 +4631,14 @@ class hello(commands.Cog):
                     battleref.set(True)
 
                     self.turn_timer.cancel() # 턴 타이머 종료
-                    embed = discord.Embed(title="⚾ 숫자야구 종료!", color=discord.Color.green())
-                    embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
-                    embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
+                    end_embed = discord.Embed(title="⚾ 숫자야구 종료!", color=discord.Color.green())
+                    end_embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
+                    end_embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
 
                     for button in self.children:  # 모든 버튼에 대해
                         button.disabled = True
 
-                    await self.message.edit(embed=embed, view=self)
+                    await self.message.edit(embed=end_embed, view=self)
                 
                     baseball_winner = player
                     if baseball_winner.name == self.challenger:
@@ -4910,6 +4914,7 @@ class hello(commands.Cog):
 
                         p.votes['배틀']['name']['challenger'] = ""
                         p.votes['배틀']['name']['상대'] = ""
+
                     else:
                         userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
                         userembed.add_field(name="게임 종료", value=f"배틀이 종료되었습니다!\n무승부!🤝\n")
@@ -4952,7 +4957,7 @@ class hello(commands.Cog):
                     result = f"{strikes} STRIKE, {balls} BALL" if strikes or balls else "⚾ OUT!"
                     embed.add_field(name="결과", value=result, inline=False)
 
-                return embed
+                return embed, end
 
             async def update_game_point(self, user, bet_amount):
                 # 게임 포인트를 외부에서 수정
