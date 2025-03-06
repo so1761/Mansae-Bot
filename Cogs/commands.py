@@ -4494,147 +4494,6 @@ class hello(commands.Cog):
         if not view.request_accepted:
             return
 
-        '''
-        async def disable_buttons():
-            await asyncio.sleep(60)  # 1분 대기
-            p.battle_winbutton.disabled = True
-            losebutton.disabled = True
-            prediction_view = discord.ui.View()
-            prediction_view.add_item(p.battle_winbutton)
-            prediction_view.add_item(losebutton)
-            await p.battle_message.edit(view = prediction_view)
-            p.battle_event.set()
-
-
-        async def bet_button_callback(interaction: discord.Interaction = None, prediction_type: str = "", nickname: str = None):
-            if interaction:
-                nickname = interaction.user.name
-                await interaction.response.defer()  # 응답 지연 (버튼 눌렀을 때 오류 방지)
-            if nickname == challenger or nickname == 상대.name:
-                userembed = discord.Embed(title = "메세지", color = discord.Color.blue())
-                userembed.add_field(name="자신에게 투표 불가!", value="자신의 승부에는 투표할 수 없습니다!")
-                await interaction.followup.send(embed=userembed, ephemeral=True)
-                return
-            if (nickname not in [user["name"] for user in p.votes['배틀']['prediction']['win']]) and (nickname not in [user["name"] for user in p.votes['배틀']['prediction']["lose"]]):
-                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                current_predict_season = cur_predict_seasonref.get()
-                refp = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}')
-                pointr = refp.get()
-                point = pointr["포인트"]
-                bettingPoint = pointr["베팅포인트"]
-                random_number = random.uniform(0.01, 0.05) # 1% ~ 5% 랜덤 배팅 할 비율을 정합
-                baseRate = round(random_number, 2)
-                basePoint = round(point * baseRate) if point - bettingPoint >= 500 else 0 # 500p 이상 보유 시 자동 베팅
-                if basePoint > 0:
-                    basePoint = math.ceil(basePoint / 10) * 10  # 10 단위로 무조건 올림
-                refp.update({"베팅포인트": bettingPoint + basePoint})
-                p.votes['배틀']['prediction'][prediction_type].append({"name": nickname, 'points': 0})
-                myindex = len(p.votes['배틀']['prediction'][prediction_type]) - 1 # 투표자의 위치 파악
-
-                # 새로고침
-                prediction_embed = discord.Embed(title="예측 현황", color=0x000000) # Black
-
-                win_predictions = "\n".join(
-                            f"{winner['name']}: {winner['points']}포인트" for winner in p.votes['배틀']['prediction']["win"]) or "없음"
-                lose_predictions = "\n".join(
-                    f"{loser['name']}: {loser['points']}포인트" for loser in p.votes['배틀']['prediction']["lose"]) or "없음"
-
-                winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label=f"{challenger} 승리")
-                losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label=f"{상대} 승리")
-
-                winner_total_point = sum(winner["points"] for winner in p.votes['배틀']['prediction']["win"])
-                loser_total_point = sum(loser["points"] for loser in p.votes['배틀']['prediction']["lose"])
-                prediction_embed.add_field(name="총 포인트", value=f"{challenger}: {winner_total_point}포인트 | {상대}: {loser_total_point}포인트", inline=False)
-
-                prediction_embed.add_field(name=f"{challenger} 승리 예측", value=win_predictions, inline=True)
-                prediction_embed.add_field(name=f"{상대} 승리 예측", value=lose_predictions, inline=True)
-
-                await p.battle_message.edit(embed = prediction_embed)
-
-                prediction_view = discord.ui.View()
-                prediction_view.add_item(winbutton)
-                prediction_view.add_item(losebutton)
-
-                prediction_value = challenger if prediction_type == "win" else 상대
-
-                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                userembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에게 투표하셨습니다.", inline=True)
-                await channel.send(f"\n", embed=userembed)
-
-                if basePoint != 0:
-                    bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-                    bettingembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에게 {basePoint}포인트를 베팅했습니다!", inline=False)
-
-                    p.votes['배틀']['prediction'][prediction_type][myindex]['points'] += basePoint
-                    # 새로고침
-                    prediction_embed = discord.Embed(title="예측 현황", color=0x000000) # Black
-
-                    win_predictions = "\n".join(
-                                f"{winner['name']}: {winner['points']}포인트" for winner in p.votes['배틀']['prediction']["win"]) or "없음"
-                    lose_predictions = "\n".join(
-                        f"{loser['name']}: {loser['points']}포인트" for loser in p.votes['배틀']['prediction']["lose"]) or "없음"
-
-                    winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label=f"{challenger} 승리")
-                    losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label=f"{상대} 승리")
-
-                    winner_total_point = sum(winner["points"] for winner in p.votes['배틀']['prediction']["win"])
-                    loser_total_point = sum(loser["points"] for loser in p.votes['배틀']['prediction']["lose"])
-                    prediction_embed.add_field(name="총 포인트", value=f"{challenger}: {winner_total_point}포인트 | {상대}: {loser_total_point}포인트", inline=False)
-
-                    prediction_embed.add_field(name=f"{challenger} 승리 예측", value=win_predictions, inline=True)
-                    prediction_embed.add_field(name=f"{상대} 승리 예측", value=lose_predictions, inline=True)
-
-                    await p.battle_message.edit(embed = prediction_embed)
-
-                    await channel.send(f"\n", embed=bettingembed)
-
-                # ====================  [미션]  ====================
-                # 미션 : 승부예측 1회
-
-                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/승부예측 1회")
-                mission = ref.get()
-                mission_bool = ref.get()['완료']
-                if not mission_bool:
-                    ref.update({"완료" : True})
-                    print(f"{nickname}의 [승부예측 1회] 미션 완료")
-
-                # ====================  [미션]  ====================
-
-            else:
-                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                userembed.add_field(name="", value=f"{nickname}님은 이미 투표하셨습니다", inline=True)
-                if interaction:
-                    await interaction.followup.send(embed=userembed, ephemeral=True)
-
-        channel = self.bot.get_channel(int(CHANNEL_ID))
-        
-        prediction_embed = discord.Embed(title="예측 현황", color=0x000000) # Black
-
-        win_predictions = "\n".join(
-            f"{winner['name']}: {winner['points']}포인트" for winner in p.votes['배틀']['prediction']["win"]) or "없음"
-        lose_predictions = "\n".join(
-            f"{loser['name']}: {loser['points']}포인트" for loser in p.votes['배틀']['prediction']["lose"]) or "없음"
-
-        p.votes['배틀']['name']['challenger'] = challenger
-        p.votes['배틀']['name']['상대'] = 상대
-
-        p.battle_winbutton.callback = lambda interaction: bet_button_callback(interaction, 'win')
-        losebutton.callback = lambda interaction: bet_button_callback(interaction, 'lose')
-
-        winner_total_point = sum(winner["points"] for winner in p.votes['배틀']['prediction']["win"])
-        loser_total_point = sum(loser["points"] for loser in p.votes['배틀']['prediction']["lose"])
-        prediction_embed.add_field(name="총 포인트", value=f"{challenger}: {winner_total_point}포인트 | {상대}: {loser_total_point}포인트", inline=False)
-
-        prediction_embed.add_field(name=f"{challenger} 승리 예측", value=win_predictions, inline=True)
-        prediction_embed.add_field(name=f"{상대} 승리 예측", value=lose_predictions, inline=True)
-
-        prediction_view = discord.ui.View()
-        prediction_view.add_item(p.battle_winbutton)
-        prediction_view.add_item(losebutton)
-        # 베팅 단계 
-        p.battle_message = await channel.send(f"{challenger_m.mention} vs {상대.mention}의 숫자야구 승부가 감지되었습니다! \n승부예측을 해보세요!", view=prediction_view, embed = prediction_embed)
-        '''
-
         await initialize_prediction(self.bot, challenger_m, 상대, CHANNEL_ID, p)
         await asyncio.gather(
             disable_buttons(p),
@@ -4711,14 +4570,19 @@ class hello(commands.Cog):
                 await self.start_turn_timer()
 
             async def start_turn_timer(self):
-                """3분 타이머 실행, 시간이 지나면 턴 자동 변경"""
+                """2분 타이머 실행, 시간이 지나면 턴 자동 변경"""
                 if self.turn_timer:
                     self.turn_timer.cancel()
                 self.turn_timer = asyncio.create_task(self.turn_timeout())
 
             async def turn_timeout(self):
-                await asyncio.sleep(180)  # 3분 대기
-                await self.next_turn(timeout=True)
+                try:
+                    await asyncio.sleep(120)  # 2분 대기
+                    if self.turn_timer.done():  # 취소되었는지 확인
+                        return
+                    await self.next_turn(timeout=True)
+                except asyncio.CancelledError:
+                    pass
 
             async def next_turn(self, timeout=False):
                 """턴을 변경하고 메시지를 업데이트"""
@@ -4728,11 +4592,12 @@ class hello(commands.Cog):
                 embed = discord.Embed(title="⚾ 숫자야구 진행 중!", color=discord.Color.green())
                 embed.add_field(name="턴", value=f"🎯 {player.mention}님의 턴입니다!", inline=False)
                 if timeout:
-                    embed.add_field(name="⏳ 턴 자동 변경!", value="3분 동안 입력이 없어 턴이 변경되었습니다.", inline=False)
+                    embed.add_field(name="⏳ 턴 자동 변경!", value="2분 동안 입력이 없어 턴이 변경되었습니다.", inline=False)
                 embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
                 embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
 
-                await self.message.edit(embed=embed, view=self)
+                new_view = BaseballGameView(self)
+                await self.message.edit(embed=embed, view=new_view)
                 await self.start_turn_timer()
 
             async def check_guess(self, player, guess):
