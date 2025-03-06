@@ -4479,11 +4479,7 @@ class hello(commands.Cog):
             return_when=asyncio.FIRST_COMPLETED  # 첫 번째로 끝나는 코루틴을 기다림
         )
 
-        item_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}/아이템")
-        item_data = item_ref.get() or {} 
-        battle_refresh = item_data.get("숫자야구대결기회 추가", 0)
-        if battle_refresh and battled:
-            item_ref.update({"숫자야구대결기회 추가": battle_refresh - 1})
+        
         p.battle_winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label=f"{challenger} 승리")
         losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label=f"{상대} 승리")
 
@@ -4541,6 +4537,12 @@ class hello(commands.Cog):
                 await interaction.response.send_message(embed=result)
                 if not end:
                     await self.game.next_turn()  # 턴 넘기기
+                if end:
+                    item_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}/아이템")
+                    item_data = item_ref.get() or {} 
+                    battle_refresh = item_data.get("숫자야구대결기회 추가", 0)
+                    if battle_refresh and battled:
+                        item_ref.update({"숫자야구대결기회 추가": battle_refresh - 1})
 
         class BaseballGameView(discord.ui.View):
             def __init__(self, challenger, opponent, game_point):
