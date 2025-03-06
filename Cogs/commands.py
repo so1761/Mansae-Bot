@@ -4635,7 +4635,7 @@ class hello(commands.Cog):
         p.battle_message = await channel.send(f"{challenger_m.mention} vs {상대.mention}의 숫자야구 승부가 감지되었습니다! \n승부예측을 해보세요!", view=prediction_view, embed = prediction_embed)
         '''
 
-        await initialize_prediction(self.bot, challenger, 상대, CHANNEL_ID, p)
+        await initialize_prediction(self.bot, challenger_m, 상대, CHANNEL_ID, p)
         await asyncio.gather(
             disable_buttons(p),
             p.battle_event.wait()  # 이 작업은 event가 set될 때까지 대기
