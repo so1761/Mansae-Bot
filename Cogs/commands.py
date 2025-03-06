@@ -925,7 +925,7 @@ async def disable_buttons(p):
     """ 1분 후 버튼을 비활성화하는 함수 """
     await asyncio.sleep(60)  # 1분 대기
     p.battle_winbutton.disabled = True
-    losebutton = discord.ui.Button(style=discord.ButtonStyle.danger, label=f"{p.votes['배틀']['name']['상대']}", disabled=True)
+    losebutton = discord.ui.Button(style=discord.ButtonStyle.danger, label=f"{p.votes['배틀']['name']['상대']} 승리", disabled=True)
 
     prediction_view = discord.ui.View()
     prediction_view.add_item(p.battle_winbutton)
@@ -4924,7 +4924,7 @@ class hello(commands.Cog):
                         else:
                             userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
                             userembed.add_field(name="게임 종료", value=f"배틀이 종료되었습니다!\n무승부!🤝\n")
-                            channel = interaction.client.get_channel(CHANNEL_ID) #tts 채널
+                            channel = interaction.client.get_channel(int(CHANNEL_ID)) #tts 채널
                             await channel.send(embed=userembed)
 
                             cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
