@@ -4635,6 +4635,7 @@ class hello(commands.Cog):
                             baseball_winner = None
                         else: # 못맞췄다면 도전자 승리!
                             baseball_winner = self.challenger_m
+                            result = True
 
                         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                         current_predict_season = cur_predict_seasonref.get()
@@ -4930,6 +4931,18 @@ class hello(commands.Cog):
                             cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
                             current_predict_season = cur_predict_seasonref.get()
 
+                            ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}')
+                            originr = ref.get()
+                            bettingPoint = originr["베팅포인트"]
+                            bettingPoint -= game_point[challenger]
+                            ref.update({"베팅포인트": bettingPoint})
+
+                            ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{opponent}')
+                            originr = ref.get()
+                            bettingPoint = originr["베팅포인트"]
+                            bettingPoint -= game_point[opponent]
+                            ref.update({"베팅포인트": bettingPoint})
+
                             winners = p.votes['배틀']['prediction']['win']
                             losers = p.votes['배틀']['prediction']['lose']
                             for winner in winners:
@@ -4969,6 +4982,7 @@ class hello(commands.Cog):
                         if self.success[self.opponent]: #상대가 정답을 맞췄다면 상대 승리!
                             end = True
                             baseball_winner = self.opponent_m
+                            result = False
 
                             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                             current_predict_season = cur_predict_seasonref.get()
