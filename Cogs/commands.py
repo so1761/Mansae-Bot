@@ -892,6 +892,130 @@ class ItemSelect(discord.ui.Select):
 
         await interaction.response.edit_message(embed = shop_embed, view = self.view)
 
+async def initialize_prediction(bot, challenger, 상대, channel_id, p):
+    """ 승부 예측 시스템을 초기화하는 함수 """
+    channel = bot.get_channel(int(channel_id))
+    
+    # 예측 데이터 초기화
+    p.votes['배틀']['name']['challenger'] = challenger
+    p.votes['배틀']['name']['상대'] = 상대
+    
+    p.battle_winbutton = discord.ui.Button(style=discord.ButtonStyle.success, label=f"{challenger} 승리")
+    losebutton = discord.ui.Button(style=discord.ButtonStyle.danger, label=f"{상대} 승리")
+
+    # 버튼에 콜백 할당
+    p.battle_winbutton.callback = lambda interaction: bet_button_callback(interaction, 'win', bot, p, challenger, 상대)
+    losebutton.callback = lambda interaction: bet_button_callback(interaction, 'lose', bot, p, challenger, 상대)
+
+    # 초기 임베드 생성
+    prediction_embed = update_prediction_embed(p, challenger, 상대)
+    
+    prediction_view = discord.ui.View()
+    prediction_view.add_item(p.battle_winbutton)
+    prediction_view.add_item(losebutton)
+    
+    # 메시지 전송
+    p.battle_message = await channel.send(
+        f"{challenger} vs {상대}의 숫자야구 승부가 감지되었습니다! \n승부예측을 해보세요!",
+        view=prediction_view,
+        embed=prediction_embed
+    )
+
+async def disable_buttons(p):
+    """ 1분 후 버튼을 비활성화하는 함수 """
+    await asyncio.sleep(60)  # 1분 대기
+    p.battle_winbutton.disabled = True
+    losebutton = discord.ui.Button(style=discord.ButtonStyle.danger, label="패배", disabled=True)
+
+    prediction_view = discord.ui.View()
+    prediction_view.add_item(p.battle_winbutton)
+    prediction_view.add_item(losebutton)
+
+    await p.battle_message.edit(view=prediction_view)
+    p.battle_event.set()
+
+async def bet_button_callback(interaction, prediction_type, bot, p, challenger, 상대):
+    """ 예측 버튼을 눌렀을 때 호출되는 함수 """
+    nickname = interaction.user.name
+    await interaction.response.defer()  # 응답 지연 (오류 방지)
+
+    # 본인 투표 금지
+    if nickname in [challenger, 상대.name]:
+        userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+        userembed.add_field(name="자신에게 투표 불가!", value="자신의 승부에는 투표할 수 없습니다!")
+        await interaction.followup.send(embed=userembed, ephemeral=True)
+        return
+
+    # 중복 투표 방지
+    if nickname in [user["name"] for user in p.votes['배틀']['prediction']["win"]] or \
+       nickname in [user["name"] for user in p.votes['배틀']['prediction']["lose"]]:
+        userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+        userembed.add_field(name="", value=f"{nickname}님은 이미 투표하셨습니다", inline=True)
+        await interaction.followup.send(embed=userembed, ephemeral=True)
+        return
+
+    # 포인트 정보 가져오기
+    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+    current_predict_season = cur_predict_seasonref.get()
+    refp = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}')
+    pointr = refp.get()
+    point = pointr["포인트"]
+    bettingPoint = pointr["베팅포인트"]
+
+    # 자동 배팅 계산 (1%~5%)
+    random_number = random.uniform(0.01, 0.05)
+    baseRate = round(random_number, 2)
+    basePoint = round(point * baseRate) if point - bettingPoint >= 500 else 0
+    if basePoint > 0:
+        basePoint = math.ceil(basePoint / 10) * 10  # 10 단위 올림
+
+    # 베팅 반영
+    refp.update({"베팅포인트": bettingPoint + basePoint})
+    p.votes['배틀']['prediction'][prediction_type].append({"name": nickname, 'points': basePoint})
+
+    # UI 업데이트
+    prediction_embed = update_prediction_embed(p, challenger, 상대)
+    await p.battle_message.edit(embed=prediction_embed)
+
+    # 메시지 전송
+    channel = bot.get_channel(int(CHANNEL_ID))
+    prediction_value = challenger if prediction_type == "win" else 상대
+
+    userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+    userembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에게 투표하셨습니다.", inline=True)
+    await channel.send(embed=userembed)
+
+    if basePoint != 0:
+        bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+        bettingembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에게 {basePoint}포인트를 베팅했습니다!", inline=False)
+        await channel.send(embed=bettingembed)
+
+    # 미션 처리
+    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/승부예측 1회")
+    mission = ref.get()
+    if mission and not mission.get('완료', False):
+        ref.update({"완료": True})
+        print(f"{nickname}의 [승부예측 1회] 미션 완료")
+
+def update_prediction_embed(p, challenger, 상대):
+    """ 예측 현황을 업데이트하는 함수 """
+    prediction_embed = discord.Embed(title="예측 현황", color=0x000000)  # Black
+
+    win_predictions = "\n".join(
+        f"{winner['name']}: {winner['points']}포인트" for winner in p.votes['배틀']['prediction']["win"]
+    ) or "없음"
+    lose_predictions = "\n".join(
+        f"{loser['name']}: {loser['points']}포인트" for loser in p.votes['배틀']['prediction']["lose"]
+    ) or "없음"
+
+    winner_total_point = sum(winner["points"] for winner in p.votes['배틀']['prediction']["win"])
+    loser_total_point = sum(loser["points"] for loser in p.votes['배틀']['prediction']["lose"])
+    prediction_embed.add_field(name="총 포인트", value=f"{challenger}: {winner_total_point}포인트 | {상대}: {loser_total_point}포인트", inline=False)
+    prediction_embed.add_field(name=f"{challenger} 승리 예측", value=win_predictions, inline=True)
+    prediction_embed.add_field(name=f"{상대} 승리 예측", value=lose_predictions, inline=True)
+
+    return prediction_embed
+
 async def add_missions_to_all_users(mission_name,point,mission_type):
     cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
     current_predict_season = cur_predict_seasonref.get()
@@ -4370,6 +4494,7 @@ class hello(commands.Cog):
         if not view.request_accepted:
             return
 
+        '''
         async def disable_buttons():
             await asyncio.sleep(60)  # 1분 대기
             p.battle_winbutton.disabled = True
@@ -4508,12 +4633,13 @@ class hello(commands.Cog):
         prediction_view.add_item(losebutton)
         # 베팅 단계 
         p.battle_message = await channel.send(f"{challenger_m.mention} vs {상대.mention}의 숫자야구 승부가 감지되었습니다! \n승부예측을 해보세요!", view=prediction_view, embed = prediction_embed)
-
+        '''
+        
+        await initialize_prediction(self.bot, challenger, 상대, CHANNEL_ID, p)
         await asyncio.gather(
             disable_buttons(),
             p.battle_event.wait()  # 이 작업은 event가 set될 때까지 대기
         )
-
         game_point = {
             challenger : 100, 
             상대.name : 100
