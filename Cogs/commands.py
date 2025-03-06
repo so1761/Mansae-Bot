@@ -4596,7 +4596,7 @@ class hello(commands.Cog):
                 embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
                 embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
 
-                new_view = BaseballGameView(self)
+                new_view = BaseballGameView(self,self.opponent_m, self.game_point)
                 await self.message.edit(embed=embed, view=new_view)
                 await self.start_turn_timer()
 
