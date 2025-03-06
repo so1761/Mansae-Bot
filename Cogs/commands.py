@@ -2725,24 +2725,24 @@ class hello(commands.Cog):
 
     @app_commands.command(name='포인트',description="자신의 승부예측 포인트를 알려줍니다")
     async def 포인트(self, interaction: discord.Interaction):
+        username = interaction.user.name
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
-        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트')
-        points = ref.get()
+        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{username}')
+        point_data = ref.get()
 
-        # 점수를 기준으로 내림차순으로 정렬
-        sorted_data = sorted(points.items(), key=lambda x: x[1]['포인트'], reverse=True)
+        embed = discord.Embed(title=f'{username}의 포인트', color = discord.Color.blue())
 
-        # 상위 명을 추출하여 출력
-        top = sorted_data[:]
+        jimo_prediction_rate = round(point_data['지모적중'] / (point_data['지모승리예측'] + point_data['지모패배예측']), 2)
+        Melon_prediction_rate = round(point_data['Melon적중'] / (point_data['Melon승리예측'] + point_data['Melon패배예측']), 2)
+        battle_prediction_rate = round((point_data['적중 횟수'] - point_data['지모적중'] - point_data['Melon적중']) / (point_data['총 예측 횟수'] - (point_data['지모승리예측'] + point_data['지모패배예측']) - (point_data['Melon승리예측'] + point_data['Melon패배예측'])))
 
-        embed = discord.Embed(title=f'{interaction.user.name}의 포인트', color = discord.Color.blue())
-
-        for idx, (username, info) in enumerate(top, start=1):
-            if username == interaction.user.name:
-                embed.add_field(name='',value=f"{info['포인트']}포인트(베팅 포인트:{info['베팅포인트']})", inline=False)
-                embed.add_field(name=f"{username}", value=f"연속적중 {info['연승']}, 포인트 {info['포인트']}, 적중률 {info['적중률']}({info['적중 횟수']}/{info['총 예측 횟수']}), ", inline=False)
-                await interaction.response.send_message(embed=embed, ephemeral=True)
+        embed.add_field(name='',value=f"**{point_data['포인트']}**포인트(베팅 포인트:**{point_data['베팅포인트']}**)", inline=False)
+        embed.add_field(name=f"승부예측 데이터", value=f"연속적중 {point_data['연승']}, 포인트 {point_data['포인트']}, 적중률 {point_data['적중률']}({point_data['적중 횟수']}/{point_data['총 예측 횟수']}), ", inline=False)
+        embed.add_field(name=f"", value=f"연속승리예측 {point_data['승리예측연속']}, 연속패배예측 {point_data['패배예측연속']}, 적중률(대결) {battle_prediction_rate}%({(point_data['적중 횟수'] - point_data['지모적중'] - point_data['Melon적중'])} / {(point_data['총 예측 횟수'] - (point_data['지모승리예측'] + point_data['지모패배예측']) - (point_data['Melon승리예측'] + point_data['Melon패배예측']))})", inline=False)
+        embed.add_field(name=f"", value=f"지모승리예측 {point_data['지모승리예측']}, 지모패배예측 {point_data['지모패배예측']}, 적중률(지모) {jimo_prediction_rate}%({point_data['지모적중']} / {point_data['지모승리예측'] + point_data['지모패배예측']})", inline=False)
+        embed.add_field(name=f"", value=f"Melon승리예측 {point_data['Melon승리예측']}, Melon패배예측 {point_data['Melon패배예측']}, 적중률(Melon) {Melon_prediction_rate}%({point_data['Melon적중']} / {point_data['Melon승리예측'] + point_data['Melon패배예측']})", inline=False)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(name="온오프",description="투표기능 온오프(개발자 전용)")
     @app_commands.describe(값 = "값을 선택하세요")
