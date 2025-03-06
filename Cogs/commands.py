@@ -4969,20 +4969,9 @@ class hello(commands.Cog):
 
             async def add_new_buttons(self):
                 """새로운 버튼을 추가하는 메서드"""
-                # "내 숫자 확인" 버튼
-                check_numbers_button = discord.ui.Button(label="내 숫자 확인", style=discord.ButtonStyle.gray)
-                check_numbers_button.callback = self.check_numbers  # 버튼에 콜백 연결
-                self.add_item(check_numbers_button)
-                
-                # "숫자 맞추기" 버튼
-                guess_numbers_button = discord.ui.Button(label="숫자 맞추기", style=discord.ButtonStyle.success)
-                guess_numbers_button.callback = self.guess_numbers  # 버튼에 콜백 연결
-                self.add_item(guess_numbers_button)
-                
-                # "베팅" 버튼
-                bet_button = discord.ui.Button(label="베팅", style=discord.ButtonStyle.primary)
-                bet_button.callback = self.bet  # 버튼에 콜백 연결
-                self.add_item(bet_button)
+                self.add_item(self.check_numbers)
+                self.add_item(self.guess_numbers)
+                self.add_item(self.bet)
 
             @discord.ui.button(label="내 숫자 확인", style=discord.ButtonStyle.gray)
             async def check_numbers(self, interaction: discord.Interaction, button: discord.ui.Button):
