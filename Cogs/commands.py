@@ -3114,7 +3114,7 @@ class hello(commands.Cog):
 
                             
                             if not mission_bool:
-                                if mpoint == mbettingPoint: # 포인트의 전부를 베팅포인트로 넣음
+                                if mpoint == mbettingPoint and mpoint >= 1000: # 포인트의 전부를 베팅포인트로 넣음 (1000p 이상)
                                     all_in_count = mission_data.get('횟수', 0)
                                     if all_in_count + 1 == 3:
                                         ref.update({"완료": True})
@@ -3888,12 +3888,12 @@ class hello(commands.Cog):
                 mission_data = ref_mission.get()
                 call_num = mission_data.get("호출", 0)
                 if call_num + 1 == 5:
-                    ref.update({"완료": True})
+                    ref_mission.update({"완료": True})
                     print(f"{nickname}의 [주사위주사위주사위주사위주사위] 미션 완료")
                     await mission_notice(interaction.client, nickname, "주사위주사위주사위주사위주사위","에픽")
-                    ref.update({"호출" : 0})
+                    ref_mission.update({"호출" : 0})
                 else:
-                    ref.update({"호출" : call_num + 1})
+                    ref_mission.update({"호출" : call_num + 1})
             # ====================  [미션]  ====================
 
         await interaction.response.send_message(embed=embed)
