@@ -4601,7 +4601,7 @@ class hello(commands.Cog):
                 embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
 
                 self.clear_items()
-                self.add_new_buttons()
+                await self.add_new_buttons()
 
                 await self.message.edit(embed=embed, view=self)
                 await self.start_turn_timer()
