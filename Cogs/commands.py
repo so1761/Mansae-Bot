@@ -897,11 +897,11 @@ async def initialize_prediction(bot, challenger, 상대, channel_id, p):
     channel = bot.get_channel(int(channel_id))
     
     # 예측 데이터 초기화
-    p.votes['배틀']['name']['challenger'] = challenger
-    p.votes['배틀']['name']['상대'] = 상대
+    p.votes['배틀']['name']['challenger'] = challenger.name
+    p.votes['배틀']['name']['상대'] = 상대.name
     
-    p.battle_winbutton = discord.ui.Button(style=discord.ButtonStyle.success, label=f"{challenger} 승리")
-    losebutton = discord.ui.Button(style=discord.ButtonStyle.danger, label=f"{상대} 승리")
+    p.battle_winbutton = discord.ui.Button(style=discord.ButtonStyle.success, label=f"{challenger.name} 승리")
+    losebutton = discord.ui.Button(style=discord.ButtonStyle.danger, label=f"{상대.name} 승리")
 
     # 버튼에 콜백 할당
     p.battle_winbutton.callback = lambda interaction: bet_button_callback(interaction, 'win', bot, p, challenger, 상대)
@@ -916,7 +916,7 @@ async def initialize_prediction(bot, challenger, 상대, channel_id, p):
     
     # 메시지 전송
     p.battle_message = await channel.send(
-        f"{challenger} vs {상대}의 숫자야구 승부가 감지되었습니다! \n승부예측을 해보세요!",
+        f"{challenger.mention} vs {상대.mention}의 숫자야구 승부가 감지되었습니다! \n승부예측을 해보세요!",
         view=prediction_view,
         embed=prediction_embed
     )
@@ -940,7 +940,7 @@ async def bet_button_callback(interaction, prediction_type, bot, p, challenger, 
     await interaction.response.defer()  # 응답 지연 (오류 방지)
 
     # 본인 투표 금지
-    if nickname in [challenger, 상대.name]:
+    if nickname in [challenger.name, 상대.name]:
         userembed = discord.Embed(title="메세지", color=discord.Color.blue())
         userembed.add_field(name="자신에게 투표 불가!", value="자신의 승부에는 투표할 수 없습니다!")
         await interaction.followup.send(embed=userembed, ephemeral=True)
@@ -982,12 +982,12 @@ async def bet_button_callback(interaction, prediction_type, bot, p, challenger, 
     prediction_value = challenger if prediction_type == "win" else 상대
 
     userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-    userembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에게 투표하셨습니다.", inline=True)
+    userembed.add_field(name="", value=f"{nickname}님이 {prediction_value.mention}에게 투표하셨습니다.", inline=True)
     await channel.send(embed=userembed)
 
     if basePoint != 0:
         bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-        bettingembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에게 {basePoint}포인트를 베팅했습니다!", inline=False)
+        bettingembed.add_field(name="", value=f"{nickname}님이 {prediction_value.mention}에게 {basePoint}포인트를 베팅했습니다!", inline=False)
         await channel.send(embed=bettingembed)
 
     # 미션 처리
@@ -1010,9 +1010,9 @@ def update_prediction_embed(p, challenger, 상대):
 
     winner_total_point = sum(winner["points"] for winner in p.votes['배틀']['prediction']["win"])
     loser_total_point = sum(loser["points"] for loser in p.votes['배틀']['prediction']["lose"])
-    prediction_embed.add_field(name="총 포인트", value=f"{challenger}: {winner_total_point}포인트 | {상대}: {loser_total_point}포인트", inline=False)
-    prediction_embed.add_field(name=f"{challenger} 승리 예측", value=win_predictions, inline=True)
-    prediction_embed.add_field(name=f"{상대} 승리 예측", value=lose_predictions, inline=True)
+    prediction_embed.add_field(name="총 포인트", value=f"{challenger.mention}: {winner_total_point}포인트 | {상대.mention}: {loser_total_point}포인트", inline=False)
+    prediction_embed.add_field(name=f"{challenger.mention} 승리 예측", value=win_predictions, inline=True)
+    prediction_embed.add_field(name=f"{상대.mention} 승리 예측", value=lose_predictions, inline=True)
 
     return prediction_embed
 
@@ -4634,10 +4634,10 @@ class hello(commands.Cog):
         # 베팅 단계 
         p.battle_message = await channel.send(f"{challenger_m.mention} vs {상대.mention}의 숫자야구 승부가 감지되었습니다! \n승부예측을 해보세요!", view=prediction_view, embed = prediction_embed)
         '''
-        
+
         await initialize_prediction(self.bot, challenger, 상대, CHANNEL_ID, p)
         await asyncio.gather(
-            disable_buttons(),
+            disable_buttons(p),
             p.battle_event.wait()  # 이 작업은 event가 set될 때까지 대기
         )
         game_point = {
