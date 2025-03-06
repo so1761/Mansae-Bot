@@ -4966,7 +4966,7 @@ class hello(commands.Cog):
                     result = f"{strikes} STRIKE, {balls} BALL" if strikes or balls else "⚾ OUT!"
                     embed.add_field(name="결과", value=result, inline=False)
                     if player.name == self.challenger:
-                        if self.suceess[self.opponent]: #상대가 정답을 맞췄다면 상대 승리!
+                        if self.success[self.opponent]: #상대가 정답을 맞췄다면 상대 승리!
                             end = True
                             baseball_winner = self.opponent_m
 
