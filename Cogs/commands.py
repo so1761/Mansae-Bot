@@ -825,10 +825,10 @@ class ItemSelect(discord.ui.Select):
             discord.SelectOption(label = "배율감소 0.1", value = "배율감소1", description = "배율을 0.1 감소시킵니다. 현재 포인트의 5% 혹은 250p로 구매 가능합니다."),
             discord.SelectOption(label = "배율감소 0.3", value = "배율감소3", description = "배율을 0.3 감소시킵니다. 현재 포인트의 10% 혹은 500p로 구매 가능합니다."),
             discord.SelectOption(label = "배율감소 0.5", value = "배율감소5", description = "배율을 0.5 감소시킵니다. 현재 포인트의 20% 혹은 1000p로 구매 가능합니다."),
-            discord.SelectOption(label = "주사위 초기화", value = "주사위 초기화", description = "현재 주사위 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다."),
+            discord.SelectOption(label = "주사위 초기화", value = "주사위 초기화", description = "현재 주사위 값을 초기화하고 한번 더 던질 수 있게 합니다. 20p로 구매 가능합니다."),
             discord.SelectOption(label = "주사위대결기회 추가", value = "주사위대결기회 추가", description = "주사위 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다."),
             discord.SelectOption(label = "숫자야구대결기회 추가", value = "숫자야구대결기회 추가", description = "숫자야구 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다."),
-            discord.SelectOption(label = "완전 익명화", value = "완전 익명화", description = "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다.")
+            discord.SelectOption(label = "완전 익명화", value = "완전 익명화", description = "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다. 현재 구현 X")
         ]
         super().__init__(
             placeholder = '구매할 아이템을 선택하세요.',
@@ -855,7 +855,7 @@ class ItemSelect(discord.ui.Select):
             "배율감소1": 250 if round(real_point * 0.05) < 250 else round(real_point * 0.05),
             "배율감소3": 500 if round(real_point * 0.1) < 500 else round(real_point * 0.1),
             "배율감소5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
-            "주사위 초기화": 100,
+            "주사위 초기화": 20,
             "주사위대결기회 추가": 100,
             "숫자야구대결기회 추가": 100,
             "완전 익명화": 1000
@@ -868,10 +868,10 @@ class ItemSelect(discord.ui.Select):
             "배율감소1": "배율을 0.1 감소시킵니다. 현재 포인트의 5% 혹은 250p로 구매 가능합니다.",
             "배율감소3": "배율을 0.3 감소시킵니다. 현재 포인트의 10% 혹은 500p로 구매 가능합니다.",
             "배율감소5": "배율을 0.5 감소시킵니다. 현재 포인트의 20% 혹은 1000p로 구매 가능합니다.",
-            "주사위 초기화": "현재 주사위 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다.",
+            "주사위 초기화": "현재 주사위 값을 초기화하고 한번 더 던질 수 있게 합니다. 20p로 구매 가능합니다.",
             "주사위대결기회 추가": "주사위 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다.",
             "숫자야구대결기회 추가": "숫자야구 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다.",
-            "완전 익명화": "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다."
+            "완전 익명화": "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다. 현재 구현 X"
         }
         
         item_price = item_menu[selected_item]
