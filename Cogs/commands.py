@@ -449,6 +449,10 @@ class DiceRevealView(discord.ui.View):
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
             current_predict_season = cur_predict_seasonref.get()
 
+            winner_total_point = sum(winner['points'] for winner in winners)
+            loser_total_point = sum(loser['points'] for loser in losers)
+            remain_loser_total_point = loser_total_point
+            
             for winner in winners:
                 point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
                 predict_data = point_ref.get()
@@ -503,11 +507,6 @@ class DiceRevealView(discord.ui.View):
                     print(f"{winner['name']}의 [승부예측 1회 적중] 미션 완료")
 
                 # ====================  [미션]  ====================
-
-                winner_total_point = sum(winner['points'] for winner in winners)
-                loser_total_point = sum(loser['points'] for loser in losers)
-                remain_loser_total_point = loser_total_point
-
                 betted_rate = round(winner['points'] / winner_total_point, 3) if winner_total_point else 0
                 get_bet = round(betted_rate * loser_total_point)
                 get_bet_limit = round(BonusRate * winner['points'])
@@ -531,8 +530,6 @@ class DiceRevealView(discord.ui.View):
                 point = predict_data["포인트"]
                 bettingPoint = predict_data["베팅포인트"]
                 
-                loser_total_point = sum(loser['points'] for loser in losers)
-                remain_loser_total_point = loser_total_point
                 # 예측 내역 변동 데이터
                 change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
                 change_ref.update({
@@ -700,8 +697,20 @@ class DiceRevealView(discord.ui.View):
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
             current_predict_season = cur_predict_seasonref.get()
 
+            ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
+            originr = ref.get()
+            bettingPoint = originr["베팅포인트"]
+            bettingPoint -= self.game_point[self.challenger]
+            ref.update({"베팅포인트": bettingPoint})
+
+            ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
+            originr = ref.get()
+            bettingPoint = originr["베팅포인트"]
+            bettingPoint -= self.game_point[self.opponent]
+            ref.update({"베팅포인트": bettingPoint})
             winners = p.votes['배틀']['prediction']['win']
             losers = p.votes['배틀']['prediction']['lose']
+
             for winner in winners:
                 ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
                 originr = ref.get()
@@ -4931,16 +4940,16 @@ class hello(commands.Cog):
                             cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
                             current_predict_season = cur_predict_seasonref.get()
 
-                            ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}')
+                            ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
                             originr = ref.get()
                             bettingPoint = originr["베팅포인트"]
-                            bettingPoint -= game_point[challenger]
+                            bettingPoint -= self.game_point[self.challenger]
                             ref.update({"베팅포인트": bettingPoint})
 
-                            ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{opponent}')
+                            ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
                             originr = ref.get()
                             bettingPoint = originr["베팅포인트"]
-                            bettingPoint -= game_point[opponent]
+                            bettingPoint -= self.game_point[self.opponent]
                             ref.update({"베팅포인트": bettingPoint})
 
                             winners = p.votes['배틀']['prediction']['win']
@@ -5031,6 +5040,10 @@ class hello(commands.Cog):
                             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                             current_predict_season = cur_predict_seasonref.get()
 
+                            winner_total_point = sum(winner['points'] for winner in winners)
+                            loser_total_point = sum(loser['points'] for loser in losers)
+                            remain_loser_total_point = loser_total_point
+
                             for winner in winners:
                                 point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
                                 predict_data = point_ref.get()
@@ -5086,10 +5099,6 @@ class hello(commands.Cog):
 
                                 # ====================  [미션]  ====================
 
-                                winner_total_point = sum(winner['points'] for winner in winners)
-                                loser_total_point = sum(loser['points'] for loser in losers)
-                                remain_loser_total_point = loser_total_point
-
                                 betted_rate = round(winner['points'] / winner_total_point, 3) if winner_total_point else 0
                                 get_bet = round(betted_rate * loser_total_point)
                                 get_bet_limit = round(BonusRate * winner['points'])
@@ -5113,8 +5122,6 @@ class hello(commands.Cog):
                                 point = predict_data["포인트"]
                                 bettingPoint = predict_data["베팅포인트"]
                                 
-                                loser_total_point = sum(loser['points'] for loser in losers)
-                                remain_loser_total_point = loser_total_point
                                 # 예측 내역 변동 데이터
                                 change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
                                 change_ref.update({
