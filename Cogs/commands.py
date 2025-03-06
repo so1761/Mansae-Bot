@@ -2982,11 +2982,11 @@ class hello(commands.Cog):
                                 # 시즌미션 : 크릴새우
                                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                                 current_predict_season = cur_predict_seasonref.get()
-                                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/크릴새우")
+                                shrimp_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/크릴새우")
 
-                                mission_bool = ref.get()['완료']
+                                mission_bool = shrimp_ref.get()['완료']
                                 if not mission_bool:
-                                    ref.update({"완료": True})
+                                    shrimp_ref.update({"완료": True})
                                     print(f"{interaction.user.name}의 [크릴새우] 미션 완료")
                                     await mission_notice(interaction.client,interaction.user.name,"크릴새우","희귀")
 
@@ -3080,11 +3080,11 @@ class hello(commands.Cog):
                                 # 시즌미션 : 크릴새우
                                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                                 current_predict_season = cur_predict_seasonref.get()
-                                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/크릴새우")
+                                shrimp_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/시즌미션/크릴새우")
 
-                                mission_bool = ref.get()['완료']
+                                mission_bool = shrimp_ref.get()['완료']
                                 if not mission_bool:
-                                    ref.update({"완료": True})
+                                    shrimp_ref.update({"완료": True})
                                     print(f"{interaction.user.name}의 [크릴새우] 미션 완료")
                                     await mission_notice(interaction.client,interaction.user.name,"크릴새우","희귀")
 
