@@ -925,7 +925,7 @@ async def disable_buttons(p):
     """ 1분 후 버튼을 비활성화하는 함수 """
     await asyncio.sleep(60)  # 1분 대기
     p.battle_winbutton.disabled = True
-    losebutton = discord.ui.Button(style=discord.ButtonStyle.danger, label="패배", disabled=True)
+    losebutton = discord.ui.Button(style=discord.ButtonStyle.danger, label=f"{p.votes['배틀']['name']['상대']}", disabled=True)
 
     prediction_view = discord.ui.View()
     prediction_view.add_item(p.battle_winbutton)
@@ -4600,6 +4600,9 @@ class hello(commands.Cog):
                 embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
                 embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
 
+                self.clear_items()
+                self.add_new_buttons()
+
                 await self.message.edit(embed=embed, view=self)
                 await self.start_turn_timer()
 
@@ -4963,6 +4966,23 @@ class hello(commands.Cog):
                 # 게임 포인트를 외부에서 수정
                 if user.name in self.game_point:
                     self.game_point[user.name] += bet_amount
+
+            async def add_new_buttons(self):
+                """새로운 버튼을 추가하는 메서드"""
+                # "내 숫자 확인" 버튼
+                check_numbers_button = discord.ui.Button(label="내 숫자 확인", style=discord.ButtonStyle.gray)
+                check_numbers_button.callback = self.check_numbers  # 버튼에 콜백 연결
+                self.add_item(check_numbers_button)
+                
+                # "숫자 맞추기" 버튼
+                guess_numbers_button = discord.ui.Button(label="숫자 맞추기", style=discord.ButtonStyle.success)
+                guess_numbers_button.callback = self.guess_numbers  # 버튼에 콜백 연결
+                self.add_item(guess_numbers_button)
+                
+                # "베팅" 버튼
+                bet_button = discord.ui.Button(label="베팅", style=discord.ButtonStyle.primary)
+                bet_button.callback = self.bet  # 버튼에 콜백 연결
+                self.add_item(bet_button)
 
             @discord.ui.button(label="내 숫자 확인", style=discord.ButtonStyle.gray)
             async def check_numbers(self, interaction: discord.Interaction, button: discord.ui.Button):
