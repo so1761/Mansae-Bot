@@ -1010,7 +1010,7 @@ def update_prediction_embed(p, challenger, 상대):
 
     winner_total_point = sum(winner["points"] for winner in p.votes['배틀']['prediction']["win"])
     loser_total_point = sum(loser["points"] for loser in p.votes['배틀']['prediction']["lose"])
-    prediction_embed.add_field(name="총 포인트", value=f"{challenger.mention}: {winner_total_point}포인트 | {상대.mention}: {loser_total_point}포인트", inline=False)
+    prediction_embed.add_field(name="총 포인트", value=f"{challenger.name}: {winner_total_point}포인트 | {상대.name}: {loser_total_point}포인트", inline=False)
     prediction_embed.add_field(name=f"{challenger.mention} 승리 예측", value=win_predictions, inline=True)
     prediction_embed.add_field(name=f"{상대.mention} 승리 예측", value=lose_predictions, inline=True)
 
