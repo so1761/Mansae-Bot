@@ -1622,7 +1622,7 @@ def create_embed(commands_list, current_page, page_size):
 
     # 현재 페이지에 해당하는 명령어들만 추가
     for cmd in commands_list[start_index:end_index]:
-        embed.add_field(name=f"</{cmd.name}:>", value=cmd.description, inline=False)
+        embed.add_field(name=f"</{cmd.name}:{cmd.id}>", value=cmd.description, inline=False)
     return embed
 
 # 야추 다이스 굴리기
