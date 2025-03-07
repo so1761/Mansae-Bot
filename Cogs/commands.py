@@ -2509,6 +2509,7 @@ class hello(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        await self.bot.load_extension("Cogs.commands")
         await self.bot.tree.sync()
         load_dotenv()
         global API_KEY
