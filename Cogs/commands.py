@@ -2492,6 +2492,10 @@ class hello(commands.Cog):
             callback=self.warn_user,
         )
         self.bot.tree.add_command(self.ctx_menu)
+        self.bot.tree.add_command(self.전적분석)
+        self.bot.tree.add_command(self.트름범인)
+        self.bot.tree.add_command(self.연승)
+        
 
     async def cog_unload(self) -> None:
         self.bot.tree.remove_command(self.ctx_menu.name, type=self.ctx_menu.type)
@@ -4834,7 +4838,6 @@ class hello(commands.Cog):
 
     @app_commands.command(name="경고", description="서버 멤버에게 경고를 부여합니다.")
     async def warn(self, interaction: discord.Interaction):
-        self.bot.tree.add_command(self)
         # 경고 처리 로직
         allowed_role_name = "1등 ✨"
         #allowed_role_name = "관리자"
