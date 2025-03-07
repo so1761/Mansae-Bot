@@ -4345,9 +4345,9 @@ class hello(commands.Cog):
         bettingPoint = originr["베팅포인트"]
         real_point = point - bettingPoint
         
-        if 포인트 <= 100:
+        if 포인트 < 100:
             warnembed = discord.Embed(title="실패",color = discord.Color.red())
-            warnembed.add_field(name="",value=f"100포인트 이하로 베팅할 순 없습니다! ❌")
+            warnembed.add_field(name="",value=f"100포인트 미만으로 베팅할 순 없습니다! ❌")
             await interaction.response.send_message("",embed = warnembed,ephemeral=True)
             return
         
@@ -4373,13 +4373,12 @@ class hello(commands.Cog):
                 await interaction.response.send_message("",embed = warnembed)
                 return
 
-        
-
         if real_point < 100:
             warnembed = discord.Embed(title="실패",color = discord.Color.red())
             warnembed.add_field(name="",value=f"{challenger}님의 포인트가 100포인트 미만입니다! ❌")
             await interaction.response.send_message("",embed = warnembed)
             return
+        
         ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}')
         originr = ref.get()
         point = originr["포인트"]
@@ -4632,7 +4631,7 @@ class hello(commands.Cog):
         await interaction.response.send_message(embed = shop_embed, view = view, ephemeral = True)
         
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다. 하루에 한번만 가능합니다.")
-    async def 숫자야구(self, interaction: discord.Interaction, 상대:discord.Member):
+    async def 숫자야구(self, interaction: discord.Interaction, 상대:discord.Member, 포인트: int = 100):
         challenger = interaction.user.name
         challenger_m = interaction.user
         if 상대.name == challenger:
@@ -4672,18 +4671,25 @@ class hello(commands.Cog):
                 warnembed.add_field(name="",value="하루에 한번만 대결 신청할 수 있습니다! ❌")
                 await interaction.response.send_message("",embed = warnembed)
                 return
-
+        
         ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}')
         originr = ref.get()
         point = originr["포인트"]
         bettingPoint = originr["베팅포인트"]
         real_point = point - bettingPoint
 
-        if real_point < 100:
+        if 포인트 < 100:
             warnembed = discord.Embed(title="실패",color = discord.Color.red())
-            warnembed.add_field(name="",value=f"{challenger}님의 포인트가 100포인트 미만입니다! ❌")
-            await interaction.response.send_message("",embed = warnembed)
+            warnembed.add_field(name="",value=f"100포인트 미만으로 베팅할 순 없습니다! ❌")
+            await interaction.response.send_message("",embed = warnembed,ephemeral=True)
             return
+        
+        if 포인트 > real_point:
+            warnembed = discord.Embed(title="실패",color = discord.Color.red())
+            warnembed.add_field(name="",value=f"{challenger}님의 포인트가 {포인트}포인트 미만입니다! ❌")
+            await interaction.response.send_message("",embed = warnembed,ephemeral=True)
+            return
+        
         ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}')
         originr = ref.get()
         point = originr["포인트"]
@@ -4697,9 +4703,9 @@ class hello(commands.Cog):
             return
 
         # 대결 요청
-        view = DuelRequestView(challenger, 상대)
+        view = DuelRequestView(challenger, 상대, 포인트)
         battleembed = discord.Embed(title="대결 요청!", color = discord.Color.blue())
-        battleembed.add_field(name="", value=f"{상대.mention}, {challenger_m.mention}의 숫자야구 대결 요청! 수락하시겠습니까?")
+        battleembed.add_field(name="", value=f"{상대.mention}, {challenger_m.mention}의 숫자야구 대결 요청! 수락하시겠습니까? [걸린 포인트 : {포인트}포인트]")
         # 메시지 전송
         await interaction.response.send_message(view=view, embed=battleembed)
         battle_ref.set(True)
@@ -4732,8 +4738,8 @@ class hello(commands.Cog):
             p.battle_event.wait()  # 이 작업은 event가 set될 때까지 대기
         )
         game_point = {
-            challenger : 100, 
-            상대.name : 100
+            challenger : 포인트, 
+            상대.name : 포인트
         }
 
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
