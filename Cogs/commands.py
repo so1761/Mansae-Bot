@@ -5782,12 +5782,12 @@ class hello(commands.Cog):
     @app_commands.command(name="명령어", description="명령어 목록을 확인합니다.")
     async def commands(self, interaction: discord.Interaction):
         exclude = {}
-        commands_list = [cmd for cmd in self.bot.commands if cmd.name not in exclude]
+        commands_list = [cmd for cmd in self.bot.commands if hasattr(cmd, "id") and cmd.name not in exclude]
         commands_list.sort(key=lambda x: x.name)
         commands_embed = discord.Embed(title="명령어 목록", color=discord.Color.green())
         for cmd in commands_list:
             commands_embed.add_field(name=f"</{cmd.name}:{cmd.id}>", value=cmd.description, inline=False)
-        await interaction.response.send_message(embed=commands_embed)
+        await interaction.response.send_message(embed=commands_embed,ephemeral=True)
 
 
     #베팅 테스트를 위한 코드
