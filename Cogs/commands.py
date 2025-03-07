@@ -2492,10 +2492,6 @@ class hello(commands.Cog):
             callback=self.warn_user,
         )
         self.bot.tree.add_command(self.ctx_menu)
-        self.bot.tree.add_command(self.전적분석)
-        self.bot.tree.add_command(self.트름범인)
-        self.bot.tree.add_command(self.연승)
-
 
     async def cog_unload(self) -> None:
         self.bot.tree.remove_command(self.ctx_menu.name, type=self.ctx_menu.type)
@@ -2513,9 +2509,6 @@ class hello(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        cmds = await self.bot.tree.fetch_commands(guild=discord.Object(id=298064707460268032))  # 동기화된 모든 명령어 가져오기
-        for cmd in cmds:
-            print(f"명령어: {cmd.name}, ID: {cmd.id}")
         load_dotenv()
         global API_KEY
         API_KEY = os.getenv("RIOT_API_KEY")
@@ -5791,15 +5784,14 @@ class hello(commands.Cog):
 
     @app_commands.command(name="명령어", description="명령어 목록을 확인합니다.")
     async def commands(self, interaction: discord.Interaction):
-        commands_list = [cmd for cmd in self.bot.tree.get_commands() if isinstance(cmd, app_commands.Command)]
+        exclude = {"온오프", "정상화", "재부팅", "익명온오프", "패배","테스트", "열람포인트초기화","공지","베팅포인트초기화","아이템지급","아이템전체지급","일일미션추가", "시즌미션추가", "미션삭제"}
+        commands_list = await self.bot.tree.fetch_commands(guild=discord.Object(id=298064707460268032))  # 동기화된 모든 명령어 가져오기
+        commands_list = [cmd for cmd in commands_list if cmd.name not in exclude]
         commands_list.sort(key=lambda x: x.name)
         commands_embed = discord.Embed(title="명령어 목록", color=discord.Color.green())
         for cmd in commands_list:
-            commands_embed.add_field(name=f"</{cmd.name}:{self.bot.tree.get_command(cmd.name).id}>", value=cmd.description, inline=False)
-            print(f"{cmd.name} {self.bot.tree.get_command(cmd.name).id}")
-        await interaction.response.send_message(embed=commands_embed,ephemeral=True)
-
-        
+            commands_embed.add_field(name=f"</{cmd.name}:{cmd.id}>", value=cmd.description, inline=False)
+        await interaction.response.send_message(embed=commands_embed,ephemeral=True) 
 
     #베팅 테스트를 위한 코드
     # @app_commands.command(name="베팅테스트",description="베팅 테스트(개발자 전용)")
