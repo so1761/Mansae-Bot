@@ -3890,13 +3890,12 @@ class hello(commands.Cog):
                             loser['points'] += 포인트  # 포인트 수정
                             ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
                             userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                            if loser['points'] != 포인트:
+                                userembed.add_field(name="",value=f"{nickname}님이 {p.votes['배틀']['name']['상대'].mention}에게 {포인트}포인트만큼 추가 베팅하셨습니다!", inline=True)
+                                await interaction.response.send_message(embed=userembed)
                             else:
-                                if loser['points'] != 포인트:
-                                    userembed.add_field(name="",value=f"{nickname}님이 {p.votes['배틀']['name']['상대'].mention}에게 {포인트}포인트만큼 추가 베팅하셨습니다!", inline=True)
-                                    await interaction.response.send_message(embed=userembed)
-                                else:
-                                    userembed.add_field(name="",value=f"{nickname}님이 {p.votes['배틀']['name']['상대'].mention}에게 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
-                                    await interaction.response.send_message(embed=userembed)
+                                userembed.add_field(name="",value=f"{nickname}님이 {p.votes['배틀']['name']['상대'].mention}에게 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
+                                await interaction.response.send_message(embed=userembed)
 
                             # 새로고침
                             prediction_embed = update_prediction_embed(p,p.votes['배틀']['name']['challenger'],p.votes['배틀']['name']['상대'])
