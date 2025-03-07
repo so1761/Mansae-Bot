@@ -2872,7 +2872,7 @@ class hello(commands.Cog):
         else:
             await interaction.response.send_message("음성 채널에 연결되어 있지 않습니다!")
 
-    @app_commands.command(name="연승",description="연승 횟수를 보여줍니다")
+    @app_commands.command(name="연승",description="소환사의 연승 횟수를 보여줍니다")
     @app_commands.describe(닉네임='소환사 닉네임',태그='소환사 태그 ex)KR1')
     async def 연승(self, interaction: discord.Interaction, 닉네임:str, 태그:str):
         print(f"{interaction.user}가 요청한 연승 요청 수행")
@@ -2905,7 +2905,7 @@ class hello(commands.Cog):
         else:
             await interaction.response.send_message('잠시 후에 다시 시도해주세요')
 
-    @app_commands.command(name="연패",description="연패 횟수를 보여줍니다")
+    @app_commands.command(name="연패",description="소환사의 연패 횟수를 보여줍니다")
     @app_commands.describe(닉네임='소환사 닉네임',태그='소환사 태그 ex)KR1')
     async def 연패(self, interaction: discord.Interaction, 닉네임:str, 태그:str):
         print(f"{interaction.user}가 요청한 연패 요청 수행")
@@ -3053,7 +3053,7 @@ class hello(commands.Cog):
             # 그래프 이미지 파일을 Discord 메시지로 전송
             await interaction.followup.send(file=discord.File('lp_graph.png'))
 
-    @app_commands.command(name="시즌종료",description="시즌 종료까지 남은 날짜")
+    @app_commands.command(name="시즌종료",description="시즌 종료까지 남은 날짜를 보여줍니다.")
     async def 시즌종료(self, interaction: discord.Interaction):
         print(f"{interaction.user}가 요청한 시즌종료 요청 수행")
         # 현재 날짜 및 시간 가져오기
@@ -3176,7 +3176,7 @@ class hello(commands.Cog):
         await interaction.followup.send(file=discord.File('prediction_graph.png'))
     '''
 
-    @app_commands.command(name="예측순위",description="승부예측 포인트 순위를 보여줍니다")
+    @app_commands.command(name="예측순위",description="승부예측 포인트 순위를 보여줍니다. 현재 진행 중인 시즌은 포인트를 사용하여 순위를 확인할 수 있습니다.")
     @app_commands.describe(시즌 = "시즌을 선택하세요")
     @app_commands.choices(시즌=[
     Choice(name='예측시즌 1', value='예측시즌1'),
@@ -4520,7 +4520,7 @@ class hello(commands.Cog):
         )
         await interaction.response.send_message(embed=embed, view=view)
 
-    @app_commands.command(name="업적해금", description="1000포인트를 지불하여, 아직 달성하지 않은 시즌미션의 상세 정보까지 전부 확인합니다.")
+    @app_commands.command(name="업적해금", description="1000포인트를 지불하여, 아직 달성하지 않은 시즌미션의 상세 정보까지 전부 확인합니다. 15일 이후만 가능합니다.")
     async def show_missions(self, interaction: discord.Interaction):
         user_id = interaction.user.name
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
@@ -4558,7 +4558,7 @@ class hello(commands.Cog):
             )
             await interaction.response.send_message(embed=embed, ephemeral = True)
 
-    @app_commands.command(name="주사위대결",description="포인트를 걸고 주사위대결을 진행합니다")
+    @app_commands.command(name="주사위대결",description="포인트를 걸고 주사위대결을 진행합니다. 하루에 한번만 가능합니다.")
     async def duel(self, interaction:discord.Interaction, 상대: discord.Member):
         self.bot.tree.add_command(self)
         challenger = interaction.user.name
@@ -4870,7 +4870,7 @@ class hello(commands.Cog):
         view = ItemBuyView()
         await interaction.response.send_message(embed = shop_embed, view = view, ephemeral = True)
         
-    @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
+    @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다. 하루에 한번만 가능합니다.")
     async def 숫자야구(self, interaction: discord.Interaction, 상대:discord.Member):
         self.bot.tree.add_command(self)
         challenger = interaction.user.name
