@@ -44,7 +44,7 @@ kda_embed = discord.Embed()
 kda2_embed = discord.Embed()
 
 jimo_winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label="승리")
-
+battle_winbutton = ""
 melon_winbutton = discord.ui.Button(style=discord.ButtonStyle.success,label="승리")
 
 global current_message_jimo

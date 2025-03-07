@@ -1396,13 +1396,13 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     prediction_value = "승리" if prediction_type == "win" else "패배"
 
                     if name == "지모":
-                        userembed = discord.Embed(title="메세지", color=0x000000)
+                        #userembed = discord.Embed(title="메세지", color=0x000000)
                         noticeembed = discord.Embed(title="메세지", color=0x000000)
                     elif name == "Melon":
-                        userembed = discord.Embed(title="메세지", color=discord.Color.brand_green())
+                        #userembed = discord.Embed(title="메세지", color=discord.Color.brand_green())
                         noticeembed = discord.Embed(title="메세지", color=discord.Color.brand_green())
                     if anonymbool:
-                        userembed.add_field(name="", value=f"{anonym_names[myindex]}님이 {prediction_value}에 투표하셨습니다.", inline=True)
+                        #userembed.add_field(name="", value=f"{anonym_names[myindex]}님이 {prediction_value}에 투표하셨습니다.", inline=True)
                         if basePoint != 0:
                             bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
                             bettingembed.add_field(name="", value=f"누군가가 {name}의 {prediction_value}에 {basePoint}포인트를 베팅했습니다!", inline=False)
@@ -1414,13 +1414,13 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             if interaction:
                                 await interaction.followup.send(embed=noticeembed, ephemeral=True)
                     else:
-                        userembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에 투표하셨습니다.", inline=True)
+                        #userembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에 투표하셨습니다.", inline=True)
                         if basePoint != 0:
                             bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
                             bettingembed.add_field(name="", value=f"{nickname}님이 {name}의 {prediction_value}에 {basePoint}포인트를 베팅했습니다!", inline=False)
                             await channel.send(f"\n", embed=bettingembed)
                     
-                    await channel.send(f"\n", embed=userembed)
+                    #await channel.send(f"\n", embed=userembed)
 
                     # ====================  [미션]  ====================
                     # 미션 : 승부예측 1회
@@ -1582,7 +1582,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     else:
                         userembed.add_field(name="", value=f"누군가가 {name}의 KDA를 0 데스, 퍼펙트로 예측했습니다!", inline=True)
                     
-                    await channel.send(f"\n", embed=userembed)
+                    #await channel.send(f"\n", embed=userembed)
 
                     if prediction_type == "up":
                         prediction_value = "KDA 3 이상"
