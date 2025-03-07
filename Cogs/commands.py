@@ -2513,8 +2513,9 @@ class hello(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        commands_list = [cmd.name for cmd in self.bot.tree.get_commands()]
-        print("Commands loaded:", commands_list)
+        cmds = await self.bot.tree.fetch_commands()  # 동기화된 모든 명령어 가져오기
+        for cmd in cmds:
+            print(f"명령어: {cmd.name}, ID: {cmd.id}")
         load_dotenv()
         global API_KEY
         API_KEY = os.getenv("RIOT_API_KEY")
