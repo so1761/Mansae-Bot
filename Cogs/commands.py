@@ -5821,7 +5821,11 @@ class hello(commands.Cog):
                 next_button.disabled = False
                 if current_page == 0:
                     prev_button.disabled = True
+                view.clear_items()
+                view.add_item(prev_button)
+                view.add_item(next_button)
                 await interaction.response.edit_message(embed=embed, view=view)
+
         async def next_button_callback(interaction: discord.Interaction):
             nonlocal current_page
             if current_page < total_pages - 1:
@@ -5830,6 +5834,9 @@ class hello(commands.Cog):
                 prev_button.disabled = False
                 if current_page == total_pages - 1:
                     next_button.disabled = True
+                view.clear_items()
+                view.add_item(prev_button)
+                view.add_item(next_button)
                 await interaction.response.edit_message(embed=embed, view=view)
 
         prev_button.callback = prev_button_callback
