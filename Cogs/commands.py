@@ -2509,8 +2509,8 @@ class hello(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        await self.bot.load_extension("Cogs.commands")
-        await self.bot.tree.sync()
+        commands_list = [cmd.name for cmd in self.bot.tree.get_commands()]
+        print("Commands loaded:", commands_list)
         load_dotenv()
         global API_KEY
         API_KEY = os.getenv("RIOT_API_KEY")
