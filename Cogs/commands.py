@@ -5808,8 +5808,8 @@ class hello(commands.Cog):
         embed = create_embed(commands_list, current_page, page_size)
         
         # 버튼을 만들어 페이지를 넘길 수 있게 처리
-        prev_button = Button(label="이전 페이지", style=discord.ButtonStyle.primary, disabled=True)
-        next_button = Button(label="다음 페이지", style=discord.ButtonStyle.primary)
+        prev_button = discord.ui.Button(label="이전 페이지", style=discord.ButtonStyle.primary, disabled=True)
+        next_button = discord.ui.Button(label="다음 페이지", style=discord.ButtonStyle.primary)
 
         # 버튼 클릭 이벤트 정의
         async def prev_button_callback(interaction: discord.Interaction):
@@ -5836,7 +5836,7 @@ class hello(commands.Cog):
         next_button.callback = next_button_callback
         
         # View에 버튼을 추가
-        view = View()
+        view = discord.ui.View()
         view.add_item(prev_button)
         view.add_item(next_button)
 
