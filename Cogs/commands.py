@@ -4447,7 +4447,7 @@ class hello(commands.Cog):
 
                 userembed = discord.Embed(title="메세지", color=discord.Color.blue())
                 userembed.add_field(name="", value=f"{nickname}님이 {prediction_value}에게 투표하셨습니다.", inline=True)
-                await channel.send(f"\n", embed=userembed)
+                #await channel.send(f"\n", embed=userembed)
 
                 if basePoint != 0:
                     bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
