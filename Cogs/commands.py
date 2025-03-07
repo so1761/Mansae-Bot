@@ -5794,7 +5794,7 @@ class hello(commands.Cog):
         await BaseballGameView(challenger_m, 상대, game_point).start_game(thread)
     
     @app_commands.command(name="명령어",description="명령어 목록을 보여줍니다.")
-    async def commands(self, interaction: discord.Interaction):
+    async def 명령어(self, interaction: discord.Interaction):
         exclude = {"온오프", "정상화", "재부팅", "익명온오프", "패배", "테스트", "열람포인트초기화", "공지", "베팅포인트초기화", "아이템지급", "아이템전체지급", "일일미션추가", "시즌미션추가", "미션삭제"}
         commands_list = await self.bot.tree.fetch_commands(guild=discord.Object(id=298064707460268032))  # 동기화된 모든 명령어 가져오기
         commands_list = [cmd for cmd in commands_list if cmd.name not in exclude]
