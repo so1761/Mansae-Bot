@@ -390,6 +390,9 @@ class DiceRevealView(discord.ui.View):
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
         
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+        
         battled_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}/배틀여부")
         item_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}/아이템")
         item_data = item_ref.get() or {} 
