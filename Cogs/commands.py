@@ -1615,7 +1615,7 @@ def get_summoner_matchinfo_nonaysnc(matchid): #matchid로 매치 정보 구하�
         return None
 
 # 임베드를 생성하는 함수 (명령어 목록을 페이지별로 나누기)
-def create_embed(self, commands_list, current_page, page_size):
+def create_embed(commands_list, current_page, page_size):
     embed = discord.Embed(title="명령어 목록", color=discord.Color.green())
     start_index = current_page * page_size
     end_index = min((current_page + 1) * page_size, len(commands_list))
