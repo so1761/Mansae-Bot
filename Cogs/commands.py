@@ -5795,7 +5795,7 @@ class hello(commands.Cog):
         commands_list.sort(key=lambda x: x.name)
         commands_embed = discord.Embed(title="명령어 목록", color=discord.Color.green())
         for cmd in commands_list:
-            commands_embed.add_field(name=f"</{cmd.name}:{cmd.id}>", value=cmd.description, inline=False)
+            commands_embed.add_field(name=f"</{cmd.mention}>", value=cmd.description, inline=False)
         await interaction.response.send_message(embed=commands_embed,ephemeral=True)
 
         
