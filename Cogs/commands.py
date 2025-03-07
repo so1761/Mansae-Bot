@@ -2509,6 +2509,7 @@ class hello(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        await self.bot.tree.sync()
         load_dotenv()
         global API_KEY
         API_KEY = os.getenv("RIOT_API_KEY")
@@ -5782,7 +5783,7 @@ class hello(commands.Cog):
     @app_commands.command(name="명령어", description="명령어 목록을 확인합니다.")
     async def commands(self, interaction: discord.Interaction):
         exclude = {}
-        commands_list = [cmd for cmd in self.bot.tree.get_commands() if cmd.name not in exclude and isinstance(cmd, app_commands.Command)]
+        commands_list = [cmd for cmd in self.bot.tree.get_commands() if cmd.name not in exclude and isinstance(cmd, app_commands.command)]
         commands_list.sort(key=lambda x: x.name)
         commands_embed = discord.Embed(title="명령어 목록", color=discord.Color.green())
         for cmd in commands_list:
