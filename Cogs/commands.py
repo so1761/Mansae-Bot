@@ -2495,7 +2495,7 @@ class hello(commands.Cog):
         self.bot.tree.add_command(self.전적분석)
         self.bot.tree.add_command(self.트름범인)
         self.bot.tree.add_command(self.연승)
-        
+
 
     async def cog_unload(self) -> None:
         self.bot.tree.remove_command(self.ctx_menu.name, type=self.ctx_menu.type)
@@ -5795,7 +5795,7 @@ class hello(commands.Cog):
         commands_list.sort(key=lambda x: x.name)
         commands_embed = discord.Embed(title="명령어 목록", color=discord.Color.green())
         for cmd in commands_list:
-            commands_embed.add_field(name=f"</{cmd.name}>", value=cmd.description, inline=False)
+            commands_embed.add_field(name=f"</{cmd.name}:{cmd.id}>", value=cmd.description, inline=False)
         await interaction.response.send_message(embed=commands_embed,ephemeral=True)
 
         
