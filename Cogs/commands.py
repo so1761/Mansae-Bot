@@ -12,6 +12,7 @@ import prediction_vote as p
 import subprocess
 import os
 import math
+import secrets
 from discord.ui import Modal, TextInput
 from discord import TextStyle
 from firebase_admin import db
@@ -4589,7 +4590,7 @@ class hello(commands.Cog):
         dice = ref.get()
 
         if not dice:  # 주사위를 아직 안 굴렸다면
-            dice_num = random.randint(1, 100)
+            dice_num = secrets.randbelow(100) + 1
             ref.set(dice_num)  # 주사위 값 저장
             embed = discord.Embed(
                 title="🎲 주사위 굴리기!",
@@ -4986,8 +4987,8 @@ class hello(commands.Cog):
 
         # 주사위 굴리기
         dice_results = {
-            challenger: random.randint(1, 100),
-            상대.name: random.randint(1, 100)
+            challenger: secrets.randbelow(100) + 1,
+            상대.name: secrets.randbelow(100) + 1
         }
 
         game_point = {
