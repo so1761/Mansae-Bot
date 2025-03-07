@@ -4313,6 +4313,7 @@ class hello(commands.Cog):
             await interaction.response.send_message(embed=embed, ephemeral = True)
 
     @app_commands.command(name="주사위대결",description="포인트를 걸고 주사위대결을 진행합니다. 하루에 한번만 가능합니다.")
+    @app_commands.describe(상대 = "대결할 상대를 고르세요", 포인트 = "기본 베팅으로 걸 포인트를 입력하세요. (100포인트 이상)")
     async def duel(self, interaction:discord.Interaction, 상대: discord.Member, 포인트: int = 100):
         challenger = interaction.user.name
         challenger_m = interaction.user
@@ -4394,7 +4395,7 @@ class hello(commands.Cog):
         # 대결 요청
         view = DuelRequestView(challenger, 상대, 포인트)
         battleembed = discord.Embed(title="대결 요청!", color = discord.Color.blue())
-        battleembed.add_field(name="", value=f"{상대.mention}, {challenger_m.mention}의 주사위 대결 요청! 수락하시겠습니까? 🎲 [걸린 포인트 : {포인트}포인트]")
+        battleembed.add_field(name="", value=f"{상대.mention}, {challenger_m.mention}의 주사위 대결 요청! 수락하시겠습니까? 🎲\n[걸린 포인트 : {포인트}포인트]")
         # 메시지 전송
         await interaction.response.send_message(content="", view=view, embed=battleembed)
         battle_ref.set(True)
@@ -4581,12 +4582,12 @@ class hello(commands.Cog):
         ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}')
         ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}/베팅포인트')
         bettingPoint = ref2.get()
-        ref.update({"베팅포인트" : bettingPoint + 100})
+        ref.update({"베팅포인트" : bettingPoint + 포인트})
 
         ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}')
         ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}/베팅포인트')
         bettingPoint = ref2.get()
-        ref.update({"베팅포인트" : bettingPoint + 100})
+        ref.update({"베팅포인트" : bettingPoint + 포인트})
 
         diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
         diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲", inline=False)
@@ -4631,6 +4632,7 @@ class hello(commands.Cog):
         await interaction.response.send_message(embed = shop_embed, view = view, ephemeral = True)
         
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다. 하루에 한번만 가능합니다.")
+    @app_commands.describe(상대 = "대결할 상대를 고르세요", 포인트 = "기본 베팅으로 걸 포인트를 입력하세요. (100포인트 이상)")
     async def 숫자야구(self, interaction: discord.Interaction, 상대:discord.Member, 포인트: int = 100):
         challenger = interaction.user.name
         challenger_m = interaction.user
@@ -4705,7 +4707,7 @@ class hello(commands.Cog):
         # 대결 요청
         view = DuelRequestView(challenger, 상대, 포인트)
         battleembed = discord.Embed(title="대결 요청!", color = discord.Color.blue())
-        battleembed.add_field(name="", value=f"{상대.mention}, {challenger_m.mention}의 숫자야구 대결 요청! 수락하시겠습니까? [걸린 포인트 : {포인트}포인트]")
+        battleembed.add_field(name="", value=f"{상대.mention}, {challenger_m.mention}의 숫자야구 대결 요청! 수락하시겠습니까?\n[걸린 포인트 : {포인트}포인트]")
         # 메시지 전송
         await interaction.response.send_message(view=view, embed=battleembed)
         battle_ref.set(True)
@@ -4748,12 +4750,12 @@ class hello(commands.Cog):
         ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}')
         ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger}/베팅포인트')
         bettingPoint = ref2.get()
-        ref.update({"베팅포인트" : bettingPoint + 100})
+        ref.update({"베팅포인트" : bettingPoint + 포인트})
 
         ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}')
         ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}/베팅포인트')
         bettingPoint = ref2.get()
-        ref.update({"베팅포인트" : bettingPoint + 100})
+        ref.update({"베팅포인트" : bettingPoint + 포인트})
 
         class GuessModal(discord.ui.Modal, title="숫자 맞추기"):
             def __init__(self, game, player):
@@ -4768,15 +4770,16 @@ class hello(commands.Cog):
                 self.add_item(self.answer)
 
             async def on_submit(self, interaction: discord.Interaction):
+                await interaction.response.defer()
                 guess = self.answer.value.strip()
                 if not guess.isdigit() or len(set(guess)) != 3 or len(guess) != 3:
-                    await interaction.response.send_message("🚫 **서로 다른 3개의 숫자로 입력해주세요!**", ephemeral=True)
+                    await interaction.followup.send("🚫 **서로 다른 3개의 숫자로 입력해주세요!**", ephemeral=True)
                     return
 
                 guess = list(map(int, guess))
                 result, end = await self.game.check_guess(self.player, guess)
 
-                await interaction.response.send_message(embed=result)
+                await interaction.followup.send(embed=result)
                 if not end:
                     await self.game.next_turn()  # 턴 넘기기
                 if end:
