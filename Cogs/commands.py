@@ -1614,6 +1614,17 @@ def get_summoner_matchinfo_nonaysnc(matchid): #matchid로 매치 정보 구하�
         print('Error:', response.status_code)
         return None
 
+# 임베드를 생성하는 함수 (명령어 목록을 페이지별로 나누기)
+def create_embed(self, commands_list, current_page, page_size):
+    embed = discord.Embed(title="명령어 목록", color=discord.Color.green())
+    start_index = current_page * page_size
+    end_index = min((current_page + 1) * page_size, len(commands_list))
+
+    # 현재 페이지에 해당하는 명령어들만 추가
+    for cmd in commands_list[start_index:end_index]:
+        embed.add_field(name=f"</{cmd.name}:>", value=cmd.description, inline=False)
+    return embed
+
 # 야추 다이스 굴리기
 class DiceRollView(discord.ui.View):
     def __init__(self, user, initial_rolls, reroll_count=0):
@@ -5782,16 +5793,56 @@ class hello(commands.Cog):
         )
         await BaseballGameView(challenger_m, 상대, game_point).start_game(thread)
 
-    @app_commands.command(name="명령어", description="명령어 목록을 확인합니다.")
     async def commands(self, interaction: discord.Interaction):
-        exclude = {"온오프", "정상화", "재부팅", "익명온오프", "패배","테스트", "열람포인트초기화","공지","베팅포인트초기화","아이템지급","아이템전체지급","일일미션추가", "시즌미션추가", "미션삭제"}
+        exclude = {"온오프", "정상화", "재부팅", "익명온오프", "패배", "테스트", "열람포인트초기화", "공지", "베팅포인트초기화", "아이템지급", "아이템전체지급", "일일미션추가", "시즌미션추가", "미션삭제"}
         commands_list = await self.bot.tree.fetch_commands(guild=discord.Object(id=298064707460268032))  # 동기화된 모든 명령어 가져오기
         commands_list = [cmd for cmd in commands_list if cmd.name not in exclude]
         commands_list.sort(key=lambda x: x.name)
-        commands_embed = discord.Embed(title="명령어 목록", color=discord.Color.green())
-        for cmd in commands_list:
-            commands_embed.add_field(name=f"</{cmd.name}:{cmd.id}>", value=cmd.description, inline=False)
-        await interaction.response.send_message(embed=commands_embed,ephemeral=True) 
+
+        # 페이지 구분 (한 페이지에 10개씩 표시한다고 가정)
+        page_size = 10
+        total_pages = (len(commands_list) // page_size) + (1 if len(commands_list) % page_size != 0 else 0)
+        
+        # 첫 번째 페이지의 명령어 목록을 임베드로 생성
+        current_page = 0
+        embed = create_embed(commands_list, current_page, page_size)
+        
+        # 버튼을 만들어 페이지를 넘길 수 있게 처리
+        prev_button = Button(label="이전 페이지", style=discord.ButtonStyle.primary, disabled=True)
+        next_button = Button(label="다음 페이지", style=discord.ButtonStyle.primary)
+
+        # 버튼 클릭 이벤트 정의
+        async def prev_button_callback(interaction: discord.Interaction):
+            nonlocal current_page
+            if current_page > 0:
+                current_page -= 1
+                embed = create_embed(commands_list, current_page, page_size)
+                await interaction.response.edit_message(embed=embed, view=view)
+                next_button.disabled = False
+                if current_page == 0:
+                    prev_button.disabled = True
+
+        async def next_button_callback(interaction: discord.Interaction):
+            nonlocal current_page
+            if current_page < total_pages - 1:
+                current_page += 1
+                embed = create_embed(commands_list, current_page, page_size)
+                await interaction.response.edit_message(embed=embed, view=view)
+                prev_button.disabled = False
+                if current_page == total_pages - 1:
+                    next_button.disabled = True
+
+        prev_button.callback = prev_button_callback
+        next_button.callback = next_button_callback
+        
+        # View에 버튼을 추가
+        view = View()
+        view.add_item(prev_button)
+        view.add_item(next_button)
+
+        # 처음 명령어 목록을 보여주는 메시지 전송
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
 
     #베팅 테스트를 위한 코드
     # @app_commands.command(name="베팅테스트",description="베팅 테스트(개발자 전용)")
