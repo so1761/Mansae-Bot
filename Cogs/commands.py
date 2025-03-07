@@ -4551,6 +4551,7 @@ class hello(commands.Cog):
 
     @app_commands.command(name="주사위대결",description="포인트를 걸고 주사위대결을 진행합니다")
     async def duel(self, interaction:discord.Interaction, 상대: discord.Member):
+        self.bot.tree.add_command(self)
         challenger = interaction.user.name
         challenger_m = interaction.user
         if 상대.name == challenger:
@@ -4833,6 +4834,7 @@ class hello(commands.Cog):
 
     @app_commands.command(name="경고", description="서버 멤버에게 경고를 부여합니다.")
     async def warn(self, interaction: discord.Interaction):
+        self.bot.tree.add_command(self)
         # 경고 처리 로직
         allowed_role_name = "1등 ✨"
         #allowed_role_name = "관리자"
@@ -4847,6 +4849,7 @@ class hello(commands.Cog):
     
     @app_commands.command(name="아이템구매", description="다양한 아이템을 구매합니다.")
     async def item_shop(self, interaction: discord.Interaction):
+        self.bot.tree.add_command(self)
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
         point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
@@ -4861,6 +4864,7 @@ class hello(commands.Cog):
         
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다")
     async def 숫자야구(self, interaction: discord.Interaction, 상대:discord.Member):
+        self.bot.tree.add_command(self)
         challenger = interaction.user.name
         challenger_m = interaction.user
         if 상대.name == challenger:
@@ -5791,6 +5795,7 @@ class hello(commands.Cog):
             commands_embed.add_field(name=f"</{cmd.name}>", value=cmd.description, inline=False)
         await interaction.response.send_message(embed=commands_embed,ephemeral=True)
 
+        
 
     #베팅 테스트를 위한 코드
     # @app_commands.command(name="베팅테스트",description="베팅 테스트(개발자 전용)")
@@ -5830,7 +5835,7 @@ class hello(commands.Cog):
     #         interaction.response.send_message("권한이 없습니다",ephemeral=True)
 
 # 컨텍스트 메뉴 명령어 등록 (메시지 대상)
-
+        
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(
