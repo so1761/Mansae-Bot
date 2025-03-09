@@ -4221,7 +4221,7 @@ class hello(commands.Cog):
             item_data = ref_item.get()
             dice_refresh = item_data.get('주사위 초기화', 0)
             if dice_refresh:
-                ref_item.set({'주사위 초기화': dice_refresh - 1})
+                ref_item.update({'주사위 초기화': dice_refresh - 1})
                 dice_num = random.randint(1, 100)
                 ref.set(dice_num)  # 주사위 값 저장
                 embed = discord.Embed(
@@ -4331,7 +4331,6 @@ class hello(commands.Cog):
             warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
             await interaction.response.send_message(embed = warnembed)
             return
-
 
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
