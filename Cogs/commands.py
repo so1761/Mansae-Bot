@@ -302,6 +302,7 @@ class DiceRevealView(discord.ui.View):
         self.reroll = {challenger.name: False, opponent.name: False}
         self.giveup = {challenger.name: False, opponent.name: False}
         self.message = ""
+        self.point_limited
         self.keep_alive_task = None # 메시지 갱신 태스크 저장용
         self.channel = channel
 
@@ -327,8 +328,8 @@ class DiceRevealView(discord.ui.View):
     async def check_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.name not in [self.challenger, self.opponent]:
             userembed = discord.Embed(title = "주사위 결과!",color = discord.Color.blue())
-            userembed.add_field(name=f"{self.challenger_m.display_name}의 주사위",value=f" **{self.dice_results[self.challenger]}**🎲", inline = False)
-            userembed.add_field(name=f"{self.opponent_m.display_name}의 주사위",value=f" **{self.dice_results[self.opponent]}**🎲", inline = False)
+            userembed.add_field(name=f"{self.challenger_m.display_name}의 주사위 끝자리 수",value=f" **{self.dice_results[self.challenger] % 10}**🎲", inline = False)
+            userembed.add_field(name=f"{self.opponent_m.display_name}의 주사위 끝자리 수",value=f" **{self.dice_results[self.opponent] % 10}**🎲", inline = False)
             await interaction.response.send_message(content = "", embed = userembed, ephemeral = True)
             return
         
@@ -391,12 +392,46 @@ class DiceRevealView(discord.ui.View):
             await interaction.response.send_message(embed = userembed)
 
         if all(self.reroll.values()):
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+            current_predict_season = cur_predict_seasonref.get()
+
+            add_point_challenger = self.game_point[self.challenger] * 0.25
+            add_point_opponent = self.game_point[self.opponent] * 0.25
+
+            challenger_point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
+            challenger_predict_data = challenger_point_ref.get()
+            challenger_point = challenger_predict_data["포인트"]
+            challenger_bettingPoint = challenger_predict_data["베팅포인트"]
+            challenger_real_point = challenger_point - challenger_bettingPoint + add_point_challenger
+            
+            if challenger_real_point < 0 and not self.point_limited:
+                self.point_limited = True
+
+            opponent_point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
+            opponent_predict_data = opponent_point_ref.get()
+            opponent_point = opponent_predict_data["포인트"]
+            opponent_bettingPoint = opponent_predict_data["베팅포인트"]
+            opponent_real_point = opponent_point - opponent_bettingPoint + add_point_opponent
+
+            if opponent_real_point < 0 and not self.point_limited:
+                self.point_limited = True
+
             userembed = discord.Embed(title = "주사위 다시 굴리기!",color = discord.Color.blue())
             userembed.add_field(name="",value=f"주사위를 다시 굴립니다! 🎲", inline = False)
+            if self.point_limited:
+                userembed.add_field(name="",value=f"포인트가 부족하여 추가 베팅이 적용되지 않습니다.", inline = False)
+            else:
+                userembed.add_field(name="",value=f"베팅 포인트가 25% 증가합니다! 🎲", inline = False)
+                userembed.add_field(name="",value=f"{self.challenger_m.display_name}의 추가 베팅 포인트: **{add_point_challenger}** 🎲", inline = False)
+                userembed.add_field(name="",value=f"{self.opponent_m.display_name}의 추가 베팅 포인트: **{add_point_opponent}** 🎲", inline = False)
+                self.game_point[self.challenger] += add_point_challenger
+                self.game_point[self.opponent] += add_point_opponent
+                challenger_point_ref.update({"베팅포인트" : challenger_bettingPoint + add_point_challenger})
+                opponent_point_ref.update({"베팅포인트" : opponent_bettingPoint + add_point_opponent})
             userembed.add_field(name="",value=f"{self.challenger_m.display_name}의 이전 주사위 숫자: **{self.dice_results[self.challenger]}** 🎲",inline = False)
             userembed.add_field(name="",value=f"{self.opponent_m.display_name}의 이전 주사위 숫자: **{self.dice_results[self.opponent]}** 🎲", inline = False)
+
             # 주사위 굴리기
-            
             self.dice_results = {
                 self.challenger: secrets.randbelow(100) + 1,
                 self.opponent: secrets.randbelow(100) + 1
@@ -404,6 +439,12 @@ class DiceRevealView(discord.ui.View):
 
             self.reroll[self.challenger] = False
             self.reroll[self.opponent] = False
+
+            diceview_embed = discord.Embed(title = "결과 확인", color = discord.Color.blue())
+            diceview_embed.add_field(name = "", value = "주사위 결과를 확인하세요! 🎲",inline=False)
+            diceview_embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
+            diceview_embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
+            await self.message.edit(embed = diceview_embed)
 
             await self.message.channel.send(embed = userembed)
 
