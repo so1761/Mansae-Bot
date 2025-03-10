@@ -299,6 +299,7 @@ class DiceRevealView(discord.ui.View):
         self.dice_results = dice_results
         self.game_point = game_point
         self.revealed = {challenger.name: False, opponent.name: False}
+        self.reroll = {challenger.name: False, opponent.name: False}
         self.giveup = {challenger.name: False, opponent.name: False}
         self.message = ""
         self.keep_alive_task = None # 메시지 갱신 태스크 저장용
@@ -363,8 +364,45 @@ class DiceRevealView(discord.ui.View):
         self.giveup[interaction.user.name] = True
 
         if self.keep_alive_task: 
-                self.keep_alive_task.cancel()
+            self.keep_alive_task.cancel()
         await self.announce_winner()
+
+    @discord.ui.button(label="🎲 다시 굴리기", style=discord.ButtonStyle.gray)
+    async def reveal_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.name not in [self.challenger, self.opponent]:
+            userembed = discord.Embed(title = "선택 불가!",color = discord.Color.red())
+            userembed.add_field(name="",value="참가자만 선택할 수 있습니다!")
+            await interaction.response.send_message(content = "", embed = userembed, ephemeral = True)
+            return
+
+        if not self.reroll[interaction.user.name]:
+            self.reroll[interaction.user.name] = True
+
+            userembed = discord.Embed(title = "주사위 다시 굴리기 요청!",color = discord.Color.red())
+            userembed.add_field(name="",value=f"{interaction.user.display_name}님이 주사위 다시 굴리기를 요청했습니다!🎲")
+
+            await interaction.response.send_message(embed = userembed)
+        else:
+            self.reroll[interaction.user.name] = False
+
+            userembed = discord.Embed(title = "주사위 다시 굴리기 요청 취소!",color = discord.Color.red())
+            userembed.add_field(name="",value=f"{interaction.user.display_name}님이 주사위 다시 굴리기 요청을 취소했습니다! 🎲")
+
+            await interaction.response.send_message(embed = userembed)
+
+        if all(self.reroll.values()):
+            userembed = discord.Embed(title = "주사위 다시 굴리기!",color = discord.Color.blue())
+            userembed.add_field(name="",value=f"주사위를 다시 굴립니다! 🎲")
+            userembed.add_field(name="",value=f"{self.challenger_m.display_name}의 이전 주사위 숫자: **{self.dice_results[self.challenger]}** 🎲")
+            userembed.add_field(name="",value=f"{self.opponent_m.display_name}의 이전 주사위 숫자: **{self.dice_results[self.opponent]}** 🎲")
+            # 주사위 굴리기
+            
+            self.dice_results = {
+                self.challenger: secrets.randbelow(100) + 1,
+                self.opponent: secrets.randbelow(100) + 1
+            }
+
+            await interaction.response.send_message(embed = userembed)
 
     @discord.ui.button(label="준비 완료", style=discord.ButtonStyle.green)
     async def reveal_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -393,6 +431,7 @@ class DiceRevealView(discord.ui.View):
             if self.keep_alive_task: 
                 self.keep_alive_task.cancel()
             await self.announce_winner()
+
     
     async def update_game_point(self, user, bet_amount):
         # 게임 포인트를 외부에서 수정
