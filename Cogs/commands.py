@@ -5328,7 +5328,7 @@ class hello(commands.Cog):
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
     @app_commands.command(name="포인트지급", description="포인트를 지급합니다. (관리자 전용)")
-    async def item_shop(self, interaction: discord.Interaction, user: discord.Member, point: int):
+    async def give_point(self, interaction: discord.Interaction, user: discord.Member, point: int):
         if interaction.user.name == "toe_kyung":
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
             current_predict_season = cur_predict_seasonref.get()
