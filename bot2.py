@@ -1286,13 +1286,13 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             
             winbutton.disabled = onoffbool
             losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label="패배",disabled=onoffbool)
-            betrateupbutton = discord.ui.Button(style=discord.ButtonStyle.primary,label="배율 조정",disabled=onoffbool)
+            betratebutton = discord.ui.Button(style=discord.ButtonStyle.primary,label="배율 조정",disabled=onoffbool)
 
             
             prediction_view = discord.ui.View()
             prediction_view.add_item(winbutton)
             prediction_view.add_item(losebutton)
-            prediction_view.add_item(betrateupbutton)
+            prediction_view.add_item(betratebutton)
 
             upbutton = discord.ui.Button(style=discord.ButtonStyle.success,label="업",disabled=onoffbool)
             downbutton = discord.ui.Button(style=discord.ButtonStyle.danger,label="다운",disabled=onoffbool)
@@ -1311,7 +1311,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 await asyncio.sleep(180)  # 3분 대기
                 winbutton.disabled = True
                 losebutton.disabled = True
-                betrateupbutton.disabled = True
+                betratebutton.disabled = True
                 upbutton.disabled = True
                 downbutton.disabled = True
                 perfectbutton.disabled = True
@@ -1319,7 +1319,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 kda_view = discord.ui.View()
                 prediction_view.add_item(winbutton)
                 prediction_view.add_item(losebutton)
-                prediction_view.add_item(betrateupbutton)
+                prediction_view.add_item(betratebutton)
                 kda_view.add_item(upbutton)
                 kda_view.add_item(downbutton)
                 kda_view.add_item(perfectbutton)
@@ -1452,7 +1452,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     if interaction:
                         await interaction.followup.send(embed=userembed, ephemeral=True)
 
-            async def betrate_up_button_callback(interaction: discord.Interaction):
+            async def betrate_button_callback(interaction: discord.Interaction):
                 nickname = interaction.user
                 refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname.name}/아이템')
                 itemr = refitem.get()
@@ -1466,10 +1466,9 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 item_view.add_item(betbutton2)
                 item_view.add_item(betbutton3)
 
-                embed = discord.Embed(title="보유 아이템", color=discord.Color.purple())
-                embed.add_field(name="", value=f"배율 0.1 증가 : {itemr.get('배율증가1',0)}개 | 배율 0.3 증가 : {itemr.get('배율증가3',0)}개 | 배율 0.5 증가 : {itemr.get('배율증가5',0)}개", inline=False)
-                embed.add_field(name="", value=f"배율 0.1 감소 : {itemr.get('배율감소1',0)}개 | 배율 0.3 감소 : {itemr.get('배율감소3',0)}개 | 배율 0.5 감소 : {itemr.get('배율감소5',0)}개", inline=False)
-
+                item_embed = discord.Embed(title="아이템 선택", color=discord.Color.purple())
+                item_embed.add_field(name="", value="사용할 아이템을 선택하세요", inline=False)
+                
                 options = [
                     discord.SelectOption(label="배율 증가 0.1", value="increase_0.1"),
                     discord.SelectOption(label="배율 증가 0.3", value="increase_0.3"),
@@ -1528,12 +1527,18 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                                     used_items_for_user_jimo[user_id] = True
                                 elif name == "Melon":
                                     used_items_for_user_melon[user_id] = True
-                                use_button.disabled = True 
+                                use_button.disabled = True
+                                await interaction.response.edit_message(view=item_view)
 
                         use_button.callback = use_button_callback
                         item_view = discord.ui.View()
                         item_view.add_item(select)
                         item_view.add_item(use_button)
+
+                        item_embed = discord.Embed(title=f"{item_name}", color=discord.Color.purple())
+                        item_embed.add_field(name="아이템 개수", value=f"**{item_num}개**", inline=False)
+
+
                         await interaction.response.edit_message(view=item_view)
                     else:
                         await interaction.response.send_message("아이템이 없습니다!", ephemeral=True)
@@ -1541,7 +1546,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 select.callback = select_callback
                 item_view = discord.ui.View()
                 item_view.add_item(select)
-                await interaction.response.send_message(f"\n", view=item_view, embed=embed, ephemeral=True)
+                await interaction.response.send_message(f"\n", view=item_view, embed=item_embed, ephemeral=True)
 
             async def kda_button_callback(interaction: discord.Interaction, prediction_type: str):
                 nickname = interaction.user
@@ -1602,7 +1607,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             upbutton.callback = lambda interaction: kda_button_callback(interaction, 'up')
             downbutton.callback = lambda interaction: kda_button_callback(interaction, 'down')
             perfectbutton.callback = lambda interaction: kda_button_callback(interaction, 'perfect')
-            betrateupbutton.callback = betrate_up_button_callback
+            betratebutton.callback = betrate_button_callback
             if name == "지모":
                 prediction_embed = discord.Embed(title="예측 현황", color=0x000000) # Black
             elif name == "Melon":
@@ -1888,13 +1893,13 @@ class MyBot(commands.Bot):
             notice_channel_id=NOTICE_CHANNEL_ID, 
             event=p.jimo_event,
             current_game_state = p.jimo_current_game_state,
-            #current_game_state = True,
+            current_game_state = True,
             current_message_kda= p.current_message_kda_jimo,
             winbutton = p.jimo_winbutton
         ))
 
-        # Task for Melon
         '''
+        # Task for Melon
         bot.loop.create_task(open_prediction(
             name="Melon", 
             puuid=MELON_PUUID, 
@@ -1908,6 +1913,7 @@ class MyBot(commands.Bot):
             winbutton = p.melon_winbutton
         ))
         '''
+
         # Check points for Jimo
         bot.loop.create_task(check_points(
             puuid=JIMO_PUUID, 
