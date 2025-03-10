@@ -368,7 +368,7 @@ class DiceRevealView(discord.ui.View):
         await self.announce_winner()
 
     @discord.ui.button(label="🎲 다시 굴리기", style=discord.ButtonStyle.gray)
-    async def reveal_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def reroll_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.name not in [self.challenger, self.opponent]:
             userembed = discord.Embed(title = "선택 불가!",color = discord.Color.red())
             userembed.add_field(name="",value="참가자만 선택할 수 있습니다!")
