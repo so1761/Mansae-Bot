@@ -5332,7 +5332,9 @@ class hello(commands.Cog):
 
                     if real_point < 0:
                         self.point_limited = True
-                        await self.channel.send(f"{interaction.user.mention}님의 포인트가 부족하여 더이상 베팅하지 않습니다!")
+                        userembed = discord.Embed(title = "베팅 불가!",color = discord.Color.red())
+                        userembed.add_field(name="",value="{interaction.user.mention}님의 포인트가 부족하여 더 이상 서로 베팅하지 않습니다!")
+                        await self.channel.send(embed = userembed)
                     else:
                         point_ref.update({"베팅포인트": bettingPoint + basePoint})
                         self.game_point[interaction.user.name] += basePoint
