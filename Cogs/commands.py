@@ -4581,7 +4581,7 @@ class hello(commands.Cog):
         shop_embed.add_field(name = f'{interaction.user.name}의 현재 포인트', value = f'**{point - bettingPoint}P** (베팅포인트 **{bettingPoint}P** 제외)')
         view = ItemBuyView()
         await interaction.response.send_message(embed = shop_embed, view = view, ephemeral = True)
-        
+
     @app_commands.command(name="숫자야구",description="포인트를 걸고 숫자야구 게임을 진행합니다. 하루에 한번만 가능합니다.")
     @app_commands.describe(상대 = "대결할 상대를 고르세요", 포인트 = "기본 베팅으로 걸 포인트를 입력하세요. (100포인트 이상)")
     async def 숫자야구(self, interaction: discord.Interaction, 상대:discord.Member, 포인트: int = 100):
