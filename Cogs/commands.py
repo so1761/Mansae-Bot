@@ -4487,7 +4487,7 @@ class hello(commands.Cog):
         battleembed = discord.Embed(title="대결 요청!", color = discord.Color.blue())
         battleembed.add_field(name="", value=f"{상대.mention}, {challenger_m.mention}의 주사위 대결 요청! 수락하시겠습니까? 🎲\n[걸린 포인트 : {포인트}포인트]")
         # 메시지 전송
-        await interaction.response.send_message(content="", view=view, embed=battleembed)
+        await interaction.response.send_message(content=상대.mention, view=view, embed=battleembed)
         battle_ref.set(True)
 
         # 전송된 메시지 객체 가져오기
@@ -4659,7 +4659,7 @@ class hello(commands.Cog):
         battleembed = discord.Embed(title="대결 요청!", color = discord.Color.blue())
         battleembed.add_field(name="", value=f"{상대.mention}, {challenger_m.mention}의 숫자야구 대결 요청! 수락하시겠습니까?\n[걸린 포인트 : {포인트}포인트]")
         # 메시지 전송
-        await interaction.response.send_message(view=view, embed=battleembed)
+        await interaction.response.send_message(content=상대.mention, view=view, embed=battleembed)
         battle_ref.set(True)
 
         # 전송된 메시지 객체 가져오기
