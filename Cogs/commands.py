@@ -4858,7 +4858,7 @@ class hello(commands.Cog):
                             baseball_winner = self.opponent_m
                             result = False
 
-                            await announce_winner(self, baseball_winner,result)
+                            await self.announce_winner(self, baseball_winner,result)
                         else:
                             end = False
 
