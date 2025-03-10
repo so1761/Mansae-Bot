@@ -1049,7 +1049,7 @@ async def initialize_prediction(bot, challenger, 상대, channel_id, what):
     prediction_view.add_item(p.battle_winbutton)
     prediction_view.add_item(losebutton)
     
-    if what == "주사위대결":
+    if what == "주사위":
         # 메시지 전송
         p.battle_message = await channel.send(
             f"{challenger.mention} vs {상대.mention}의 주사위 승부가 감지되었습니다! \n승부예측을 해보세요!",
