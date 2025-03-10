@@ -1496,9 +1496,9 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         "배율증가1": "이번 예측의 배율을 0.1 증가시킵니다.",
                         "배율증가3": "이번 예측의 배율을 0.3 증가시킵니다.",
                         "배율증가5": "이번 예측의 배율을 0.5 증가시킵니다.",
-                        "배율감소1": "이번 예측의 배율을 0.1 감소시킵니다. 배율 1.1 미만으로는 감소시킬 수 없습니다.",
-                        "배율감소3": "이번 예측의 배율을 0.3 감소시킵니다. 배율 1.1 미만으로는 감소시킬 수 없습니다.",
-                        "배율감소5": "이번 예측의 배율을 0.5 감소시킵니다. 배율 1.1 미만으로는 감소시킬 수 없습니다.",
+                        "배율감소1": "이번 예측의 배율을 0.1 감소시킵니다.\n배율 1.1 미만으로는 감소시킬 수 없습니다.",
+                        "배율감소3": "이번 예측의 배율을 0.3 감소시킵니다.\n배율 1.1 미만으로는 감소시킬 수 없습니다.",
+                        "배율감소5": "이번 예측의 배율을 0.5 감소시킵니다.\n배율 1.1 미만으로는 감소시킬 수 없습니다.",
                     }
 
                     item_name = item_map[selected_option]
@@ -1546,9 +1546,9 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         item_view.add_item(use_button)
 
                         item_embed = discord.Embed(title=f"선택한 아이템 정보", color=discord.Color.purple())
-                        item_embed.add_field(name="아이템 이름", value=f"**{item_name}**", inline=False)
-                        item_embed.add_field(name="아이템 설명", value=f"**{description[item_name]}**", inline=False)
-                        item_embed.add_field(name="아이템 개수", value=f"**{item_num}개**", inline=False)
+                        item_embed.add_field(name="아이템 이름", value=f"{item_name}", inline=False)
+                        item_embed.add_field(name="아이템 설명", value=f"{description[item_name]}", inline=False)
+                        item_embed.add_field(name="아이템 개수", value=f"{item_num}개", inline=False)
 
 
                         await interaction.response.edit_message(embed = item_embed, view=item_view)
