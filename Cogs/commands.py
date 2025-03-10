@@ -4869,10 +4869,17 @@ class hello(commands.Cog):
                     await asyncio.sleep(120)  # 2분 대기
                     if self.turn_timer.done():  # 취소되었는지 확인
                         return
-                    embed = discord.Embed(title=f"턴 변경!", color=discord.Color.light_gray())
-                    embed.add_field(name = "", value = "2분 동안 입력이 없어 턴이 변경되었습니다.", inline = False)
-                    await self.channel.send(embed=embed)
-                    await self.next_turn(timeout=True)         
+
+                    if self.turn == 0:
+                        if self.success[self.opponent]: # 상대가 정답을 맞춘 상태에서 턴이 변경될 경우
+                            baseball_winner = self.opponent_m
+                            result = False
+                            await announce_winner(self, baseball_winner,result)
+                        else:
+                            embed = discord.Embed(title=f"턴 변경!", color=discord.Color.light_gray())
+                            embed.add_field(name = "", value = "2분 동안 입력이 없어 턴이 변경되었습니다.", inline = False)
+                            await self.channel.send(embed=embed)
+                            await self.next_turn(timeout=True)         
                 except asyncio.CancelledError:
                     pass
 
@@ -4918,344 +4925,13 @@ class hello(commands.Cog):
                         end = True
                         if self.success[self.opponent]: # 상대가 정답을 맞춘 상태라면 무승부!
                             baseball_winner = None
+                            result = None
                         else: # 못맞췄다면 도전자 승리!
                             baseball_winner = self.challenger_m
                             result = True
 
-                        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                        current_predict_season = cur_predict_seasonref.get()
+                        await announce_winner(self, baseball_winner,result)
 
-                        battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}/숫자야구배틀여부")
-                        battleref.set(True)
-
-                        self.turn_timer.cancel() # 턴 타이머 종료
-                        end_embed = discord.Embed(title="⚾ 숫자야구 종료!", color=discord.Color.green())
-                        end_embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
-                        end_embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
-
-                        for button in self.children:  # 모든 버튼에 대해
-                            button.disabled = True
-
-                        await self.message.edit(embed=end_embed, view=self)
-                        
-                        battle_ref = db.reference("승부예측/대결진행여부")
-                        battle_ref.set(False)
-
-                        if baseball_winner:
-                            userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                            userembed.add_field(name="게임 종료", value=f"숫자야구 대결이 종료되었습니다!\n {baseball_winner.mention}의 승리!")
-
-                            winners = p.votes['배틀']['prediction']['win'] if result else p.votes['배틀']['prediction']['lose']
-                            losers = p.votes['배틀']['prediction']['lose'] if result else p.votes['배틀']['prediction']['win']
-                            winnerNum = len(winners)
-                            loserNum = len(losers)
-
-                            BonusRate = 0 if winnerNum == 0 else round((((winnerNum + loserNum) / winnerNum) - 1) * 0.5, 2) + 1 # 0.5배 배율 적용
-                            if BonusRate > 0:
-                                BonusRate += 0.1
-
-                            BonusRate = round(BonusRate,2)
-
-                            userembed.add_field(
-                                name="", 
-                                value=f"베팅 배율: {BonusRate}배" if BonusRate == 0 else 
-                                f"베팅 배율: {BonusRate}배!((({winnerNum + loserNum}/{winnerNum} - 1) x 0.5 + 1) + 0.1)", 
-                                inline=False
-                            )
-
-                            current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
-                            current_date = current_datetime.strftime("%Y-%m-%d")
-                            current_time = current_datetime.strftime("%H:%M:%S")
-
-                            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                            current_predict_season = cur_predict_seasonref.get()
-
-                            for winner in winners:
-                                point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
-                                predict_data = point_ref.get()
-                                point = predict_data["포인트"]
-                                bettingPoint = predict_data["베팅포인트"]
-
-                                # 예측 내역 변동 데이터
-                                change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
-                                change_ref.update({
-                                    "포인트": point,
-                                    "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
-                                    "적중 횟수": predict_data["적중 횟수"] + 1,
-                                    "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
-                                    "연승": predict_data.get("연승") + 1,
-                                    "연패": 0,
-                                    "베팅포인트": bettingPoint - winner["points"]        
-                                })
-                                # 예측 내역 업데이트
-                                point_ref.update({
-                                    "포인트": point,
-                                    "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
-                                    "적중 횟수": predict_data["적중 횟수"] + 1,
-                                    "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
-                                    "연승": predict_data["연승"] + 1,
-                                    "연패": 0,
-                                    "베팅포인트": bettingPoint - winner["points"]
-                                })
-
-                                # ====================  [미션]  ====================
-                                # 시즌미션 : 쿵쿵따
-                                if predict_data.get("연패", 0) == 2: # 2연패 였다면
-                                    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                                    current_predict_season = cur_predict_seasonref.get()
-                                    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/시즌미션/쿵쿵따")
-                                    mission_data = ref.get()
-                                    mission_bool = mission_data.get('완료',False)
-                                    if not mission_bool:
-                                        ref.update({"완료": True})
-                                        print(f"{winner['name']}의 [쿵쿵따] 미션 완료")
-                                        await mission_notice(winner['name'],"쿵쿵따","일반")
-
-                                # ====================  [미션]  ====================
-
-                                # ====================  [미션]  ====================
-                                # 일일미션 : 승부예측 1회 적중
-                                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                                current_predict_season = cur_predict_seasonref.get()
-                                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/일일미션/승부예측 1회 적중")
-                                mission_bool = ref.get()['완료']
-                                if not mission_bool:
-                                    ref.update({"완료": True})
-                                    print(f"{winner['name']}의 [승부예측 1회 적중] 미션 완료")
-
-                                # ====================  [미션]  ====================
-
-                                winner_total_point = sum(winner['points'] for winner in winners)
-                                loser_total_point = sum(loser['points'] for loser in losers)
-                                remain_loser_total_point = loser_total_point
-
-                                betted_rate = round(winner['points'] / winner_total_point, 3) if winner_total_point else 0
-                                get_bet = round(betted_rate * loser_total_point)
-                                get_bet_limit = round(BonusRate * winner['points'])
-                                if get_bet >= get_bet_limit:
-                                    get_bet = get_bet_limit
-
-                                remain_loser_total_point -= get_bet
-                                streak_text = f"{predict_data['연승'] + 1}연속 적중을 이루어내며 " if predict_data['연승'] + 1 > 1 else ""
-
-                                add_points = 20 + (calculate_points(predict_data["연승"] + 1)) + round(winner['points'] * BonusRate) + get_bet if predict_data["연승"] + 1 > 1 else 20 + round(winner["points"] * BonusRate) + get_bet
-                                if predict_data['연승'] + 1 > 1:
-                                    userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet})(연속적중 보너스 + {calculate_points(predict_data['연승'] + 1)}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)
-                                else:
-                                    userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)   
-                                change_ref.update({"포인트": point + add_points - winner['points']})
-                                point_ref.update({"포인트": point + add_points - winner['points']})
-
-                            for loser in losers:
-                                point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
-                                predict_data = point_ref.get()
-                                point = predict_data["포인트"]
-                                bettingPoint = predict_data["베팅포인트"]
-                                
-                                loser_total_point = sum(loser['points'] for loser in losers)
-                                remain_loser_total_point = loser_total_point
-                                # 예측 내역 변동 데이터
-                                change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
-                                change_ref.update({
-                                    "포인트": point,
-                                    "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
-                                    "적중 횟수": predict_data["적중 횟수"],
-                                    "적중률": f"{round((((predict_data['적중 횟수']) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
-                                    "연승": 0,
-                                    "연패": predict_data["연패"] + 1,
-                                    "베팅포인트": bettingPoint - loser["points"],
-                                })
-                                # 예측 내역 업데이트
-                                point_ref.update({
-                                    "포인트": point,
-                                    "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
-                                    "적중 횟수": predict_data["적중 횟수"],
-                                    "적중률": f"{round((((predict_data['적중 횟수']) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
-                                    "연승": 0,
-                                    "연패": predict_data["연패"] + 1,
-                                    "베팅포인트": bettingPoint - loser["points"],
-                                })
-
-                                # ====================  [미션]  ====================
-                                # 시즌미션 : 마이너스의 손
-                                if predict_data["연패"] + 1 == 10:
-                                    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{loser['name']}/미션/시즌미션/마이너스의 손")
-                                    mission_bool = ref.get()['완료']
-                                    if not mission_bool:
-                                        ref.update({"완료": True})
-                                        print(f"{loser['name']}의 [마이너스의 손] 미션 완료")
-                                        await mission_notice(loser['name'],"마이너스의 손")
-                                # ====================  [미션]  ====================
-                                
-                                # 남은 포인트를 배팅한 비율에 따라 환급받음 (50%)
-                                betted_rate = round(loser['points'] / loser_total_point, 3) if loser_total_point else 0
-                                get_bet = round(betted_rate * remain_loser_total_point * 0.5)
-                                userembed.add_field(
-                                    name="",
-                                    value=f"{loser['name']}님이 예측에 실패하였습니다! " if loser['points'] == 0 else 
-                                    f"{loser['name']}님이 예측에 실패하여 베팅포인트를 잃었습니다! (베팅 포인트:-{loser['points']}) (환급 포인트: {get_bet})",
-                                    inline=False
-                                )
-                                if point + get_bet < loser['points']:
-                                    point_ref.update({"포인트": 0})
-                                    change_ref.update({"포인트": 0})
-                                else:
-                                    point_ref.update({"포인트": point + get_bet - loser['points']})
-                                    change_ref.update({"포인트": point + get_bet - loser['points']})
-
-                                after_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
-                                after_predict_data = after_ref.get()
-                                after_point = after_predict_data.get("포인트", 0)
-                                if round(point * 0.2, 2) >= after_point and round(point * 0.8, 2) >= 1000: # 80% 이상 잃었을 경우 & 1000포인트 이상 잃었을 경우
-                                # ====================  [미션]  ====================
-                                # 시즌미션 : 이카루스의 추락
-                                    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{loser['name']}/미션/시즌미션/이카루스의 추락")
-                                    mission_data = ref.get()
-                                    mission_bool = mission_data.get('완료',False)
-                                    if not mission_bool:
-                                        ref.update({"완료": True})
-                                        print(f"{loser['name']}의 [이카루스의 추락] 미션 완료")
-                                        await mission_notice(loser['name'],"이카루스의 추락","에픽")
-                                # ====================  [미션]  ====================
-                            
-                            channel = interaction.client.get_channel(int(CHANNEL_ID)) #tts 채널
-                            await channel.send(embed = userembed)
-                            p.votes['배틀']['prediction']['win'].clear()
-                            p.votes['배틀']['prediction']['lose'].clear()
-                            
-                            cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-                            current_predict_season = cur_predict_seasonref.get()
-
-                            battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{p.votes['배틀']['name']['challenger']}")
-                            battleref.update({"배틀여부" : True})
-
-                            userembed = discord.Embed(title="승부 베팅 결과", color=discord.Color.blue())
-                            if result: # challenger가 승리
-                                remained_point = 0 # 환급 포인트
-                                challenger_point = self.game_point[self.challenger]
-                                original_opponent_point = self.game_point[self.opponent]
-                                opponent_point = self.game_point[self.opponent]
-                                
-                                if opponent_point > challenger_point:
-                                    get_point = challenger_point * 2 # 받을 포인트
-                                    remained_point += opponent_point - challenger_point # 환급 포인트
-                                else:
-                                    get_point = challenger_point + opponent_point
-
-                                userembed.add_field(
-                                name="",
-                                value=f"{self.opponent_m.mention}님이 승부에서 패배하여 베팅포인트를 잃었습니다! (베팅 포인트:-{original_opponent_point}) (환급 포인트: {remained_point})",
-                                inline=False
-                                )
-                                userembed.add_field(
-                                name="",
-                                value=f"{self.challenger_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {challenger_point})",
-                                inline=False
-                                )
-                                
-                                point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
-                                point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
-                                point_data1 = point_ref1.get()
-                                point1 = point_data1.get("포인트",0)
-                                bettingpoint1 = point_data1.get("베팅포인트",0)
-                                point_data2 = point_ref2.get()
-                                point2 = point_data2.get("포인트",0)
-                                bettingpoint2 = point_data2.get("베팅포인트",0)
-                                point_ref1.update({"포인트": point1 - original_opponent_point + remained_point})
-                                point_ref1.update({"베팅포인트": bettingpoint1 - original_opponent_point})
-                                point_ref2.update({"포인트": point2 + get_point - challenger_point})
-                                point_ref2.update({"베팅포인트": bettingpoint2 - challenger_point})
-
-                            else:
-                                remained_point = 0 # 환급 포인트
-                                challenger_point = self.game_point[self.challenger]
-                                original_challenger_point = self.game_point[self.challenger]
-                                opponent_point = self.game_point[self.opponent]
-
-                                if challenger_point > opponent_point:
-                                    get_point = opponent_point * 2 # 받을 포인트
-                                    remained_point += challenger_point - opponent_point # 환급 포인트
-                                else:
-                                    get_point = opponent_point + challenger_point # 받을 포인트
-
-                                userembed.add_field(
-                                name="",
-                                value=f"{self.challenger_m.mention}님이 승부에서 패배하여 베팅포인트를 잃었습니다! (베팅 포인트:-{original_challenger_point}) (환급 포인트: {remained_point})",
-                                inline=False
-                                )
-                                userembed.add_field(
-                                name="",
-                                value=f"{self.opponent_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {opponent_point})",
-                                inline=False
-                                )
-                                point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
-                                point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
-                                point_data1 = point_ref1.get()
-                                point1 = point_data1.get("포인트",0)
-                                bettingpoint1 = point_data1.get("베팅포인트",0)
-                                point_data2 = point_ref2.get()
-                                bettingpoint2 = point_data2.get("베팅포인트",0)
-                                point2 = point_data2.get("포인트",0)
-                                point_ref1.update({"포인트": point1 + get_point - opponent_point})
-                                point_ref1.update({"베팅포인트": bettingpoint1 - opponent_point})
-                                point_ref2.update({"포인트": point2 - original_challenger_point + remained_point})
-                                point_ref2.update({"베팅포인트": bettingpoint2 - original_challenger_point})
-                                
-                            channel = interaction.client.get_channel(int(CHANNEL_ID)) #tts 채널
-                            await channel.send(embed = userembed)
-
-                            p.votes['배틀']['name']['challenger'] = ""
-                            p.votes['배틀']['name']['상대'] = ""
-                            self.stop()
-                        else:
-                            userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-                            userembed.add_field(name="게임 종료", value=f"배틀이 종료되었습니다!\n무승부!🤝\n")
-                            channel = interaction.client.get_channel(int(CHANNEL_ID)) #tts 채널
-                            await channel.send(embed=userembed)
-
-                            cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-                            current_predict_season = cur_predict_seasonref.get()
-
-                            ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
-                            originr = ref.get()
-                            bettingPoint = originr["베팅포인트"]
-                            bettingPoint -= self.game_point[self.challenger]
-                            ref.update({"베팅포인트": bettingPoint})
-
-                            ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
-                            originr = ref.get()
-                            bettingPoint = originr["베팅포인트"]
-                            bettingPoint -= self.game_point[self.opponent]
-                            ref.update({"베팅포인트": bettingPoint})
-
-                            winners = p.votes['배틀']['prediction']['win']
-                            losers = p.votes['배틀']['prediction']['lose']
-                            for winner in winners:
-                                ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
-                                originr = ref.get()
-                                bettingPoint = originr["베팅포인트"]
-                                bettingPoint -= winner['points']
-                                ref.update({"베팅포인트": bettingPoint})
-
-                            for loser in losers:
-                                ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
-                                originr = ref.get()
-                                bettingPoint = originr["베팅포인트"]
-                                bettingPoint -= loser['points']
-                                ref.update({"베팅포인트": bettingPoint})
-
-                            p.votes['배틀']['prediction']['win'].clear()
-                            p.votes['배틀']['prediction']['lose'].clear()
-                            cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-                            current_predict_season = cur_predict_seasonref.get()
-
-                            battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{p.votes['배틀']['name']['challenger']}")
-                            battleref.update({"배틀여부" : True})
-                            
-                            self.game_point.clear()
-                            p.votes['배틀']['name']['challenger'] = ""
-                            p.votes['배틀']['name']['상대'] = ""
-                            self.stop()  # 게임 종료
                     else: # 상대편이 맞추는 지 기다림
                         end = False
                         self.success[self.opponent] = True # 플레이어 정답!
@@ -5269,289 +4945,347 @@ class hello(commands.Cog):
                             baseball_winner = self.opponent_m
                             result = False
 
-                            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                            current_predict_season = cur_predict_seasonref.get()
-
-                            battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}/숫자야구배틀여부")
-                            battleref.set(True)
-
-                            self.turn_timer.cancel() # 턴 타이머 종료
-                            end_embed = discord.Embed(title="⚾ 숫자야구 종료!", color=discord.Color.green())
-                            end_embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
-                            end_embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
-
-                            for button in self.children:  # 모든 버튼에 대해
-                                button.disabled = True
-
-                            await self.message.edit(embed=end_embed, view=self)
-                            
-                            battle_ref = db.reference("승부예측/대결진행여부")
-                            battle_ref.set(False)
-
-                            userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                            userembed.add_field(name="게임 종료", value=f"숫자야구 대결이 종료되었습니다!\n {baseball_winner.mention}의 승리!")
-
-                            winners = p.votes['배틀']['prediction']['win'] if result else p.votes['배틀']['prediction']['lose']
-                            losers = p.votes['배틀']['prediction']['lose'] if result else p.votes['배틀']['prediction']['win']
-                            winnerNum = len(winners)
-                            loserNum = len(losers)
-
-                            BonusRate = 0 if winnerNum == 0 else round((((winnerNum + loserNum) / winnerNum) - 1) * 0.5, 2) + 1 # 0.5배 배율 적용
-                            if BonusRate > 0:
-                                BonusRate += 0.1
-
-                            BonusRate = round(BonusRate,2)
-
-                            userembed.add_field(
-                                name="", 
-                                value=f"베팅 배율: {BonusRate}배" if BonusRate == 0 else 
-                                f"베팅 배율: {BonusRate}배!((({winnerNum + loserNum}/{winnerNum} - 1) x 0.5 + 1) + 0.1)", 
-                                inline=False
-                            )
-
-                            current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
-                            current_date = current_datetime.strftime("%Y-%m-%d")
-                            current_time = current_datetime.strftime("%H:%M:%S")
-
-                            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                            current_predict_season = cur_predict_seasonref.get()
-
-                            winner_total_point = sum(winner['points'] for winner in winners)
-                            loser_total_point = sum(loser['points'] for loser in losers)
-                            remain_loser_total_point = loser_total_point
-
-                            for winner in winners:
-                                point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
-                                predict_data = point_ref.get()
-                                point = predict_data["포인트"]
-                                bettingPoint = predict_data["베팅포인트"]
-
-                                # 예측 내역 변동 데이터
-                                change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
-                                change_ref.update({
-                                    "포인트": point,
-                                    "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
-                                    "적중 횟수": predict_data["적중 횟수"] + 1,
-                                    "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
-                                    "연승": predict_data.get("연승") + 1,
-                                    "연패": 0,
-                                    "베팅포인트": bettingPoint - winner["points"]        
-                                })
-                                # 예측 내역 업데이트
-                                point_ref.update({
-                                    "포인트": point,
-                                    "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
-                                    "적중 횟수": predict_data["적중 횟수"] + 1,
-                                    "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
-                                    "연승": predict_data["연승"] + 1,
-                                    "연패": 0,
-                                    "베팅포인트": bettingPoint - winner["points"]
-                                })
-
-                                # ====================  [미션]  ====================
-                                # 시즌미션 : 쿵쿵따
-                                if predict_data.get("연패", 0) == 2: # 2연패 였다면
-                                    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                                    current_predict_season = cur_predict_seasonref.get()
-                                    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/시즌미션/쿵쿵따")
-                                    mission_data = ref.get()
-                                    mission_bool = mission_data.get('완료',False)
-                                    if not mission_bool:
-                                        ref.update({"완료": True})
-                                        print(f"{winner['name']}의 [쿵쿵따] 미션 완료")
-                                        await mission_notice(winner['name'],"쿵쿵따","일반")
-
-                                # ====================  [미션]  ====================
-
-                                # ====================  [미션]  ====================
-                                # 일일미션 : 승부예측 1회 적중
-                                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                                current_predict_season = cur_predict_seasonref.get()
-                                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/일일미션/승부예측 1회 적중")
-                                mission_bool = ref.get()['완료']
-                                if not mission_bool:
-                                    ref.update({"완료": True})
-                                    print(f"{winner['name']}의 [승부예측 1회 적중] 미션 완료")
-
-                                # ====================  [미션]  ====================
-
-                                betted_rate = round(winner['points'] / winner_total_point, 3) if winner_total_point else 0
-                                get_bet = round(betted_rate * loser_total_point)
-                                get_bet_limit = round(BonusRate * winner['points'])
-                                if get_bet >= get_bet_limit:
-                                    get_bet = get_bet_limit
-
-                                remain_loser_total_point -= get_bet
-                                streak_text = f"{predict_data['연승'] + 1}연속 적중을 이루어내며 " if predict_data['연승'] + 1 > 1 else ""
-
-                                add_points = 20 + (calculate_points(predict_data["연승"] + 1)) + round(winner['points'] * BonusRate) + get_bet if predict_data["연승"] + 1 > 1 else 20 + round(winner["points"] * BonusRate) + get_bet
-                                if predict_data['연승'] + 1 > 1:
-                                    userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet})(연속적중 보너스 + {calculate_points(predict_data['연승'] + 1)}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)
-                                else:
-                                    userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)   
-                                change_ref.update({"포인트": point + add_points - winner['points']})
-                                point_ref.update({"포인트": point + add_points - winner['points']})
-
-                            for loser in losers:
-                                point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
-                                predict_data = point_ref.get()
-                                point = predict_data["포인트"]
-                                bettingPoint = predict_data["베팅포인트"]
-                                
-                                # 예측 내역 변동 데이터
-                                change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
-                                change_ref.update({
-                                    "포인트": point,
-                                    "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
-                                    "적중 횟수": predict_data["적중 횟수"],
-                                    "적중률": f"{round((((predict_data['적중 횟수']) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
-                                    "연승": 0,
-                                    "연패": predict_data["연패"] + 1,
-                                    "베팅포인트": bettingPoint - loser["points"],
-                                })
-                                # 예측 내역 업데이트
-                                point_ref.update({
-                                    "포인트": point,
-                                    "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
-                                    "적중 횟수": predict_data["적중 횟수"],
-                                    "적중률": f"{round((((predict_data['적중 횟수']) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
-                                    "연승": 0,
-                                    "연패": predict_data["연패"] + 1,
-                                    "베팅포인트": bettingPoint - loser["points"],
-                                })
-
-                                # ====================  [미션]  ====================
-                                # 시즌미션 : 마이너스의 손
-                                if predict_data["연패"] + 1 == 10:
-                                    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{loser['name']}/미션/시즌미션/마이너스의 손")
-                                    mission_bool = ref.get()['완료']
-                                    if not mission_bool:
-                                        ref.update({"완료": True})
-                                        print(f"{loser['name']}의 [마이너스의 손] 미션 완료")
-                                        await mission_notice(loser['name'],"마이너스의 손")
-                                # ====================  [미션]  ====================
-                                
-                                # 남은 포인트를 배팅한 비율에 따라 환급받음 (50%)
-                                betted_rate = round(loser['points'] / loser_total_point, 3) if loser_total_point else 0
-                                get_bet = round(betted_rate * remain_loser_total_point * 0.5)
-                                userembed.add_field(
-                                    name="",
-                                    value=f"{loser['name']}님이 예측에 실패하였습니다! " if loser['points'] == 0 else 
-                                    f"{loser['name']}님이 예측에 실패하여 베팅포인트를 잃었습니다! (베팅 포인트:-{loser['points']}) (환급 포인트: {get_bet})",
-                                    inline=False
-                                )
-                                if point + get_bet < loser['points']:
-                                    point_ref.update({"포인트": 0})
-                                    change_ref.update({"포인트": 0})
-                                else:
-                                    point_ref.update({"포인트": point + get_bet - loser['points']})
-                                    change_ref.update({"포인트": point + get_bet - loser['points']})
-
-                                after_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
-                                after_predict_data = after_ref.get()
-                                after_point = after_predict_data.get("포인트", 0)
-                                if round(point * 0.2, 2) >= after_point and round(point * 0.8, 2) >= 1000: # 80% 이상 잃었을 경우 & 1000포인트 이상 잃었을 경우
-                                # ====================  [미션]  ====================
-                                # 시즌미션 : 이카루스의 추락
-                                    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{loser['name']}/미션/시즌미션/이카루스의 추락")
-                                    mission_data = ref.get()
-                                    mission_bool = mission_data.get('완료',False)
-                                    if not mission_bool:
-                                        ref.update({"완료": True})
-                                        print(f"{loser['name']}의 [이카루스의 추락] 미션 완료")
-                                        await mission_notice(loser['name'],"이카루스의 추락","에픽")
-                                # ====================  [미션]  ====================
-                            
-                            channel = interaction.client.get_channel(int(CHANNEL_ID)) #tts 채널
-                            await channel.send(embed = userembed)
-                            p.votes['배틀']['prediction']['win'].clear()
-                            p.votes['배틀']['prediction']['lose'].clear()
-                            
-                            cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-                            current_predict_season = cur_predict_seasonref.get()
-
-                            battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{p.votes['배틀']['name']['challenger']}")
-                            battleref.update({"배틀여부" : True})
-
-                            userembed = discord.Embed(title="승부 베팅 결과", color=discord.Color.blue())
-                            if result: # challenger가 승리
-                                remained_point = 0 # 환급 포인트
-                                challenger_point = self.game_point[self.challenger]
-                                original_opponent_point = self.game_point[self.opponent]
-                                opponent_point = self.game_point[self.opponent]
-                                
-                                if opponent_point > challenger_point:
-                                    get_point = challenger_point * 2 # 받을 포인트
-                                    remained_point += opponent_point - challenger_point # 환급 포인트
-                                else:
-                                    get_point = challenger_point + opponent_point
-
-                                userembed.add_field(
-                                name="",
-                                value=f"{self.opponent_m.mention}님이 승부에서 패배하여 베팅포인트를 잃었습니다! (베팅 포인트:-{original_opponent_point}) (환급 포인트: {remained_point})",
-                                inline=False
-                                )
-                                userembed.add_field(
-                                name="",
-                                value=f"{self.challenger_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {challenger_point})",
-                                inline=False
-                                )
-                                
-                                point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
-                                point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
-                                point_data1 = point_ref1.get()
-                                point1 = point_data1.get("포인트",0)
-                                bettingpoint1 = point_data1.get("베팅포인트",0)
-                                point_data2 = point_ref2.get()
-                                point2 = point_data2.get("포인트",0)
-                                bettingpoint2 = point_data2.get("베팅포인트",0)
-                                point_ref1.update({"포인트": point1 - original_opponent_point + remained_point})
-                                point_ref1.update({"베팅포인트": bettingpoint1 - original_opponent_point})
-                                point_ref2.update({"포인트": point2 + get_point - challenger_point})
-                                point_ref2.update({"베팅포인트": bettingpoint2 - challenger_point})
-
-                            else:
-                                remained_point = 0 # 환급 포인트
-                                challenger_point = self.game_point[self.challenger]
-                                original_challenger_point = self.game_point[self.challenger]
-                                opponent_point = self.game_point[self.opponent]
-
-                                if challenger_point > opponent_point:
-                                    get_point = opponent_point * 2 # 받을 포인트
-                                    remained_point += challenger_point - opponent_point # 환급 포인트
-                                else:
-                                    get_point = opponent_point + challenger_point # 받을 포인트
-
-                                userembed.add_field(
-                                name="",
-                                value=f"{self.challenger_m.mention}님이 승부에서 패배하여 베팅포인트를 잃었습니다! (베팅 포인트:-{original_challenger_point}) (환급 포인트: {remained_point})",
-                                inline=False
-                                )
-                                userembed.add_field(
-                                name="",
-                                value=f"{self.opponent_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {opponent_point})",
-                                inline=False
-                                )
-                                point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
-                                point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
-                                point_data1 = point_ref1.get()
-                                point1 = point_data1.get("포인트",0)
-                                bettingpoint1 = point_data1.get("베팅포인트",0)
-                                point_data2 = point_ref2.get()
-                                bettingpoint2 = point_data2.get("베팅포인트",0)
-                                point2 = point_data2.get("포인트",0)
-                                point_ref1.update({"포인트": point1 + get_point - opponent_point})
-                                point_ref1.update({"베팅포인트": bettingpoint1 - opponent_point})
-                                point_ref2.update({"포인트": point2 - original_challenger_point + remained_point})
-                                point_ref2.update({"베팅포인트": bettingpoint2 - original_challenger_point})
-                                
-                            channel = interaction.client.get_channel(int(CHANNEL_ID)) #tts 채널
-                            await channel.send(embed = userembed)
-
-                            p.votes['배틀']['name']['challenger'] = ""
-                            p.votes['배틀']['name']['상대'] = ""
+                            await announce_winner(self, baseball_winner,result)
+                        else:
+                            end = False
 
                 return embed, end
+
+            async def announce_winner(self, baseball_winner, result):
+                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                current_predict_season = cur_predict_seasonref.get()
+
+                battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}/숫자야구배틀여부")
+                battleref.set(True)
+
+                self.turn_timer.cancel() # 턴 타이머 종료
+                end_embed = discord.Embed(title="⚾ 숫자야구 종료!", color=discord.Color.green())
+                end_embed.add_field(name = f"{self.challenger}", value = f"{self.game_point[self.challenger]}포인트",inline=True)
+                end_embed.add_field(name = f"{self.opponent}", value = f"{self.game_point[self.opponent]}포인트",inline=True)
+
+                for button in self.children:  # 모든 버튼에 대해
+                    button.disabled = True
+
+                await self.message.edit(embed=end_embed, view=self)
+                
+                battle_ref = db.reference("승부예측/대결진행여부")
+                battle_ref.set(False)
+
+                if baseball_winner:
+                    userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                    userembed.add_field(name="게임 종료", value=f"숫자야구 대결이 종료되었습니다!\n {baseball_winner.mention}의 승리!")
+
+                    winners = p.votes['배틀']['prediction']['win'] if result else p.votes['배틀']['prediction']['lose']
+                    losers = p.votes['배틀']['prediction']['lose'] if result else p.votes['배틀']['prediction']['win']
+                    winnerNum = len(winners)
+                    loserNum = len(losers)
+
+                    BonusRate = 0 if winnerNum == 0 else round((((winnerNum + loserNum) / winnerNum) - 1) * 0.5, 2) + 1 # 0.5배 배율 적용
+                    if BonusRate > 0:
+                        BonusRate += 0.1
+
+                    BonusRate = round(BonusRate,2)
+
+                    userembed.add_field(
+                        name="", 
+                        value=f"베팅 배율: {BonusRate}배" if BonusRate == 0 else 
+                        f"베팅 배율: {BonusRate}배!((({winnerNum + loserNum}/{winnerNum} - 1) x 0.5 + 1) + 0.1)", 
+                        inline=False
+                    )
+
+                    current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
+                    current_date = current_datetime.strftime("%Y-%m-%d")
+                    current_time = current_datetime.strftime("%H:%M:%S")
+
+                    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                    current_predict_season = cur_predict_seasonref.get()
+
+                    for winner in winners:
+                        point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
+                        predict_data = point_ref.get()
+                        point = predict_data["포인트"]
+                        bettingPoint = predict_data["베팅포인트"]
+
+                        # 예측 내역 변동 데이터
+                        change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner["name"]}')
+                        change_ref.update({
+                            "포인트": point,
+                            "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
+                            "적중 횟수": predict_data["적중 횟수"] + 1,
+                            "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
+                            "연승": predict_data.get("연승") + 1,
+                            "연패": 0,
+                            "베팅포인트": bettingPoint - winner["points"]        
+                        })
+                        # 예측 내역 업데이트
+                        point_ref.update({
+                            "포인트": point,
+                            "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
+                            "적중 횟수": predict_data["적중 횟수"] + 1,
+                            "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
+                            "연승": predict_data["연승"] + 1,
+                            "연패": 0,
+                            "베팅포인트": bettingPoint - winner["points"]
+                        })
+
+                        # ====================  [미션]  ====================
+                        # 시즌미션 : 쿵쿵따
+                        if predict_data.get("연패", 0) == 2: # 2연패 였다면
+                            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                            current_predict_season = cur_predict_seasonref.get()
+                            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/시즌미션/쿵쿵따")
+                            mission_data = ref.get()
+                            mission_bool = mission_data.get('완료',False)
+                            if not mission_bool:
+                                ref.update({"완료": True})
+                                print(f"{winner['name']}의 [쿵쿵따] 미션 완료")
+                                await mission_notice(winner['name'],"쿵쿵따","일반")
+
+                        # ====================  [미션]  ====================
+
+                        # ====================  [미션]  ====================
+                        # 일일미션 : 승부예측 1회 적중
+                        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                        current_predict_season = cur_predict_seasonref.get()
+                        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name']}/미션/일일미션/승부예측 1회 적중")
+                        mission_bool = ref.get()['완료']
+                        if not mission_bool:
+                            ref.update({"완료": True})
+                            print(f"{winner['name']}의 [승부예측 1회 적중] 미션 완료")
+
+                        # ====================  [미션]  ====================
+
+                        winner_total_point = sum(winner['points'] for winner in winners)
+                        loser_total_point = sum(loser['points'] for loser in losers)
+                        remain_loser_total_point = loser_total_point
+
+                        betted_rate = round(winner['points'] / winner_total_point, 3) if winner_total_point else 0
+                        get_bet = round(betted_rate * loser_total_point)
+                        get_bet_limit = round(BonusRate * winner['points'])
+                        if get_bet >= get_bet_limit:
+                            get_bet = get_bet_limit
+
+                        remain_loser_total_point -= get_bet
+                        streak_text = f"{predict_data['연승'] + 1}연속 적중을 이루어내며 " if predict_data['연승'] + 1 > 1 else ""
+
+                        add_points = 20 + (calculate_points(predict_data["연승"] + 1)) + round(winner['points'] * BonusRate) + get_bet if predict_data["연승"] + 1 > 1 else 20 + round(winner["points"] * BonusRate) + get_bet
+                        if predict_data['연승'] + 1 > 1:
+                            userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet})(연속적중 보너스 + {calculate_points(predict_data['연승'] + 1)}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)
+                        else:
+                            userembed.add_field(name="", value=f"{winner['name']}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)   
+                        change_ref.update({"포인트": point + add_points - winner['points']})
+                        point_ref.update({"포인트": point + add_points - winner['points']})
+
+                    for loser in losers:
+                        point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
+                        predict_data = point_ref.get()
+                        point = predict_data["포인트"]
+                        bettingPoint = predict_data["베팅포인트"]
+                        
+                        loser_total_point = sum(loser['points'] for loser in losers)
+                        remain_loser_total_point = loser_total_point
+                        # 예측 내역 변동 데이터
+                        change_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser["name"]}')
+                        change_ref.update({
+                            "포인트": point,
+                            "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
+                            "적중 횟수": predict_data["적중 횟수"],
+                            "적중률": f"{round((((predict_data['적중 횟수']) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
+                            "연승": 0,
+                            "연패": predict_data["연패"] + 1,
+                            "베팅포인트": bettingPoint - loser["points"],
+                        })
+                        # 예측 내역 업데이트
+                        point_ref.update({
+                            "포인트": point,
+                            "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
+                            "적중 횟수": predict_data["적중 횟수"],
+                            "적중률": f"{round((((predict_data['적중 횟수']) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
+                            "연승": 0,
+                            "연패": predict_data["연패"] + 1,
+                            "베팅포인트": bettingPoint - loser["points"],
+                        })
+
+                        # ====================  [미션]  ====================
+                        # 시즌미션 : 마이너스의 손
+                        if predict_data["연패"] + 1 == 10:
+                            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{loser['name']}/미션/시즌미션/마이너스의 손")
+                            mission_bool = ref.get()['완료']
+                            if not mission_bool:
+                                ref.update({"완료": True})
+                                print(f"{loser['name']}의 [마이너스의 손] 미션 완료")
+                                await mission_notice(loser['name'],"마이너스의 손")
+                        # ====================  [미션]  ====================
+                        
+                        # 남은 포인트를 배팅한 비율에 따라 환급받음 (50%)
+                        betted_rate = round(loser['points'] / loser_total_point, 3) if loser_total_point else 0
+                        get_bet = round(betted_rate * remain_loser_total_point * 0.5)
+                        userembed.add_field(
+                            name="",
+                            value=f"{loser['name']}님이 예측에 실패하였습니다! " if loser['points'] == 0 else 
+                            f"{loser['name']}님이 예측에 실패하여 베팅포인트를 잃었습니다! (베팅 포인트:-{loser['points']}) (환급 포인트: {get_bet})",
+                            inline=False
+                        )
+                        if point + get_bet < loser['points']:
+                            point_ref.update({"포인트": 0})
+                            change_ref.update({"포인트": 0})
+                        else:
+                            point_ref.update({"포인트": point + get_bet - loser['points']})
+                            change_ref.update({"포인트": point + get_bet - loser['points']})
+
+                        after_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
+                        after_predict_data = after_ref.get()
+                        after_point = after_predict_data.get("포인트", 0)
+                        if round(point * 0.2, 2) >= after_point and round(point * 0.8, 2) >= 1000: # 80% 이상 잃었을 경우 & 1000포인트 이상 잃었을 경우
+                        # ====================  [미션]  ====================
+                        # 시즌미션 : 이카루스의 추락
+                            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{loser['name']}/미션/시즌미션/이카루스의 추락")
+                            mission_data = ref.get()
+                            mission_bool = mission_data.get('완료',False)
+                            if not mission_bool:
+                                ref.update({"완료": True})
+                                print(f"{loser['name']}의 [이카루스의 추락] 미션 완료")
+                                await mission_notice(loser['name'],"이카루스의 추락","에픽")
+                        # ====================  [미션]  ====================
+                    
+                    channel = interaction.client.get_channel(int(CHANNEL_ID)) #tts 채널
+                    await channel.send(embed = userembed)
+                    p.votes['배틀']['prediction']['win'].clear()
+                    p.votes['배틀']['prediction']['lose'].clear()
+                    
+                    cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+                    current_predict_season = cur_predict_seasonref.get()
+
+                    battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{p.votes['배틀']['name']['challenger']}")
+                    battleref.update({"배틀여부" : True})
+
+                    userembed = discord.Embed(title="승부 베팅 결과", color=discord.Color.blue())
+                    if result: # challenger가 승리
+                        remained_point = 0 # 환급 포인트
+                        challenger_point = self.game_point[self.challenger]
+                        original_opponent_point = self.game_point[self.opponent]
+                        opponent_point = self.game_point[self.opponent]
+                        
+                        if opponent_point > challenger_point:
+                            get_point = challenger_point * 2 # 받을 포인트
+                            remained_point += opponent_point - challenger_point # 환급 포인트
+                        else:
+                            get_point = challenger_point + opponent_point
+
+                        userembed.add_field(
+                        name="",
+                        value=f"{self.opponent_m.mention}님이 승부에서 패배하여 베팅포인트를 잃었습니다! (베팅 포인트:-{original_opponent_point}) (환급 포인트: {remained_point})",
+                        inline=False
+                        )
+                        userembed.add_field(
+                        name="",
+                        value=f"{self.challenger_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {challenger_point})",
+                        inline=False
+                        )
+                        
+                        point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
+                        point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
+                        point_data1 = point_ref1.get()
+                        point1 = point_data1.get("포인트",0)
+                        bettingpoint1 = point_data1.get("베팅포인트",0)
+                        point_data2 = point_ref2.get()
+                        point2 = point_data2.get("포인트",0)
+                        bettingpoint2 = point_data2.get("베팅포인트",0)
+                        point_ref1.update({"포인트": point1 - original_opponent_point + remained_point})
+                        point_ref1.update({"베팅포인트": bettingpoint1 - original_opponent_point})
+                        point_ref2.update({"포인트": point2 + get_point - challenger_point})
+                        point_ref2.update({"베팅포인트": bettingpoint2 - challenger_point})
+
+                    else:
+                        remained_point = 0 # 환급 포인트
+                        challenger_point = self.game_point[self.challenger]
+                        original_challenger_point = self.game_point[self.challenger]
+                        opponent_point = self.game_point[self.opponent]
+
+                        if challenger_point > opponent_point:
+                            get_point = opponent_point * 2 # 받을 포인트
+                            remained_point += challenger_point - opponent_point # 환급 포인트
+                        else:
+                            get_point = opponent_point + challenger_point # 받을 포인트
+
+                        userembed.add_field(
+                        name="",
+                        value=f"{self.challenger_m.mention}님이 승부에서 패배하여 베팅포인트를 잃었습니다! (베팅 포인트:-{original_challenger_point}) (환급 포인트: {remained_point})",
+                        inline=False
+                        )
+                        userembed.add_field(
+                        name="",
+                        value=f"{self.opponent_m.mention}님이 승부에서 승리하여 {get_point}포인트를 획득하셨습니다! (베팅 포인트: {opponent_point})",
+                        inline=False
+                        )
+                        point_ref1 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
+                        point_ref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
+                        point_data1 = point_ref1.get()
+                        point1 = point_data1.get("포인트",0)
+                        bettingpoint1 = point_data1.get("베팅포인트",0)
+                        point_data2 = point_ref2.get()
+                        bettingpoint2 = point_data2.get("베팅포인트",0)
+                        point2 = point_data2.get("포인트",0)
+                        point_ref1.update({"포인트": point1 + get_point - opponent_point})
+                        point_ref1.update({"베팅포인트": bettingpoint1 - opponent_point})
+                        point_ref2.update({"포인트": point2 - original_challenger_point + remained_point})
+                        point_ref2.update({"베팅포인트": bettingpoint2 - original_challenger_point})
+                        
+                    channel = interaction.client.get_channel(int(CHANNEL_ID)) #tts 채널
+                    await channel.send(embed = userembed)
+
+                    p.votes['배틀']['name']['challenger'] = ""
+                    p.votes['배틀']['name']['상대'] = ""
+                    self.stop()
+                else:
+                    userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+                    userembed.add_field(name="게임 종료", value=f"배틀이 종료되었습니다!\n무승부!🤝\n")
+                    channel = interaction.client.get_channel(int(CHANNEL_ID)) #tts 채널
+                    await channel.send(embed=userembed)
+
+                    cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+                    current_predict_season = cur_predict_seasonref.get()
+
+                    ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
+                    originr = ref.get()
+                    bettingPoint = originr["베팅포인트"]
+                    bettingPoint -= self.game_point[self.challenger]
+                    ref.update({"베팅포인트": bettingPoint})
+
+                    ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.opponent}')
+                    originr = ref.get()
+                    bettingPoint = originr["베팅포인트"]
+                    bettingPoint -= self.game_point[self.opponent]
+                    ref.update({"베팅포인트": bettingPoint})
+
+                    winners = p.votes['배틀']['prediction']['win']
+                    losers = p.votes['배틀']['prediction']['lose']
+                    for winner in winners:
+                        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"]}')
+                        originr = ref.get()
+                        bettingPoint = originr["베팅포인트"]
+                        bettingPoint -= winner['points']
+                        ref.update({"베팅포인트": bettingPoint})
+
+                    for loser in losers:
+                        ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{loser["name"]}')
+                        originr = ref.get()
+                        bettingPoint = originr["베팅포인트"]
+                        bettingPoint -= loser['points']
+                        ref.update({"베팅포인트": bettingPoint})
+
+                    p.votes['배틀']['prediction']['win'].clear()
+                    p.votes['배틀']['prediction']['lose'].clear()
+                    cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+                    current_predict_season = cur_predict_seasonref.get()
+
+                    battleref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{p.votes['배틀']['name']['challenger']}")
+                    battleref.update({"배틀여부" : True})
+                    
+                    self.game_point.clear()
+                    p.votes['배틀']['name']['challenger'] = ""
+                    p.votes['배틀']['name']['상대'] = ""
+                    self.stop()  # 게임 종료
 
             async def update_game_point(self, user, bet_amount):
                 # 게임 포인트를 외부에서 수정
