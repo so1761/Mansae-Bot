@@ -1893,7 +1893,7 @@ class MyBot(commands.Bot):
             notice_channel_id=NOTICE_CHANNEL_ID, 
             event=p.jimo_event,
             current_game_state = p.jimo_current_game_state,
-            current_game_state = True,
+            #current_game_state = True,
             current_message_kda= p.current_message_kda_jimo,
             winbutton = p.jimo_winbutton
         ))
