@@ -302,7 +302,7 @@ class DiceRevealView(discord.ui.View):
         self.reroll = {challenger.name: False, opponent.name: False}
         self.giveup = {challenger.name: False, opponent.name: False}
         self.message = ""
-        self.point_limited
+        self.point_limited = False
         self.keep_alive_task = None # 메시지 갱신 태스크 저장용
         self.channel = channel
 
