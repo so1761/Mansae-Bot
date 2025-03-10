@@ -395,14 +395,14 @@ class DiceRevealView(discord.ui.View):
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
             current_predict_season = cur_predict_seasonref.get()
 
-            add_point_challenger = self.game_point[self.challenger] * 0.25
-            add_point_opponent = self.game_point[self.opponent] * 0.25
+            add_point_challenger = round(self.game_point[self.challenger] * 0.25)
+            add_point_opponent = round(self.game_point[self.opponent] * 0.25)
 
             challenger_point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{self.challenger}')
             challenger_predict_data = challenger_point_ref.get()
             challenger_point = challenger_predict_data["포인트"]
             challenger_bettingPoint = challenger_predict_data["베팅포인트"]
-            challenger_real_point = challenger_point - challenger_bettingPoint + add_point_challenger
+            challenger_real_point = challenger_point - (challenger_bettingPoint + add_point_challenger)
             
             if challenger_real_point < 0 and not self.point_limited:
                 self.point_limited = True
@@ -411,7 +411,7 @@ class DiceRevealView(discord.ui.View):
             opponent_predict_data = opponent_point_ref.get()
             opponent_point = opponent_predict_data["포인트"]
             opponent_bettingPoint = opponent_predict_data["베팅포인트"]
-            opponent_real_point = opponent_point - opponent_bettingPoint + add_point_opponent
+            opponent_real_point = opponent_point - (opponent_bettingPoint + add_point_opponent)
 
             if opponent_real_point < 0 and not self.point_limited:
                 self.point_limited = True
@@ -421,15 +421,13 @@ class DiceRevealView(discord.ui.View):
             if self.point_limited:
                 userembed.add_field(name="",value=f"포인트가 부족하여 추가 베팅이 적용되지 않습니다.", inline = False)
             else:
-                userembed.add_field(name="",value=f"베팅 포인트가 25% 증가합니다! 🎲", inline = False)
-                userembed.add_field(name="",value=f"{self.challenger_m.display_name}의 추가 베팅 포인트: **{add_point_challenger}** 🎲", inline = False)
-                userembed.add_field(name="",value=f"{self.opponent_m.display_name}의 추가 베팅 포인트: **{add_point_opponent}** 🎲", inline = False)
+                userembed.add_field(name="",value=f"**베팅 포인트 25% 증가!**", inline = False)
+                userembed.add_field(name="추가 베팅",value=f"{self.challenger_m.display_name}: **{add_point_challenger}** | {self.opponent_m.display_name}: **{add_point_opponent}**", inline = False)
                 self.game_point[self.challenger] += add_point_challenger
                 self.game_point[self.opponent] += add_point_opponent
                 challenger_point_ref.update({"베팅포인트" : challenger_bettingPoint + add_point_challenger})
                 opponent_point_ref.update({"베팅포인트" : opponent_bettingPoint + add_point_opponent})
-            userembed.add_field(name="",value=f"{self.challenger_m.display_name}의 이전 주사위 숫자: **{self.dice_results[self.challenger]}** 🎲",inline = False)
-            userembed.add_field(name="",value=f"{self.opponent_m.display_name}의 이전 주사위 숫자: **{self.dice_results[self.opponent]}** 🎲", inline = False)
+            userembed.add_field(name="이전 결과",value=f"{self.challenger_m.display_name}: **{self.dice_results[self.challenger]}** | {self.opponent_m.display_name}: **{self.dice_results[self.opponent]}**",inline = False)
 
             # 주사위 굴리기
             self.dice_results = {
