@@ -4877,7 +4877,7 @@ class hello(commands.Cog):
                         if self.success[self.opponent]: # 상대가 정답을 맞춘 상태에서 턴이 변경될 경우
                             baseball_winner = self.opponent_m
                             result = False
-                            await announce_winner(self, baseball_winner,result)
+                            await self.announce_winner(self, baseball_winner,result)
                         else:
                             embed = discord.Embed(title=f"턴 변경!", color=discord.Color.light_gray())
                             embed.add_field(name = "", value = "2분 동안 입력이 없어 턴이 변경되었습니다.", inline = False)
@@ -4933,7 +4933,7 @@ class hello(commands.Cog):
                             baseball_winner = self.challenger_m
                             result = True
 
-                        await announce_winner(self, baseball_winner,result)
+                        await self.announce_winner(self, baseball_winner,result)
 
                     else: # 상대편이 맞추는 지 기다림
                         end = False
