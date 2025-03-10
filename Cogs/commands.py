@@ -392,9 +392,9 @@ class DiceRevealView(discord.ui.View):
 
         if all(self.reroll.values()):
             userembed = discord.Embed(title = "주사위 다시 굴리기!",color = discord.Color.blue())
-            userembed.add_field(name="",value=f"주사위를 다시 굴립니다! 🎲")
-            userembed.add_field(name="",value=f"{self.challenger_m.display_name}의 이전 주사위 숫자: **{self.dice_results[self.challenger]}** 🎲")
-            userembed.add_field(name="",value=f"{self.opponent_m.display_name}의 이전 주사위 숫자: **{self.dice_results[self.opponent]}** 🎲")
+            userembed.add_field(name="",value=f"주사위를 다시 굴립니다! 🎲", inline = False)
+            userembed.add_field(name="",value=f"{self.challenger_m.display_name}의 이전 주사위 숫자: **{self.dice_results[self.challenger]}** 🎲",inline = False)
+            userembed.add_field(name="",value=f"{self.opponent_m.display_name}의 이전 주사위 숫자: **{self.dice_results[self.opponent]}** 🎲", inline = False)
             # 주사위 굴리기
             
             self.dice_results = {
@@ -405,7 +405,7 @@ class DiceRevealView(discord.ui.View):
             self.reroll[self.challenger] = False
             self.reroll[self.opponent] = False
 
-            await self.channel.send(embed = userembed)
+            await self.message.channel.send(embed = userembed)
 
     @discord.ui.button(label="준비 완료", style=discord.ButtonStyle.green)
     async def reveal_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
