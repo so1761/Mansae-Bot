@@ -4466,6 +4466,7 @@ class hello(commands.Cog):
             warnembed = discord.Embed(title="실패",color = discord.Color.red())
             warnembed.add_field(name="",value=f"{challenger}님의 포인트가 100포인트 미만입니다! ❌")
             await interaction.response.send_message("",embed = warnembed)
+            battle_ref.set(False)
             return
         
         ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}')
@@ -4478,6 +4479,7 @@ class hello(commands.Cog):
             warnembed = discord.Embed(title="실패",color = discord.Color.red())
             warnembed.add_field(name="",value=f"{상대.name}님의 포인트가 100포인트 미만입니다! ❌")
             await interaction.response.send_message("",embed = warnembed)
+            battle_ref.set(False)
             return
         
         # 대결 요청
