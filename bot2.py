@@ -864,8 +864,11 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                 bonus_string = "".join(bonus_parts)  # 둘 다 있으면 "역배 배율 X + 아이템 추가 배율 Y" 형태
                 bonus_string += " + 0.1"
 
+                
                 BonusRate = round(BonusRate, 2)
-
+                if BonusRate <= 1.1:
+                    BonusRate = 1.1
+                    
                 userembed.add_field(
                     name="", 
                     value=f"베팅 배율: {BonusRate}배" if BonusRate == 0 else 
@@ -1259,7 +1262,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
     current_predict_season = cur_predict_seasonref.get()
 
     while not bot.is_closed():
-        current_game_state, current_game_type = await nowgame(puuid)
+        #current_game_state, current_game_type = await nowgame(puuid)
+        current_game_state = True, current_game_type = "솔로랭크"
         if current_game_state:
             onoffref = db.reference("승부예측/투표온오프")
             onoffbool = onoffref.get()
@@ -1281,7 +1285,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             
             winbutton.disabled = onoffbool
             losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label="패배",disabled=onoffbool)
-            betrateupbutton = discord.ui.Button(style=discord.ButtonStyle.primary,label="배율 올리기",disabled=onoffbool)
+            betrateupbutton = discord.ui.Button(style=discord.ButtonStyle.primary,label="배율 조정",disabled=onoffbool)
 
             
             prediction_view = discord.ui.View()
@@ -1462,90 +1466,81 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 item_view.add_item(betbutton3)
 
                 embed = discord.Embed(title="보유 아이템", color=discord.Color.purple())
-                embed.add_field(name="", value=f"배율 0.1 증가 : {itemr['배율증가1']}개 | 배율 0.3 증가 : {itemr['배율증가3']}개 | 배율 0.5 증가 : {itemr['배율증가5']}개", inline=False)
+                embed.add_field(name="", value=f"배율 0.1 증가 : {itemr.get('배율증가1',0)}개 | 배율 0.3 증가 : {itemr.get('배율증가3',0)}개 | 배율 0.5 증가 : {itemr.get('배율증가5',0)}개", inline=False)
+                embed.add_field(name="", value=f"배율 0.1 감소 : {itemr.get('배율감소1',0)}개 | 배율 0.3 감소 : {itemr.get('배율감소3',0)}개 | 배율 0.5 감소 : {itemr.get('배율감소5',0)}개", inline=False)
 
-                channel = bot.get_channel(int(CHANNEL_ID))
-                userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+                options = [
+                    discord.SelectOption(label="배율 증가 0.1", value="increase_0.1"),
+                    discord.SelectOption(label="배율 증가 0.3", value="increase_0.3"),
+                    discord.SelectOption(label="배율 증가 0.5", value="increase_0.5"),
+                    discord.SelectOption(label="배율 감소 0.1", value="decrease_0.1"),
+                    discord.SelectOption(label="배율 감소 0.3", value="decrease_0.3"),
+                    discord.SelectOption(label="배율 감소 0.5", value="decrease_0.5")
+                ]
 
-                async def betbutton1_callback(interaction: discord.Interaction):
-                    user_id = interaction.user.id  # 사용자 ID
-                    if used_items_for_user_jimo.get(user_id, False):  # 아이템을 이미 사용한 경우
-                        await interaction.response.send_message(f"이미 아이템을 사용했습니다.", ephemeral=True)
-                        return
+                select = discord.ui.Select(placeholder="아이템을 선택하세요", options=options)
+
+
+                async def select_callback(interaction: discord.Interaction):
+                    selected_option = select.values[0]
+                    item_map = {
+                        "increase_0.1": "배율증가1",
+                        "increase_0.3": "배율증가3",
+                        "increase_0.5": "배율증가5",
+                        "decrease_0.1": "배율감소1",
+                        "decrease_0.3": "배율감소3",
+                        "decrease_0.5": "배율감소5"
+                    }
+                    item_name = item_map[selected_option]
+                    item_num = itemr.get(item_name, 0)
+
+                    channel = bot.get_channel(int(CHANNEL_ID))
                     
-                    item_num = itemr.get('배율증가1',0)
-                    if item_num >= 1:
-                        if winbutton.disabled:
-                            await interaction.response.send_message(f"투표가 종료되어 사용할 수 없습니다!",ephemeral=True)
-                        else:
-                            refitem.update({'배율증가1' : item_num - 1})
-                            refrate = db.reference(f'승부예측/배율증가/{name}')
-                            rater = refrate.get()
-                            refrate.update({'배율' : round(rater['배율'] + 0.1, 1)})
-                            userembed.add_field(name="",value=f"누군가가 아이템을 사용하여 배율을 0.1 올렸습니다!", inline=False)
-                            await channel.send(f"\n",embed = userembed)
-                            await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
-                            await interaction.response.send_message(f"{name}의 배율 0.1 증가 완료! 남은 아이템 : {item_num - 1}개",ephemeral=True)
-                            if name == "지모":
-                                used_items_for_user_jimo[user_id] = True  # 사용자에게 아이템 사용 기록
-                            elif name == "Melon":
-                                used_items_for_user_melon[user_id] = True
-                    else:
-                        await interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
-                async def betbutton2_callback(interaction: discord.Interaction):
-                    user_id = interaction.user.id  # 사용자 ID
-                    if used_items_for_user_jimo.get(user_id, False):  # 아이템을 이미 사용한 경우
-                        await interaction.response.send_message(f"이미 아이템을 사용했습니다.", ephemeral=True)
-                        return
+                    if item_num > 0:
+                        use_button = discord.ui.Button(style=discord.ButtonStyle.success, label="아이템 사용", disabled=False)
 
-                    item_num = itemr.get('배율증가3',0)
-                    if item_num >= 1:
-                        if winbutton.disabled:
-                            await interaction.response.send_message(f"투표가 종료되어 사용할 수 없습니다!",ephemeral=True)
-                        else:
-                            refitem.update({'배율증가3' : item_num - 1})
-                            refrate = db.reference(f'승부예측/배율증가/{name}')
-                            rater = refrate.get()
-                            refrate.update({'배율' : round(rater['배율'] + 0.3, 1)})
-                            userembed.add_field(name="",value=f"누군가가 아이템을 사용하여 배율을 0.3 올렸습니다!", inline=False)
-                            await channel.send(f"\n",embed = userembed)
-                            await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
-                            await interaction.response.send_message(f"{name}의 배율 0.3 증가 완료! 남은 아이템 : {item_num - 1}개",ephemeral=True)
-                            if name == "지모":
-                                used_items_for_user_jimo[user_id] = True  # 사용자에게 아이템 사용 기록
-                            elif name == "Melon":
-                                used_items_for_user_melon[user_id] = True
-                    else:
-                        interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
-                async def betbutton3_callback(interaction: discord.Interaction):
-                    user_id = interaction.user.id  # 사용자 ID
-                    if used_items_for_user_jimo.get(user_id, False):  # 아이템을 이미 사용한 경우
-                        await interaction.response.send_message(f"이미 아이템을 사용했습니다.", ephemeral=True)
-                        return
+                        async def use_button_callback(interaction: discord.Interaction):
+                            user_id = interaction.user.id
+                            if used_items_for_user_jimo.get(user_id, False):
+                                await interaction.response.send_message("이미 아이템을 사용했습니다.", ephemeral=True)
+                                return
 
-                    item_num = itemr.get('배율증가5',0)
-                    if item_num >= 1:
-                        if winbutton.disabled:
-                            await interaction.response.send_message(f"투표가 종료되어 사용할 수 없습니다!",ephemeral=True)
-                        else:
-                            refitem.update({'배율증가5' : item_num - 1})
-                            refrate = db.reference(f'승부예측/배율증가/{name}')
-                            rater = refrate.get()
-                            refrate.update({'배율' : round(rater['배율'] + 0.5, 1)})
-                            userembed.add_field(name="",value=f"누군가가 아이템을 사용하여 배율을 0.5 올렸습니다!", inline=False)
-                            await channel.send(f"\n",embed = userembed)
-                            await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
-                            await interaction.response.send_message(f"{name}의 배율 0.5 증가 완료! 남은 아이템 : {item_num - 1}개",ephemeral=True)
-                            if name == "지모":
-                                used_items_for_user_jimo[user_id] = True  # 사용자에게 아이템 사용 기록
-                            elif name == "Melon":
-                                used_items_for_user_melon[user_id] = True
+                            if winbutton.disabled:
+                                await interaction.response.send_message("투표가 종료되어 사용할 수 없습니다!", ephemeral=True)
+                            else:
+                                refitem.update({item_name: item_num - 1})
+                                refrate = db.reference(f'승부예측/배율증가/{name}')
+                                rater = refrate.get()
+                                userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+                                if "increase" in selected_option:
+                                    increase_value = float(selected_option.split("_")[1])
+                                    refrate.update({'배율': round(rater['배율'] + increase_value, 1)})
+                                    userembed.add_field(name="", value=f"누군가가 아이템을 사용하여 배율을 {increase_value} 올렸습니다!", inline=False)
+                                else:
+                                    decrease_value = float(selected_option.split("_")[1])
+                                    refrate.update({'배율': round(rater['배율'] - decrease_value, 1)})
+                                    userembed.add_field(name="", value=f"누군가가 아이템을 사용하여 배율을 {decrease_value} 내렸습니다!", inline=False)
+                                await channel.send(f"\n", embed=userembed)
+                                await refresh_prediction(name, anonymbool, prediction_votes)
+                                await interaction.response.send_message(f"{name}의 배율 {increase_value if 'increase' in selected_option else decrease_value} {'증가' if 'increase' in selected_option else '감소'} 완료! 남은 아이템: {item_num - 1}개", ephemeral=True)
+                                if name == "지모":
+                                    used_items_for_user_jimo[user_id] = True
+                                elif name == "Melon":
+                                    used_items_for_user_melon[user_id] = True
+                                use_button.disabled = True 
+
+                        use_button.callback = use_button_callback
+                        item_view = discord.ui.View()
+                        item_view.add_item(select)
+                        item_view.add_item(use_button)
+                        await interaction.response.edit_message(view=item_view)
                     else:
-                        interaction.response.send_message(f"아이템이 없습니다!",ephemeral=True)
-                betbutton1.callback = betbutton1_callback
-                betbutton2.callback = betbutton2_callback
-                betbutton3.callback = betbutton3_callback
-                await interaction.response.send_message(f"\n",view=item_view, embed=embed,ephemeral=True)
+                        await interaction.response.send_message("아이템이 없습니다!", ephemeral=True)
+
+                select.callback = select_callback
+                item_view = discord.ui.View()
+                item_view.add_item(select)
+                await interaction.response.send_message(f"\n", view=item_view, embed=embed, ephemeral=True)
 
             async def kda_button_callback(interaction: discord.Interaction, prediction_type: str):
                 nickname = interaction.user
@@ -1898,6 +1893,7 @@ class MyBot(commands.Bot):
         ))
 
         # Task for Melon
+        '''
         bot.loop.create_task(open_prediction(
             name="Melon", 
             puuid=MELON_PUUID, 
@@ -1910,7 +1906,7 @@ class MyBot(commands.Bot):
             current_message_kda= p.current_message_kda_melon,
             winbutton = p.melon_winbutton
         ))
-
+        '''
         # Check points for Jimo
         bot.loop.create_task(check_points(
             puuid=JIMO_PUUID, 
