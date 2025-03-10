@@ -4836,11 +4836,13 @@ class hello(commands.Cog):
                 self.message = None
                 self.turn_timer = None
                 self.game_point = game_point
+                self.initial_game_point = game_point
                 self.challenger = challenger.name
                 self.opponent = opponent.name
                 self.challenger_m = challenger
                 self.opponent_m = opponent
                 self.channel = None
+                self.point_limited = False
                 self.success = {challenger.name: False, opponent.name: False}
 
             def generate_numbers(self):
@@ -5580,6 +5582,23 @@ class hello(commands.Cog):
                     await interaction.response.send_message("🚫 **지금은 상대의 턴입니다!**", ephemeral=True)
                     return
                 
+                if not self.point_limited: # 포인트 제한이 없다면
+                    basePoint = round(self.initial_game_point.get(interaction.user.name, 0) * 0.1) # 베팅 포인트
+                    
+                    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                    current_predict_season = cur_predict_seasonref.get()
+                    point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}')
+                    predict_data = point_ref.get()
+                    point = predict_data["포인트"]
+                    bettingPoint = predict_data["베팅포인트"]
+                    real_point = point - (bettingPoint + basePoint)
+
+                    if real_point < 0:
+                        self.point_limited = True
+                        await self.channel.send(f"{interaction.user.mention}님의 포인트가 부족하여 더이상 베팅하지 않습니다!")
+                    else:
+                        point_ref.update({"베팅포인트": bettingPoint + basePoint})
+                        self.game_point[interaction.user.name] += basePoint
                 await interaction.response.send_modal(GuessModal(self, interaction.user))
 
             @discord.ui.button(label="베팅", style=discord.ButtonStyle.primary)
