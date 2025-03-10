@@ -550,7 +550,39 @@ async def refresh_prediction(name, anonym, prediction_votes):
     elif name == "Melon":
         await p.current_message_melon.edit(embed=embed)
 
+async def refresh_kda_prediction(name, anonym, kda_votes):
+    refperfect = db.reference('승부예측/퍼펙트포인트')
+    perfect_point = refperfect.get()[name]
 
+    if name == "지모":
+        embed = discord.Embed(title="KDA 예측 현황", color=0x000000) # Black
+    elif name == "Melon":
+        embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.brand_green())
+    today = datetime.today()
+    if today.weekday() == 6:
+        embed.add_field(name=f"",value=f"일요일엔 점수 2배! KDA 예측 점수 2배 지급!")
+    embed.add_field(name="퍼펙트 예측성공 포인트", value=perfect_point, inline=False)
+    if anonym:
+        up_predictions = "".join(f"{len(kda_votes['up'])}명")
+        down_predictions = "".join(f"{len(kda_votes['down'])}명")
+        perfect_predictions = "".join(f"{len(kda_votes['perfect'])}명")
+
+        embed.add_field(name="KDA 3 이상 예측", value=up_predictions, inline=True)
+        embed.add_field(name="KDA 3 이하 예측", value=down_predictions, inline=True)
+        embed.add_field(name="KDA 퍼펙트 예측", value=perfect_predictions, inline=True)
+    else:
+        up_predictions = "\n".join(f"{user['name']}" for user in kda_votes["up"]) or "없음"
+        down_predictions = "\n".join(f"{user['name']}" for user in kda_votes["down"]) or "없음"
+        perfect_predictions = "\n".join(f"{user['name']}" for user in kda_votes["perfect"]) or "없음"
+    
+        embed.add_field(name="KDA 3 이상 예측", value=up_predictions, inline=False)
+        embed.add_field(name="KDA 3 이하 예측", value=down_predictions, inline=True)
+        embed.add_field(name="KDA 퍼펙트 예측", value=perfect_predictions, inline=True)
+    
+    if name == "지모":
+        await p.current_message_kda_jimo.edit(embed=embed)
+    elif name == "Melon":
+        await p.current_message_kda_melon.edit(embed=embed)
 
 def tier_to_number(tier, rank, lp): # 티어를 레이팅 숫자로 변환
     tier_num = TIER_RANK_MAP.get(tier)
@@ -766,6 +798,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
             onoffbool = onoffref.get()
             if not onoffbool:
                 await refresh_prediction(name,False,prediction_votes) # 베팅내역 공개
+                await refresh_kda_prediction(name,False,kda_votes) # KDA 예측내역 공개
                 curseasonref = db.reference("전적분석/현재시즌")
                 current_season = curseasonref.get()
 
@@ -1253,7 +1286,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
         await asyncio.sleep(20)
 
-async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, event, current_game_state, current_message_kda, winbutton):
+async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, event, current_game_state, winbutton):
     await bot.wait_until_ready()
     channel = bot.get_channel(int(channel_id))
     notice_channel = bot.get_channel(int(notice_channel_id))
@@ -1262,7 +1295,9 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
     current_predict_season = cur_predict_seasonref.get()
 
     while not bot.is_closed():
-        current_game_state, current_game_type = await nowgame(puuid)
+        #current_game_state, current_game_type = await nowgame(puuid)
+        current_game_state = True
+        current_game_type = "솔로랭크"
         if current_game_state:
             onoffref = db.reference("승부예측/투표온오프")
             onoffbool = onoffref.get()
@@ -1323,9 +1358,11 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 kda_view.add_item(perfectbutton)
                 if name == "지모":
                     await p.current_message_jimo.edit(view=prediction_view)
+                    await p.current_message_kda_jimo.edit(view=kda_view)
                 elif name == "Melon":
                     await p.current_message_melon.edit(view=prediction_view)
-                await current_message_kda.edit(view=kda_view)
+                    await p.current_message_kda_melon.edit(view=kda_view)
+                
 
             async def auto_prediction():
                 # 예측포인트의 모든 사용자 데이터 가져오기
@@ -1560,22 +1597,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 nickname = interaction.user
                 if (nickname.name not in [user["name"] for user in kda_votes["up"]] )and (nickname.name not in [user["name"] for user in kda_votes["down"]]) and (nickname.name not in [user["name"] for user in kda_votes["perfect"]]):
                     kda_votes[prediction_type].append({"name": nickname.name})
-                    if name == "지모":
-                        embed = discord.Embed(title="KDA 예측 현황", color=0x000000) # Black
-                    elif name == "Melon":
-                        embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.brand_green())
-                    today = datetime.today()
-                    if today.weekday() == 6:
-                        embed.add_field(name=f"",value=f"일요일엔 점수 2배! KDA 예측 점수 2배 지급!")
-                    embed.add_field(name="퍼펙트 예측성공 포인트", value=perfect_point, inline=False)
-
-                    up_predictions = "".join(f"{len(kda_votes['up'])}명")
-                    down_predictions = "".join(f"{len(kda_votes['down'])}명")
-                    perfect_predictions = "".join(f"{len(kda_votes['perfect'])}명")
-
-                    embed.add_field(name="KDA 3 이상 예측", value=up_predictions, inline=True)
-                    embed.add_field(name="KDA 3 이하 예측", value=down_predictions, inline=True)
-                    embed.add_field(name="KDA 퍼펙트 예측", value=perfect_predictions, inline=True)
+                    await refresh_kda_prediction(name,anonymbool,kda_votes)
 
                     if name == "지모":
                         userembed = discord.Embed(title="메세지", color=0x000000)
@@ -1602,9 +1624,6 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     
                     noticeembed.add_field(name="",value=f"{name}의 {prediction_value}에 투표 완료!", inline=False)
                     await interaction.response.send_message(embed=noticeembed, ephemeral=True)
-
-                    if current_message_kda:
-                        await current_message_kda.edit(embed=embed)
                 else:
                     userembed = discord.Embed(title="메세지", color=discord.Color.dark_gray())
                     userembed.add_field(name="", value=f"{nickname}님은 이미 투표하셨습니다", inline=True)
@@ -1639,22 +1658,29 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
 
             if name == "지모":
-                p.kda_embed = discord.Embed(title="KDA 예측 현황", color=0x000000) # Black
+                kda_embed = discord.Embed(title="KDA 예측 현황", color=0x000000) # Black
             elif name == "Melon":
-                p.kda_embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.brand_green())
+                kda_embed = discord.Embed(title="KDA 예측 현황", color=discord.Color.brand_green())
             today = datetime.today()
             if today.weekday() == 6:
-                p.kda_embed.add_field(name=f"",value=f"일요일엔 점수 2배! KDA 예측 점수 2배 지급!")
+                kda_embed.add_field(name=f"",value=f"일요일엔 점수 2배! KDA 예측 점수 2배 지급!")
             p.kda_embed.add_field(name="퍼펙트 예측성공 포인트", value=perfect_point, inline=False)
-            up_predictions = "".join(
-                f"{len(kda_votes['up'])}명")
-            down_predictions = "".join(
-                f"{len(kda_votes['down'])}명")
-            perfect_predictions = "".join(
-                f"{len(kda_votes['perfect'])}명")
-            p.kda_embed.add_field(name="KDA 3 이상 예측", value=up_predictions, inline=True)
-            p.kda_embed.add_field(name="KDA 3 이하 예측", value=down_predictions, inline=True)
-            p.kda_embed.add_field(name="KDA 퍼펙트 예측", value=perfect_predictions, inline=True)
+            if anonymbool:
+                up_predictions = "".join(f"{len(kda_votes['up'])}명")
+                down_predictions = "".join(f"{len(kda_votes['down'])}명")
+                perfect_predictions = "".join(f"{len(kda_votes['perfect'])}명")
+
+                kda_embed.add_field(name="KDA 3 이상 예측", value=up_predictions, inline=True)
+                kda_embed.add_field(name="KDA 3 이하 예측", value=down_predictions, inline=True)
+                kda_embed.add_field(name="KDA 퍼펙트 예측", value=perfect_predictions, inline=True)
+            else:
+                up_predictions = "\n".join(f"{user['name']}" for user in kda_votes["up"]) or "없음"
+                down_predictions = "\n".join(f"{user['name']}" for user in kda_votes["down"]) or "없음"
+                perfect_predictions = "\n".join(f"{user['name']}" for user in kda_votes["perfect"]) or "없음"
+            
+                kda_embed.add_field(name="KDA 3 이상 예측", value=up_predictions, inline=False)
+                kda_embed.add_field(name="KDA 3 이하 예측", value=down_predictions, inline=True)
+                kda_embed.add_field(name="KDA 퍼펙트 예측", value=perfect_predictions, inline=True)
 
             curseasonref = db.reference("전적분석/현재시즌")
             current_season = curseasonref.get()
@@ -1690,10 +1716,13 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 elif name == "Melon":
                     p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n", view=prediction_view, embed=prediction_embed)
 
-            current_message_kda = await channel.send("\n", view=kda_view, embed=p.kda_embed)
+            if name == "지모":
+                p.current_message_kda_jimo = await channel.send("\n", view=kda_view, embed=kda_embed)
+            elif name == "Melon":
+                p.current_message_kda_melon = await channel.send("\n", view=kda_view, embed=kda_embed)
 
-            if not onoffbool:
-                await notice_channel.send(f"{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
+            #if not onoffbool:
+               # await notice_channel.send(f"{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
 
             event.clear()
             await asyncio.gather(
@@ -1902,10 +1931,10 @@ class MyBot(commands.Bot):
             event=p.jimo_event,
             current_game_state = p.jimo_current_game_state,
             #current_game_state = True,
-            current_message_kda= p.current_message_kda_jimo,
             winbutton = p.jimo_winbutton
         ))
 
+        '''
         # Task for Melon
         bot.loop.create_task(open_prediction(
             name="Melon", 
@@ -1916,9 +1945,9 @@ class MyBot(commands.Bot):
             event=p.melon_event, 
             current_game_state = p.melon_current_game_state,
             #current_game_state = True,
-            current_message_kda= p.current_message_kda_melon,
             winbutton = p.melon_winbutton
         ))
+        '''
 
         # Check points for Jimo
         bot.loop.create_task(check_points(

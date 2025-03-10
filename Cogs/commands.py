@@ -5270,7 +5270,7 @@ class hello(commands.Cog):
     
     @app_commands.command(name="명령어",description="명령어 목록을 보여줍니다.")
     async def 명령어(self, interaction: discord.Interaction):
-        exclude = {"온오프", "정상화", "재부팅", "익명온오프", "패배", "테스트", "열람포인트초기화", "공지", "베팅포인트초기화", "아이템지급", "아이템전체지급", "일일미션추가", "시즌미션추가", "미션삭제", "승리", "패배"}
+        exclude = {"온오프", "정상화", "재부팅", "익명온오프", "패배", "테스트", "열람포인트초기화", "공지", "베팅포인트초기화", "아이템지급", "아이템전체지급", "일일미션추가", "시즌미션추가", "미션삭제", "승리", "패배", "포인트지급"}
         commands_list = await self.bot.tree.fetch_commands(guild=discord.Object(id=298064707460268032))  # 동기화된 모든 명령어 가져오기
         commands_list = [cmd for cmd in commands_list if cmd.name not in exclude]
         commands_list.sort(key=lambda x: x.name)
@@ -5324,6 +5324,20 @@ class hello(commands.Cog):
 
         # 처음 명령어 목록을 보여주는 메시지 전송
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+    @app_commands.command(name="포인트지급", description="포인트를 지급합니다. (관리자 전용)")
+    async def item_shop(self, interaction: discord.Interaction, user: discord.Member, point: int):
+        if interaction.user.name == "toe_kyung":
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+            current_predict_season = cur_predict_seasonref.get()
+            point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{user.name}')
+            predict_data = point_ref.get()
+            original_point = predict_data["포인트"]
+
+            point_ref.update({"포인트": original_point + point})
+            await interaction.response.send_message(f"{user.mention}에게 {point}포인트가 지급되었습니다!",)
+        else:
+            await interaction.response.send_message("권한이 없습니다",ephemeral=True)
 
 
     #베팅 테스트를 위한 코드
