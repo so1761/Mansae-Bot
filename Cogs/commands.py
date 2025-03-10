@@ -3491,15 +3491,15 @@ class hello(commands.Cog):
                             # ====================  [미션]  ====================
                             # 시즌미션 : 도파민 중독
                             
-                            mref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"].name}')
-                            mref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"].name}/베팅포인트')
+                            mref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}')
+                            mref2 = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/베팅포인트')
                             minfo = mref.get()
                             mbettingPoint = mref2.get()
                             mpoint = minfo['포인트']
             
                             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                             current_predict_season = cur_predict_seasonref.get()
-                            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner["name"].name}/미션/시즌미션/도파민 중독")
+                            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/도파민 중독")
                             mission_data = ref.get()
                             mission_bool = mission_data.get('완료',False)
 
