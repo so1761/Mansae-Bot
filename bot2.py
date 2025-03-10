@@ -1539,7 +1539,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         item_embed.add_field(name="아이템 개수", value=f"**{item_num}개**", inline=False)
 
 
-                        await interaction.response.edit_message(view=item_view)
+                        await interaction.response.edit_message(embed = item_embed, view=item_view)
                     else:
                         await interaction.response.send_message("아이템이 없습니다!", ephemeral=True)
 
@@ -1684,8 +1684,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
             current_message_kda = await channel.send("\n", view=kda_view, embed=p.kda_embed)
 
-            if not onoffbool:
-                await notice_channel.send(f"{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
+            #if not onoffbool:
+            #    await notice_channel.send(f"{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
 
             event.clear()
             await asyncio.gather(
