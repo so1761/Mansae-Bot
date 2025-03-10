@@ -402,7 +402,10 @@ class DiceRevealView(discord.ui.View):
                 self.opponent: secrets.randbelow(100) + 1
             }
 
-            await interaction.response.send_message(embed = userembed)
+            self.reroll[self.challenger] = False
+            self.reroll[self.opponent] = False
+
+            await self.channel.send(embed = userembed)
 
     @discord.ui.button(label="준비 완료", style=discord.ButtonStyle.green)
     async def reveal_dice(self, interaction: discord.Interaction, button: discord.ui.Button):
