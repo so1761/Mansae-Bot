@@ -868,7 +868,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                 BonusRate = round(BonusRate, 2)
                 if BonusRate <= 1.1:
                     BonusRate = 1.1
-                    
+
                 userembed.add_field(
                     name="", 
                     value=f"베팅 배율: {BonusRate}배" if BonusRate == 0 else 
@@ -1263,7 +1263,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
     while not bot.is_closed():
         #current_game_state, current_game_type = await nowgame(puuid)
-        current_game_state = True, current_game_type = "솔로랭크"
+        current_game_state = True
+        current_game_type = "솔로랭크"
         if current_game_state:
             onoffref = db.reference("승부예측/투표온오프")
             onoffbool = onoffref.get()
