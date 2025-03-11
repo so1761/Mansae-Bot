@@ -547,7 +547,7 @@ class DiceRevealView(discord.ui.View):
             winnerNum = len(winners)
             loserNum = len(losers)
 
-            BonusRate = 0 if winnerNum == 0 else round((((winnerNum + loserNum) / winnerNum) - 1) * 0.5, 2) + 1 # 0.5배 배율 적용
+            BonusRate = 0 if winnerNum == 0 else round((((winnerNum + loserNum) / winnerNum) - 1) * 0.2, 2) + 1 # 0.2배 배율 적용
             if BonusRate > 0:
                 BonusRate += 0.1
 
@@ -556,7 +556,7 @@ class DiceRevealView(discord.ui.View):
             userembed.add_field(
                 name="", 
                 value=f"베팅 배율: {BonusRate}배" if BonusRate == 0 else 
-                f"베팅 배율: {BonusRate}배!((({winnerNum + loserNum}/{winnerNum} - 1) x 0.5 + 1) + 0.1)", 
+                f"베팅 배율: {BonusRate}배!((({winnerNum + loserNum}/{winnerNum} - 1) x 0.2 + 1) + 0.1)", 
                 inline=False
             )
 
@@ -634,7 +634,7 @@ class DiceRevealView(discord.ui.View):
                 remain_loser_total_point -= get_bet
                 streak_text = f"{predict_data['연승'] + 1}연속 적중을 이루어내며 " if predict_data['연승'] + 1 > 1 else ""
 
-                add_points = 20 + (calculate_points(predict_data["연승"] + 1)) + round(winner['points'] * BonusRate) + get_bet if predict_data["연승"] + 1 > 1 else 20 + round(winner["points"] * BonusRate) + get_bet
+                add_points = 10 + (calculate_points(predict_data["연승"] + 1)) + round(winner['points'] * BonusRate) + get_bet if predict_data["연승"] + 1 > 1 else 10 + round(winner["points"] * BonusRate) + get_bet
                 if predict_data['연승'] + 1 > 1:
                     userembed.add_field(name="", value=f"{winner['name'].display_name}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet})(연속적중 보너스 + {calculate_points(predict_data['연승'] + 1)}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)
                 else:
@@ -793,8 +793,6 @@ class DiceRevealView(discord.ui.View):
                     "포인트 변동": get_point - challenger_point,
                     "사유": "주사위 대결",
                 })
-
-
             else:
                 remained_point = 0 # 환급 포인트
                 challenger_point = self.game_point[self.challenger]
@@ -5011,7 +5009,7 @@ class hello(commands.Cog):
                     winnerNum = len(winners)
                     loserNum = len(losers)
 
-                    BonusRate = 0 if winnerNum == 0 else round((((winnerNum + loserNum) / winnerNum) - 1) * 0.5, 2) + 1 # 0.5배 배율 적용
+                    BonusRate = 0 if winnerNum == 0 else round((((winnerNum + loserNum) / winnerNum) - 1) * 0.2, 2) + 1 # 0.2배 배율 적용
                     if BonusRate > 0:
                         BonusRate += 0.1
 
@@ -5020,7 +5018,7 @@ class hello(commands.Cog):
                     userembed.add_field(
                         name="", 
                         value=f"베팅 배율: {BonusRate}배" if BonusRate == 0 else 
-                        f"베팅 배율: {BonusRate}배!((({winnerNum + loserNum}/{winnerNum} - 1) x 0.5 + 1) + 0.1)", 
+                        f"베팅 배율: {BonusRate}배!((({winnerNum + loserNum}/{winnerNum} - 1) x 0.2 + 1) + 0.1)", 
                         inline=False
                     )
 
@@ -5099,7 +5097,7 @@ class hello(commands.Cog):
                         remain_loser_total_point -= get_bet
                         streak_text = f"{predict_data['연승'] + 1}연속 적중을 이루어내며 " if predict_data['연승'] + 1 > 1 else ""
 
-                        add_points = 20 + (calculate_points(predict_data["연승"] + 1)) + round(winner['points'] * BonusRate) + get_bet if predict_data["연승"] + 1 > 1 else 20 + round(winner["points"] * BonusRate) + get_bet
+                        add_points = 10 + (calculate_points(predict_data["연승"] + 1)) + round(winner['points'] * BonusRate) + get_bet if predict_data["연승"] + 1 > 1 else 10 + round(winner["points"] * BonusRate) + get_bet
                         if predict_data['연승'] + 1 > 1:
                             userembed.add_field(name="", value=f"{winner['name'].display_name}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet})(연속적중 보너스 + {calculate_points(predict_data['연승'] + 1)}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)
                         else:
