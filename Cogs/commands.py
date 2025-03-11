@@ -1737,7 +1737,7 @@ async def plot_candle_graph(시즌:str, 이름:str, 랭크:str):
     plt.close(fig)
     return embed
 
-async def refresh_prediction(name, anonym, prediction_votes):
+async def refresh_prediction(name, anonym, complete_anonym, prediction_votes):
     if name == "지모":
         embed = discord.Embed(title="예측 현황", color=0x000000) # Black
     elif name == "Melon":
@@ -1746,7 +1746,10 @@ async def refresh_prediction(name, anonym, prediction_votes):
     rater = refrate.get()
     if rater['배율'] != 0:
         embed.add_field(name="", value=f"추가 배율 : {rater['배율']}", inline=False)
-    if anonym:
+    if complete_anonym:
+        win_predictions = "\n?명"
+        lose_predictions = "\n?명"
+    elif anonym:
         win_predictions = "\n".join(f"{ANONYM_NAME_WIN[index]}: ? 포인트" for index, user in enumerate(prediction_votes["win"])) or "없음"
         lose_predictions = "\n".join(f"{ANONYM_NAME_LOSE[index]}: ? 포인트" for index, user in enumerate(prediction_votes["lose"])) or "없음"
     else:
@@ -1755,8 +1758,10 @@ async def refresh_prediction(name, anonym, prediction_votes):
     
     winner_total_point = sum(winner["points"] for winner in prediction_votes["win"])
     loser_total_point = sum(loser["points"] for loser in prediction_votes["lose"])
-    embed.add_field(name="총 포인트", value=f"승리: {winner_total_point}포인트 | 패배: {loser_total_point}포인트", inline=False)
-    
+    if complete_anonym:
+        embed.add_field(name="총 포인트", value=f"승리: ? 포인트 | 패배: ? 포인트", inline=False)
+    else:
+        embed.add_field(name="총 포인트", value=f"승리: {winner_total_point}포인트 | 패배: {loser_total_point}포인트", inline=False)
     embed.add_field(name="승리 예측", value=win_predictions, inline=True)
     embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
     
@@ -3180,14 +3185,17 @@ class hello(commands.Cog):
     Choice(name='지모', value='지모'),
     Choice(name='Melon', value='Melon'),
     ])
-    async def 베팅(self, interaction: discord.Interaction, 이름:str, 포인트:int):
-        anonymref = db.reference("승부예측/익명온오프")
-        anonymbool = anonymref.get()
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-        current_predict_season = cur_predict_seasonref.get()
-
-
+    async def 베팅(self, interaction: discord.Interaction, 이름:str, 포인트:int):    
         async def handle_bet(winbutton):
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+            current_predict_season = cur_predict_seasonref.get()
+
+            anonymref = db.reference("승부예측/익명온오프")
+            anonymbool = anonymref.get()
+
+            complete_anonymref = db.reference("승부예측/완전익명온오프")
+            complete_anonymbool = complete_anonymref.get()
+
             if 포인트 < 0:
                 await interaction.response.send_message("포인트는 0보다 큰 숫자로 입력해주세요",ephemeral=True)
                 return
@@ -3278,7 +3286,7 @@ class hello(commands.Cog):
                                     await interaction.response.send_message(embed=userembed)
 
 
-                            await refresh_prediction(이름,anonymbool,p.votes[이름]['prediction'])
+                            await refresh_prediction(이름,anonymbool,complete_anonymbool, p.votes[이름]['prediction'])
 
 
                             
@@ -3375,7 +3383,7 @@ class hello(commands.Cog):
                                     userembed.add_field(name="",value=f"{nickname}님이 {이름}의 패배에 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
                                     await interaction.response.send_message(embed=userembed)
 
-                            await refresh_prediction(이름,anonymbool,p.votes[이름]['prediction'])
+                            await refresh_prediction(이름,anonymbool,complete_anonymbool,p.votes[이름]['prediction'])
 
                             # ====================  [미션]  ====================
                             # 시즌미션 : 도파민 중독
@@ -3806,7 +3814,7 @@ class hello(commands.Cog):
                     userembed.add_field(name="",value=f"{interaction.user.name}님이 포인트를 소모하여 {이름}의 예측 현황을 공개했습니다!", inline=False)
                     await channel.send(f"\n",embed = userembed)
                     
-                    await refresh_prediction(이름,False,p.votes[이름]['prediction'])
+                    await refresh_prediction(이름,False,False,p.votes[이름]['prediction'])
                     
                     ref.update({"포인트" : point - need_point})
                     await interaction.response.send_message(f"{need_point}포인트 지불 완료! 현재 포인트: {real_point - need_point} (베팅포인트 {bettingPoint} 제외)",ephemeral=True)

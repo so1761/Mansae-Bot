@@ -1470,7 +1470,10 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         else:
                             noticeembed.add_field(name="",value=f"{name}의 {prediction_value}에 투표 완료!", inline=False)
                             if interaction:
-                                await interaction.followup.send(embed=noticeembed, ephemeral=True)
+                                if complete_anonymbool:
+                                    await interaction.response.send_message(embed=noticeembed, ephemeral=True)
+                                else:
+                                    await interaction.followup.send(embed=noticeembed, ephemeral=True)
                     else:
                         #userembed.add_field(name="", value=f"{nickname.display_name}님이 {prediction_value}에 투표하셨습니다.", inline=True)
                         if basePoint != 0:
@@ -1482,7 +1485,10 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                                 await channel.send(f"\n", embed=bettingembed)
                             noticeembed.add_field(name="",value=f"{name}의 {prediction_value}에 {basePoint}포인트 자동베팅 완료!", inline=False)
                             if interaction:
-                                await interaction.followup.send(embed=noticeembed, ephemeral=True)
+                                if complete_anonymbool:
+                                    await interaction.response.send_message(embed=noticeembed, ephemeral=True)
+                                else:
+                                    await interaction.followup.send(embed=noticeembed, ephemeral=True)
                     
                     #await channel.send(f"\n", embed=userembed)
 
