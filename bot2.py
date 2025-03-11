@@ -1341,7 +1341,10 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             perfect_point = perfectr[name]
                 
             async def disable_buttons():
-                await asyncio.sleep(180)  # 3분 대기
+                await asyncio.sleep(150)  # 2분 30초 대기
+                alarm_embed = discord.Embed(title="알림", description="예측 종료까지 30초 남았습니다! ⏰", color=discord.Color.red())
+                await channel.send(embed=alarm_embed)
+                await asyncio.sleep(30) # 30초 대기
                 winbutton.disabled = True
                 losebutton.disabled = True
                 betratebutton.disabled = True
