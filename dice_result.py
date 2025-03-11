@@ -63,8 +63,9 @@ for winner in winners:
     current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
     current_date = current_datetime.strftime("%Y-%m-%d")
     current_time = current_datetime.strftime("%H:%M:%S")
-    change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner}")
-    change_ref.update({
+    change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{winner}")
+    change_ref.push({
+        "시간": current_time,
         "포인트": point + max_dice_num,
         "포인트 변동": max_dice_num,
         "사유": "주사위 이벤트"

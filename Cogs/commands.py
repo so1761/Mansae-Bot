@@ -577,17 +577,6 @@ class DiceRevealView(discord.ui.View):
                 point = predict_data["포인트"]
                 bettingPoint = predict_data["베팅포인트"]
 
-                # 예측 내역 변동 데이터
-                change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner['name'].name}")
-                change_ref.update({
-                    "포인트": point,
-                    "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
-                    "적중 횟수": predict_data["적중 횟수"] + 1,
-                    "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
-                    "연승": predict_data.get("연승") + 1,
-                    "연패": 0,
-                    "베팅포인트": bettingPoint - winner["points"]        
-                })
                 # 예측 내역 업데이트
                 point_ref.update({
                     "포인트": point,
@@ -639,7 +628,10 @@ class DiceRevealView(discord.ui.View):
                     userembed.add_field(name="", value=f"{winner['name'].display_name}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet})(연속적중 보너스 + {calculate_points(predict_data['연승'] + 1)}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)
                 else:
                     userembed.add_field(name="", value=f"{winner['name'].display_name}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)   
-                change_ref.update({
+                # 예측 내역 변동 데이터
+                change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{winner['name'].name}")
+                change_ref.push({
+                    "시간": current_time,
                     "포인트": point + add_points - winner['points'],
                     "포인트 변동": add_points - winner['points'],
                     "사유": "주사위 대결 승부예측"
@@ -652,17 +644,6 @@ class DiceRevealView(discord.ui.View):
                 point = predict_data["포인트"]
                 bettingPoint = predict_data["베팅포인트"]
                 
-                # 예측 내역 변동 데이터
-                change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser['name'].name}")
-                change_ref.update({
-                    "포인트": point,
-                    "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
-                    "적중 횟수": predict_data["적중 횟수"],
-                    "적중률": f"{round((((predict_data['적중 횟수']) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
-                    "연승": 0,
-                    "연패": predict_data["연패"] + 1,
-                    "베팅포인트": bettingPoint - loser["points"],
-                })
                 # 예측 내역 업데이트
                 point_ref.update({
                     "포인트": point,
@@ -694,16 +675,20 @@ class DiceRevealView(discord.ui.View):
                     f"{loser['name'].display_name}님이 예측에 실패하여 베팅포인트를 잃었습니다! (베팅 포인트:-{loser['points']}) (환급 포인트: {get_bet})",
                     inline=False
                 )
+                # 예측 내역 변동 데이터
+                change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{loser['name'].name}")
                 if point + get_bet < loser['points']:
                     point_ref.update({"포인트": 0})
-                    change_ref.update({
+                    change_ref.push({
+                        "시간": current_time,
                         "포인트": 0,
                         "포인트 변동": -point,
                         "사유": "주사위 대결 승부예측"
                     })
                 else:
                     point_ref.update({"포인트": point + get_bet - loser['points']})
-                    change_ref.update({
+                    change_ref.push({
+                        "시간": current_time,
                         "포인트": point + get_bet - loser['points'],
                         "포인트 변동": get_bet - loser['points'],
                         "사유": "주사위 대결 승부예측"
@@ -780,15 +765,17 @@ class DiceRevealView(discord.ui.View):
                 current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
                 current_date = current_datetime.strftime("%Y-%m-%d")
                 current_time = current_datetime.strftime("%H:%M:%S")
-                change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{self.opponent}")
-                change_ref.update({
+                change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{self.opponent}")
+                change_ref.push({
+                    "시간": current_time,
                     "포인트": point - original_opponent_point + remained_point,
                     "포인트 변동": remained_point - original_opponent_point,
                     "사유": "주사위 대결",
                 })
 
-                change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{self.challenger}")
-                change_ref.update({
+                change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{self.challenger}")
+                change_ref.push({
+                    "시간": current_time,
                     "포인트": point + get_point - challenger_point,
                     "포인트 변동": get_point - challenger_point,
                     "사유": "주사위 대결",
@@ -836,15 +823,17 @@ class DiceRevealView(discord.ui.View):
                 current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
                 current_date = current_datetime.strftime("%Y-%m-%d")
                 current_time = current_datetime.strftime("%H:%M:%S")
-                change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{self.opponent}")
-                change_ref.update({
+                change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{self.opponent}")
+                change_ref.push({
+                    "시간": current_time,
                     "포인트": point + get_point - opponent_point,
                     "포인트 변동": get_point - opponent_point,
                     "사유": "주사위 대결",
                 })
 
-                change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{self.challenger}")
-                change_ref.update({
+                change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{self.challenger}")
+                change_ref.push({
+                    "시간": current_time,
                     "포인트": point - original_challenger_point + remained_point,
                     "포인트 변동":  remained_point - original_challenger_point,
                     "사유": "주사위 대결",
@@ -984,8 +973,9 @@ class ItemBuyButton(discord.ui.Button):
                         current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
                         current_date = current_datetime.strftime("%Y-%m-%d")
                         current_time = current_datetime.strftime("%H:%M:%S")
-                        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{interaction.user.name}")
-                        change_ref.update({
+                        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{interaction.user.name}")
+                        change_ref.push({
+                            "시간": current_time,
                             "포인트": point - (item_menu[self.item_name] * num),
                             "포인트 변동": -item_menu[self.item_name] * num,
                             "사유": f"{self.item_name} 구매"
@@ -2147,8 +2137,9 @@ class 확성기모달(Modal, title="확성기 메세지 작성"):
         current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
         current_date = current_datetime.strftime("%Y-%m-%d")
         current_time = current_datetime.strftime("%H:%M:%S")
-        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{interaction.user.name}")
-        change_ref.update({
+        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{interaction.user.name}")
+        change_ref.push({
+            "시간": current_time,
             "포인트": point - need_point,
             "포인트 변동": -need_point,
             "사유": "확성기 사용"
@@ -2968,8 +2959,9 @@ class hello(commands.Cog):
                     current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
                     current_date = current_datetime.strftime("%Y-%m-%d")
                     current_time = current_datetime.strftime("%H:%M:%S")
-                    change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{interaction.user.name}")
-                    change_ref.update({
+                    change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{interaction.user.name}")
+                    change_ref.push({
+                        "시간": current_time,
                         "포인트": point - need_point,
                         "포인트 변동": -need_point,
                         "사유": "순위표 혼자보기 구매",
@@ -3020,8 +3012,9 @@ class hello(commands.Cog):
                     current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
                     current_date = current_datetime.strftime("%Y-%m-%d")
                     current_time = current_datetime.strftime("%H:%M:%S")
-                    change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{interaction.user.name}")
-                    change_ref.update({
+                    change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{interaction.user.name}")
+                    change_ref.push({
+                        "시간": current_time,
                         "포인트": point - need_point,
                         "포인트 변동": -need_point,
                         "사유": "순위표 같이보기 구매"
@@ -3911,8 +3904,9 @@ class hello(commands.Cog):
                     current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
                     current_date = current_datetime.strftime("%Y-%m-%d")
                     current_time = current_datetime.strftime("%H:%M:%S")
-                    change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{interaction.user.name}")
-                    change_ref.update({
+                    change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{interaction.user.name}")
+                    change_ref.push({
+                        "시간": current_time,
                         "포인트": point - need_point,
                         "포인트 변동": -need_point,
                         "사유": "베팅공개 구매"
@@ -4504,8 +4498,9 @@ class hello(commands.Cog):
             current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
             current_date = current_datetime.strftime("%Y-%m-%d")
             current_time = current_datetime.strftime("%H:%M:%S")
-            change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{interaction.user.name}")
-            change_ref.update({
+            change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{interaction.user.name}")
+            change_ref.push({
+                "시간": current_time,
                 "포인트": point - need_point,
                 "포인트 변동": -need_point,
                 "사유": "업적해금 구매"
@@ -5035,17 +5030,6 @@ class hello(commands.Cog):
                         point = predict_data["포인트"]
                         bettingPoint = predict_data["베팅포인트"]
 
-                        # 예측 내역 변동 데이터
-                        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{winner['name'].name}")
-                        change_ref.update({
-                            "포인트": point,
-                            "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
-                            "적중 횟수": predict_data["적중 횟수"] + 1,
-                            "적중률": f"{round((((predict_data['적중 횟수'] + 1) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
-                            "연승": predict_data.get("연승") + 1,
-                            "연패": 0,
-                            "베팅포인트": bettingPoint - winner["points"]        
-                        })
                         # 예측 내역 업데이트
                         point_ref.update({
                             "포인트": point,
@@ -5102,7 +5086,10 @@ class hello(commands.Cog):
                             userembed.add_field(name="", value=f"{winner['name'].display_name}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet})(연속적중 보너스 + {calculate_points(predict_data['연승'] + 1)}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)
                         else:
                             userembed.add_field(name="", value=f"{winner['name'].display_name}님이 {streak_text}{add_points}(베팅 보너스 + {round(winner['points'] * BonusRate)} + {get_bet}) 점수를 획득하셨습니다! (베팅 포인트: {winner['points']})", inline=False)   
-                        change_ref.update({
+                        # 예측 내역 변동 데이터
+                        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{winner['name'].name}")
+                        change_ref.push({
+                            "시간": current_time,
                             "포인트": point + add_points - winner['points'],
                             "포인트 변동": add_points - winner['points'],
                             "사유": "숫자야구 승부예측"
@@ -5117,17 +5104,6 @@ class hello(commands.Cog):
                         
                         loser_total_point = sum(loser['points'] for loser in losers)
                         remain_loser_total_point = loser_total_point
-                        # 예측 내역 변동 데이터
-                        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{loser['name'].name}")
-                        change_ref.update({
-                            "포인트": point,
-                            "총 예측 횟수": predict_data["총 예측 횟수"] + 1,
-                            "적중 횟수": predict_data["적중 횟수"],
-                            "적중률": f"{round((((predict_data['적중 횟수']) * 100) / (predict_data['총 예측 횟수'] + 1)), 2)}%",
-                            "연승": 0,
-                            "연패": predict_data["연패"] + 1,
-                            "베팅포인트": bettingPoint - loser["points"],
-                        })
                         # 예측 내역 업데이트
                         point_ref.update({
                             "포인트": point,
@@ -5159,9 +5135,12 @@ class hello(commands.Cog):
                             f"{loser['name'].display_name}님이 예측에 실패하여 베팅포인트를 잃었습니다! (베팅 포인트:-{loser['points']}) (환급 포인트: {get_bet})",
                             inline=False
                         )
+                        # 예측 내역 변동 데이터
+                        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{loser['name'].name}")
                         if point + get_bet < loser['points']:
                             point_ref.update({"포인트": 0})
-                            change_ref.update({
+                            change_ref.push({
+                                "시간": current_time,
                                 "포인트": 0,
                                 "포인트 변동": -point,
                                 "사유": "숫자야구 승부예측"
@@ -5169,7 +5148,8 @@ class hello(commands.Cog):
                             
                         else:
                             point_ref.update({"포인트": point + get_bet - loser['points']})
-                            change_ref.update({
+                            change_ref.push({
+                                "시간": current_time,
                                 "포인트": point + get_bet - loser['points'],
                                 "포인트 변동": get_bet - loser['points'],
                                 "사유": "숫자야구 승부예측"
@@ -5241,15 +5221,17 @@ class hello(commands.Cog):
                         current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
                         current_date = current_datetime.strftime("%Y-%m-%d")
                         current_time = current_datetime.strftime("%H:%M:%S")
-                        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{self.opponent}")
-                        change_ref.update({
+                        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{self.opponent}")
+                        change_ref.push({
+                            "시간": current_time,
                             "포인트": point - original_opponent_point + remained_point,
                             "포인트 변동": remained_point - original_opponent_point,
                             "사유": "숫자야구 대결",
                         })
 
-                        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{self.challenger}")
-                        change_ref.update({
+                        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{self.challenger}")
+                        change_ref.push({
+                            "시간": current_time,
                             "포인트": point + get_point - challenger_point,
                             "포인트 변동": get_point - challenger_point,
                             "사유": "숫자야구 대결",
@@ -5293,15 +5275,17 @@ class hello(commands.Cog):
                         current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
                         current_date = current_datetime.strftime("%Y-%m-%d")
                         current_time = current_datetime.strftime("%H:%M:%S")
-                        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{self.opponent}")
-                        change_ref.update({
+                        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{self.opponent}")
+                        change_ref.push({
+                            "시간": current_time,
                             "포인트": point + get_point - opponent_point,
                             "포인트 변동": get_point - opponent_point,
                             "사유": "숫자야구 대결",
                         })
 
-                        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{current_time}/{self.challenger}")
-                        change_ref.update({
+                        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{self.challenger}")
+                        change_ref.push({
+                            "시간": current_time,
                             "포인트": point - original_challenger_point + remained_point,
                             "포인트 변동":  remained_point - original_challenger_point,
                             "사유": "숫자야구 대결",
