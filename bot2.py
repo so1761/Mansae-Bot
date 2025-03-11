@@ -532,8 +532,8 @@ async def refresh_prediction(name, anonym, complete_anonym, prediction_votes):
     if rater['배율'] != 0:
         embed.add_field(name="", value=f"추가 배율 : {rater['배율']}", inline=False)
     if complete_anonym:
-        win_predictions = "\n?"
-        lose_predictions = "\n?"
+        win_predictions = "\n?명"
+        lose_predictions = "\n?명"
     elif anonym:
         win_predictions = "\n".join(f"{ANONYM_NAME_WIN[index]}: ? 포인트" for index, user in enumerate(prediction_votes["win"])) or "없음"
         lose_predictions = "\n".join(f"{ANONYM_NAME_LOSE[index]}: ? 포인트" for index, user in enumerate(prediction_votes["lose"])) or "없음"
@@ -1675,8 +1675,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             elif name == "Melon":
                 prediction_embed = discord.Embed(title="예측 현황", color=discord.Color.brand_green())
             if complete_anonymbool: # 완전 익명화 시
-                win_predictions = "\n?"
-                lose_predictions = "\n?"
+                win_predictions = "\n?명"
+                lose_predictions = "\n?명"
             elif anonymbool:  # 익명 투표 시
                 win_predictions = "\n".join(
                     f"{ANONYM_NAME_WIN[index]}: ? 포인트" for index, winner in enumerate(prediction_votes["win"])) or "없음"
@@ -1706,7 +1706,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             today = datetime.today()
             if today.weekday() == 6:
                 kda_embed.add_field(name=f"",value=f"일요일엔 점수 2배! KDA 예측 점수 2배 지급!")
-            p.kda_embed.add_field(name="퍼펙트 예측성공 포인트", value=perfect_point, inline=False)
+            kda_embed.add_field(name="퍼펙트 예측성공 포인트", value=perfect_point, inline=False)
             if anonymbool:
                 up_predictions = "".join(f"{len(kda_votes['up'])}명")
                 down_predictions = "".join(f"{len(kda_votes['down'])}명")
