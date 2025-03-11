@@ -1449,7 +1449,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     prediction_votes[prediction_type].append({"name": nickname, 'points': 0})
                     myindex = len(prediction_votes[prediction_type]) - 1 # 투표자의 위치 파악
 
-                    await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
+                    await refresh_prediction(name,anonymbool, complete_anonymbool, prediction_votes) # 새로고침
 
                     prediction_value = "승리" if prediction_type == "win" else "패배"
 
