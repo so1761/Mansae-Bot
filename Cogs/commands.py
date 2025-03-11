@@ -5107,7 +5107,7 @@ class hello(commands.Cog):
                         change_ref.update({
                             "포인트": point + add_points - winner['points'],
                             "포인트 변동": add_points - winner['points'],
-                            "사유": "숫자야구 예측"
+                            "사유": "숫자야구 승부예측"
                         })
                         point_ref.update({"포인트": point + add_points - winner['points']})
 
