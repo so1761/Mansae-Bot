@@ -3193,7 +3193,7 @@ class hello(commands.Cog):
             anonymref = db.reference("승부예측/익명온오프")
             anonymbool = anonymref.get()
 
-            complete_anonymref = db.reference("승부예측/완전익명온오프")
+            complete_anonymref = db.reference(f"승부예측/완전익명{이름}온오프")
             complete_anonymbool = complete_anonymref.get()
 
             if 포인트 < 0:
@@ -5353,6 +5353,36 @@ class hello(commands.Cog):
         else:
             await interaction.response.send_message("권한이 없습니다",ephemeral=True)
 
+    @app_commands.command(name="완전익명화", description="다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 완전 익명화 아이템을 구매한 후 사용 가능합니다.")
+    @app_commands.choices(이름=[
+        Choice(name='지모', value='지모'),
+        Choice(name='Melon', value='Melon'),
+    ])
+    async def complete_anonymous(self, interaction: discord.Interaction, name: str):
+        nickname = interaction.user
+
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+        current_predict_season = cur_predict_seasonref.get()
+
+        refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname.name}/아이템')
+        itemr = refitem.get()
+
+        item_num = itemr.get("완전 익명화", 0)
+
+        if item_num > 0:
+            complete_anonymref = db.reference(f"승부예측/완전익명{name}온오프")
+            complete_anonymref.set(True) # 완전 익명 설정
+            refitem.update({"완전 익명화": item_num - 1})
+            userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
+            userembed.add_field(name="", value=f"{nickname.display_name}님이 아이템을 사용하여 {name}의 다음 투표를 익명화하였습니다!", inline=False)
+            await interaction.channel.send(embed=userembed)
+            checkembed = discord.Embed(title="성공",color = discord.Color.blue())
+            checkembed.add_field(name="",value=f"{name}의 투표가 완전 익명화 되었습니다! 남은 아이템: {item_num - 1}개")
+            await interaction.response.send_message(embed = checkembed, ephemeral=True)
+        else:
+            warnembed = discord.Embed(title="실패",color = discord.Color.red())
+            warnembed.add_field(name="",value="아이템이 없습니다! ❌")
+            await interaction.response.send_message(embed = warnembed,ephemeral=True)
 
     #베팅 테스트를 위한 코드
     # @app_commands.command(name="베팅테스트",description="베팅 테스트(개발자 전용)")
