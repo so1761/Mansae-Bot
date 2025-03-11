@@ -5354,7 +5354,7 @@ class hello(commands.Cog):
             await interaction.response.send_message("권한이 없습니다",ephemeral=True)
 
     @app_commands.command(name="완전익명화", description="다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 완전 익명화 아이템을 구매한 후 사용 가능합니다.")
-    @app_commands.choices(이름=[
+    @app_commands.choices(name=[
         Choice(name='지모', value='지모'),
         Choice(name='Melon', value='Melon'),
     ])
