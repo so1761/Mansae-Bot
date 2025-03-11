@@ -1541,7 +1541,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     discord.SelectOption(label="배율 증가 0.5", value="increase_0.5"),
                     discord.SelectOption(label="배율 감소 0.1", value="decrease_0.1"),
                     discord.SelectOption(label="배율 감소 0.3", value="decrease_0.3"),
-                    discord.SelectOption(label="배율 감소 0.5", value="decrease_0.5")
+                    discord.SelectOption(label="배율 감소 0.5", value="decrease_0.5"),
+                    discord.SelectOption(label="완전 익명화", value="complete_anonym")
                 ]
 
                 select = discord.ui.Select(placeholder="아이템을 선택하세요", options=options)

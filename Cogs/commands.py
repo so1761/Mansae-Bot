@@ -3250,8 +3250,8 @@ class hello(commands.Cog):
                                     bet_num = shadow_data.get(f"{이름}베팅", 0)
                                     if bet_num + 1 == 5:
                                         shadow_ref.update({"완료": True})
-                                        print(f"{interaction.user.name}의 [다중 그림자분신술] 미션 완료")
-                                        await mission_notice(interaction.client,interaction.user.name,"다중 그림자분신술","에픽")
+                                        print(f"{interaction.user.display_name}의 [다중 그림자분신술] 미션 완료")
+                                        await mission_notice(interaction.client,interaction.user.display_name,"다중 그림자분신술","에픽")
                                     else:
                                         shadow_ref.update({f"{이름}베팅" : bet_num + 1})
                                 # ====================  [미션]  ====================
@@ -3266,23 +3266,25 @@ class hello(commands.Cog):
                                 mission_bool = shrimp_ref.get()['완료']
                                 if not mission_bool:
                                     shrimp_ref.update({"완료": True})
-                                    print(f"{interaction.user.name}의 [크릴새우] 미션 완료")
-                                    await mission_notice(interaction.client,interaction.user.name,"크릴새우","희귀")
+                                    print(f"{interaction.user.display_name}의 [크릴새우] 미션 완료")
+                                    await mission_notice(interaction.client,interaction.user.display_name,"크릴새우","희귀")
 
                                 # ====================  [미션]  ====================
                                     
                             winner['points'] += 포인트  # 포인트 수정
                             ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
                             userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                            if anonymbool:
+                            if complete_anonymbool:
+                                await interaction.response.send_message(f"{이름}의 승리에 {포인트}포인트 베팅 완료!",ephemeral=True)
+                            elif anonymbool:
                                 await place_bet(self.bot,이름,"승리",포인트)
                                 await interaction.response.send_message(f"{이름}의 승리에 {포인트}포인트 베팅 완료!",ephemeral=True)
                             else:
                                 if winner['points'] != 포인트:
-                                    userembed.add_field(name="",value=f"{nickname}님이 {이름}의 승리에 {포인트}포인트만큼 추가 베팅하셨습니다!", inline=True)
+                                    userembed.add_field(name="",value=f"{interaction.user.display_name}님이 {이름}의 승리에 {포인트}포인트만큼 추가 베팅하셨습니다!", inline=True)
                                     await interaction.response.send_message(embed=userembed)
                                 else:
-                                    userembed.add_field(name="",value=f"{nickname}님이 {이름}의 승리에 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
+                                    userembed.add_field(name="",value=f"{interaction.user.display_name}님이 {이름}의 승리에 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
                                     await interaction.response.send_message(embed=userembed)
 
 
@@ -3311,8 +3313,8 @@ class hello(commands.Cog):
                                     all_in_count = mission_data.get('횟수', 0)
                                     if all_in_count + 1 == 3:
                                         ref.update({"완료": True})
-                                        print(f"{nickname}의 [도파민 중독] 미션 완료")
-                                        await mission_notice(interaction.client, nickname, "도파민 중독","신화")
+                                        print(f"{interaction.user.display_name}의 [도파민 중독] 미션 완료")
+                                        await mission_notice(interaction.client, interaction.user.display_name, "도파민 중독","신화")
                                     else:
                                         ref.update({"횟수" : all_in_count + 1})
                                 else:
@@ -3348,8 +3350,8 @@ class hello(commands.Cog):
                                     bet_num = shadow_data.get("{이름}베팅", 0)
                                     if bet_num + 1 == 5:
                                         ref.update({"완료": True})
-                                        print(f"{interaction.user.name}의 [다중 그림자분신술] 미션 완료")
-                                        await mission_notice(interaction.client,interaction.user.name,"다중 그림자분신술","에픽")
+                                        print(f"{interaction.user.display_name}의 [다중 그림자분신술] 미션 완료")
+                                        await mission_notice(interaction.client,interaction.user.display_name,"다중 그림자분신술","에픽")
                                     else:
                                         shadow_ref.update({f"{이름}베팅" : bet_num + 1})
                                 # ====================  [미션]  ====================
@@ -3364,23 +3366,25 @@ class hello(commands.Cog):
                                 mission_bool = shrimp_ref.get()['완료']
                                 if not mission_bool:
                                     shrimp_ref.update({"완료": True})
-                                    print(f"{interaction.user.name}의 [크릴새우] 미션 완료")
-                                    await mission_notice(interaction.client,interaction.user.name,"크릴새우","희귀")
+                                    print(f"{interaction.user.display_name}의 [크릴새우] 미션 완료")
+                                    await mission_notice(interaction.client,interaction.user.display_name,"크릴새우","희귀")
 
                                 # ====================  [미션]  ====================
                                     
                             loser['points'] += 포인트  # 포인트 수정
                             ref.update({"베팅포인트" : bettingPoint + 포인트}) # 파이어베이스에 베팅포인트 추가
                             userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                            if anonymbool:
+                            if complete_anonymbool:
+                                await interaction.response.send_message(f"{이름}의 패배에 {포인트}포인트 베팅 완료!",ephemeral=True)
+                            elif anonymbool:
                                 await place_bet(self.bot,이름,"패배",포인트)
                                 await interaction.response.send_message(f"{이름}의 패배에 {포인트}포인트 베팅 완료!",ephemeral=True)
                             else:
                                 if loser['points'] != 포인트:
-                                    userembed.add_field(name="",value=f"{nickname}님이 {이름}의 패배에 {포인트}포인트만큼 추가 베팅하셨습니다!", inline=True)
+                                    userembed.add_field(name="",value=f"{interaction.user.display_name}님이 {이름}의 패배에 {포인트}포인트만큼 추가 베팅하셨습니다!", inline=True)
                                     await interaction.response.send_message(embed=userembed)
                                 else:
-                                    userembed.add_field(name="",value=f"{nickname}님이 {이름}의 패배에 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
+                                    userembed.add_field(name="",value=f"{interaction.user.display_name}님이 {이름}의 패배에 {포인트}포인트만큼 베팅하셨습니다!", inline=True)
                                     await interaction.response.send_message(embed=userembed)
 
                             await refresh_prediction(이름,anonymbool,complete_anonymbool,p.votes[이름]['prediction'])
@@ -3406,8 +3410,8 @@ class hello(commands.Cog):
                                     all_in_count = mission_data.get('횟수', 0)
                                     if all_in_count + 1 == 3:
                                         ref.update({"완료": True})
-                                        print(f"{nickname}의 [도파민 중독] 미션 완료")
-                                        await mission_notice(interaction.client, nickname, "도파민 중독","신화")
+                                        print(f"{interaction.user.display_name}의 [도파민 중독] 미션 완료")
+                                        await mission_notice(interaction.client, interaction.user.display_name, "도파민 중독","신화")
                                     else:
                                         ref.update({"횟수" : all_in_count + 1})
                                 else:
@@ -3811,7 +3815,7 @@ class hello(commands.Cog):
                         return
                     channel = self.bot.get_channel(int(CHANNEL_ID))
                     userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
-                    userembed.add_field(name="",value=f"{interaction.user.name}님이 포인트를 소모하여 {이름}의 예측 현황을 공개했습니다!", inline=False)
+                    userembed.add_field(name="",value=f"{interaction.user.display_name}님이 포인트를 소모하여 {이름}의 예측 현황을 공개했습니다!", inline=False)
                     await channel.send(f"\n",embed = userembed)
                     
                     await refresh_prediction(이름,False,False,p.votes[이름]['prediction'])
@@ -4210,7 +4214,7 @@ class hello(commands.Cog):
                     if mission_name == selected_mission_name:
                         embed = discord.Embed(
                             title="업적 공개!",
-                            description=f"{interaction.user.name}님이 업적을 공개했습니다!",
+                            description=f"{interaction.user.display_name}님이 업적을 공개했습니다!",
                             color=discord.Color.gold()
                         )
                         
@@ -4262,7 +4266,7 @@ class hello(commands.Cog):
             ref.set(dice_num)  # 주사위 값 저장
             embed = discord.Embed(
                 title="🎲 주사위 굴리기!",
-                description=f"{nickname}님이 주사위를 굴렸습니다!",
+                description=f"{interaction.user.display_name}님이 주사위를 굴렸습니다!",
                 color=discord.Color.blue()
             )
             embed.add_field(name="🎲 결과", value=f"**{dice_num}**", inline=False)
@@ -4396,7 +4400,7 @@ class hello(commands.Cog):
 
             embed = discord.Embed(
                 title="업적 해금!",
-                description=f"{user_id}님이 1000포인트를 지불하여 업적 정보를 열람했습니다!",
+                description=f"{interaction.user.display_name}님이 1000포인트를 지불하여 업적 정보를 열람했습니다!",
                 color=discord.Color.blue()
             )
             
