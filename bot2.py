@@ -1508,6 +1508,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         delay = random.uniform(5, 30) # 5초부터 30초까지 랜덤 시간
                         await asyncio.sleep(delay)
                         prediction_votes[prediction_type][myindex]['points'] += basePoint
+                        complete_anonymref = db.reference("승부예측/완전익명온오프")
+                        complete_anonymbool = complete_anonymref.get()
                         # 자동 베팅
                         await refresh_prediction(name,anonymbool,complete_anonymbool,prediction_votes) # 새로고침
                         if not complete_anonymbool: # 완전 익명이 아닐경우에만
