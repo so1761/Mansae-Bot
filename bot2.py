@@ -1604,8 +1604,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                                     complete_anonymref.set(True) # 완전 익명 설정
                                     userembed.add_field(name="", value=f"누군가가 아이템을 사용하여 투표를 익명화하였습니다!", inline=False)
                                 await channel.send(f"\n", embed=userembed)
-                                await refresh_prediction(name, anonymbool,complete_anonymbool,prediction_votes)
-                                if "increase" or "decrease" in selected_option:
+                                await refresh_prediction(name, anonymbool,True,prediction_votes)
+                                if "increase" in selected_option or "decrease" in selected_option:
                                     await interaction.response.send_message(f"{name}의 배율 {increase_value if 'increase' in selected_option else decrease_value} {'증가' if 'increase' in selected_option else '감소'} 완료! 남은 아이템: {item_num - 1}개", ephemeral=True)
                                     if name == "지모":
                                         used_items_for_user_jimo[user_id] = True
