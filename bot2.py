@@ -522,7 +522,7 @@ async def get_summoner_matchinfo(matchid, retries=5, delay=5):
     print(f"[{now}] [ERROR] get_summoner_matchinfo All retries failed.")
     return None
 
-async def refresh_prediction(name, anonym, prediction_votes):
+async def refresh_prediction(name, anonym, complete_anonym, prediction_votes):
     if name == "지모":
         embed = discord.Embed(title="예측 현황", color=0x000000) # Black
     elif name == "Melon":
@@ -531,7 +531,10 @@ async def refresh_prediction(name, anonym, prediction_votes):
     rater = refrate.get()
     if rater['배율'] != 0:
         embed.add_field(name="", value=f"추가 배율 : {rater['배율']}", inline=False)
-    if anonym:
+    if complete_anonym:
+        win_predictions = "\n?"
+        lose_predictions = "\n?"
+    elif anonym:
         win_predictions = "\n".join(f"{ANONYM_NAME_WIN[index]}: ? 포인트" for index, user in enumerate(prediction_votes["win"])) or "없음"
         lose_predictions = "\n".join(f"{ANONYM_NAME_LOSE[index]}: ? 포인트" for index, user in enumerate(prediction_votes["lose"])) or "없음"
     else:
@@ -540,7 +543,11 @@ async def refresh_prediction(name, anonym, prediction_votes):
     
     winner_total_point = sum(winner["points"] for winner in prediction_votes["win"])
     loser_total_point = sum(loser["points"] for loser in prediction_votes["lose"])
-    embed.add_field(name="총 포인트", value=f"승리: {winner_total_point}포인트 | 패배: {loser_total_point}포인트", inline=False)
+
+    if complete_anonym: # 완전 익명일 경우
+        embed.add_field(name="총 포인트", value=f"승리: ? 포인트 | 패배: ? 포인트", inline=False)
+    else:
+        embed.add_field(name="총 포인트", value=f"승리: {winner_total_point}포인트 | 패배: {loser_total_point}포인트", inline=False)
     
     embed.add_field(name="승리 예측", value=win_predictions, inline=True)
     embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
@@ -799,6 +806,10 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
             if not onoffbool:
                 await refresh_prediction(name,False,prediction_votes) # 베팅내역 공개
                 await refresh_kda_prediction(name,False,kda_votes) # KDA 예측내역 공개
+
+                complete_anonymref = db.reference("승부예측/완전익명온오프")
+                complete_anonymref.set(False) # 완전 익명 해제
+                
                 curseasonref = db.reference("전적분석/현재시즌")
                 current_season = curseasonref.get()
 
@@ -1305,6 +1316,9 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             anonymref = db.reference("승부예측/익명온오프")
             anonymbool = anonymref.get()
 
+            complete_anonymref = db.reference("승부예측/완전익명온오프")
+            complete_anonymbool = complete_anonymref.get()
+
             # 이전 게임의 match_id를 저장
             if name == "지모":
                 if current_game_type == "솔로랭크":
@@ -1319,7 +1333,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             
             winbutton.disabled = onoffbool
             losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label="패배",disabled=onoffbool)
-            betratebutton = discord.ui.Button(style=discord.ButtonStyle.primary,label="배율 조정",disabled=onoffbool)
+            betratebutton = discord.ui.Button(style=discord.ButtonStyle.primary,label="아이템 사용",disabled=onoffbool)
 
             
             prediction_view = discord.ui.View()
@@ -1464,7 +1478,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                             await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
                             bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
                             bettingembed.add_field(name="", value=f"{nickname.display_name}님이 {name}의 {prediction_value}에 {basePoint}포인트를 베팅했습니다!", inline=False)
-                            await channel.send(f"\n", embed=bettingembed)
+                            if not complete_anonymbool: # 완전 익명이 아닐경우에만
+                                await channel.send(f"\n", embed=bettingembed)
                             noticeembed.add_field(name="",value=f"{name}의 {prediction_value}에 {basePoint}포인트 자동베팅 완료!", inline=False)
                             if interaction:
                                 await interaction.followup.send(embed=noticeembed, ephemeral=True)
@@ -1488,8 +1503,9 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         await asyncio.sleep(delay)
                         prediction_votes[prediction_type][myindex]['points'] += basePoint
                         # 자동 베팅
-                        await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
-                        await channel.send(f"\n", embed=bettingembed)
+                        await refresh_prediction(name,anonymbool,complete_anonymbool,prediction_votes) # 새로고침
+                        if not complete_anonymbool: # 완전 익명이 아닐경우에만
+                            await channel.send(f"\n", embed=bettingembed)
                 else:
                     userembed = discord.Embed(title="메세지", color=discord.Color.blue())
                     userembed.add_field(name="", value=f"{nickname.display_name}님은 이미 투표하셨습니다", inline=True)
@@ -1533,7 +1549,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         "increase_0.5": "배율증가5",
                         "decrease_0.1": "배율감소1",
                         "decrease_0.3": "배율감소3",
-                        "decrease_0.5": "배율감소5"
+                        "decrease_0.5": "배율감소5",
+                        "complete_anonym": "완전 익명화",
                     }
 
                     description = {
@@ -1543,6 +1560,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         "배율감소1": "이번 예측의 배율을 0.1 감소시킵니다.\n배율 1.1 미만으로는 감소시킬 수 없습니다.",
                         "배율감소3": "이번 예측의 배율을 0.3 감소시킵니다.\n배율 1.1 미만으로는 감소시킬 수 없습니다.",
                         "배율감소5": "이번 예측의 배율을 0.5 감소시킵니다.\n배율 1.1 미만으로는 감소시킬 수 없습니다.",
+                        "완전 익명화": "승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다"
                     }
 
                     item_name = item_map[selected_option]
@@ -1570,17 +1588,25 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                                     increase_value = float(selected_option.split("_")[1])
                                     refrate.update({'배율': round(rater['배율'] + increase_value, 1)})
                                     userembed.add_field(name="", value=f"누군가가 아이템을 사용하여 배율을 {increase_value} 올렸습니다!", inline=False)
-                                else:
+                                elif "decrease" in selected_option:
                                     decrease_value = float(selected_option.split("_")[1])
                                     refrate.update({'배율': round(rater['배율'] - decrease_value, 1)})
                                     userembed.add_field(name="", value=f"누군가가 아이템을 사용하여 배율을 {decrease_value} 내렸습니다!", inline=False)
+                                elif "complete_anonym" in selected_option:
+                                    complete_anonymref = db.reference("승부예측/완전익명온오프")
+                                    complete_anonymref.set(True) # 완전 익명 설정
+                                    userembed.add_field(name="", value=f"누군가가 아이템을 사용하여 투표를 익명화하였습니다!", inline=False)
                                 await channel.send(f"\n", embed=userembed)
-                                await refresh_prediction(name, anonymbool, prediction_votes)
-                                await interaction.response.send_message(f"{name}의 배율 {increase_value if 'increase' in selected_option else decrease_value} {'증가' if 'increase' in selected_option else '감소'} 완료! 남은 아이템: {item_num - 1}개", ephemeral=True)
-                                if name == "지모":
-                                    used_items_for_user_jimo[user_id] = True
-                                elif name == "Melon":
-                                    used_items_for_user_melon[user_id] = True
+                                await refresh_prediction(name, anonymbool,complete_anonymbool,prediction_votes)
+                                if "increase" or "decrease" in selected_option:
+                                    await interaction.response.send_message(f"{name}의 배율 {increase_value if 'increase' in selected_option else decrease_value} {'증가' if 'increase' in selected_option else '감소'} 완료! 남은 아이템: {item_num - 1}개", ephemeral=True)
+                                    if name == "지모":
+                                        used_items_for_user_jimo[user_id] = True
+                                    elif name == "Melon":
+                                        used_items_for_user_melon[user_id] = True
+                                elif "complete_anonym" in selected_option:
+                                    await interaction.response.send_message(f"{name}의 투표가 완전 익명화 되었습니다! 남은 아이템: {item_num - 1}개", ephemeral=True)
+                                
 
                         use_button.callback = use_button_callback
                         item_view = discord.ui.View()
@@ -1648,7 +1674,10 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 prediction_embed = discord.Embed(title="예측 현황", color=0x000000) # Black
             elif name == "Melon":
                 prediction_embed = discord.Embed(title="예측 현황", color=discord.Color.brand_green())
-            if anonymbool:  # 익명 투표 시
+            if complete_anonymbool: # 완전 익명화 시
+                win_predictions = "\n?"
+                lose_predictions = "\n?"
+            elif anonymbool:  # 익명 투표 시
                 win_predictions = "\n".join(
                     f"{ANONYM_NAME_WIN[index]}: ? 포인트" for index, winner in enumerate(prediction_votes["win"])) or "없음"
                 lose_predictions = "\n".join(
@@ -1661,7 +1690,11 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             
             winner_total_point = sum(winner["points"] for winner in prediction_votes["win"])
             loser_total_point = sum(loser["points"] for loser in prediction_votes["lose"])
-            prediction_embed.add_field(name="총 포인트", value=f"승리: {winner_total_point}포인트 | 패배: {loser_total_point}포인트", inline=False)
+            
+            if complete_anonymbool: # 완전 익명화 시
+                prediction_embed.add_field(name="총 포인트", value=f"승리: ? 포인트 | 패배: ? 포인트", inline=False)
+            else:
+                prediction_embed.add_field(name="총 포인트", value=f"승리: {winner_total_point}포인트 | 패배: {loser_total_point}포인트", inline=False)
 
             prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
             prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
@@ -1785,7 +1818,12 @@ async def check_remake_status(name, puuid, event, prediction_votes,kda_votes):
                     participant_id = get_participant_id(match_info, puuid)
 
                     if match_info['info']['participants'][participant_id]['gameEndedInEarlySurrender'] and int(match_info['info']['gameDuration']) <= 240:
-                        await refresh_prediction(name,False,prediction_votes) # 베팅내역 공개
+                        await refresh_prediction(name,False,False,prediction_votes) # 베팅내역 공개
+                        await refresh_kda_prediction(name,False,kda_votes) # KDA 예측내역 공개
+
+                        complete_anonymref = db.reference("승부예측/완전익명온오프")
+                        complete_anonymref.set(False) # 완전 익명 해제
+
                         userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
                         userembed.add_field(name="게임 종료", value=f"{name}의 랭크게임이 종료되었습니다!\n다시하기\n")
                         await channel.send(embed=userembed)
