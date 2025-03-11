@@ -1432,6 +1432,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             kda_votes = votes["kda"]
             
             async def bet_button_callback(interaction: discord.Interaction = None, prediction_type: str = "", anonym_names: list = None, nickname: discord.Member = None):
+                complete_anonymref = db.reference("승부예측/완전익명온오프")
+                complete_anonymbool = complete_anonymref.get()
                 if interaction:
                     nickname = interaction.user
                     await interaction.response.defer()  # 응답 지연 (버튼 눌렀을 때 오류 방지)
