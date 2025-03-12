@@ -1360,6 +1360,20 @@ class DiceRollView(discord.ui.View):
         else:
             self.add_item(FinalizeButton(self))
 
+    async def start_timer(self):
+        await asyncio.sleep(120)
+        self.clear_items()
+
+        result = ', '.join(str(roll) for roll in self.rolls)
+        hand = evaluate_hand(self.rolls)  # 족보 판별
+        embed = discord.Embed(
+            title="🎲 주사위 굴리기!",
+            description=f"{self.user}님의 주사위: **{result}**\n 족보: **{hand}**",
+            color=discord.Color.blue()
+        )
+        
+        await self.message.edit(embed=embed,view = self)
+
 # 야추 다이스 버튼
 class DiceButton(discord.ui.Button):
     def __init__(self, index, label, view):
@@ -1397,6 +1411,14 @@ class RerollButton(discord.ui.Button):
             description=f"{interaction.user.name}님의 주사위: **{result}**",
             color=discord.Color.blue()
         )
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/야추")
+        ref.update({"실행 여부":True})
+        ref.update({"결과": self.custom_view.rolls})
+        ref.update({"족보": evaluate_hand(self.custom_view.rolls)})
+        
         await interaction.response.edit_message(view=self.custom_view, embed = embed)
 
 # 야추 다이스 확정 버튼
@@ -1417,6 +1439,14 @@ class FinalizeButton(discord.ui.Button):
             description=f"{interaction.user.name}님의 주사위: **{result}**\n 족보: **{hand}**",
             color=discord.Color.blue()
         )
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/야추")
+        ref.update({"실행 여부":True})
+        ref.update({"결과": self.custom_view.rolls})
+        ref.update({"족보": hand})
+
         await interaction.response.edit_message(content="", view=None, embed = embed)
 
 # 야추 다이스 족보 판별
@@ -4350,7 +4380,7 @@ class hello(commands.Cog):
         current_predict_season = cur_predict_seasonref.get()
 
         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/주사위")
-        dice = ref.get()
+        dice = ref.get() or False
 
         if not dice:  # 주사위를 아직 안 굴렸다면
             dice_num = secrets.randbelow(100) + 1
@@ -4456,15 +4486,28 @@ class hello(commands.Cog):
 
     @app_commands.command(name="야추", description="주사위 5개를 굴립니다.")
     async def 야추(self, interaction: discord.Interaction):
-        initial_rolls = [random.randint(1, 6) for _ in range(5)]
-        view = DiceRollView(interaction.user, initial_rolls)
-        dice_display = ', '.join(str(roll) for roll in initial_rolls)
-        embed = discord.Embed(
-            title="🎲 주사위 굴리기!",
-            description=f"{interaction.user.name}님의 주사위: **{dice_display}**",
-            color=discord.Color.blue()
-        )
-        await interaction.response.send_message(embed=embed, view=view)
+        nickname = interaction.user.name
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/야추")
+        yacht = ref.get() or {}
+        yacht_bool = yacht.get("실행 여부", False)
+
+        if not yacht_bool:  # 주사위를 아직 안 굴렸다면
+            ref.update({"실행 여부":True})
+            initial_rolls = [random.randint(1, 6) for _ in range(5)]
+            ref.update({"결과": initial_rolls})
+            ref.update({"족보": evaluate_hand(initial_rolls)})
+            view = DiceRollView(interaction.user, initial_rolls)
+            dice_display = ', '.join(str(roll) for roll in initial_rolls)
+            embed = discord.Embed(
+                title="🎲 주사위 굴리기!",
+                description=f"{interaction.user.name}님의 주사위: **{dice_display}**",
+                color=discord.Color.blue()
+            )
+            await interaction.response.send_message(embed=embed, view=view)
+            await view.start_timer()
 
     @app_commands.command(name="업적해금", description="1000포인트를 지불하여, 아직 달성하지 않은 시즌미션의 상세 정보까지 전부 확인합니다. 15일 이후만 가능합니다.")
     async def show_missions(self, interaction: discord.Interaction):
