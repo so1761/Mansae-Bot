@@ -4452,6 +4452,19 @@ class hello(commands.Cog):
                 )
                 embed.add_field(name="🎲 결과", value=f"**{dice_num}**", inline=False)
                 embed.set_footer(text="내일 다시 도전할 수 있습니다!")
+            # ====================  [미션]  ====================
+            # 시즌미션 : 정점
+            if dice_num == 100:
+                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+                current_predict_season = cur_predict_seasonref.get()
+                ref_mission = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/정점")
+                mission_data = ref_mission.get() or {}
+                mission_bool = mission_data.get('완료',0)
+                if not mission_bool:
+                    ref_mission.update({"완료": True})
+                    print(f"{nickname}의 [정점] 미션 완료")
+                    await mission_notice(interaction.client, nickname, "정점","에픽")
+            # ====================  [미션]  ====================
             else:
                 embed = discord.Embed(
                     title="🎲 주사위는 하루에 한 번!",
@@ -5787,6 +5800,10 @@ class hello(commands.Cog):
                 nonlocal enhancement_fail_rates
                 nonlocal destroy_rates
 
+                start_embed = discord.Embed(title="메세지", color=discord.Color.blue())
+                start_embed.add_field(name="", value="강화를 시작합니다!", inline=False)
+                await interaction.response.send_message(embed = start_embed, ephemeral= True)
+                
                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
                 current_predict_season = cur_predict_seasonref.get()
 
@@ -5831,16 +5848,16 @@ class hello(commands.Cog):
                     result_embed = discord.Embed(title = "✅ 강화 성공!", color = discord.Color.blue())
                     if weapon_enhanced >= 10:
                         result_embed.add_field(name="", value = f"{interaction.user.display_name}님의 **[{weapon_name}]**이(가) 신성한 빛을 내며 궁극의 경지에 도달했습니다!", inline = False)
-                        result_embed.add_field(name="", value = f"**+{weapon_enhanced - 1} -> +{weapon_enhanced}", inline = False)
+                        result_embed.add_field(name="", value = f"**[{weapon_name}](+{weapon_enhanced - 1}) -> [{weapon_name}](+{weapon_enhanced})**", inline = False)
                     elif weapon_enhanced >= 7:
                         result_embed.add_field(name="", value = f"{interaction.user.display_name}님의 **[{weapon_name}]**이(가) 찬란한 빛을 내며 전설의 힘을 발현합니다!", inline = False)
-                        result_embed.add_field(name="", value = f"**+{weapon_enhanced - 1} -> +{weapon_enhanced}", inline = False)
+                        result_embed.add_field(name="", value = f"**[{weapon_name}](+{weapon_enhanced - 1}) -> [{weapon_name}](+{weapon_enhanced})**", inline = False)
                     elif weapon_enhanced >= 4:
                         result_embed.add_field(name="", value = f"{interaction.user.display_name}님의 **[{weapon_name}]**이(가) 서서히 빛을 발하며 힘이 깃들기 시작했습니다!", inline = False)
-                        result_embed.add_field(name="", value = f"**+{weapon_enhanced - 1} -> +{weapon_enhanced}", inline = False)
+                        result_embed.add_field(name="", value = f"**[{weapon_name}](+{weapon_enhanced - 1}) -> [{weapon_name}](+{weapon_enhanced})**", inline = False)
                     else:
                         result_embed.add_field(name="", value = f"{interaction.user.display_name}님의 **[{weapon_name}]**이(가) 미약한 빛을 내며 강화되었습니다!", inline = False)
-                        result_embed.add_field(name="", value = f"**+{weapon_enhanced - 1} -> +{weapon_enhanced}", inline = False)
+                        result_embed.add_field(name="", value = f"**[{weapon_name}](+{weapon_enhanced - 1}) -> [{weapon_name}](+{weapon_enhanced})**", inline = False)
 
                 elif roll <= enhancement_rates[weapon_enhanced] + enhancement_fail_rates[weapon_enhanced]:  # 실패
                     if weapon_enhanced == 0:
@@ -5851,13 +5868,13 @@ class hello(commands.Cog):
                     result_embed = discord.Embed(title = "❌ 강화 실패!", color = discord.Color.red())
                     result_embed.add_field(name="", value = f"{interaction.user.display_name}님의 **[{weapon_name}]**이(가) 한 순간 빛났지만 그 빛은 금세 사라져버렸습니다.", inline = False)
                     if weapon_enhanced == 0:
-                        result_embed.add_field(name="", value = f"**+{weapon_enhanced} -> +{weapon_enhanced}", inline = False)
+                        result_embed.add_field(name="", value = f"**[{weapon_name}](+{weapon_enhanced}) -> [{weapon_name}](+{weapon_enhanced})**", inline = False)
                     else:
-                        result_embed.add_field(name="", value = f"**+{weapon_enhanced + 1} -> +{weapon_enhanced}", inline = False)
+                        result_embed.add_field(name="", value = f"**[{weapon_name}](+{weapon_enhanced + 1}) -> [{weapon_name}](+{weapon_enhanced})**", inline = False)
                 else:  # 파괴
                     result_embed = discord.Embed(title = "💀 무기 파괴!", color = 0x000000)
                     result_embed.add_field(name="", value = f"{interaction.user.display_name}님의 **[{weapon_name}]**이(가) 힘을 버티지 못하고 가루가 되었습니다.", inline = False)
-                    result_embed.add_field(name="", value = f"**+{weapon_enhanced} -> +0**", inline = False)
+                    result_embed.add_field(name="", value = f"**[{weapon_name}](+{weapon_enhanced}) -> ✨**", inline = False)
                     result_embed.set_footer(text = f"무기를 다시 제작해야 합니다!")
                     weapon_enhanced = 0
                     ref_weapon.update({
@@ -5867,9 +5884,6 @@ class hello(commands.Cog):
                     
                 await channel.send(embed=result_embed)
 
-                start_embed = discord.Embed(title="메세지", color=discord.Color.blue())
-                start_embed.add_field(name="", value="강화를 시작합니다!", inline=False)
-                await interaction.response.send_message(embed = start_embed, ephemeral= True)
 
             enhance_button.callback = enhance_callback
             weapon_view.add_item(enhance_button)
