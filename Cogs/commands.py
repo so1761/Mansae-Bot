@@ -938,6 +938,7 @@ class ItemBuyButton(discord.ui.Button):
             "주사위 초기화": 20,
             "주사위대결기회 추가": 100,
             "숫자야구대결기회 추가": 100,
+            "야추 초기화": 100,
             "완전 익명화": 1000
         }
 
@@ -1007,6 +1008,7 @@ class ItemSelect(discord.ui.Select):
             discord.SelectOption(label = "주사위 초기화", value = "주사위 초기화", description = "현재 주사위 값을 초기화하고 한번 더 던질 수 있게 합니다. 20p로 구매 가능합니다."),
             discord.SelectOption(label = "주사위대결기회 추가", value = "주사위대결기회 추가", description = "주사위 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다."),
             discord.SelectOption(label = "숫자야구대결기회 추가", value = "숫자야구대결기회 추가", description = "숫자야구 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다."),
+            discord.SelectOption(label = "야추 초기화", value = "야추 초기화", description = "현재 야추 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다."),
             discord.SelectOption(label = "완전 익명화", value = "완전 익명화", description = "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다.")
         ]
         super().__init__(
@@ -1037,6 +1039,7 @@ class ItemSelect(discord.ui.Select):
             "주사위 초기화": 20,
             "주사위대결기회 추가": 100,
             "숫자야구대결기회 추가": 100,
+            "야추 초기화": 100,
             "완전 익명화": 1000
         }
 
@@ -1050,6 +1053,7 @@ class ItemSelect(discord.ui.Select):
             "주사위 초기화": "현재 주사위 값을 초기화하고 한번 더 던질 수 있게 합니다. 20p로 구매 가능합니다.",
             "주사위대결기회 추가": "주사위 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다.",
             "숫자야구대결기회 추가": "숫자야구 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다.",
+            "야추 초기화": "현재 야추 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다.",
             "완전 익명화": "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다. 현재 구현 X"
         }
         
@@ -4521,12 +4525,35 @@ class hello(commands.Cog):
             await interaction.response.send_message(embed=embed, view=view)
             await view.start_timer()
         else:
-            embed = discord.Embed(
-                title="🎲 야추는 하루에 한 번!",
-                description=f"{nickname}님은 이미 야추 다이스를 플레이 했습니다.",
-                color=discord.Color.red()
-            )
-            await interaction.response.send_message(embed=embed, view=view)
+            ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+            item_data = ref_item.get()
+            yacht_refresh = item_data.get('야추 초기화', 0)
+            if yacht_refresh:
+                userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
+                userembed.add_field(name="",value=f"{interaction.user.display_name}님이 아이템을 사용하여 야추 기회를 추가했습니다!", inline=False)
+                channel = interaction.client.get_channel(int(CHANNEL_ID))
+                await channel.send(embed=userembed)
+
+                ref.update({"실행 여부":True})
+                initial_rolls = [random.randint(1, 6) for _ in range(5)]
+                ref.update({"결과": initial_rolls})
+                ref.update({"족보": evaluate_hand(initial_rolls)})
+                view = DiceRollView(interaction.user, initial_rolls)
+                dice_display = ', '.join(str(roll) for roll in initial_rolls)
+                embed = discord.Embed(
+                    title="🎲 주사위 굴리기!",
+                    description=f"{interaction.user.name}님의 주사위: **{dice_display}**",
+                    color=discord.Color.blue()
+                )
+                await interaction.response.send_message(embed=embed, view=view)
+                await view.start_timer()
+            else:
+                embed = discord.Embed(
+                    title="🎲 야추는 하루에 한 번!",
+                    description=f"{nickname}님은 이미 야추 다이스를 플레이 했습니다.",
+                    color=discord.Color.red()
+                )
+                await interaction.response.send_message(embed=embed)
 
 
     @app_commands.command(name="업적해금", description="1000포인트를 지불하여, 아직 달성하지 않은 시즌미션의 상세 정보까지 전부 확인합니다. 15일 이후만 가능합니다.")
