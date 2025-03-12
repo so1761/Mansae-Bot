@@ -90,7 +90,7 @@ for nickname, point_data in name_data.items():
 
     # 1. 더 높은 족보를 찾으면 갱신
     if hand_rank < best_hand_rank:
-        best_player = nickname
+        best_player = [nickname]
         best_hand_rank = hand_rank
         best_total = total
     # 2. 같은 족보라면 주사위 총합으로 비교
