@@ -5614,15 +5614,16 @@ class hello(commands.Cog):
 
         refname = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트")
         name_data = refname.get()
+        
         # 족보 우선순위 딕셔너리 (낮은 숫자가 높은 우선순위)
         hand_rankings = {
-            "🎉 Yahtzee!": 1,
-            "🔥 Four of a Kind!": 2,
-            "➡️ Large Straight!": 3,
-            "🏠 Full House!": 4,
-            "🡒 Small Straight!": 5,
-            "🎯 Three of a Kind!": 6,
-            "🎲 Chance!": 7
+            "🎉 Yahtzee!": 0,
+            "🔥 Four of a Kind!": 1,
+            "➡️ Large Straight!": 2,
+            "🏠 Full House!": 3,
+            "🡒 Small Straight!": 4,
+            "🎯 Three of a Kind!": 5,
+            "🎲 Chance!": 6
         }
 
         hand_bet_rate = {
@@ -5647,7 +5648,7 @@ class hello(commands.Cog):
             rolls = yacht.get("결과", [])  # 플레이어의 주사위 값
             total = sum(rolls) if rolls else 0  # 주사위 총합 계산
 
-            hand_rank = hand_rankings.get(yacht_hand.split(" (")[0], 7)  # 족보 랭킹 가져오기 (Chance는 따로 처리)
+            hand_rank = hand_rankings.get(yacht_hand.split(" (")[0], 6)  # 족보 랭킹 가져오기 (Chance는 따로 처리)
 
             # 1. 더 높은 족보를 찾으면 갱신
             if hand_rank < best_hand_rank:
