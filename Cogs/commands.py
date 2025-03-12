@@ -5669,6 +5669,34 @@ class hello(commands.Cog):
         embed.add_field(name="족보", value=f"**최고 족보: {yacht_hand}**(총합 : {best_total})", inline=False)
         embed.add_field(name="예상 결과", value=f"배율 : **{hand_bet_rate[best_hand_rank]}배**!\n{point_message}", inline=False)
         await interaction.response.send_message(embed = embed)
+
+
+    @app_commands.command(name="주사위1등",description="현재 주사위 숫자가 가장 높은 플레이어를 보여줍니다.")
+    async def best_dice(self, interaction: discord.Interaction):
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        refname = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트")
+        name_data = refname.get()
+
+        dice_nums = []
+        for nickname, point_data in name_data.items():
+            refdice = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/주사위")
+            dice_nums.append((refdice.get(),nickname))
+
+        max_dice_num = max(dice_nums, key=lambda x: x[0])[0]
+
+        winners = [name for num, name in dice_nums if num == max_dice_num]
+
+        if len(winners) == 1:
+            point_message = f"{', '.join([f'**{winner}**' for winner in winners])}에게 **{max_dice_num}**포인트 지급 예정! 🎉"
+        else:
+            point_message = f"**{winners[0]}**님에게 **{max_dice_num}**포인트 지급 예정! 🎉"
+
+        embed = discord.Embed(title="🎯 주사위 정산", color = 0x00ff00)
+        embed.add_field(name="최고 숫자", value=f"어제 굴린 주사위 중 가장 높은 숫자는 **{max_dice_num}**입니다!", inline=False)
+        embed.add_field(name="예상 결과", value=point_message, inline=False)
+        await interaction.response.send_message(embed = embed)
     #베팅 테스트를 위한 코드
     # @app_commands.command(name="베팅테스트",description="베팅 테스트(개발자 전용)")
     # @app_commands.describe(이름 = "이름을 입력하세요", 값 = "값")
