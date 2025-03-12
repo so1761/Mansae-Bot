@@ -5667,26 +5667,10 @@ class hello(commands.Cog):
             point_message = f"{', '.join([f'**{winner}**' for winner in best_player])}에게 **{best_total * hand_bet_rate[best_hand_rank]}**포인트 지급 예정! 🎉"
         else:
             point_message = f"**{best_player[0]}**님에게 **{best_total * hand_bet_rate[best_hand_rank]}**포인트 지급 예정! 🎉"
-        data = {
-            "content": "",
-            "embeds": [
-                {
-                    "title": "🎯 주사위 정산",
-                    "description": f"현재의 야추 다이스 중 가장 높은 족보는 **{best_hand_rank}(총합 : {best_total})**입니다!",
-                    "color": 0x00ff00,  # 초록색
-                    "fields": [
-                        {
-                            "name": "예상 결과",
-                            "value": f"배율 : **{hand_bet_rate[best_hand_rank]}배**!\n{point_message}"
-                        }
-                    ],
-                    "footer": {
-                        "text": "Dice Bot",
-                    }
-                }
-            ]
-        }
-        await interaction.response.send_message(content = data["content"], embed = data["embeds"])
+        
+        embed = discord.Embed(title="🎯 주사위 정산", color = 0x00ff00)
+        embed.add_field(name="예상 결과", value=f"배율 : **{hand_bet_rate[best_hand_rank]}배**!\n{point_message}")
+        await interaction.response.send_message(embed = embed)
     #베팅 테스트를 위한 코드
     # @app_commands.command(name="베팅테스트",description="베팅 테스트(개발자 전용)")
     # @app_commands.describe(이름 = "이름을 입력하세요", 값 = "값")
