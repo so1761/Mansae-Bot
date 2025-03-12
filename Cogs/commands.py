@@ -1371,7 +1371,7 @@ class DiceRollView(discord.ui.View):
             description=f"{self.user}님의 주사위: **{result}**\n 족보: **{hand}**",
             color=discord.Color.blue()
         )
-        
+
         await self.message.edit(embed=embed,view = self)
 
 # 야추 다이스 버튼
@@ -4495,6 +4495,18 @@ class hello(commands.Cog):
         yacht_bool = yacht.get("실행 여부", False)
 
         if not yacht_bool:  # 주사위를 아직 안 굴렸다면
+            # ====================  [미션]  ====================
+            # 일일미션 : 야추 1회
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+            current_predict_season = cur_predict_seasonref.get()
+            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/야추 1회")
+            mission_data = ref.get() or {}
+            mission_bool = mission_data.get('완료',0)
+            if not mission_bool:
+                ref.update({"완료": True})
+                print(f"{nickname}의 [야추 1회] 미션 완료")
+
+            # ====================  [미션]  ====================
             ref.update({"실행 여부":True})
             initial_rolls = [random.randint(1, 6) for _ in range(5)]
             ref.update({"결과": initial_rolls})
