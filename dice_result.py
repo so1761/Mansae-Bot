@@ -65,13 +65,13 @@ hand_rankings = {
 }
 
 hand_bet_rate = {
-    "🎉 Yahtzee!": 50,
-    "🔥 Four of a Kind!": 5,
-    "➡️ Large Straight!": 3,
-    "🏠 Full House!": 2,
-    "🡒 Small Straight!": 1.5,
-    "🎯 Three of a Kind!": 1.25,
-    "🎲 Chance!": 1
+    0: 50,
+    1: 5,
+    2: 3,
+    3: 2,
+    4: 1.5,
+    5: 1.25,
+    6: 1
 }
 
 best_player = []  # 가장 높은 족보를 가진 플레이어
