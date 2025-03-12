@@ -5764,15 +5764,15 @@ class hello(commands.Cog):
             if weapon_enhanced >= 6:
                 weapon_embed.add_field(
                     name="현재 강화 확률",
-                    value=f"✅ 성공 : {enhancement_rates[weapon_enhanced]}%\n"
-                            f"❌ 실패 : {enhancement_fail_rates[weapon_enhanced]}%\n"
+                    value=f"✅ 성공 : {enhancement_rates[weapon_enhanced]}% |"
+                            f"❌ 실패 : {enhancement_fail_rates[weapon_enhanced]}% |"
                             f"💀 파괴 : {destroy_rates[weapon_enhanced]}%",
                     inline=False
                 )
             else:
                 weapon_embed.add_field(
                     name="현재 강화 확률",
-                    value=f"✅ 성공 : {enhancement_rates[weapon_enhanced]}%\n"
+                    value=f"✅ 성공 : {enhancement_rates[weapon_enhanced]}% |"
                             f"❌ 실패 : {enhancement_fail_rates[weapon_enhanced]}%",
                     inline=False
                 )
@@ -5829,24 +5829,31 @@ class hello(commands.Cog):
                     weapon_enhanced += 1
                     result_text = f"🎉 **강화 성공!** +{weapon_enhanced} 달성!"
                     ref_weapon.update({"강화": weapon_enhanced})
-                    result_embed = discord.Embed(title = "강화 성공!", color = discord.Color.blue)
+                    result_embed = discord.Embed(title = "강화 성공!", color = discord.Color.blue())
                 elif roll <= enhancement_rates[weapon_enhanced] + enhancement_fail_rates[weapon_enhanced]:  # 실패
                     result_text = f"❌ **강화 실패!** +{weapon_enhanced - 1}로 하락!"
                     ref_weapon.update({"강화": weapon_enhanced - 1})
-                    result_embed = discord.Embed(title = "강화 실패!", color = discord.Color.red)
+                    result_embed = discord.Embed(title = "강화 실패!", color = discord.Color.red())
                 else:  # 파괴
                     weapon_enhanced = 0
                     result_text = f"💀 **무기 파괴!** 다시 제작해야 합니다..."
-                    ref_weapon.update({"강화": weapon_enhanced})
+                    ref_weapon.update({
+                        "이름": "",
+                        "강화": weapon_enhanced
+                        })
                     result_embed = discord.Embed(title = "무기 파괴!", color = 0x000000)
 
                 result_embed.add_field(name="", value = result_text, inline = False)
                 await channel.send(embed=userembed)
 
+                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                userembed.add_field(name="", value="강화를 시작합니다!", inline=False)
+                await interaction.response.send_message(embed = userembed, ephemeral= True)
+
             enhance_button.callback = enhance_callback
             weapon_view.add_item(enhance_button)
 
-        await interaction.response.send_message(embed=weapon_embed, view=weapon_view)
+        await interaction.response.send_message(embed=weapon_embed, view=weapon_view, ephemeral=True)
 
     @app_commands.command(name="무기생성",description="무기를 생성합니다")
     async def create_weapon(self,interaction: discord.Interaction, 이름: str):
