@@ -826,7 +826,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
             onoffref = db.reference("승부예측/투표온오프") # 투표가 off 되어있을 경우 결과 출력 X
             onoffbool = onoffref.get()
             if not onoffbool:
-                await refresh_prediction(name,False,prediction_votes) # 베팅내역 공개
+                await refresh_prediction(name,False,False,prediction_votes) # 베팅내역 공개
                 await refresh_kda_prediction(name,False,kda_votes) # KDA 예측내역 공개
 
                 complete_anonymref = db.reference(f"승부예측/완전익명{name}온오프")
@@ -1550,7 +1550,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                         #userembed.add_field(name="", value=f"{nickname.display_name}님이 {prediction_value}에 투표하셨습니다.", inline=True)
                         if basePoint != 0:
                             prediction_votes[prediction_type][myindex]['points'] += basePoint
-                            await refresh_prediction(name,anonymbool,prediction_votes) # 새로고침
+                            await refresh_prediction(name,anonymbool,complete_anonymbool,prediction_votes) # 새로고침
                             bettingembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
                             bettingembed.add_field(name="", value=f"{nickname.display_name}님이 {name}의 {prediction_value}에 {basePoint}포인트를 베팅했습니다!", inline=False)
                             if not complete_anonymbool: # 완전 익명이 아닐경우에만
