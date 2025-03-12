@@ -5706,7 +5706,7 @@ class hello(commands.Cog):
         current_predict_season = cur_predict_seasonref.get()
 
         ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
-        weapon_data = ref_weapon.get()
+        weapon_data = ref_weapon.get() or {}
 
         weapon_name = weapon_data.get("이름", "")
 
@@ -5791,7 +5791,7 @@ class hello(commands.Cog):
                 current_predict_season = cur_predict_seasonref.get()
 
                 ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
-                weapon_data = ref_weapon.get()
+                weapon_data = ref_weapon.get() or {}
 
                 weapon_parts = weapon_data.get("재료", 0)
                 weapon_name = weapon_data.get("이름", "")
@@ -5855,7 +5855,7 @@ class hello(commands.Cog):
         current_predict_season = cur_predict_seasonref.get()
 
         ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
-        weapon_data = ref_weapon.get()
+        weapon_data = ref_weapon.get() or {}
 
         weapon_name = weapon_data.get("이름", "")
         if weapon_name == "":
