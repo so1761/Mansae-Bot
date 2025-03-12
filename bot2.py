@@ -306,7 +306,7 @@ def claim_reward(user_name, mission_name, mission_type):
     if mission_data and mission_name in mission_data and not mission_data[mission_name]["보상수령"]:
         ref.child(mission_name).update({"보상수령": True})
         ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/무기")
-        weapon_data = ref_weapon.get()
+        weapon_data = ref_weapon.get() or {}
 
         weapon_parts = weapon_data.get("재료", 0)
         ref_weapon.update({"재료": weapon_parts + 1})
@@ -351,7 +351,7 @@ def claim_all_reward(user_name, mission_type):
         if user_missions and mission_name in user_missions and not user_missions[mission_name]["보상수령"]:
             ref.child(mission_name).update({"보상수령": True})
             ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/무기")
-            weapon_data = ref_weapon.get()
+            weapon_data = ref_weapon.get() or {}
 
             weapon_parts = weapon_data.get("재료", 0)
             ref_weapon.update({"재료": weapon_parts + 1})

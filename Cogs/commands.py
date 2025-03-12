@@ -5711,6 +5711,7 @@ class hello(commands.Cog):
         weapon_name = weapon_data.get("이름", "")
 
         enhancement_rates = {
+            0: 95,
             1: 90,  # +1 → +2
             2: 80,  # +2 → +3
             3: 70,  # +3 → +4
@@ -5723,6 +5724,7 @@ class hello(commands.Cog):
         }
 
         enhancement_fail_rates = {
+            0: 5,
             1: 10,  # +1 → +2
             2: 20,  # +2 → +3
             3: 30,  # +3 → +4
@@ -5735,6 +5737,7 @@ class hello(commands.Cog):
         }
 
         destroy_rates = {
+            0: 0,
             1: 0,  # +1 → +2
             2: 0,  # +2 → +3
             3: 0,  # +3 → +4
