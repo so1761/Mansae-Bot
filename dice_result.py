@@ -86,7 +86,7 @@ for nickname, point_data in name_data.items():
     rolls = yacht.get("결과", [])  # 플레이어의 주사위 값
     total = sum(rolls) if rolls else 0  # 주사위 총합 계산
 
-    hand_rank = hand_rankings.get(yacht_hand.split(" (")[0], 7)  # 족보 랭킹 가져오기 (Chance는 따로 처리)
+    hand_rank = hand_rankings.get(yacht_hand.split(" (")[0], 6)  # 족보 랭킹 가져오기 (Chance는 따로 처리)
 
     # 1. 더 높은 족보를 찾으면 갱신
     if hand_rank < best_hand_rank:
