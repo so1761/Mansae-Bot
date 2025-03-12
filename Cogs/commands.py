@@ -4526,6 +4526,7 @@ class hello(commands.Cog):
             if yacht_refresh:
                 userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
                 userembed.add_field(name="",value=f"{interaction.user.display_name}님이 아이템을 사용하여 야추 기회를 추가했습니다!", inline=False)
+                ref_item.update({"야추 초기화": yacht_refresh - 1})
                 channel = interaction.client.get_channel(int(CHANNEL_ID))
                 await channel.send(embed=userembed)
 
