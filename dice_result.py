@@ -105,14 +105,23 @@ if len(best_player) == 1:
     point_message = f"{', '.join([f'**{winner}**' for winner in best_player])}에게 **{best_total * hand_bet_rate[best_hand_rank]}**포인트 지급! 🎉"
 else:
     point_message = f"**{best_player[0]}**님에게 **{best_total * hand_bet_rate[best_hand_rank]}**포인트 지급! 🎉"
+
+refdice = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{best_player[0]}/야추")
+yacht = refdice.get() or {}
+yacht_hand = yacht.get("족보", "🎲 Chance!")  # 기본값은 Chance!
+
 data = {
     "content": "",
     "embeds": [
         {
             "title": "🎯 주사위 정산",
-            "description": f"어제의 야추 다이스 중 가장 높은 족보는 **{best_hand_rank}(총합 : {best_total})**입니다!",
+            "description": "",
             "color": 0x00ff00,  # 초록색
             "fields": [
+                {
+                    "name": "족보",
+                    "value": f"**최고 족보: **{yacht_hand}**(총합 : **{best_total}**)"
+                },
                 {
                     "name": "결과",
                     "value": f"배율 : **{hand_bet_rate[best_hand_rank]}배**!\n{point_message}"
