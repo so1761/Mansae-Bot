@@ -5870,7 +5870,7 @@ class hello(commands.Cog):
         else:
             weapon_enhanced = weapon_data.get("강화",0)
             weapon_embed = discord.Embed(title="무기 생성 불가!", color=0xff0000)
-            weapon_embed.add_field(name="", value=f"이미 [**{이름}**(+{weapon_enhanced})] 무기를 보유중입니다!", inline=False)
+            weapon_embed.add_field(name="", value=f"이미 [**{weapon_name}**(+{weapon_enhanced})] 무기를 보유중입니다!", inline=False)
 
         await interaction.response.send_message(embed=weapon_embed)
     #베팅 테스트를 위한 코드
