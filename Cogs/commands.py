@@ -5810,7 +5810,7 @@ class hello(commands.Cog):
                 channel = self.bot.get_channel(int(CHANNEL_ID))
 
                 userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                userembed.add_field(name="", value=f"{interaction.user.display_name}님이 [{weapon_name}]의 강화를 시작했습니다! (+{weapon_enhanced} -> +{weapon_enhanced + 1})", inline=False)
+                userembed.add_field(name="", value=f"{interaction.user.display_name}님이 **[{weapon_name}]**의 강화를 시작했습니다! (+{weapon_enhanced} -> +{weapon_enhanced + 1})", inline=False)
                 userembed.add_field(
                     name="현재 강화 확률",
                     value=f"✅ 성공 : {enhancement_rates[weapon_enhanced]}%\n"
@@ -5844,11 +5844,11 @@ class hello(commands.Cog):
                     result_embed = discord.Embed(title = "무기 파괴!", color = 0x000000)
 
                 result_embed.add_field(name="", value = result_text, inline = False)
-                await channel.send(embed=userembed)
+                await channel.send(embed=result_embed)
 
-                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                userembed.add_field(name="", value="강화를 시작합니다!", inline=False)
-                await interaction.response.send_message(embed = userembed, ephemeral= True)
+                start_embed = discord.Embed(title="메세지", color=discord.Color.blue())
+                start_embed.add_field(name="", value="강화를 시작합니다!", inline=False)
+                await interaction.response.send_message(embed = start_embed, ephemeral= True)
 
             enhance_button.callback = enhance_callback
             weapon_view.add_item(enhance_button)
