@@ -55,23 +55,23 @@ data = {
 
 # 족보 우선순위 딕셔너리 (낮은 숫자가 높은 우선순위)
 hand_rankings = {
-    "🎉 Yahtzee!": 1,
-    "🔥 Four of a Kind!": 2,
-    "➡️ Large Straight!": 3,
-    "🏠 Full House!": 4,
-    "🡒 Small Straight!": 5,
-    "🎯 Three of a Kind!": 6,
-    "🎲 Chance!": 7
+    "🎉 Yahtzee!": 0,
+    "🔥 Four of a Kind!": 1,
+    "➡️ Large Straight!": 2,
+    "🏠 Full House!": 3,
+    "🡒 Small Straight!": 4,
+    "🎯 Three of a Kind!": 5,
+    "🎲 Chance!": 6
 }
 
 hand_bet_rate = {
-    1: 50,      # 🎉 Yahtzee!
-    2: 5,       # 🔥 Four of a Kind!
-    3: 3,       # ➡️ Large Straight!
-    4: 2,       # 🏠 Full House!
-    5: 1.5,     # 🡒 Small Straight!
-    6: 1.25,    # 🎯 Three of a Kind!
-    7: 1        # 🎲 Chance!
+    "🎉 Yahtzee!": 50,
+    "🔥 Four of a Kind!": 5,
+    "➡️ Large Straight!": 3,
+    "🏠 Full House!": 2,
+    "🡒 Small Straight!": 1.5,
+    "🎯 Three of a Kind!": 1.25,
+    "🎲 Chance!": 1
 }
 
 best_player = []  # 가장 높은 족보를 가진 플레이어
