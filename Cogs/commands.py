@@ -5698,6 +5698,178 @@ class hello(commands.Cog):
         embed.add_field(name="최고 숫자", value=f"오늘 굴린 주사위 중 가장 높은 숫자는 **{max_dice_num}**입니다!", inline=False)
         embed.add_field(name="예상 결과", value=point_message, inline=False)
         await interaction.response.send_message(embed = embed)
+
+    @app_commands.command(name="강화",description="보유한 무기를 강화합니다")
+    async def enhance(self, interaction: discord.Interaction):
+        nickname = interaction.user.name
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
+        weapon_data = ref_weapon.get()
+
+        weapon_name = weapon_data.get("이름", "")
+
+        enhancement_rates = {
+            1: 90,  # +1 → +2
+            2: 80,  # +2 → +3
+            3: 70,  # +3 → +4
+            4: 55,  # +4 → +5
+            5: 40,  # +5 → +6
+            6: 30,  # +6 → +7
+            7: 10,  # +7 → +8
+            8: 5,   # +8 → +9
+            9: 1    # +9 → +10
+        }
+
+        enhancement_fail_rates = {
+            1: 10,  # +1 → +2
+            2: 20,  # +2 → +3
+            3: 30,  # +3 → +4
+            4: 45,  # +4 → +5
+            5: 60,  # +5 → +6
+            6: 69,  # +6 → +7
+            7: 88,  # +7 → +8
+            8: 92,  # +8 → +9
+            9: 94   # +9 → +10
+        }
+
+        destroy_rates = {
+            1: 0,  # +1 → +2
+            2: 0,  # +2 → +3
+            3: 0,  # +3 → +4
+            4: 0,  # +4 → +5
+            5: 0,  # +5 → +6
+            6: 1,  # +6 → +7
+            7: 2,  # +7 → +8
+            8: 3,   # +8 → +9
+            9: 5    # +9 → +10
+        }
+        if weapon_name == "":
+            await interaction.response.send_message("무기가 없습니다! 먼저 무기를 생성하세요.", ephemeral=True)
+            return
+        else: 
+            weapon_enhanced = weapon_data.get("강화",0)
+            weapon_parts = weapon_data.get("재료", 0)
+
+            weapon_embed = discord.Embed(title="무기 강화", color=0xff00ff)
+            weapon_embed.add_field(name="무기 이름", value=f"**{weapon_name}**", inline=False)
+            weapon_embed.add_field(name="현재 강화 정도", value=f"**+{weapon_enhanced}**", inline=False)
+            weapon_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
+
+
+            if weapon_enhanced >= 6:
+                weapon_embed.add_field(
+                    name="현재 강화 확률",
+                    value=f"✅ 성공 : {enhancement_rates[weapon_enhanced]}%\n"
+                            f"❌ 실패 : {enhancement_fail_rates[weapon_enhanced]}%\n"
+                            f"💀 파괴 : {destroy_rates[weapon_enhanced]}%",
+                    inline=False
+                )
+            else:
+                weapon_embed.add_field(
+                    name="현재 강화 확률",
+                    value=f"✅ 성공 : {enhancement_rates[weapon_enhanced]}%\n"
+                            f"❌ 실패 : {enhancement_fail_rates[weapon_enhanced]}%",
+                    inline=False
+                )
+
+            weapon_view = discord.ui.View()
+            
+            
+            enhance_button = discord.ui.Button(label="강화하기", style=discord.ButtonStyle.green, disabled = True if weapon_enhanced >= 10 else False)
+
+            async def enhance_callback(interaction: discord.Interaction):
+                nonlocal enhancement_rates
+                nonlocal enhancement_fail_rates
+                nonlocal destroy_rates
+
+                cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+                current_predict_season = cur_predict_seasonref.get()
+
+                ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
+                weapon_data = ref_weapon.get()
+
+                weapon_parts = weapon_data.get("재료", 0)
+                weapon_name = weapon_data.get("이름", "")
+                weapon_enhanced = weapon_data.get("강화",0)
+
+                if weapon_enhanced >= 10:
+                    await interaction.response.send_message("이미 최대 강화치에 도달했습니다!", ephemeral=True)
+                    return
+
+                if weapon_parts <= 0:
+                    await interaction.response.send_message("강화 재료가 없습니다!", ephemeral=True)
+                    return
+                
+                ref_weapon.update({"재료": weapon_parts - 1})
+
+                channel = self.bot.get_channel(int(CHANNEL_ID))
+
+                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                userembed.add_field(name="", value=f"{interaction.user.display_name}님이 [{weapon_name}]의 강화를 시작했습니다! (+{weapon_enhanced} -> +{weapon_enhanced + 1})", inline=False)
+                userembed.add_field(
+                    name="현재 강화 확률",
+                    value=f"✅ 성공 : {enhancement_rates[weapon_enhanced]}%\n"
+                            f"❌ 실패 : {enhancement_fail_rates[weapon_enhanced]}%\n"
+                            f"💀 파괴 : {destroy_rates[weapon_enhanced]}%",
+                    inline=False
+                )
+                userembed.add_field(name="", value=f"30초 후 결과가 발표됩니다!", inline=False)
+                await channel.send(embed=userembed)
+
+                await asyncio.sleep(30)
+
+                roll = random.randint(1, 100)
+
+                if roll <= enhancement_rates[weapon_enhanced]:  # 성공
+                    weapon_enhanced += 1
+                    result_text = f"🎉 **강화 성공!** +{weapon_enhanced} 달성!"
+                    ref_weapon.update({"강화": weapon_enhanced})
+                    result_embed = discord.Embed(title = "강화 성공!", color = discord.Color.blue)
+                elif roll <= enhancement_rates[weapon_enhanced] + enhancement_fail_rates[weapon_enhanced]:  # 실패
+                    result_text = f"❌ **강화 실패!** +{weapon_enhanced - 1}로 하락!"
+                    ref_weapon.update({"강화": weapon_enhanced - 1})
+                    result_embed = discord.Embed(title = "강화 실패!", color = discord.Color.red)
+                else:  # 파괴
+                    weapon_enhanced = 0
+                    result_text = f"💀 **무기 파괴!** 다시 제작해야 합니다..."
+                    ref_weapon.update({"강화": weapon_enhanced})
+                    result_embed = discord.Embed(title = "무기 파괴!", color = 0x000000)
+
+                result_embed.add_field(name="", value = result_text, inline = False)
+                await channel.send(embed=userembed)
+
+            enhance_button.callback = enhance_callback
+            weapon_view.add_item(enhance_button)
+
+        await interaction.response.send_message(embed=weapon_embed, view=weapon_view)
+
+    @app_commands.command(name="무기생성",description="무기를 생성합니다")
+    async def create_weapon(self,interaction: discord.Interaction, 이름: str):
+        nickname = interaction.user.name
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
+        weapon_data = ref_weapon.get()
+
+        weapon_name = weapon_data.get("이름", "")
+        if weapon_name == "":
+            weapon_embed = discord.Embed(title="무기 생성 완료!", color=0xff00ff)
+            weapon_embed.add_field(name="무기 이름", value=f"**{이름}**", inline=False)
+            weapon_embed.add_field(name="현재 강화 정도", value="**+0**", inline=False)
+
+            ref_weapon.update({
+                "강화": 0,
+                "이름": 이름
+                })
+        else:
+            weapon_enhanced = weapon_data.get("강화",0)
+            weapon_embed = discord.Embed(title="무기 생성 불가!", color=0xff0000)
+            weapon_embed.add_field(name="", value=f"이미 [**{이름}**(+{weapon_enhanced})] 무기를 보유중입니다!", inline=False)
+
+        await interaction.response.send_message(embed=weapon_embed)
     #베팅 테스트를 위한 코드
     # @app_commands.command(name="베팅테스트",description="베팅 테스트(개발자 전용)")
     # @app_commands.describe(이름 = "이름을 입력하세요", 값 = "값")
