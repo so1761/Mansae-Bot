@@ -5827,23 +5827,44 @@ class hello(commands.Cog):
 
                 if roll <= enhancement_rates[weapon_enhanced]:  # 성공
                     weapon_enhanced += 1
-                    result_text = f"🎉 **강화 성공!** +{weapon_enhanced} 달성!"
                     ref_weapon.update({"강화": weapon_enhanced})
-                    result_embed = discord.Embed(title = "강화 성공!", color = discord.Color.blue())
+                    result_embed = discord.Embed(title = "✅ 강화 성공!", color = discord.Color.blue())
+                    if weapon_enhanced >= 10:
+                        result_embed.add_field(name="", value = f"{interaction.user.display_name}님의 **[{weapon_name}]**이(가) 신성한 빛을 내며 궁극의 경지에 도달했습니다!", inline = False)
+                        result_embed.add_field(name="", value = f"**+{weapon_enhanced - 1} -> +{weapon_enhanced}", inline = False)
+                    elif weapon_enhanced >= 7:
+                        result_embed.add_field(name="", value = f"{interaction.user.display_name}님의 **[{weapon_name}]**이(가) 찬란한 빛을 내며 전설의 힘을 발현합니다!", inline = False)
+                        result_embed.add_field(name="", value = f"**+{weapon_enhanced - 1} -> +{weapon_enhanced}", inline = False)
+                    elif weapon_enhanced >= 4:
+                        result_embed.add_field(name="", value = f"{interaction.user.display_name}님의 **[{weapon_name}]**이(가) 서서히 빛을 발하며 힘이 깃들기 시작했습니다!", inline = False)
+                        result_embed.add_field(name="", value = f"**+{weapon_enhanced - 1} -> +{weapon_enhanced}", inline = False)
+                    else:
+                        result_embed.add_field(name="", value = f"{interaction.user.display_name}님의 **[{weapon_name}]**이(가) 미약한 빛을 내며 강화되었습니다!", inline = False)
+                        result_embed.add_field(name="", value = f"**+{weapon_enhanced - 1} -> +{weapon_enhanced}", inline = False)
+
                 elif roll <= enhancement_rates[weapon_enhanced] + enhancement_fail_rates[weapon_enhanced]:  # 실패
-                    result_text = f"❌ **강화 실패!** +{weapon_enhanced - 1}로 하락!"
-                    ref_weapon.update({"강화": weapon_enhanced - 1})
-                    result_embed = discord.Embed(title = "강화 실패!", color = discord.Color.red())
+                    if weapon_enhanced == 0:
+                        weapon_enhanced = 0
+                    else:
+                        weapon_enhanced -= 1
+                    ref_weapon.update({"강화": weapon_enhanced})
+                    result_embed = discord.Embed(title = "❌ 강화 실패!", color = discord.Color.red())
+                    result_embed.add_field(name="", value = f"{interaction.user.display_name}님의 **[{weapon_name}]**이(가) 한 순간 빛났지만 그 빛은 금세 사라져버렸습니다.", inline = False)
+                    if weapon_enhanced == 0:
+                        result_embed.add_field(name="", value = f"**+{weapon_enhanced} -> +{weapon_enhanced}", inline = False)
+                    else:
+                        result_embed.add_field(name="", value = f"**+{weapon_enhanced + 1} -> +{weapon_enhanced}", inline = False)
                 else:  # 파괴
+                    result_embed = discord.Embed(title = "💀 무기 파괴!", color = 0x000000)
+                    result_embed.add_field(name="", value = f"{interaction.user.display_name}님의 **[{weapon_name}]**이(가) 힘을 버티지 못하고 가루가 되었습니다.", inline = False)
+                    result_embed.add_field(name="", value = f"**+{weapon_enhanced} -> +0**", inline = False)
+                    result_embed.set_footer(text = f"무기를 다시 제작해야 합니다!")
                     weapon_enhanced = 0
-                    result_text = f"💀 **무기 파괴!** 다시 제작해야 합니다..."
                     ref_weapon.update({
                         "이름": "",
                         "강화": weapon_enhanced
-                        })
-                    result_embed = discord.Embed(title = "무기 파괴!", color = 0x000000)
-
-                result_embed.add_field(name="", value = result_text, inline = False)
+                    })
+                    
                 await channel.send(embed=result_embed)
 
                 start_embed = discord.Embed(title="메세지", color=discord.Color.blue())
