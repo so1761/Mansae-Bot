@@ -5686,7 +5686,7 @@ class hello(commands.Cog):
                 }
             ]
         }
-        await interaction.response.send_message(**data)
+        await interaction.response.send_message(content = data["content"], embed = data["embed"])
     #베팅 테스트를 위한 코드
     # @app_commands.command(name="베팅테스트",description="베팅 테스트(개발자 전용)")
     # @app_commands.describe(이름 = "이름을 입력하세요", 값 = "값")
