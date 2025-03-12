@@ -87,7 +87,7 @@ data = {
             "fields": [
                 {
                     "name": "족보",
-                    "value": f"**최고 족보: **{yacht_hand}**(총합 : **{best_total}**)"
+                    "value": f"**최고 족보: **{yacht_hand}**(총합 : {best_total})"
                 },
                 {
                     "name": "결과",

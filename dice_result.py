@@ -110,7 +110,7 @@ refdice = db.reference(f"승부예측/예측시즌/{current_predict_season}/예�
 yacht = refdice.get() or {}
 yacht_hand = yacht.get("족보", "🎲 Chance!")  # 기본값은 Chance!
 
-data = {
+yacht_data = {
     "content": "",
     "embeds": [
         {
@@ -120,7 +120,7 @@ data = {
             "fields": [
                 {
                     "name": "족보",
-                    "value": f"**최고 족보: **{yacht_hand}**(총합 : **{best_total}**)"
+                    "value": f"**최고 족보: **{yacht_hand}**(총합 : {best_total})"
                 },
                 {
                     "name": "결과",
@@ -134,6 +134,24 @@ data = {
     ]
 }
 
+
+# 포인트 지급
+for winner in best_player:
+    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner}/")
+    point_data = ref.get()
+    point = point_data.get("포인트")
+    ref.update({"포인트" : point + (best_total * hand_bet_rate[best_hand_rank])})
+
+    current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
+    current_date = current_datetime.strftime("%Y-%m-%d")
+    current_time = current_datetime.strftime("%H:%M:%S")
+    change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{winner}")
+    change_ref.push({
+        "시간": current_time,
+        "포인트": point + (best_total * hand_bet_rate[best_hand_rank]),
+        "포인트 변동": best_total * hand_bet_rate[best_hand_rank],
+        "사유": "야추 이벤트"
+    })
 
 # 포인트 지급
 for winner in winners:
@@ -152,10 +170,17 @@ for winner in winners:
         "포인트 변동": max_dice_num,
         "사유": "주사위 이벤트"
     })
-
+    
 response = requests.post(WEBHOOK_URL, json=data)
 
 if response.status_code == 204:
-    print("✅ Embed 메시지 전송 성공!")
+    print("✅ 주사위 메시지 전송 성공!")
+else:
+    print(f"❌ 메시지 전송 실패! 상태 코드: {response.status_code}")
+
+response = requests.post(WEBHOOK_URL, json=yacht_data)
+
+if response.status_code == 204:
+    print("✅ 야추 메시지 전송 성공!")
 else:
     print(f"❌ 메시지 전송 실패! 상태 코드: {response.status_code}")

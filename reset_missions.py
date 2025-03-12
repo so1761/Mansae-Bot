@@ -78,10 +78,13 @@ if users:
     for nickname, data in users.items():
         mission_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션")
         dice_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/")
+        yacht_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/야추")
         daily_missions = mission_ref.get()
 
         dice_ref.update({"주사위" : 0})
-
+        yacht_ref.update({"족보" : ""})
+        yacht_ref.update({"결과" : []})
+        yacht_ref.update({"실행 여부" : False})
         # ====================  [미션]  ====================
         # 시즌미션 : 주사위주사위주사위주사위주사위
         # 호출 횟수 초기화
