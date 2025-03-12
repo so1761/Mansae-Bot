@@ -4520,6 +4520,14 @@ class hello(commands.Cog):
             )
             await interaction.response.send_message(embed=embed, view=view)
             await view.start_timer()
+        else:
+            embed = discord.Embed(
+                title="🎲 야추는 하루에 한 번!",
+                description=f"{nickname}님은 이미 야추 다이스를 플레이 했습니다.",
+                color=discord.Color.red()
+            )
+            await interaction.response.send_message(embed=embed, view=view)
+
 
     @app_commands.command(name="업적해금", description="1000포인트를 지불하여, 아직 달성하지 않은 시즌미션의 상세 정보까지 전부 확인합니다. 15일 이후만 가능합니다.")
     async def show_missions(self, interaction: discord.Interaction):
