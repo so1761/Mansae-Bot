@@ -5694,7 +5694,7 @@ class hello(commands.Cog):
             point_message = f"**{winners[0]}**님에게 **{max_dice_num}**포인트 지급 예정! 🎉"
 
         embed = discord.Embed(title="🎯 주사위 정산", color = 0x00ff00)
-        embed.add_field(name="최고 숫자", value=f"어제 굴린 주사위 중 가장 높은 숫자는 **{max_dice_num}**입니다!", inline=False)
+        embed.add_field(name="최고 숫자", value=f"오늘 굴린 주사위 중 가장 높은 숫자는 **{max_dice_num}**입니다!", inline=False)
         embed.add_field(name="예상 결과", value=point_message, inline=False)
         await interaction.response.send_message(embed = embed)
     #베팅 테스트를 위한 코드
