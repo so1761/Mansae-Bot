@@ -4460,7 +4460,7 @@ class hello(commands.Cog):
             else:
                 embed = discord.Embed(
                     title="🎲 주사위는 하루에 한 번!",
-                    description=f"{nickname}님은 이미 주사위를 굴렸습니다.",
+                    description=f"{interaction.user.display_name}님은 이미 주사위를 굴렸습니다.",
                     color=discord.Color.red()
                 )
                 embed.set_footer(text="내일 다시 도전할 수 있습니다!")
@@ -4542,7 +4542,7 @@ class hello(commands.Cog):
                 dice_display = ', '.join(str(roll) for roll in initial_rolls)
                 embed = discord.Embed(
                     title="🎲 주사위 굴리기!",
-                    description=f"{interaction.user.name}님의 주사위: **{dice_display}**",
+                    description=f"{interaction.user.display_name}님의 주사위: **{dice_display}**",
                     color=discord.Color.blue()
                 )
                 await interaction.response.send_message(embed=embed, view=view)
@@ -4550,7 +4550,7 @@ class hello(commands.Cog):
             else:
                 embed = discord.Embed(
                     title="🎲 야추는 하루에 한 번!",
-                    description=f"{nickname}님은 이미 야추 다이스를 플레이 했습니다.",
+                    description=f"{interaction.user.display_name}님은 이미 야추 다이스를 플레이 했습니다.",
                     color=discord.Color.red()
                 )
                 await interaction.response.send_message(embed=embed)
@@ -5607,6 +5607,85 @@ class hello(commands.Cog):
             warnembed.add_field(name="",value="아이템이 없습니다! ❌")
             await interaction.response.send_message(embed = warnembed,ephemeral=True)
 
+    @app_commands.command(name="야추1등",description="현재 야추 족보가 가장 높은 플레이어를 보여줍니다.")
+    async def best_yacht(self, interaction: discord.Interaction):
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        refname = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트")
+        name_data = refname.get()
+        # 족보 우선순위 딕셔너리 (낮은 숫자가 높은 우선순위)
+        hand_rankings = {
+            "🎉 Yahtzee!": 1,
+            "🔥 Four of a Kind!": 2,
+            "➡️ Large Straight!": 3,
+            "🏠 Full House!": 4,
+            "🡒 Small Straight!": 5,
+            "🎯 Three of a Kind!": 6,
+            "🎲 Chance!": 7
+        }
+
+        hand_bet_rate = {
+            "🎉 Yahtzee!": 50,
+            "🔥 Four of a Kind!": 5,
+            "➡️ Large Straight!": 3,
+            "🏠 Full House!": 2,
+            "🡒 Small Straight!": 1.5,
+            "🎯 Three of a Kind!": 1.25,
+            "🎲 Chance!": 1
+        }
+
+        best_player = []  # 가장 높은 족보를 가진 플레이어
+        best_hand_rank = float('inf')  # 초기값을 무한대로 설정
+        best_total = -1  # 주사위 합계를 비교할 변수
+
+        for nickname, point_data in name_data.items():
+            refdice = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/야추")
+            yacht = refdice.get() or {}
+
+            yacht_hand = yacht.get("족보", "🎲 Chance!")  # 기본값은 Chance!
+            rolls = yacht.get("결과", [])  # 플레이어의 주사위 값
+            total = sum(rolls) if rolls else 0  # 주사위 총합 계산
+
+            hand_rank = hand_rankings.get(yacht_hand.split(" (")[0], 7)  # 족보 랭킹 가져오기 (Chance는 따로 처리)
+
+            # 1. 더 높은 족보를 찾으면 갱신
+            if hand_rank < best_hand_rank:
+                best_player = nickname
+                best_hand_rank = hand_rank
+                best_total = total
+            # 2. 같은 족보라면 주사위 총합으로 비교
+            elif hand_rank == best_hand_rank:
+                if total > best_total:
+                    best_player = [nickname]
+                    best_total = total
+                if total == best_total:
+                    best_player.append(nickname)
+
+        if len(best_player) == 1:
+            point_message = f"{', '.join([f'**{winner}**' for winner in best_player])}에게 **{best_total * hand_bet_rate[best_hand_rank]}**포인트 지급 예정! 🎉"
+        else:
+            point_message = f"**{best_player[0]}**님에게 **{best_total * hand_bet_rate[best_hand_rank]}**포인트 지급 예정! 🎉"
+        data = {
+            "content": "",
+            "embeds": [
+                {
+                    "title": "🎯 주사위 정산",
+                    "description": f"현재의 야추 다이스 중 가장 높은 족보는 **{best_hand_rank}(총합 : {best_total})**입니다!",
+                    "color": 0x00ff00,  # 초록색
+                    "fields": [
+                        {
+                            "name": "예상 결과",
+                            "value": f"배율 : **{hand_bet_rate[best_hand_rank]}배**!\n{point_message}"
+                        }
+                    ],
+                    "footer": {
+                        "text": "Dice Bot",
+                    }
+                }
+            ]
+        }
+        await interaction.response.send_message(**data)
     #베팅 테스트를 위한 코드
     # @app_commands.command(name="베팅테스트",description="베팅 테스트(개발자 전용)")
     # @app_commands.describe(이름 = "이름을 입력하세요", 값 = "값")

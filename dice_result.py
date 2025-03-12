@@ -53,6 +53,79 @@ data = {
     ]
 }
 
+# 족보 우선순위 딕셔너리 (낮은 숫자가 높은 우선순위)
+hand_rankings = {
+    "🎉 Yahtzee!": 1,
+    "🔥 Four of a Kind!": 2,
+    "➡️ Large Straight!": 3,
+    "🏠 Full House!": 4,
+    "🡒 Small Straight!": 5,
+    "🎯 Three of a Kind!": 6,
+    "🎲 Chance!": 7
+}
+
+hand_bet_rate = {
+    "🎉 Yahtzee!": 50,
+    "🔥 Four of a Kind!": 5,
+    "➡️ Large Straight!": 3,
+    "🏠 Full House!": 2,
+    "🡒 Small Straight!": 1.5,
+    "🎯 Three of a Kind!": 1.25,
+    "🎲 Chance!": 1
+}
+
+best_player = []  # 가장 높은 족보를 가진 플레이어
+best_hand_rank = float('inf')  # 초기값을 무한대로 설정
+best_total = -1  # 주사위 합계를 비교할 변수
+
+for nickname, point_data in name_data.items():
+    refdice = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/야추")
+    yacht = refdice.get() or {}
+
+    yacht_hand = yacht.get("족보", "🎲 Chance!")  # 기본값은 Chance!
+    rolls = yacht.get("결과", [])  # 플레이어의 주사위 값
+    total = sum(rolls) if rolls else 0  # 주사위 총합 계산
+
+    hand_rank = hand_rankings.get(yacht_hand.split(" (")[0], 7)  # 족보 랭킹 가져오기 (Chance는 따로 처리)
+
+    # 1. 더 높은 족보를 찾으면 갱신
+    if hand_rank < best_hand_rank:
+        best_player = nickname
+        best_hand_rank = hand_rank
+        best_total = total
+    # 2. 같은 족보라면 주사위 총합으로 비교
+    elif hand_rank == best_hand_rank:
+        if total > best_total:
+            best_player = [nickname]
+            best_total = total
+        if total == best_total:
+            best_player.append(nickname)
+
+if len(best_player) == 1:
+    point_message = f"{', '.join([f'**{winner}**' for winner in best_player])}에게 **{best_total * hand_bet_rate[best_hand_rank]}**포인트 지급! 🎉"
+else:
+    point_message = f"**{best_player[0]}**님에게 **{best_total * hand_bet_rate[best_hand_rank]}**포인트 지급! 🎉"
+data = {
+    "content": "",
+    "embeds": [
+        {
+            "title": "🎯 주사위 정산",
+            "description": f"어제의 야추 다이스 중 가장 높은 족보는 **{best_hand_rank}(총합 : {best_total})**입니다!",
+            "color": 0x00ff00,  # 초록색
+            "fields": [
+                {
+                    "name": "결과",
+                    "value": f"배율 : **{hand_bet_rate[best_hand_rank]}배**!\n{point_message}"
+                }
+            ],
+            "footer": {
+                "text": "Dice Bot",
+            }
+        }
+    ]
+}
+
+
 # 포인트 지급
 for winner in winners:
     ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner}/")
