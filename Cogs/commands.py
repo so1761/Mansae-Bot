@@ -5673,7 +5673,7 @@ class hello(commands.Cog):
 
         yacht_hand = yacht.get("족보", "🎲 Chance!")  # 기본값은 Chance!
         embed = discord.Embed(title="🎯 주사위 정산", color = 0x00ff00)
-        embed.add_field(name="족보", value=f"**최고 족보: **{yacht_hand}**(총합 : {best_total})", inline=False)
+        embed.add_field(name="족보", value=f"**최고 족보: {yacht_hand}**(총합 : {best_total})", inline=False)
         embed.add_field(name="예상 결과", value=f"배율 : **{hand_bet_rate[best_hand_rank]}배**!\n{point_message}", inline=False)
         await interaction.response.send_message(embed = embed)
     #베팅 테스트를 위한 코드
