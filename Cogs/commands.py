@@ -5907,18 +5907,17 @@ class hello(commands.Cog):
         weapon_parts = weapon_data.get("재료", 0)
 
         weapon_embed = discord.Embed(title="무기 강화", color=0xff00ff)
-        weapon_embed.add_field(name="무기 이름", value=f"**{ref_weapon.get('이름', '알 수 없음')}**", inline=False)
-        weapon_embed.add_field(name="현재 강화 정도", value=f"**+{ref_weapon.get('강화', 0)}**", inline=False)
-        weapon_embed.add_field(name="공격력", value=f"**{ref_weapon.get('공격력', 0)}**", inline=True)
-        weapon_embed.add_field(name="내구도", value=f"**{ref_weapon.get('내구도', 0)}**", inline=True)
-        weapon_embed.add_field(name="방어력", value=f"**{ref_weapon.get('방어력', 0)}**", inline=True)
-        weapon_embed.add_field(name="스피드", value=f"**{ref_weapon.get('스피드', 0)}**", inline=True)
-        weapon_embed.add_field(name="적중률", value=f"**{ref_weapon.get('적중률', 0) * 100:.1f}%**", inline=True)
-        weapon_embed.add_field(name="치명타 확률", value=f"**{ref_weapon.get('치명타 확률', 0) * 100:.1f}%**", inline=True)
-        weapon_embed.add_field(name="치명타 대미지", value=f"**{ref_weapon.get('치명타 대미지', 0) * 100:.1f}%**", inline=True)
+        weapon_embed.add_field(name="무기 이름", value=f"**{weapon_name}**", inline=False)
+        weapon_embed.add_field(name="현재 강화 정도", value=f"**+{weapon_enhanced}**", inline=False)
+        weapon_embed.add_field(name="공격력", value=f"**{weapon_data.get('공격력', 0)}**", inline=True)
+        weapon_embed.add_field(name="내구도", value=f"**{weapon_data.get('내구도', 0)}**", inline=True)
+        weapon_embed.add_field(name="방어력", value=f"**{weapon_data.get('방어력', 0)}**", inline=True)
+        weapon_embed.add_field(name="스피드", value=f"**{weapon_data.get('스피드', 0)}**", inline=True)
+        weapon_embed.add_field(name="적중률", value=f"**{weapon_data.get('적중률', 0) * 100:.1f}%**", inline=True)
+        weapon_embed.add_field(name="치명타 확률", value=f"**{weapon_data.get('치명타 확률', 0) * 100:.1f}%**", inline=True)
+        weapon_embed.add_field(name="치명타 대미지", value=f"**{weapon_data.get('치명타 대미지', 0) * 100:.1f}%**", inline=True)
         weapon_embed.add_field(name="현재 강화 정도", value=f"**+{weapon_enhanced}**", inline=False)
         weapon_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
-
         weapon_embed.add_field(
             name="현재 강화 확률",
             value=f"{enhancement_rates[weapon_enhanced]}%",
