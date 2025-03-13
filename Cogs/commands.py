@@ -5797,10 +5797,6 @@ class hello(commands.Cog):
                 nonlocal enhancement_rates
                 nonlocal enhancement_fail_rates
                 nonlocal destroy_rates
-
-                start_embed = discord.Embed(title="메세지", color=discord.Color.blue())
-                start_embed.add_field(name="", value="강화를 시작합니다!", inline=False)
-                await interaction.response.send_message(embed = start_embed, ephemeral= True)
                 
                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
                 current_predict_season = cur_predict_seasonref.get()
@@ -5820,6 +5816,10 @@ class hello(commands.Cog):
                     await interaction.response.send_message("강화 재료가 없습니다!", ephemeral=True)
                     return
                 
+                start_embed = discord.Embed(title="메세지", color=discord.Color.blue())
+                start_embed.add_field(name="", value="강화를 시작합니다!", inline=False)
+                await interaction.response.send_message(embed = start_embed, ephemeral= True)
+                
                 ref_weapon.update({"재료": weapon_parts - 1})
 
                 channel = self.bot.get_channel(int(CHANNEL_ID))
@@ -5833,10 +5833,10 @@ class hello(commands.Cog):
                             f"💀 파괴 : {destroy_rates[weapon_enhanced]}%",
                     inline=False
                 )
-                userembed.add_field(name="", value=f"30초 후 결과가 발표됩니다!", inline=False)
+                userembed.add_field(name="", value=f"10초 후 결과가 발표됩니다!", inline=False)
                 await channel.send(embed=userembed)
 
-                await asyncio.sleep(30)
+                await asyncio.sleep(10)
 
                 roll = random.randint(1, 100)
 
@@ -5858,17 +5858,17 @@ class hello(commands.Cog):
                         result_embed.add_field(name="", value = f"**[{weapon_name}](+{weapon_enhanced - 1}) -> [{weapon_name}](+{weapon_enhanced})**", inline = False)
 
                 elif roll <= enhancement_rates[weapon_enhanced] + enhancement_fail_rates[weapon_enhanced]:  # 실패
-                    if weapon_enhanced == 0:
-                        weapon_enhanced = 0
-                    else:
-                        weapon_enhanced -= 1
                     ref_weapon.update({"강화": weapon_enhanced})
                     result_embed = discord.Embed(title = "❌ 강화 실패!", color = discord.Color.red())
                     result_embed.add_field(name="", value = f"{interaction.user.display_name}님의 **[{weapon_name}]**이(가) 한 순간 빛났지만 그 빛은 금세 사라져버렸습니다.", inline = False)
                     if weapon_enhanced == 0:
                         result_embed.add_field(name="", value = f"**[{weapon_name}](+{weapon_enhanced}) -> [{weapon_name}](+{weapon_enhanced})**", inline = False)
                     else:
-                        result_embed.add_field(name="", value = f"**[{weapon_name}](+{weapon_enhanced + 1}) -> [{weapon_name}](+{weapon_enhanced})**", inline = False)
+                        result_embed.add_field(name="", value = f"**[{weapon_name}](+{weapon_enhanced}) -> [{weapon_name}](+{weapon_enhanced - 1})**", inline = False)
+                    if weapon_enhanced == 0:
+                        weapon_enhanced = 0
+                    else:
+                        weapon_enhanced -= 1
                 else:  # 파괴
                     result_embed = discord.Embed(title = "💀 무기 파괴!", color = 0x000000)
                     result_embed.add_field(name="", value = f"{interaction.user.display_name}님의 **[{weapon_name}]**이(가) 힘을 버티지 못하고 가루가 되었습니다.", inline = False)
