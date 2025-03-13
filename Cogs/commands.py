@@ -5767,7 +5767,7 @@ class hello(commands.Cog):
             weapon_parts = weapon_data.get("재료", 0)
 
             weapon_embed = discord.Embed(title="무기 강화", color=0xff00ff)
-            weapon_embed.add_field(name="무기 이름", value=f"**{weapon_name}**", inline=False)
+            weapon_embed.add_field(name="무기 이름", value=f"**{ref_weapon.get('이름', '알 수 없음')}**", inline=False)
             weapon_embed.add_field(name="현재 강화 정도", value=f"**+{weapon_enhanced}**", inline=False)
             weapon_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
 
@@ -5888,6 +5888,181 @@ class hello(commands.Cog):
 
         await interaction.response.send_message(embed=weapon_embed, view=weapon_view, ephemeral=True)
 
+    @app_commands.command(name="강화테스트", description="보유한 무기를 강화합니다.")
+    async def enhance_test(self, interaction: discord.Interaction):
+        nickname = interaction.user.name
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
+        weapon_data = ref_weapon.get() or {}
+
+        weapon_name = weapon_data.get("이름", "")
+
+        if weapon_name == "":
+            await interaction.response.send_message("무기가 없습니다! 먼저 무기를 생성하세요.", ephemeral=True)
+            return
+
+        weapon_enhanced = weapon_data.get("강화", 0)
+        weapon_parts = weapon_data.get("재료", 0)
+
+        weapon_embed = discord.Embed(title="무기 강화", color=0xff00ff)
+        weapon_embed.add_field(name="무기 이름", value=f"**{ref_weapon.get('이름', '알 수 없음')}**", inline=False)
+        weapon_embed.add_field(name="현재 강화 정도", value=f"**+{ref_weapon.get('강화', 0)}**", inline=False)
+        weapon_embed.add_field(name="공격력", value=f"**{ref_weapon.get('공격력', 0)}**", inline=True)
+        weapon_embed.add_field(name="내구도", value=f"**{ref_weapon.get('내구도', 0)}**", inline=True)
+        weapon_embed.add_field(name="방어력", value=f"**{ref_weapon.get('방어력', 0)}**", inline=True)
+        weapon_embed.add_field(name="스피드", value=f"**{ref_weapon.get('스피드', 0)}**", inline=True)
+        weapon_embed.add_field(name="적중률", value=f"**{ref_weapon.get('적중률', 0) * 100:.1f}%**", inline=True)
+        weapon_embed.add_field(name="치명타 확률", value=f"**{ref_weapon.get('치명타 확률', 0) * 100:.1f}%**", inline=True)
+        weapon_embed.add_field(name="치명타 대미지", value=f"**{ref_weapon.get('치명타 대미지', 0) * 100:.1f}%**", inline=True)
+        weapon_embed.add_field(name="현재 강화 정도", value=f"**+{weapon_enhanced}**", inline=False)
+        weapon_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
+
+        weapon_embed.add_field(
+            name="현재 강화 확률",
+            value=f"{enhancement_rates[weapon_enhanced]}%",
+            inline=False
+        )
+
+        # 선택창 생성
+        select = discord.ui.Select(
+            placeholder="강화 타입을 선택하세요.",
+            options=[
+                discord.SelectOption(label="공격 강화", description="공격력 강화 & 명중률 하락", value="공격 강화"),
+                discord.SelectOption(label="치명타 강화", description="치명타 확률 & 대미지 강화", value="치명타 강화"),
+                discord.SelectOption(label="속도 강화", description="스피드 강화 & 방어력 하락", value="속도 강화"),
+                discord.SelectOption(label="명중 강화", description="명중률 강화 & 공격력 하락", value="명중 강화"),
+                discord.SelectOption(label="방어 강화", description="방어력 강화 & 속도 하락", value="방어 강화"),
+                discord.SelectOption(label="내구도 강화", description="내구도 & 방어력 강화", value="내구도 강화")
+            ]
+        )
+
+        async def select_callback(interaction: discord.Interaction):
+            selected_enhance_type = select.values[0]
+
+            # 강화 버튼을 추가하고 콜백 설정
+            enhance_button = discord.ui.Button(label="강화하기", style=discord.ButtonStyle.green)
+
+            async def enhance_callback(interaction: discord.Interaction):
+                ref_weapon.update({"재료": weapon_parts - 1})
+
+                channel = self.bot.get_channel(int(CHANNEL_ID))
+
+                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+                userembed.add_field(name="", value=f"{interaction.user.display_name}님이 **[{weapon_name}]**의 강화를 시작했습니다!", inline=False)
+                userembed.add_field(name="", value=f"(+{weapon_enhanced} -> +{weapon_enhanced + 1})", inline=False)
+                userembed.add_field(
+                    name="현재 강화 확률",
+                    value=f"{enhancement_rates[weapon_enhanced]}%",
+                    inline=False
+                )
+                userembed.add_field(name="강화 타입", value=f"{selected_enhance_type}", inline=False)
+                await channel.send(embed=userembed)
+
+                await asyncio.sleep(10)
+
+                roll = random.randint(1, 100)
+
+                # 0강부터 20강까지 강화 성공 확률과 강화 실패 확률을 설정합니다.
+                enhancement_rates = {i: max(100 - i * 5, 5) for i in range(21)}  # 최소 5% 성공 확률
+
+                if roll <= enhancement_rates[weapon_enhanced]:  # 성공
+                    weapon_enhanced += 1
+                    ref_weapon.update({"강화": weapon_enhanced})
+
+                    # 각 스탯에 대한 상급, 중급, 하급 옵션 설정
+                    enhancement_options = {
+                        "공격력": {
+                            "상급": 5,
+                            "중급": 3,
+                            "하급": 2
+                        },
+                        "내구도": {
+                            "상급": 50,
+                            "중급": 30,
+                            "하급": 20
+                        },
+                        "방어력": {
+                            "상급": 3,
+                            "중급": 2,
+                            "하급": 1
+                        },
+                        "스피드": {
+                            "상급": 3,
+                            "중급": 2,
+                            "하급": 1
+                        },
+                        "명중률": {
+                            "상급": 0.03,
+                            "중급": 0.02,
+                            "하급": 0.01
+                        },
+                        "치명타 대미지": {
+                            "상급": 0.3,
+                            "중급": 0.2,
+                            "하급": 0.1
+                        },
+                        "치명타 확률": {
+                            "상급": 0.05,
+                            "중급": 0.03,
+                            "하급": 0.01
+                        }
+                    }
+
+                    # 강화 타입에 따른 배율
+                    enhancement_multipliers = {
+                        "공격 강화": {"main_stat": "공격력", "main_multiplier": 1.5, "sub_stat": "명중률", "sub_multiplier": 1.0},
+                        "치명타 강화": {"main_stat": "치명타 확률", "main_multiplier": 1.2, "sub_stat": "치명타 대미지", "sub_multiplier": 1.5},
+                        "속도 강화": {"main_stat": "스피드", "main_multiplier": 1.5, "sub_stat": "방어력", "sub_multiplier": -1.0},
+                        "명중 강화": {"main_stat": "명중률", "main_multiplier": 1.5, "sub_stat": "공격력", "sub_multiplier": -1.0},
+                        "방어 강화": {"main_stat": "방어력", "main_multiplier": 2.0, "sub_stat": "스피드", "sub_multiplier": 1.0},
+                        "내구도 강화": {"main_stat": "내구도", "main_multiplier": 2.0, "sub_stat": "방어력", "sub_multiplier": 1.0},
+                    }
+
+                    # 강화 함수
+                    def enhance_weapon(enhancement_type):
+                        # 강화 타입에 따른 배율 가져오기
+                        main_stat = enhancement_multipliers[enhancement_type]["main_stat"]
+                        main_multiplier = enhancement_multipliers[enhancement_type]["main_multiplier"]
+                        sub_stat = enhancement_multipliers[enhancement_type]["sub_stat"]
+                        sub_multiplier = enhancement_multipliers[enhancement_type]["sub_multiplier"]
+
+
+                        main_increase = enhancement_options[main_stat]["하급"]
+                        sub_increase = enhancement_options[sub_stat]["하급"]
+
+                        # 강화된 수치 계산 (배율 적용)
+                        ref_weapon.update({
+                            main_stat : weapon_data.get(main_stat, 0) + (main_increase * main_multiplier),
+                            sub_stat : weapon_data.get(sub_stat, 0) + (sub_increase * sub_multiplier)
+                        })
+                        result_embed = discord.Embed(title="✅ 강화 성공!", color=discord.Color.blue())
+                        result_embed.add_field(name="", value=f"**{weapon_name}**에 힘이 깃들었습니다!", inline=False)
+                        result_embed.add_field(name="스탯 증가", value=f"{main_stat} +{main_increase * main_multiplier}, {sub_stat} +{sub_increase * sub_multiplier},", inline=False)
+
+                    # 스탯 변경 적용
+                    enhance_weapon(weapon_data, selected_enhance_type)
+
+                else:  # 실패
+                    ref_weapon.update({"강화": weapon_enhanced})
+                    result_embed = discord.Embed(title="❌ 강화 실패!", color=discord.Color.red())
+                    result_embed.add_field(name="", value=f"{weapon_name}의 모습이 한 순간 빛났지만 무기에는 아무런 변화도 일어나지 않았습니다.", inline=False)
+
+                await channel.send(embed=result_embed)
+
+            enhance_button.callback = enhance_callback
+            weapon_view = discord.ui.View()
+            weapon_view.add_item(enhance_button)
+
+            await interaction.response.send_message(embed=weapon_embed, view=weapon_view, ephemeral=True)
+
+        select.callback = select_callback
+        # 0강부터 20강까지 강화 성공 확률과 강화 실패 확률을 설정합니다.
+        enhancement_rates = {i: max(100 - i * 5, 5) for i in range(21)}  # 최소 5% 성공 확률
+        weapon_embed.add_field(name="현재 강화 확률", value=f"**{enhancement_rates[weapon_enhanced]}%**", inline=False)
+        await interaction.response.send_message(embed=weapon_embed, view=discord.ui.View().add_item(select), ephemeral=True)
+
     @app_commands.command(name="무기생성",description="무기를 생성합니다")
     async def create_weapon(self,interaction: discord.Interaction, 이름: str):
         nickname = interaction.user.name
@@ -5901,11 +6076,25 @@ class hello(commands.Cog):
         if weapon_name == "":
             weapon_embed = discord.Embed(title="무기 생성 완료!", color=0xff00ff)
             weapon_embed.add_field(name="무기 이름", value=f"**{이름}**", inline=False)
-            weapon_embed.add_field(name="현재 강화 정도", value="**+0**", inline=False)
+            weapon_embed.add_field(name="현재 강화 정도", value=f"**+{ref_weapon.get('강화', 0)}**", inline=False)
+            weapon_embed.add_field(name="공격력", value=f"**{ref_weapon.get('공격력', 0)}**", inline=True)
+            weapon_embed.add_field(name="내구도", value=f"**{ref_weapon.get('내구도', 0)}**", inline=True)
+            weapon_embed.add_field(name="방어력", value=f"**{ref_weapon.get('방어력', 0)}**", inline=True)
+            weapon_embed.add_field(name="속도", value=f"**{ref_weapon.get('속도', 0)}**", inline=True)
+            weapon_embed.add_field(name="적중률", value=f"**{ref_weapon.get('적중률', 0) * 100:.1f}%**", inline=True)
+            weapon_embed.add_field(name="치명타 확률", value=f"**{ref_weapon.get('치명타 확률', 0) * 100:.1f}%**", inline=True)
+            weapon_embed.add_field(name="치명타 대미지", value=f"**{ref_weapon.get('치명타 대미지', 0) * 100:.1f}%**", inline=True)
 
             ref_weapon.update({
                 "강화": 0,
-                "이름": 이름
+                "이름": 이름,
+                "공격력": 100,
+                "내구도": 500,
+                "방어력": 10,
+                "속도": 10,
+                "적중률": 0.1,
+                "치명타 대미지": 1.5,
+                "치명타 확률": 0.1
                 })
         else:
             weapon_enhanced = weapon_data.get("강화",0)
@@ -5913,6 +6102,7 @@ class hello(commands.Cog):
             weapon_embed.add_field(name="", value=f"이미 [**{weapon_name}**(+{weapon_enhanced})] 무기를 보유중입니다!", inline=False)
 
         await interaction.response.send_message(embed=weapon_embed)
+
     #베팅 테스트를 위한 코드
     # @app_commands.command(name="베팅테스트",description="베팅 테스트(개발자 전용)")
     # @app_commands.describe(이름 = "이름을 입력하세요", 값 = "값")
