@@ -768,7 +768,7 @@ class DiceRevealView(discord.ui.View):
                 change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{self.opponent}")
                 change_ref.push({
                     "시간": current_time,
-                    "포인트": point - original_opponent_point + remained_point,
+                    "포인트": point1 - original_opponent_point + remained_point,
                     "포인트 변동": remained_point - original_opponent_point,
                     "사유": "주사위 대결",
                 })
@@ -776,7 +776,7 @@ class DiceRevealView(discord.ui.View):
                 change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{self.challenger}")
                 change_ref.push({
                     "시간": current_time,
-                    "포인트": point + get_point - challenger_point,
+                    "포인트": point2 + get_point - challenger_point,
                     "포인트 변동": get_point - challenger_point,
                     "사유": "주사위 대결",
                 })
@@ -826,7 +826,7 @@ class DiceRevealView(discord.ui.View):
                 change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{self.opponent}")
                 change_ref.push({
                     "시간": current_time,
-                    "포인트": point + get_point - opponent_point,
+                    "포인트": point1 + get_point - opponent_point,
                     "포인트 변동": get_point - opponent_point,
                     "사유": "주사위 대결",
                 })
@@ -834,7 +834,7 @@ class DiceRevealView(discord.ui.View):
                 change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{self.challenger}")
                 change_ref.push({
                     "시간": current_time,
-                    "포인트": point - original_challenger_point + remained_point,
+                    "포인트": point2 - original_challenger_point + remained_point,
                     "포인트 변동":  remained_point - original_challenger_point,
                     "사유": "주사위 대결",
                 })
@@ -4765,7 +4765,6 @@ class hello(commands.Cog):
         dice_view = DiceRevealView(challenger_m, 상대, dice_results, game_point,tts_channel)
         dice_view.message = await thread.send(content = "", view = dice_view, embed = diceview_embed)
         await dice_view.start_timer()
-        await thread.edit(locked=True)
 
     @app_commands.command(name="경고", description="서버 멤버에게 경고를 부여합니다.")
     async def warn(self, interaction: discord.Interaction):
@@ -5323,7 +5322,7 @@ class hello(commands.Cog):
                         change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{self.opponent}")
                         change_ref.push({
                             "시간": current_time,
-                            "포인트": point - original_opponent_point + remained_point,
+                            "포인트": point1 - original_opponent_point + remained_point,
                             "포인트 변동": remained_point - original_opponent_point,
                             "사유": "숫자야구 대결",
                         })
@@ -5331,7 +5330,7 @@ class hello(commands.Cog):
                         change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{self.challenger}")
                         change_ref.push({
                             "시간": current_time,
-                            "포인트": point + get_point - challenger_point,
+                            "포인트": point2 + get_point - challenger_point,
                             "포인트 변동": get_point - challenger_point,
                             "사유": "숫자야구 대결",
                         })
@@ -5377,7 +5376,7 @@ class hello(commands.Cog):
                         change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{self.opponent}")
                         change_ref.push({
                             "시간": current_time,
-                            "포인트": point + get_point - opponent_point,
+                            "포인트": point1 + get_point - opponent_point,
                             "포인트 변동": get_point - opponent_point,
                             "사유": "숫자야구 대결",
                         })
@@ -5385,7 +5384,7 @@ class hello(commands.Cog):
                         change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{self.challenger}")
                         change_ref.push({
                             "시간": current_time,
-                            "포인트": point - original_challenger_point + remained_point,
+                            "포인트": point2 - original_challenger_point + remained_point,
                             "포인트 변동":  remained_point - original_challenger_point,
                             "사유": "숫자야구 대결",
                         })
@@ -5512,7 +5511,6 @@ class hello(commands.Cog):
             type=discord.ChannelType.public_thread
         )
         await BaseballGameView(challenger_m, 상대, game_point).start_game(thread)
-        await thread.edit(locked=True)
     
     @app_commands.command(name="명령어",description="명령어 목록을 보여줍니다.")
     async def 명령어(self, interaction: discord.Interaction):
