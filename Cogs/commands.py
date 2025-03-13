@@ -5903,6 +5903,9 @@ class hello(commands.Cog):
             await interaction.response.send_message("무기가 없습니다! 먼저 무기를 생성하세요.", ephemeral=True)
             return
 
+        # 0강부터 20강까지 강화 성공 확률과 강화 실패 확률을 설정합니다.
+        enhancement_rates = {i: max(100 - i * 5, 5) for i in range(21)}  # 최소 5% 성공 확률
+
         weapon_enhanced = weapon_data.get("강화", 0)
         weapon_parts = weapon_data.get("재료", 0)
 
