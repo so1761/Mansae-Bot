@@ -6131,11 +6131,11 @@ class hello(commands.Cog):
             if attacker['name'] == challenger['name']: # 도전자 공격
                 battle_embed = discord.Embed(title=f"{attacker['name']}의 공격!⚔️", color=discord.Color.blue())
                 battle_embed.add_field(name ="", value = f"**{defense_text} {damage} 대미지!{crit_text}**",inline = False)
-                battle_embed.add_field(name = "남은 체력", value=f"[{defender['HP']} / {weapon_data_opponent.get("내구도", "")}]")  
+                battle_embed.add_field(name = "남은 체력", value=f"[{defender['HP']} / {weapon_data_opponent.get('내구도', '')}]")  
             elif attacker['name'] == opponent['name']: # 상대 공격
                 battle_embed = discord.Embed(title=f"{attacker['name']}의 공격!⚔️", color=discord.Color.red())
                 battle_embed.add_field(name ="", value = f"**{defense_text} {damage} 대미지!{crit_text}**",inline = False)
-                battle_embed.add_field(name = "남은 체력", value=f"[{defender['HP']} / {weapon_data_challenger.get("내구도", "")}]")
+                battle_embed.add_field(name = "남은 체력", value=f"[{defender['HP']} / {weapon_data_challenger.get('내구도', '')}]")
 
             await thread.send(embed = battle_embed)
 
