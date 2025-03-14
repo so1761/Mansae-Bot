@@ -5793,8 +5793,8 @@ class hello(commands.Cog):
                 await interaction.response.send_message("강화를 시작합니다!",ephemeral=True)
                 ref_weapon.update({"재료": weapon_parts - 1})
                 
-                # 0강부터 20강까지 강화 성공 확률과 강화 실패 확률을 설정합니다.
-                enhancement_rates = {i: max(100 - i * 5, 5) for i in range(21)}  # 최소 5% 성공 확률
+
+                enhancement_rate = weapon_data.get("강화확률",0.05)
 
                 channel = self.bot.get_channel(int(CHANNEL_ID))
 
@@ -5803,7 +5803,7 @@ class hello(commands.Cog):
                 userembed.add_field(name="", value=f"**[{weapon_name}](+{weapon_enhanced}) -> [{weapon_name}](+{weapon_enhanced + 1})**", inline=False)
                 userembed.add_field(
                     name="현재 강화 확률",
-                    value=f"{enhancement_rates[weapon_enhanced]}%",
+                    value=f"{enhancement_rate * 100}%",
                     inline=False
                 )
                 userembed.add_field(name="", value=f"5초 후 결과가 발표됩니다!", inline=False)
@@ -5811,64 +5811,93 @@ class hello(commands.Cog):
 
                 roll = random.randint(1, 100)
 
-                if roll <= enhancement_rates[weapon_enhanced]:  # 성공
-                    
+                if roll <= enhancement_rate:  # 성공
                     weapon_enhanced += 1
                     ref_weapon.update({"강화": weapon_enhanced})
-
-                    # 각 스탯에 대한 옵션 설정
+                    ref_weapon.update({"강화확률": round(enhancement_rate - 0.05,3)})
+                
+                    # 강화 옵션 설정
                     enhancement_options = {
-                        "공격력": 10,
-                        "내구도": 50,
-                        "방어력": 5,
-                        "스피드": 5,
-                        "명중률": 0.02,
-                        "치명타 대미지": 0.1,
-                        "치명타 확률": 0.02
-                    }
-
-                    # 강화 타입에 따른 배율
-                    enhancement_multipliers = {
-                        "공격 강화": {"main_stat": "공격력"},
-                        "치명타 대미지 강화": {"main_stat": "치명타 대미지"},
-                        "치명타 확률 강화" : {"main_stat" : "치명타 확률"},
-                        "속도 강화": {"main_stat": "스피드"},
-                        "명중 강화": {"main_stat": "명중률"},
-                        "방어 강화": {"main_stat": "방어력"},
-                        "내구도 강화": {"main_stat": "내구도"},
-                        "밸런스 강화": {"main_stat": "올스탯"}
+                        "공격 강화": {
+                            "main_stat": "공격력",
+                            "stats": {
+                                "공격력": 20, "내구도": 30, "방어력": 3, "스피드": 1
+                            }
+                        },
+                        "치명타 대미지 강화": {
+                            "main_stat": "치명타 대미지",
+                            "stats": {
+                                "공격력": 10, "내구도": 30, "방어력": 3, "치명타 대미지": 0.1
+                            }
+                        },
+                        "치명타 확률 강화": {
+                            "main_stat": "치명타 확률",
+                            "stats": {
+                                "공격력": 10, "내구도": 30, "방어력": 3, "치명타 확률": 0.04
+                            }
+                        },
+                        "속도 강화": {
+                            "main_stat": "스피드",
+                            "stats": {
+                                "공격력": 8, "내구도": 50, "방어력": 5, "스피드": 10
+                            }
+                        },
+                        "명중 강화": {
+                            "main_stat": "명중률",
+                            "stats": {
+                                "공격력": 10, "내구도": 50, "방어력": 5, "스피드": 1, "명중률": 0.06
+                            }
+                        },
+                        "방어 강화": {
+                            "main_stat": "방어력",
+                            "stats": {
+                                "공격력": 8, "내구도": 70, "방어력": 20
+                            }
+                        },
+                        "내구도 강화": {
+                            "main_stat": "내구도",
+                            "stats": {
+                                "공격력": 8, "내구도": 100, "방어력": 7, "스피드": 1
+                            }
+                        },
+                        "밸런스 강화": {
+                            "main_stat": "올스탯",
+                            "stats": {
+                                "공격력": 9, "내구도": 40, "방어력": 4, "스피드": 4, "명중률": 0.02, "치명타 대미지": 0.03, "치명타 확률": 0.01
+                            }
+                        }
                     }
 
                     # 강화 함수
                     async def enhance_weapon(enhancement_type):
-                        # 강화 타입에 따른 배율 가져오기
-                        main_stat = enhancement_multipliers[enhancement_type]["main_stat"]
-
+                        
                         ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
                         weapon_data = ref_weapon.get() or {}
-                        # 무기의 기존 스탯 가져오기
-                        weapon_stats = {key: value for key, value in weapon_data.items() if key not in ["재료", "강화","이름"]}
 
-                        if main_stat == "올스탯":
-                            # 강화 수치 설정
-                            for stat, base_increase in enhancement_options.items():
-                                increase = round(base_increase, 3)
-                                # 무기 데이터 업데이트
-                                weapon_stats[stat] = round(weapon_stats.get(stat, 0) + increase, 3)
-                        else:
-                            # 강화 수치 설정 (특화 스탯과 일반 스탯 구분)
-                            for stat, base_increase in enhancement_options.items():
-                                # 선택한 스탯은 특화 배율 적용
-                                if stat in ["공격력","방어력","내구도"]:
-                                    if stat == main_stat:
-                                        increase = round(base_increase * 2, 3)
-                                        weapon_stats[stat] = round(weapon_stats.get(stat, 0) + increase, 3)
-                                    else:
-                                        increase = round(base_increase, 3)  # 기본 배율 적용
-                                        weapon_stats[stat] = round(weapon_stats.get(stat, 0) + increase, 3)
-                                elif stat == main_stat:
-                                    increase = round(base_increase * 2, 3)
-                                    weapon_stats[stat] = round(weapon_stats.get(stat, 0) + increase, 3)
+                        ref_weapon_log = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기/강화내역")
+                        weapon_log_data = ref_weapon_log.get() or {}
+
+                        original_enhancement = weapon_log_data.get(enhancement_type,"")
+                        ref_weapon_log.update({enhancement_type : original_enhancement + 1}) # 선택한 강화 + 1
+
+                        # 무기의 기존 스탯 가져오기
+                        weapon_stats = {key: value for key, value in weapon_data.items() if key not in ["재료", "강화","이름", "강화확률", "강화내역"]}
+
+                        # 강화 옵션 가져오기
+                        options = enhancement_options.get(enhancement_type, enhancement_options["밸런스 강화"])
+                        stats = options["stats"]  # 실제 강화 수치가 있는 부분
+                        main_stat = options["main_stat"]
+
+                        # 스탯 적용
+                        for stat, base_increase in stats.items():
+                            # 선택한 스탯은 특화 배율 적용
+                            increase = round(base_increase, 3)  # 기본 배율 적용
+                            final_stat = round(weapon_stats.get(stat, 0) + increase, 3)
+                            
+                            if final_stat >= 1 and stat in ["명중률","치명타 확률"]:
+                                weapon_stats[stat] = 1
+                            else:
+                                weapon_stats[stat] = final_stat
                         
                         # 결과 반영
                         ref_weapon.update(weapon_stats)
@@ -5886,7 +5915,7 @@ class hello(commands.Cog):
                         await asyncio.sleep(5)
                         # 주 강화 옵션이 올스탯일 경우
                         if main_stat == "올스탯":
-                            for stat, increase in enhancement_options.items():
+                            for stat, increase in stats.items():
                                 value = round(increase, 3)  # 올스탯은 동일한 배율 적용
                                 if stat in ["명중률", "치명타 확률", "치명타 대미지"]:
                                     result_embed.add_field(name=stat, value=f"**{weapon_data.get(stat,0) * 100:.1f}%(+{value * 100:.1f}%)**", inline=True)
@@ -5894,15 +5923,15 @@ class hello(commands.Cog):
                                     result_embed.add_field(name=stat, value=f"**{weapon_data.get(stat,0)}(+{value})**", inline=True)
                         else:
                             # 주 강화 옵션을 맨 위에 배치
-                            main_value = round(enhancement_options[main_stat] * 2, 3)
+                            main_value = round(enhancement_options['stats'][main_stat], 3)
                             if main_stat in ["명중률", "치명타 확률", "치명타 대미지"]:
                                 result_embed.add_field(name=main_stat, value=f"**{weapon_data.get(main_stat,0) * 100:.1f}%(+{main_value * 100:.1f}%)**", inline=False)
                             else:
                                 result_embed.add_field(name=main_stat, value=f"**{weapon_data.get(main_stat,0)}(+{main_value})**", inline=False)
                             # 나머지 스탯은 inline=True로 추가
-                            for stat, increase in enhancement_options.items():
+                            for stat, increase in stats.items():
                                 if stat != main_stat and stat in ['공격력','방어력','내구도']:
-                                    value = round(increase * (2 if stat == main_stat else 1.0), 3)
+                                    value = round(increase, 3)
                                     result_embed.add_field(name=stat, value=f"{weapon_data.get(stat,0)}(+{value})", inline=True)
 
                         await enhance_message.edit(embed=result_embed)
@@ -5911,6 +5940,7 @@ class hello(commands.Cog):
 
                 else:  # 실패
                     await asyncio.sleep(5)
+                    ref_weapon.update({"강화확률": round(enhancement_rate + 0.01,3)})
                     result_embed = discord.Embed(title="❌ 강화 실패!", color=discord.Color.red())
                     result_embed.add_field(name="", value=f"{weapon_name}의 모습이 한 순간 빛났지만 무기에는 아무런 변화도 일어나지 않았습니다.", inline=False)
                     result_embed.add_field(name="", value=f"**[{weapon_name}](+{weapon_enhanced}) -> [{weapon_name}](+{weapon_enhanced})**", inline=False)
@@ -5924,28 +5954,29 @@ class hello(commands.Cog):
             
             
             enhance_description = {
-                "공격 강화": "공격력을 강화합니다!\n 공격력 + 10, 방어력 + 5, 내구도 + 50",
-                "치명타 확률 강화": "치명타 확률을 강화합니다!\n공격력 + 5, 방어력 + 5, 내구도 + 50, 치명타 확률 + 4%",
-                "치명타 대미지 강화": "치명타 대미지를 강화합니다!\n공격력 + 5, 방어력 + 5, 내구도 + 50, 치명타 대미지 + 20%",
-                "속도 강화": "스피드를 강화합니다!\n공격력 + 5, 방어력 + 5, 내구도 + 50, 속도 + 10",
-                "명중 강화": "명중률을 강화합니다!\n공격력 + 5, 방어력 + 5, 내구도 + 50, 명중 + 4%",
-                "방어 강화": "방어력을 강화합니다!\n공격력 + 5, 방어력 + 10, 내구도 + 50",
-                "내구도 강화": "내구도를 강화합니다!\n공격력 + 5, 방어력 + 5, 내구도 + 100",
-                "밸런스 강화": "모든 스탯을 강화합니다!\n공격력 + 5, 방어력 + 5, 내구도 + 50, 치명타 확률 + 2%, 치명타 대미지 + 10%, 속도 + 5, 명중 + 2%"
+                "공격 강화": "공격력을 강화합니다!\n 공격력 + 20, 방어력 + 3, 속도 + 1, 내구도 + 30",
+                "치명타 확률 강화": "치명타 확률을 강화합니다!\n공격력 + 10, 방어력 + 3, 내구도 + 30, 치명타 확률 + 4%",
+                "치명타 대미지 강화": "치명타 대미지를 강화합니다!\n공격력 + 10, 방어력 + 3, 내구도 + 30, 치명타 대미지 + 10%",
+                "속도 강화": "스피드를 강화합니다!\n공격력 + 8, 방어력 + 5, 내구도 + 50, 속도 + 10",
+                "명중 강화": "명중률을 강화합니다!\n공격력 + 10, 방어력 + 5, 내구도 + 50, 속도 + 1 명중 + 6%",
+                "방어 강화": "방어력을 강화합니다!\n공격력 + 6, 방어력 + 20, 내구도 + 100",
+                "내구도 강화": "내구도를 강화합니다!\n공격력 + 6, 방어력 + 10, 내구도 + 200",
+                "밸런스 강화": "모든 스탯을 강화합니다!\n공격력 + 9, 방어력 + 4, 내구도 + 40, 치명타 확률 + 1%, 치명타 대미지 + 3%, 속도 + 3, 명중 + 2%"
             }
 
+            enhancement_rate = weapon_data.get("강화확률",0.05)
 
             enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
             enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
             enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
-            enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rates[weapon_enhanced]}%(+{weapon_enhanced} -> +{weapon_enhanced + 1})**", inline=False)
+            enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate * 100}%(+{weapon_enhanced} -> +{weapon_enhanced + 1})**", inline=False)
             enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
             await interaction.response.edit_message(embed=enhance_embed, view=weapon_view)
 
         select.callback = select_callback
         # 0강부터 20강까지 강화 성공 확률과 강화 실패 확률을 설정합니다.
-        enhancement_rates = {i: max(100 - i * 5, 5) for i in range(21)}  # 최소 5% 성공 확률
-        weapon_embed.add_field(name="현재 강화 확률", value=f"**{enhancement_rates[weapon_enhanced]}%**", inline=False)
+        enhancement_rate = weapon_data.get("강화확률",0.05)
+        weapon_embed.add_field(name="현재 강화 확률", value=f"**{enhancement_rate * 100}%**", inline=False)
         await interaction.response.send_message(embed=weapon_embed, view=discord.ui.View().add_item(select), ephemeral=True)
 
     @app_commands.command(name="무기생성",description="무기를 생성합니다")
@@ -5968,7 +5999,8 @@ class hello(commands.Cog):
                 "스피드": 50,
                 "명중률": 0.1,
                 "치명타 대미지": 1.5,
-                "치명타 확률": 0.05
+                "치명타 확률": 0.05,
+                "강화확률": 1
             })
 
             ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
@@ -6010,8 +6042,10 @@ class hello(commands.Cog):
             await interaction.response.send_message(embed=weapon_embed)
             return
         else:
-            weapon_parts = weapon_data.get('강화')
-            ref_weapon.update({"재료": weapon_parts})
+            weapon_parts = weapon_data.get('재료')
+            weapon_enhance = weapon_data.get('강화')
+            
+            ref_weapon.update({"재료": weapon_parts + weapon_enhance})
             ref_weapon.update({"이름" : ""})
             weapon_embed = discord.Embed(title="무기 분해!", color=0xff0000)
             weapon_embed.add_field(name="", value=f"무기를 분해하여 {weapon_parts}개의 재료를 얻었습니다!", inline=False)
@@ -6033,7 +6067,7 @@ class hello(commands.Cog):
                 critical_bool = True
 
             # 방어력에 따른 완벽 방어 확률 적용
-            perfect_block_chance = (defender["Defense"] // 10) * 0.01
+            perfect_block_chance = (defender["Defense"] // 20) * 0.01
             if random.random() < perfect_block_chance:
                 return 0, False, False, True  # 완벽 방어 발생 시 피해 0
             
@@ -6041,11 +6075,11 @@ class hello(commands.Cog):
             if critical_bool: # 크리티컬 시 방어력 무시
                 final_damage = base_damage
             else:
-                final_damage = base_damage * (1 - damage_reduction)  # 방어력 적용 후 최종 피해량
+                final_damage = base_damage * (1 - damage_reduction / 2)  # 방어력 적용 후 최종 피해량
             
             extra_attack_bool = False
             # 스피드에 따른 추가 공격 확률 적용
-            extra_attack_chance = max(0, (attacker["Speed"] - defender["Speed"]) / 3 * 0.01)
+            extra_attack_chance = max(0, (attacker["Speed"] - defender["Speed"]) / 3 * 0.02)
             if extra_attack_chance > 1:
                 extra_attack_chance == 1 # 100% 처리
             if random.random() < extra_attack_chance:
@@ -6140,7 +6174,7 @@ class hello(commands.Cog):
         """, inline=False)
         await thread.send(embed=embed)
         turn = 0
-        #doubled = False 
+        doubled = False 
         while challenger["HP"] > 0 and opponent["HP"] > 0:
             turn += 1
             damage, extra_attack, critical, defence = attack(attacker, defender)
@@ -6167,17 +6201,17 @@ class hello(commands.Cog):
 
             # 공격자와 방어자 변경
             if extra_attack: # 추가 공격 찬스
-                #if doubled: # 이미 추가 공격을 했다면
-                #    attacker, defender = defender, attacker
-                #    doubled = False
-                #else:
+                if doubled: # 이미 추가 공격을 했다면
+                    attacker, defender = defender, attacker
+                    doubled = False
+                else:
                     battle_embed = discord.Embed(title=f"{attacker['name']}의 추가 턴!⚔️", color=discord.Color.lighter_gray())
                     battle_embed.add_field(name ="", value = f"**스피드 차이로 인하여 추가 공격!**",inline = False)
                     await thread.send(embed = battle_embed)
-                    #doubled = True
+                    doubled = True
             else:
                 attacker, defender = defender, attacker
-                #doubled = False
+                doubled = False
             
             # 추가 공격 찬스가 있다면 변경하지 않음
             await asyncio.sleep(3)  # 턴 간 딜레이
