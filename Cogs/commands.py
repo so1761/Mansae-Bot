@@ -5893,7 +5893,7 @@ class hello(commands.Cog):
                                     result_embed.add_field(name=stat, value=f"**{weapon_data.get(stat,0)}(+{value})**", inline=True)
                         else:
                             # 주 강화 옵션을 맨 위에 배치
-                            main_value = round(enhancement_options[main_stat] * 1.5, 3)
+                            main_value = round(enhancement_options[main_stat] * 2, 3)
                             if main_stat in ["명중률", "치명타 확률", "치명타 대미지"]:
                                 result_embed.add_field(name=main_stat, value=f"**{weapon_data.get(main_stat,0) * 100:.1f}%(+{main_value * 100:.1f}%)**", inline=False)
                             else:
