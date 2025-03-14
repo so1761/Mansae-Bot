@@ -5994,7 +5994,7 @@ class hello(commands.Cog):
 
         await interaction.response.send_message(embed=weapon_embed)
 
-    @app_commands.command(name="무기분해",description="자신이 가진 무기를 재료로 바꿉니다")
+    @app_commands.command(name="무기분해",description="자신이 가진 무기를 분해하여 강화 단계만큼의 재료로 만듭니다")
     async def weapon_decomposition(self, interaction: discord.Interaction):
         nickname = interaction.user.name
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
