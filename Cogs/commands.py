@@ -5825,8 +5825,8 @@ class hello(commands.Cog):
                         "방어력": 5,
                         "스피드": 5,
                         "명중률": 0.02,
-                        "치명타 대미지": 0.05,
-                        "치명타 확률": 0.02
+                        "치명타 대미지": 0.1,
+                        "치명타 확률": 0.01
                     }
 
                     # 강화 타입에 따른 배율
@@ -5852,23 +5852,24 @@ class hello(commands.Cog):
                         weapon_stats = {key: value for key, value in weapon_data.items() if key not in ["재료", "강화","이름"]}
 
                         if main_stat == "올스탯":
-                            # 강화 수치 설정 (모든 스탯 1.2배)
+                            # 강화 수치 설정
                             for stat, base_increase in enhancement_options.items():
-                                increase = round(base_increase * 1.2, 3)  # 1.2배 배율 적용
-
+                                increase = round(base_increase, 3)
                                 # 무기 데이터 업데이트
                                 weapon_stats[stat] = round(weapon_stats.get(stat, 0) + increase, 3)
                         else:
                             # 강화 수치 설정 (특화 스탯과 일반 스탯 구분)
                             for stat, base_increase in enhancement_options.items():
                                 # 선택한 스탯은 특화 배율 적용
-                                if stat == main_stat:
+                                if stat in ["공격력","방어력","내구도"]:
+                                    if stat == main_stat:
+                                        increase = round(base_increase * 2, 3)
+                                        weapon_stats[stat] = round(weapon_stats.get(stat, 0) + increase, 3)
+                                    increase = round(base_increase, 3)  # 기본 배율 적용
+                                elif stat == main_stat:
                                     increase = round(base_increase * 2, 3)
-                                else:
-                                    increase = round(base_increase * 1.0, 3)  # 기본 배율 적용
+                                    weapon_stats[stat] = round(weapon_stats.get(stat, 0) + increase, 3)
                                 
-                                # 무기 데이터 업데이트
-                                weapon_stats[stat] = round(weapon_stats.get(stat, 0) + increase, 3)
 
                         # 결과 반영
                         ref_weapon.update(weapon_stats)
@@ -5886,7 +5887,7 @@ class hello(commands.Cog):
                         # 주 강화 옵션이 올스탯일 경우
                         if main_stat == "올스탯":
                             for stat, increase in enhancement_options.items():
-                                value = round(increase * 1.2, 3)  # 올스탯은 동일한 배율 적용
+                                value = round(increase, 3)  # 올스탯은 동일한 배율 적용
                                 if stat in ["명중률", "치명타 확률", "치명타 대미지"]:
                                     result_embed.add_field(name=stat, value=f"**{weapon_data.get(stat,0) * 100:.1f}%(+{value * 100:.1f}%)**", inline=True)
                                 else:
@@ -5900,12 +5901,9 @@ class hello(commands.Cog):
                                 result_embed.add_field(name=main_stat, value=f"**{weapon_data.get(main_stat,0)}(+{main_value})**", inline=False)
                             # 나머지 스탯은 inline=True로 추가
                             for stat, increase in enhancement_options.items():
-                                if stat != main_stat:
+                                if stat != main_stat and stat in ['공격력','방어력','내구도']:
                                     value = round(increase * (2 if stat == main_stat else 1.0), 3)
-                                    if stat in ["명중률", "치명타 확률", "치명타 대미지"]:
-                                        result_embed.add_field(name=stat, value=f"{weapon_data.get(stat,0) * 100:.1f}%(+{value * 100:.1f}%)", inline=True)
-                                    else:
-                                        result_embed.add_field(name=stat, value=f"{weapon_data.get(stat,0)}(+{value})", inline=True)
+                                    result_embed.add_field(name=stat, value=f"{weapon_data.get(stat,0)}(+{value})", inline=True)
 
                         await enhance_message.edit(embed=result_embed)
                         
@@ -5925,14 +5923,14 @@ class hello(commands.Cog):
             
             
             enhance_description = {
-                "공격 강화": "공격력을 강화합니다!\n공격력 성장 배율 **2배!**",
-                "치명타 확률 강화": "치명타 확률을 강화합니다!\n치명타 확률 성장 배율 **2배!**",
-                "치명타 대미지 강화": "치명타 대미지를 강화합니다!\n치명타 대미지 성장 배율 **2배!**",
-                "속도 강화": "스피드를 강화합니다!\n스피드 성장 배율 **2배!**",
-                "명중 강화": "명중률을 강화합니다!\n명중률 성장 배율 **2배!**",
-                "방어 강화": "방어력을 강화합니다!\n방어력 성장 배율 **2배!**",
-                "내구도 강화": "내구도를 강화합니다!\n내구도 성장 배율 **2배!**",
-                "밸런스 강화": "모든 스탯을 강화합니다!\n모든 스탯 성장 배율 **1.2배!**"
+                "공격 강화": "공격력을 강화합니다!\n 공격력 + 10, 방어력 + 5, 내구도 + 50",
+                "치명타 확률 강화": "치명타 확률을 강화합니다!\n공격력 + 5, 방어력 + 5, 내구도 + 50, 치명타 확률 + 2%",
+                "치명타 대미지 강화": "치명타 대미지를 강화합니다!\n공격력 + 5, 방어력 + 5, 내구도 + 50, 치명타 대미지 + 20%",
+                "속도 강화": "스피드를 강화합니다!\n공격력 + 5, 방어력 + 5, 내구도 + 50, 속도 + 10",
+                "명중 강화": "명중률을 강화합니다!\n공격력 + 5, 방어력 + 5, 내구도 + 50, 명중 + 4%",
+                "방어 강화": "방어력을 강화합니다!\n공격력 + 5, 방어력 + 10, 내구도 + 50",
+                "내구도 강화": "내구도를 강화합니다!\n공격력 + 5, 방어력 + 5, 내구도 + 100",
+                "밸런스 강화": "모든 스탯을 강화합니다!\n공격력 + 5, 방어력 + 5, 내구도 + 50, 치명타 확률 + 2%, 치명타 대미지 + 10%, 속도 + 5, 명중 + 2%"
             }
 
 
