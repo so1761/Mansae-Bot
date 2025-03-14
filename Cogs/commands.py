@@ -6091,13 +6091,12 @@ class hello(commands.Cog):
         # 비동기 전투 시뮬레이션
         attacker, defender = (challenger, opponent) if challenger["Speed"] > opponent["Speed"] else (opponent, challenger)
         
-        thread = await interaction.channel.create_thread(
+        thread = await interaction.response.create_message(
             name=f"{interaction.user.display_name} vs {상대.display_name} 무기 대결",
             type=discord.ChannelType.public_thread
         )
         # 비동기 전투 시뮬레이션 전에 스탯을 임베드로 전송
-        embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green())
-        await thread.send(embed=embed)
+        embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green)
 
         # 챌린저 무기 스탯 정보 추가
         embed.add_field(name=f"[{challenger['name']}]", value=f"""
@@ -6151,7 +6150,8 @@ class hello(commands.Cog):
             # 공격자와 방어자 변경
             if extra_attack: # 추가 공격 찬스
                 battle_embed = discord.Embed(title=f"{attacker['name']}의 추가 턴!⚔️", color=discord.Color.lighter_gray())
-                battle_embed.add_field(name ="", value = f"**스피드 차이로 인하여 추가로 공격합니다!**",inline = False)
+                battle_embed.add_field(name ="", value = f"**스피드 차이로 인하여 추가 공격!**",inline = False)
+                await thread.send(embed = battle_embed)
             else:
                 attacker, defender = defender, attacker
             
