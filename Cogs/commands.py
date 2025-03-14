@@ -5856,8 +5856,8 @@ class hello(commands.Cog):
                             for stat, base_increase in enhancement_options.items():
                                 increase = round(base_increase * 1.2, 3)  # 1.2배 배율 적용
 
-                            # 무기 데이터 업데이트
-                            weapon_stats[stat] = round(weapon_stats.get(stat, 0) + increase, 3)
+                                # 무기 데이터 업데이트
+                                weapon_stats[stat] = round(weapon_stats.get(stat, 0) + increase, 3)
                         else:
                             # 강화 수치 설정 (특화 스탯과 일반 스탯 구분)
                             for stat, base_increase in enhancement_options.items():
