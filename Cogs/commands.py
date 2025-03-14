@@ -6088,8 +6088,13 @@ class hello(commands.Cog):
             "Defense": weapon_data_opponent.get("방어력", 0),
         }
 
-        await interaction.response.send_message(f"{interaction.user.display_name} vs {상대.display_name} 무기 대결!")
-
+        # 임베드 생성
+        embed = discord.Embed(
+            title=f"{interaction.user.display_name} vs {상대.display_name} 무기 대결",
+            description="대결이 시작되었습니다!",
+            color=discord.Color.blue()  # 원하는 색상 선택
+        )
+        await interaction.response.send_message(embed=embed)
         # 비동기 전투 시뮬레이션
         attacker, defender = (challenger, opponent) if challenger["Speed"] > opponent["Speed"] else (opponent, challenger)
         
