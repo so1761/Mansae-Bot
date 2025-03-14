@@ -5845,7 +5845,9 @@ class hello(commands.Cog):
                     async def enhance_weapon(enhancement_type):
                         # 강화 타입에 따른 배율 가져오기
                         main_stat = enhancement_multipliers[enhancement_type]["main_stat"]
-                        
+
+                        ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
+                        weapon_data = ref_weapon.get() or {}
                         # 무기의 기존 스탯 가져오기
                         weapon_stats = {key: value for key, value in weapon_data.items() if key not in ["재료", "강화","이름"]}
 
