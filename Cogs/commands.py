@@ -1346,6 +1346,7 @@ class DiceRollView(discord.ui.View):
         self.hold = [False] * 5  # 각 주사위가 hold 상태인지 저장
         self.reroll_count = reroll_count
         self.max_rerolls = 2
+        self.keep_alive_task = None
         self.update_buttons()
 
     def toggle_hold(self, index):
@@ -1364,19 +1365,29 @@ class DiceRollView(discord.ui.View):
         else:
             self.add_item(FinalizeButton(self))
 
+    async def timer_task(self):
+        try:
+            await asyncio.sleep(120)
+            self.clear_items()
+
+            result = ', '.join(str(roll) for roll in self.rolls)
+            hand = evaluate_hand(self.rolls)  # 족보 판별
+            embed = discord.Embed(
+                title="🎲 주사위 굴리기!",
+                description=f"{self.user}님의 주사위: **{result}**\n 족보: **{hand}**",
+                color=discord.Color.blue()
+            )
+
+            await self.message.edit(embed=embed,view = self)
+        except asyncio.CancelledError:
+            # 타이머가 취소되었을 경우 예외 무시
+            return
+
     async def start_timer(self):
-        await asyncio.sleep(120)
-        self.clear_items()
+        """타이머 백그라운드 태스크 시작"""
+        self.keep_alive_task = asyncio.create_task(self.timer_task())
 
-        result = ', '.join(str(roll) for roll in self.rolls)
-        hand = evaluate_hand(self.rolls)  # 족보 판별
-        embed = discord.Embed(
-            title="🎲 주사위 굴리기!",
-            description=f"{self.user}님의 주사위: **{result}**\n 족보: **{hand}**",
-            color=discord.Color.blue()
-        )
 
-        await self.message.edit(embed=embed,view = self)
 
 # 야추 다이스 버튼
 class DiceButton(discord.ui.Button):
@@ -1450,6 +1461,8 @@ class FinalizeButton(discord.ui.Button):
         ref.update({"실행 여부":True})
         ref.update({"결과": self.custom_view.rolls})
         ref.update({"족보": hand})
+
+        self.custom_view.keep_alive_task.cancel() # 취소
 
         await interaction.response.edit_message(content="", view=None, embed = embed)
 
