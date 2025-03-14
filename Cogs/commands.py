@@ -6088,10 +6088,12 @@ class hello(commands.Cog):
             "Defense": weapon_data_opponent.get("방어력", 0),
         }
 
+        await interaction.response.send_message(f"{interaction.user.display_name} vs {상대.display_name} 무기 대결!")
+
         # 비동기 전투 시뮬레이션
         attacker, defender = (challenger, opponent) if challenger["Speed"] > opponent["Speed"] else (opponent, challenger)
         
-        thread = await interaction.response.create_message(
+        thread = await interaction.channel.create_thread(
             name=f"{interaction.user.display_name} vs {상대.display_name} 무기 대결",
             type=discord.ChannelType.public_thread
         )
