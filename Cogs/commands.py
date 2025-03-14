@@ -6028,7 +6028,7 @@ class hello(commands.Cog):
                 critical_bool = True
 
             # 방어력에 따른 완벽 방어 확률 적용
-            perfect_block_chance = (defender["Defense"] // 20) * 0.01
+            perfect_block_chance = (defender["Defense"] // 10) * 0.01
             if random.random() < perfect_block_chance:
                 return 0, False, False, True  # 완벽 방어 발생 시 피해 0
             
@@ -6040,7 +6040,7 @@ class hello(commands.Cog):
             
             extra_attack_bool = False
             # 스피드에 따른 추가 공격 확률 적용
-            extra_attack_chance = max(0, (attacker["Speed"] - defender["Speed"]) // 5 * 0.01)
+            extra_attack_chance = max(0, (attacker["Speed"] - defender["Speed"]) // 3 * 0.01)
             if random.random() < extra_attack_chance:
                 extra_attack_bool = True
             
