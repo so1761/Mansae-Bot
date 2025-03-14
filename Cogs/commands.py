@@ -5875,28 +5875,32 @@ class hello(commands.Cog):
                         result_embed.add_field(name="강화 종류", value=f"{selected_enhance_type}", inline=False)
 
                         
-
+                        ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
+                        weapon_data = ref_weapon.get() or {}
+                        
                         # 주 강화 옵션이 올스탯일 경우
                         if main_stat == "올스탯":
                             for stat, increase in enhancement_options.items():
                                 value = round(increase * 1.1, 3)  # 올스탯은 동일한 배율 적용
                                 if stat in ["명중률", "치명타 확률", "치명타 대미지"]:
-                                    result_embed.add_field(name=stat, value=f"**+{value * 100:.1f}%**", inline=True)
+                                    result_embed.add_field(name=stat, value=f"**{weapon_data.get(stat,0)}%(+{value * 100:.1f}%)**", inline=True)
                                 else:
-                                    result_embed.add_field(name=stat, value=f"**+{value}**", inline=True)
+                                    result_embed.add_field(name=stat, value=f"**{weapon_data.get(stat,0)}(+{value})**", inline=True)
                         else:
                             # 주 강화 옵션을 맨 위에 배치
                             main_value = round(enhancement_options[main_stat] * 1.5, 3)
-                            result_embed.add_field(name=main_stat, value=f"**+{main_value}**", inline=False)
-
+                            if stat in ["명중률", "치명타 확률", "치명타 대미지"]:
+                                result_embed.add_field(name=main_stat, value=f"**{weapon_data.get(main_stat,0)}%(+{main_value * 100:.1f}%)**", inline=True)
+                            else:
+                                result_embed.add_field(name=main_stat, value=f"**{weapon_data.get(main_stat,0)}(+{main_value})**", inline=True)
                             # 나머지 스탯은 inline=True로 추가
                             for stat, increase in enhancement_options.items():
                                 if stat != main_stat:
                                     value = round(increase * (1.5 if stat == main_stat else 1.0), 3)
                                     if stat in ["명중률", "치명타 확률", "치명타 대미지"]:
-                                        result_embed.add_field(name=stat, value=f"+{value * 100:.1f}%", inline=True)
+                                        result_embed.add_field(name=stat, value=f"{weapon_data.get(stat,0)}%(+{value * 100:.1f}%)", inline=True)
                                     else:
-                                        result_embed.add_field(name=stat, value=f"+{value}", inline=True)
+                                        result_embed.add_field(name=stat, value=f"{weapon_data.get(stat,0)}(+{value})", inline=True)
 
                         await enhance_message.edit(embed=result_embed)
                         
