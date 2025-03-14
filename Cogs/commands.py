@@ -6010,6 +6010,12 @@ class hello(commands.Cog):
             await interaction.response.send_message(embed=weapon_embed)
             return
         else:
+            weapon_parts = weapon_data.get('강화')
+            ref_weapon.update({"재료 ": weapon_parts})
+            ref_weapon.update({"이름" : ""})
+            weapon_embed = discord.Embed(title="무기 분해!", color=0xff0000)
+            weapon_embed.add_field(name="", value=f"무기를 분해하여 {weapon_parts}개의 재료를 얻었습니다!", inline=False)
+            await interaction.response.send_message(embed=weapon_embed)
             return
 
     @app_commands.command(name="무기배틀",description="각자의 무기로 대결합니다")
