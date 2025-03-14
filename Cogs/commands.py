@@ -5806,10 +5806,10 @@ class hello(commands.Cog):
                     value=f"{enhancement_rates[weapon_enhanced]}%",
                     inline=False
                 )
-                userembed.add_field(name="", value=f"10초 후 결과가 발표됩니다!", inline=False)
+                userembed.add_field(name="", value=f"5초 후 결과가 발표됩니다!", inline=False)
                 enhance_message = await channel.send(embed=userembed)
 
-                await asyncio.sleep(10)
+                await asyncio.sleep(5)
 
                 roll = random.randint(1, 100)
 
