@@ -5818,7 +5818,7 @@ class hello(commands.Cog):
 
                     # 각 스탯에 대한 옵션 설정
                     enhancement_options = {
-                        "공격력": 5,
+                        "공격력": 10,
                         "내구도": 50,
                         "방어력": 5,
                         "스피드": 5,
@@ -5869,12 +5869,9 @@ class hello(commands.Cog):
                                 elif stat == main_stat:
                                     increase = round(base_increase * 2, 3)
                                     weapon_stats[stat] = round(weapon_stats.get(stat, 0) + increase, 3)
-                                
-
+                        
                         # 결과 반영
                         ref_weapon.update(weapon_stats)
-
-                        
 
                         # 결과 메시지
                         result_embed = discord.Embed(title="✅ 강화 성공!", color=discord.Color.blue())
@@ -6047,7 +6044,9 @@ class hello(commands.Cog):
             
             extra_attack_bool = False
             # 스피드에 따른 추가 공격 확률 적용
-            extra_attack_chance = max(0, (attacker["Speed"] - defender["Speed"]) // 3 * 0.01)
+            extra_attack_chance = max(0, (attacker["Speed"] - defender["Speed"]) / 3 * 0.02)
+            if extra_attack_chance > 1:
+                extra_attack_chance == 1 # 100% 처리
             if random.random() < extra_attack_chance:
                 extra_attack_bool = True
             
@@ -6140,6 +6139,7 @@ class hello(commands.Cog):
         """, inline=False)
         await thread.send(embed=embed)
         turn = 0
+        doubled = False 
         while challenger["HP"] > 0 and opponent["HP"] > 0:
             turn += 1
             damage, extra_attack, critical, defence = attack(attacker, defender)
@@ -6166,11 +6166,17 @@ class hello(commands.Cog):
 
             # 공격자와 방어자 변경
             if extra_attack: # 추가 공격 찬스
-                battle_embed = discord.Embed(title=f"{attacker['name']}의 추가 턴!⚔️", color=discord.Color.lighter_gray())
-                battle_embed.add_field(name ="", value = f"**스피드 차이로 인하여 추가 공격!**",inline = False)
-                await thread.send(embed = battle_embed)
+                if doubled: # 이미 추가 공격을 했다면
+                    attacker, defender = defender, attacker
+                    doubled = False
+                else:
+                    battle_embed = discord.Embed(title=f"{attacker['name']}의 추가 턴!⚔️", color=discord.Color.lighter_gray())
+                    battle_embed.add_field(name ="", value = f"**스피드 차이로 인하여 추가 공격!**",inline = False)
+                    await thread.send(embed = battle_embed)
+                    doubled = True
             else:
                 attacker, defender = defender, attacker
+                doubled = False
             
             # 추가 공격 찬스가 있다면 변경하지 않음
             await asyncio.sleep(3)  # 턴 간 딜레이
