@@ -6095,7 +6095,6 @@ class hello(commands.Cog):
             name=f"{interaction.user.display_name} vs {상대.display_name} 무기 대결",
             type=discord.ChannelType.public_thread
         )
-        await thread.send()
         # 비동기 전투 시뮬레이션 전에 스탯을 임베드로 전송
         embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green())
         await thread.send(embed=embed)
