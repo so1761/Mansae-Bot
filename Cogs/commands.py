@@ -6109,7 +6109,7 @@ class hello(commands.Cog):
         embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green())
 
         # 챌린저 무기 스탯 정보 추가
-        embed.add_field(name=f"[{challenger['name']}](+{weapon_data_challenger.get("강화", 0)})", value=f"""
+        embed.add_field(name=f"[{challenger['name']}](+{weapon_data_challenger.get('강화', 0)})", value=f"""
         • 대미지: {round(challenger['Attack'] * challenger['Accuracy'])} ~ {challenger['Attack']}
         • 내구도: {challenger['HP']}
         • 공격력: {challenger['Attack']}
