@@ -6095,7 +6095,7 @@ class hello(commands.Cog):
             name=f"{interaction.user.display_name} vs {상대.display_name} 무기 대결",
             type=discord.ChannelType.public_thread
         )
-        await thread.send(embed=embed)
+        await thread.send()
         # 비동기 전투 시뮬레이션 전에 스탯을 임베드로 전송
         embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green())
 
@@ -6122,7 +6122,7 @@ class hello(commands.Cog):
         - 명중률: {round(opponent['Accuracy'] * 100, 2)}%
         - 방어력: {opponent['Defense']}
         """, inline=False)
-
+        await thread.send(embed=embed)
         
         await asyncio.sleep(3)
 
