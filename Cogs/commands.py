@@ -5794,7 +5794,7 @@ class hello(commands.Cog):
                 ref_weapon.update({"재료": weapon_parts - 1})
                 
 
-                enhancement_rate = weapon_data.get("강화확률",0.05)
+                enhancement_rate = weapon_data.get("강화확률",5)
 
                 channel = self.bot.get_channel(int(CHANNEL_ID))
 
@@ -5803,7 +5803,7 @@ class hello(commands.Cog):
                 userembed.add_field(name="", value=f"**[{weapon_name}](+{weapon_enhanced}) -> [{weapon_name}](+{weapon_enhanced + 1})**", inline=False)
                 userembed.add_field(
                     name="현재 강화 확률",
-                    value=f"{enhancement_rate * 100}%",
+                    value=f"{enhancement_rate}%",
                     inline=False
                 )
                 userembed.add_field(name="", value=f"5초 후 결과가 발표됩니다!", inline=False)
@@ -5814,7 +5814,7 @@ class hello(commands.Cog):
                 if roll <= enhancement_rate:  # 성공
                     weapon_enhanced += 1
                     ref_weapon.update({"강화": weapon_enhanced})
-                    ref_weapon.update({"강화확률": round(enhancement_rate - 0.05,3)})
+                    ref_weapon.update({"강화확률": enhancement_rate - 5})
                 
                     # 강화 옵션 설정
                     enhancement_options = {
@@ -5940,7 +5940,7 @@ class hello(commands.Cog):
 
                 else:  # 실패
                     await asyncio.sleep(5)
-                    ref_weapon.update({"강화확률": round(enhancement_rate + 0.01,3)})
+                    ref_weapon.update({"강화확률": enhancement_rate + 1})
                     result_embed = discord.Embed(title="❌ 강화 실패!", color=discord.Color.red())
                     result_embed.add_field(name="", value=f"{weapon_name}의 모습이 한 순간 빛났지만 무기에는 아무런 변화도 일어나지 않았습니다.", inline=False)
                     result_embed.add_field(name="", value=f"**[{weapon_name}](+{weapon_enhanced}) -> [{weapon_name}](+{weapon_enhanced})**", inline=False)
@@ -5964,19 +5964,19 @@ class hello(commands.Cog):
                 "밸런스 강화": "모든 스탯을 강화합니다!\n공격력 + 9, 방어력 + 4, 내구도 + 40, 치명타 확률 + 1%, 치명타 대미지 + 3%, 속도 + 3, 명중 + 2%"
             }
 
-            enhancement_rate = weapon_data.get("강화확률",0.05)
+            enhancement_rate = weapon_data.get("강화확률",5)
 
             enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
             enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
             enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
-            enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate * 100}%(+{weapon_enhanced} -> +{weapon_enhanced + 1})**", inline=False)
+            enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} -> +{weapon_enhanced + 1})**", inline=False)
             enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
             await interaction.response.edit_message(embed=enhance_embed, view=weapon_view)
 
         select.callback = select_callback
         # 0강부터 20강까지 강화 성공 확률과 강화 실패 확률을 설정합니다.
-        enhancement_rate = weapon_data.get("강화확률",0.05)
-        weapon_embed.add_field(name="현재 강화 확률", value=f"**{enhancement_rate * 100}%**", inline=False)
+        enhancement_rate = weapon_data.get("강화확률",5)
+        weapon_embed.add_field(name="현재 강화 확률", value=f"**{enhancement_rate}%**", inline=False)
         await interaction.response.send_message(embed=weapon_embed, view=discord.ui.View().add_item(select), ephemeral=True)
 
     @app_commands.command(name="무기생성",description="무기를 생성합니다")
@@ -6000,7 +6000,7 @@ class hello(commands.Cog):
                 "명중률": 0.1,
                 "치명타 대미지": 1.5,
                 "치명타 확률": 0.05,
-                "강화확률": 1
+                "강화확률": 100
             })
 
             ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
@@ -6048,7 +6048,7 @@ class hello(commands.Cog):
             ref_weapon.update({"재료": weapon_parts + weapon_enhance})
             ref_weapon.update({"이름" : ""})
             weapon_embed = discord.Embed(title="무기 분해!", color=0xff0000)
-            weapon_embed.add_field(name="", value=f"무기를 분해하여 {weapon_parts}개의 재료를 얻었습니다!", inline=False)
+            weapon_embed.add_field(name="", value=f"무기를 분해하여 {weapon_enhance}개의 재료를 얻었습니다!", inline=False)
             await interaction.response.send_message(embed=weapon_embed)
             return
 
