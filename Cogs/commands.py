@@ -5910,6 +5910,7 @@ class hello(commands.Cog):
                     await enhance_weapon(selected_enhance_type)
 
                 else:  # 실패
+                    await asyncio.sleep(5)
                     result_embed = discord.Embed(title="❌ 강화 실패!", color=discord.Color.red())
                     result_embed.add_field(name="", value=f"{weapon_name}의 모습이 한 순간 빛났지만 무기에는 아무런 변화도 일어나지 않았습니다.", inline=False)
                     result_embed.add_field(name="", value=f"**[{weapon_name}](+{weapon_enhanced}) -> [{weapon_name}](+{weapon_enhanced})**", inline=False)
@@ -6044,7 +6045,7 @@ class hello(commands.Cog):
             
             extra_attack_bool = False
             # 스피드에 따른 추가 공격 확률 적용
-            extra_attack_chance = max(0, (attacker["Speed"] - defender["Speed"]) / 3 * 0.02)
+            extra_attack_chance = max(0, (attacker["Speed"] - defender["Speed"]) / 3 * 0.01)
             if extra_attack_chance > 1:
                 extra_attack_chance == 1 # 100% 처리
             if random.random() < extra_attack_chance:
@@ -6139,7 +6140,7 @@ class hello(commands.Cog):
         """, inline=False)
         await thread.send(embed=embed)
         turn = 0
-        doubled = False 
+        #doubled = False 
         while challenger["HP"] > 0 and opponent["HP"] > 0:
             turn += 1
             damage, extra_attack, critical, defence = attack(attacker, defender)
@@ -6166,17 +6167,17 @@ class hello(commands.Cog):
 
             # 공격자와 방어자 변경
             if extra_attack: # 추가 공격 찬스
-                if doubled: # 이미 추가 공격을 했다면
-                    attacker, defender = defender, attacker
-                    doubled = False
-                else:
+                #if doubled: # 이미 추가 공격을 했다면
+                #    attacker, defender = defender, attacker
+                #    doubled = False
+                #else:
                     battle_embed = discord.Embed(title=f"{attacker['name']}의 추가 턴!⚔️", color=discord.Color.lighter_gray())
                     battle_embed.add_field(name ="", value = f"**스피드 차이로 인하여 추가 공격!**",inline = False)
                     await thread.send(embed = battle_embed)
-                    doubled = True
+                    #doubled = True
             else:
                 attacker, defender = defender, attacker
-                doubled = False
+                #doubled = False
             
             # 추가 공격 찬스가 있다면 변경하지 않음
             await asyncio.sleep(3)  # 턴 간 딜레이
