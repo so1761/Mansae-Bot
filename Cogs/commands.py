@@ -6121,7 +6121,7 @@ class hello(commands.Cog):
         """, inline=False)
 
         # 상대 무기 스탯 정보 추가
-        embed.add_field(name=f"[{opponent['name']}](+{weapon_data_opponent.get("강화", 0)})", value=f"""
+        embed.add_field(name=f"[{opponent['name']}](+{weapon_data_opponent.get('강화', 0)})", value=f"""
         • 대미지: {round(opponent['Attack'] * opponent['Accuracy'])} ~ {opponent['Attack']}
         • 내구도: {opponent['HP']}
         • 공격력: {opponent['Attack']}
