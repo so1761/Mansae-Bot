@@ -5886,7 +5886,7 @@ class hello(commands.Cog):
                         # 주 강화 옵션이 올스탯일 경우
                         if main_stat == "올스탯":
                             for stat, increase in enhancement_options.items():
-                                value = round(increase * 1.1, 3)  # 올스탯은 동일한 배율 적용
+                                value = round(increase * 1.2, 3)  # 올스탯은 동일한 배율 적용
                                 if stat in ["명중률", "치명타 확률", "치명타 대미지"]:
                                     result_embed.add_field(name=stat, value=f"**{weapon_data.get(stat,0) * 100:.1f}%(+{value * 100:.1f}%)**", inline=True)
                                 else:
@@ -5901,7 +5901,7 @@ class hello(commands.Cog):
                             # 나머지 스탯은 inline=True로 추가
                             for stat, increase in enhancement_options.items():
                                 if stat != main_stat:
-                                    value = round(increase * (1.5 if stat == main_stat else 1.0), 3)
+                                    value = round(increase * (2 if stat == main_stat else 1.0), 3)
                                     if stat in ["명중률", "치명타 확률", "치명타 대미지"]:
                                         result_embed.add_field(name=stat, value=f"{weapon_data.get(stat,0) * 100:.1f}%(+{value * 100:.1f}%)", inline=True)
                                     else:
