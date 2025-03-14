@@ -6095,35 +6095,35 @@ class hello(commands.Cog):
             name=f"{interaction.user.display_name} vs {상대.display_name} 무기 대결",
             type=discord.ChannelType.public_thread
         )
-
+        await thread.send(embed=embed)
         # 비동기 전투 시뮬레이션 전에 스탯을 임베드로 전송
         embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green())
 
         # 챌린저 무기 스탯 정보 추가
         embed.add_field(name=f"[{challenger['name']}]", value=f"""
-        - 대미지: {challenger['Attack'] * round(challenger['Accuracy'], 2)} ~ {challenger['Attack']}\n
-        - 내구도: {challenger['HP']}\n
-        - 공격력: {challenger['Attack']}\n
-        - 치명타 확률: {round(challenger['CritChance'] * 100, 2)}%\n
-        - 치명타 대미지: {round(challenger['CritDamage'] * 100, 2)}%\n
-        - 스피드: {challenger['Speed']}\n
-        - 명중률: {round(challenger['Accuracy'] * 100, 2)}%\n
+        - 대미지: {round(challenger['Attack'] * challenger['Accuracy'])} ~ {challenger['Attack']}
+        - 내구도: {challenger['HP']}
+        - 공격력: {challenger['Attack']}
+        - 치명타 확률: {round(challenger['CritChance'] * 100, 2)}%
+        - 치명타 대미지: {round(challenger['CritDamage'] * 100, 2)}%
+        - 스피드: {challenger['Speed']}
+        - 명중률: {round(challenger['Accuracy'] * 100, 2)}%
         - 방어력: {challenger['Defense']}
         """, inline=False)
 
         # 상대 무기 스탯 정보 추가
         embed.add_field(name=f"[{opponent['name']}]", value=f"""
-        - 대미지: {opponent['Attack'] * round(opponent['Accuracy'] * 100, 2)} ~ {opponent['Attack']}\n
-        - 내구도: {opponent['HP']}\n
-        - 공격력: {opponent['Attack']}\n
-        - 치명타 확률: {round(opponent['CritChance'] * 100, 2)}%\n
-        - 치명타 대미지: {round(opponent['CritDamage'] * 100, 2)}%\n
-        - 스피드: {opponent['Speed']}\n
-        - 명중률: {round(opponent['Accuracy'] * 100, 2)}%\n
+        - 대미지: {round(opponent['Attack'] * opponent['Accuracy'])} ~ {opponent['Attack']}
+        - 내구도: {opponent['HP']}
+        - 공격력: {opponent['Attack']}
+        - 치명타 확률: {round(opponent['CritChance'] * 100, 2)}%
+        - 치명타 대미지: {round(opponent['CritDamage'] * 100, 2)}%
+        - 스피드: {opponent['Speed']}
+        - 명중률: {round(opponent['Accuracy'] * 100, 2)}%
         - 방어력: {opponent['Defense']}
         """, inline=False)
 
-        await thread.send(embed=embed)
+        
         await asyncio.sleep(3)
 
         turn = 0
