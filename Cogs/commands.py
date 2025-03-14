@@ -5814,6 +5814,7 @@ class hello(commands.Cog):
                 roll = random.randint(1, 100)
 
                 if roll <= enhancement_rates[weapon_enhanced]:  # 성공
+                    
                     weapon_enhanced += 1
                     ref_weapon.update({"강화": weapon_enhanced})
 
@@ -5846,7 +5847,7 @@ class hello(commands.Cog):
                         main_stat = enhancement_multipliers[enhancement_type]["main_stat"]
                         
                         # 무기의 기존 스탯 가져오기
-                        weapon_stats = weapon_data.copy()
+                        weapon_stats = {key: value for key, value in weapon_data.items() if key not in ["재료", "강화","이름"]}
 
                         if main_stat == "올스탯":
                             # 강화 수치 설정 (모든 스탯 1.1배)
@@ -5866,7 +5867,6 @@ class hello(commands.Cog):
 
                         # 결과 반영
                         ref_weapon.update(weapon_stats)
-                        ref_weapon.update({"강화": weapon_enhanced + 1})
 
                         # 결과 메시지
                         result_embed = discord.Embed(title="✅ 강화 성공!", color=discord.Color.blue())
