@@ -5870,19 +5870,30 @@ class hello(commands.Cog):
                         # 결과 메시지
                         result_embed = discord.Embed(title="✅ 강화 성공!", color=discord.Color.blue())
                         result_embed.add_field(name="", value=f"**{weapon_name}**에 힘이 깃들었습니다!", inline=False)
+                        result_embed.add_field(name="", value=f"**[{weapon_name}](+{weapon_enhanced}) -> [{weapon_name}](+{weapon_enhanced})**", inline=False)
+                        result_embed.add_field(name="강화 종류", value=f"**{selected_enhance_type}", inline=False)
 
-                        # 스탯 증가 정보 추가
-                        for stat, increase in enhancement_options.items():
-                            if main_stat == "올스탯":
-                                value = round(increase * 1.1, 3)
-                            else:
-                                value = round(increase * (1.5 if stat == main_stat else 1.0), 3)
-                            
-                            # % 표시가 필요한 스탯 변환
-                            if stat in ["명중률", "치명타 확률", "치명타 대미지"]:
-                                result_embed.add_field(name=stat, value=f"+{value * 100:.1f}%", inline=False)
-                            else:
-                                result_embed.add_field(name=stat, value=f"+{value}", inline=False)
+                        # 주 강화 옵션이 올스탯일 경우
+                        if main_stat == "올스탯":
+                            for stat, increase in enhancement_options.items():
+                                value = round(increase * 1.1, 3)  # 올스탯은 동일한 배율 적용
+                                if stat in ["명중률", "치명타 확률", "치명타 대미지"]:
+                                    result_embed.add_field(name=stat, value=f"**+{value * 100:.1f}%**", inline=True)
+                                else:
+                                    result_embed.add_field(name=stat, value=f"**+{value}**", inline=True)
+                        else:
+                            # 주 강화 옵션을 맨 위에 배치
+                            main_value = round(enhancement_options[main_stat] * 1.5, 3)
+                            result_embed.add_field(name=main_stat, value=f"**+{main_value}**", inline=False)
+
+                            # 나머지 스탯은 inline=True로 추가
+                            for stat, increase in enhancement_options.items():
+                                if stat != main_stat:
+                                    value = round(increase * (1.5 if stat == main_stat else 1.0), 3)
+                                    if stat in ["명중률", "치명타 확률", "치명타 대미지"]:
+                                        result_embed.add_field(name=stat, value=f"+{value * 100:.1f}%", inline=True)
+                                    else:
+                                        result_embed.add_field(name=stat, value=f"+{value}", inline=True)
 
                         await enhance_message.edit(embed=result_embed)
                         
@@ -6133,7 +6144,7 @@ class hello(commands.Cog):
 
             # 공격자와 방어자 변경
             if extra_attack: # 추가 공격 찬스
-                battle_embed = discord.Embed(title=f"{attacker['name']}의 추가 턴!⚔️", color=discord.Color.blue())
+                battle_embed = discord.Embed(title=f"{attacker['name']}의 추가 턴!⚔️", color=discord.Color.lighter_gray())
                 battle_embed.add_field(name ="", value = f"**스피드 차이로 인하여 추가로 공격합니다!**",inline = False)
             else:
                 attacker, defender = defender, attacker
