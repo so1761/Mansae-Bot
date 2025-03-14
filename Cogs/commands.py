@@ -6098,7 +6098,7 @@ class hello(commands.Cog):
             type=discord.ChannelType.public_thread
         )
         # 비동기 전투 시뮬레이션 전에 스탯을 임베드로 전송
-        embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green)
+        embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green())
 
         # 챌린저 무기 스탯 정보 추가
         embed.add_field(name=f"[{challenger['name']}]", value=f"""
