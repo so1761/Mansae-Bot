@@ -5877,7 +5877,7 @@ class hello(commands.Cog):
                         ref_weapon_log = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기/강화내역")
                         weapon_log_data = ref_weapon_log.get() or {}
 
-                        original_enhancement = weapon_log_data.get(enhancement_type,"")
+                        original_enhancement = weapon_log_data.get(enhancement_type,0)
                         ref_weapon_log.update({enhancement_type : original_enhancement + 1}) # 선택한 강화 + 1
 
                         # 무기의 기존 스탯 가져오기
@@ -5923,7 +5923,7 @@ class hello(commands.Cog):
                                     result_embed.add_field(name=stat, value=f"**{weapon_data.get(stat,0)}(+{value})**", inline=True)
                         else:
                             # 주 강화 옵션을 맨 위에 배치
-                            main_value = round(enhancement_options['stats'][main_stat], 3)
+                            main_value = round(enhancement_options[enhancement_type]['stats'][main_stat], 3)
                             if main_stat in ["명중률", "치명타 확률", "치명타 대미지"]:
                                 result_embed.add_field(name=main_stat, value=f"**{weapon_data.get(main_stat,0) * 100:.1f}%(+{main_value * 100:.1f}%)**", inline=False)
                             else:
@@ -6000,7 +6000,8 @@ class hello(commands.Cog):
                 "명중률": 0.1,
                 "치명타 대미지": 1.5,
                 "치명타 확률": 0.05,
-                "강화확률": 100
+                "강화확률": 100,
+                "강화내역": ""
             })
 
             ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
