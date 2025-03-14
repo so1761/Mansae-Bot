@@ -24,3 +24,5 @@ ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예
 item_data = ref_item.get()
 dice_refresh = item_data.get('주사위 초기화', 0)
 print(dice_refresh)
+if dice_refresh:
+    print("True!")
