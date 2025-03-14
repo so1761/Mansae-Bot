@@ -5864,8 +5864,8 @@ class hello(commands.Cog):
                                 else:
                                     increase = round(base_increase * 1.0, 3)  # 기본 배율 적용
                                 
-                        # 무기 데이터 업데이트
-                        weapon_stats[stat] = round(weapon_stats.get(stat, 0) + increase, 3)
+                                # 무기 데이터 업데이트
+                                weapon_stats[stat] = round(weapon_stats.get(stat, 0) + increase, 3)
 
                         # 결과 반영
                         ref_weapon.update(weapon_stats)
