@@ -5809,8 +5809,6 @@ class hello(commands.Cog):
                 userembed.add_field(name="", value=f"5초 후 결과가 발표됩니다!", inline=False)
                 enhance_message = await channel.send(embed=userembed)
 
-                await asyncio.sleep(5)
-
                 roll = random.randint(1, 100)
 
                 if roll <= enhancement_rates[weapon_enhanced]:  # 성공
@@ -5875,6 +5873,8 @@ class hello(commands.Cog):
                         # 결과 반영
                         ref_weapon.update(weapon_stats)
 
+                        
+
                         # 결과 메시지
                         result_embed = discord.Embed(title="✅ 강화 성공!", color=discord.Color.blue())
                         result_embed.add_field(name="", value=f"**{weapon_name}**에 힘이 깃들었습니다!", inline=False)
@@ -5885,6 +5885,7 @@ class hello(commands.Cog):
                         ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
                         weapon_data = ref_weapon.get() or {}
                         
+                        await asyncio.sleep(5)
                         # 주 강화 옵션이 올스탯일 경우
                         if main_stat == "올스탯":
                             for stat, increase in enhancement_options.items():
