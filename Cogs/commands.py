@@ -5866,6 +5866,7 @@ class hello(commands.Cog):
                                         increase = round(base_increase * 2, 3)
                                         weapon_stats[stat] = round(weapon_stats.get(stat, 0) + increase, 3)
                                     increase = round(base_increase, 3)  # 기본 배율 적용
+                                    weapon_stats[stat] = round(weapon_stats.get(stat, 0) + increase, 3)
                                 elif stat == main_stat:
                                     increase = round(base_increase * 2, 3)
                                     weapon_stats[stat] = round(weapon_stats.get(stat, 0) + increase, 3)
