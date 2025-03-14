@@ -6101,25 +6101,25 @@ class hello(commands.Cog):
 
         # 챌린저 무기 스탯 정보 추가
         embed.add_field(name=f"[{challenger['name']}]", value=f"""
-        - 대미지: {challenger['Attack'] * round(challenger['Accuracy'] * 100, 2)} ~ {challenger['Attack']}
-        - 내구도: {challenger['HP']}
-        - 공격력: {challenger['Attack']}
-        - 치명타 확률: {round(challenger['CritChance'] * 100, 2)}%  # 치명타 확률 100배
-        - 치명타 대미지: {round(challenger['CritDamage'] * 100, 2)}%  # 치명타 대미지 100배
-        - 스피드: {challenger['Speed']}
-        - 명중률: {round(challenger['Accuracy'] * 100, 2)}%  # 명중률 100배
+        - 대미지: {challenger['Attack'] * round(challenger['Accuracy'], 2)} ~ {challenger['Attack']}\n
+        - 내구도: {challenger['HP']}\n
+        - 공격력: {challenger['Attack']}\n
+        - 치명타 확률: {round(challenger['CritChance'] * 100, 2)}%\n
+        - 치명타 대미지: {round(challenger['CritDamage'] * 100, 2)}%\n
+        - 스피드: {challenger['Speed']}\n
+        - 명중률: {round(challenger['Accuracy'] * 100, 2)}%\n
         - 방어력: {challenger['Defense']}
         """, inline=False)
 
         # 상대 무기 스탯 정보 추가
         embed.add_field(name=f"[{opponent['name']}]", value=f"""
-        - 대미지: {opponent['Attack'] * round(opponent['Accuracy'] * 100, 2)} ~ {opponent['Attack']}
-        - 내구도: {opponent['HP']}
-        - 공격력: {opponent['Attack']}
-        - 치명타 확률: {round(opponent['CritChance'] * 100, 2)}%  # 치명타 확률 100배
-        - 치명타 대미지: {round(opponent['CritDamage'] * 100, 2)}%  # 치명타 대미지 100배
-        - 스피드: {opponent['Speed']}
-        - 명중률: {round(opponent['Accuracy'] * 100, 2)}%  # 명중률 100배
+        - 대미지: {opponent['Attack'] * round(opponent['Accuracy'] * 100, 2)} ~ {opponent['Attack']}\n
+        - 내구도: {opponent['HP']}\n
+        - 공격력: {opponent['Attack']}\n
+        - 치명타 확률: {round(opponent['CritChance'] * 100, 2)}%\n
+        - 치명타 대미지: {round(opponent['CritDamage'] * 100, 2)}%\n
+        - 스피드: {opponent['Speed']}\n
+        - 명중률: {round(opponent['Accuracy'] * 100, 2)}%\n
         - 방어력: {opponent['Defense']}
         """, inline=False)
 
