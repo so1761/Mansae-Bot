@@ -6068,15 +6068,15 @@ class hello(commands.Cog):
                 critical_bool = True
 
             # 방어력에 따른 완벽 방어 확률 적용
-            perfect_block_chance = (defender["Defense"] // 20) * 0.01
+            perfect_block_chance = max(0, (defender["Defense"] - attacker["Attack"] // 10) * 0.01)
             if random.random() < perfect_block_chance:
                 return 0, False, False, True  # 완벽 방어 발생 시 피해 0
             
             damage_reduction = calculate_damage_reduction(defender["Defense"])
             if critical_bool: # 크리티컬 시 방어력 무시
-                final_damage = base_damage
+                final_damage = base_damage * (1 - damage_reduction / 2) 
             else:
-                final_damage = base_damage * (1 - damage_reduction / 2)  # 방어력 적용 후 최종 피해량
+                final_damage = base_damage * (1 - damage_reduction)  # 방어력 적용 후 최종 피해량
             
             extra_attack_bool = False
             # 스피드에 따른 추가 공격 확률 적용
@@ -6199,6 +6199,21 @@ class hello(commands.Cog):
             if defender["HP"] <= 0:
                 await thread.send(f"**{attacker['name']} 승리!**")
                 return
+            
+            if attacker['name'] == challenger['name']: # 도전자 공격
+                if weapon_data_opponent.get('내구도', '') >= 2000:
+                    heal_status = round(weapon_data_opponent.get('내구도', '') * 0.02) # 최대 체력의 2% 회복
+                    battle_embed = discord.Embed(title=f"{defender['name']}의 자가 수복! ", color=discord.Color.blue())
+                    battle_embed.add_field(name ="", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
+                    defender["HP"] += heal_status
+                    battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")  
+            elif attacker['name'] == opponent['name']: # 상대 공격
+                if weapon_data_challenger.get('내구도', '') >= 2000:
+                    heal_status = round(weapon_data_challenger.get('내구도', '') * 0.02) # 최대 체력의 2% 회복
+                    battle_embed = discord.Embed(title=f"{defender['name']}의 자가 수복! ", color=discord.Color.red())
+                    battle_embed.add_field(name ="", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
+                    defender["HP"] += heal_status
+                    battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")  
 
             # 공격자와 방어자 변경
             if extra_attack: # 추가 공격 찬스
