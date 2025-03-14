@@ -6098,6 +6098,9 @@ class hello(commands.Cog):
         await thread.send()
         # 비동기 전투 시뮬레이션 전에 스탯을 임베드로 전송
         embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green())
+        await thread.send(embed=embed)
+        
+        await asyncio.sleep(3)
 
         # 챌린저 무기 스탯 정보 추가
         embed.add_field(name=f"[{challenger['name']}]", value=f"""
@@ -6123,9 +6126,6 @@ class hello(commands.Cog):
         - 방어력: {opponent['Defense']}
         """, inline=False)
         await thread.send(embed=embed)
-        
-        await asyncio.sleep(3)
-
         turn = 0
         while challenger["HP"] > 0 and opponent["HP"] > 0:
             turn += 1
