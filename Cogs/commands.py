@@ -5866,12 +5866,15 @@ class hello(commands.Cog):
 
                         # 결과 반영
                         ref_weapon.update(weapon_stats)
+                        ref_weapon.update({"강화": weapon_enhanced + 1})
 
                         # 결과 메시지
                         result_embed = discord.Embed(title="✅ 강화 성공!", color=discord.Color.blue())
                         result_embed.add_field(name="", value=f"**{weapon_name}**에 힘이 깃들었습니다!", inline=False)
-                        result_embed.add_field(name="", value=f"**[{weapon_name}](+{weapon_enhanced}) -> [{weapon_name}](+{weapon_enhanced})**", inline=False)
-                        result_embed.add_field(name="강화 종류", value=f"**{selected_enhance_type}", inline=False)
+                        result_embed.add_field(name="", value=f"**[{weapon_name}](+{weapon_enhanced - 1}) -> [{weapon_name}](+{weapon_enhanced})**", inline=False)
+                        result_embed.add_field(name="강화 종류", value=f"{selected_enhance_type}", inline=False)
+
+                        
 
                         # 주 강화 옵션이 올스탯일 경우
                         if main_stat == "올스탯":
