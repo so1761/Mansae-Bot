@@ -6195,25 +6195,23 @@ class hello(commands.Cog):
                 return
             
             if attacker['name'] == challenger['name']: # 도전자 공격
-                if weapon_data_opponent.get('내구도', '') >= 2000:
-                    heal_status = round(weapon_data_opponent.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
-                    battle_embed = discord.Embed(title=f"{defender['name']}의 자가 수복! ", color=discord.Color.blue())
-                    battle_embed.add_field(name ="", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
-                    defender["HP"] += heal_status
-                    if defender["HP"] > weapon_data_opponent.get('내구도', ''):
-                        defender["HP"] = weapon_data_opponent.get('내구도', '')
-                    battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")  
-                    await thread.send(embed = battle_embed)
+                heal_status = round(weapon_data_opponent.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
+                battle_embed = discord.Embed(title=f"{defender['name']}의 자가 수복! ", color=discord.Color.blue())
+                battle_embed.add_field(name ="", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
+                defender["HP"] += heal_status
+                if defender["HP"] > weapon_data_opponent.get('내구도', ''):
+                    defender["HP"] = weapon_data_opponent.get('내구도', '')
+                battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")  
+                await thread.send(embed = battle_embed)
             elif attacker['name'] == opponent['name']: # 상대 공격
-                if weapon_data_challenger.get('내구도', '') >= 2000:
-                    heal_status = round(weapon_data_challenger.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
-                    battle_embed = discord.Embed(title=f"{defender['name']}의 자가 수복! ", color=discord.Color.red())
-                    battle_embed.add_field(name ="", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
-                    defender["HP"] += heal_status
-                    if defender["HP"] > weapon_data_challenger.get('내구도', ''):
-                        defender["HP"] = weapon_data_challenger.get('내구도', '')
-                    battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")
-                    await thread.send(embed = battle_embed)
+                heal_status = round(weapon_data_challenger.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
+                battle_embed = discord.Embed(title=f"{defender['name']}의 자가 수복! ", color=discord.Color.red())
+                battle_embed.add_field(name ="", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
+                defender["HP"] += heal_status
+                if defender["HP"] > weapon_data_challenger.get('내구도', ''):
+                    defender["HP"] = weapon_data_challenger.get('내구도', '')
+                battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")
+                await thread.send(embed = battle_embed)
             
             # 공격자와 방어자 변경
             if extra_attack: # 추가 공격 찬스
@@ -6717,7 +6715,7 @@ class hello(commands.Cog):
                     if debuff == "방어력 감소":
                         player["Defense"] = max(0, player["Defense"] * 0.9)  # 방어력 감소
                     if debuff == "공격력 감소":
-                        player["Attack"] = max(0, player["Attack"] * 0.8)  # 공격력 감소
+                        player["Attack"] = max(0, player["Attack"] * 0.5)  # 공격력 감소
                     if debuff == "스피드 감소":
                         player["Speed"] = max(0, player["Speed"] - 15)  # 스피드 감소
                     
@@ -6744,7 +6742,7 @@ class hello(commands.Cog):
                     if debuff == "방어력 감소":
                         player["Defense"] = max(0, player["Defense"] * 0.9)  # 방어력 감소
                     if debuff == "공격력 감소":
-                        player["Attack"] = max(0, player["Attack"] * 0.8)  # 공격력 감소
+                        player["Attack"] = max(0, player["Attack"] * 0.5)  # 공격력 감소
                     if debuff == "스피드 감소":
                         player["Speed"] = max(0, player["Speed"] - 15)  # 스피드 감소
                     
@@ -6812,9 +6810,9 @@ class hello(commands.Cog):
 
             else:
                 if defence:
-                    opponent["Debuff"]["공격력 감소"] = 20  # 치명타 대미지 감소 20턴
+                    opponent["Debuff"]["공격력 감소"] = 10  # 공격력 감소 10턴
                     battle_embed = discord.Embed(title=f"공격력 감소!⚔️", color=discord.Color.blue())
-                    battle_embed.add_field(name ="", value = f"**완벽 방어로 {opponent['name']}의 공격력이 20턴간 감소합니다! (공격력 - 20%)**",inline = False)
+                    battle_embed.add_field(name ="", value = f"**완벽 방어로 {opponent['name']}의 공격력이 10턴간 감소합니다! (공격력 - 50%)**",inline = False)
                     await thread.send(embed = battle_embed)
                     
                 
@@ -6827,15 +6825,14 @@ class hello(commands.Cog):
                 break
             
             if attacker['name'] == opponent['name']: # 보스 공격
-                if weapon_data_challenger.get('내구도', '') >= 2000:
-                    heal_status = round(weapon_data_challenger.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
-                    battle_embed = discord.Embed(title=f"{defender['name']}의 자가 수복! ", color=discord.Color.blue())
-                    battle_embed.add_field(name ="", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
-                    defender["HP"] += heal_status
-                    if defender["HP"] > weapon_data_challenger.get('내구도', ''):
-                        defender["HP"] = weapon_data_challenger.get('내구도', '')
-                    battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")  
-                    await thread.send(embed = battle_embed)
+                heal_status = round(weapon_data_challenger.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
+                battle_embed = discord.Embed(title=f"{defender['name']}의 자가 수복! ", color=discord.Color.blue())
+                battle_embed.add_field(name ="", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
+                defender["HP"] += heal_status
+                if defender["HP"] > weapon_data_challenger.get('내구도', ''):
+                    defender["HP"] = weapon_data_challenger.get('내구도', '')
+                battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")  
+                await thread.send(embed = battle_embed)
             
             original_stats = {
                 "Defense": weapon_data_opponent.get("방어력", 0),
