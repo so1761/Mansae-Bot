@@ -6740,8 +6740,8 @@ class hello(commands.Cog):
             # 무기 정보 업데이트
             ref_weapon.update(new_stats)
 
-            
-            embed.add_field(name=f"🛠️ {weapon_name}의 변경된 스탯", value="\n".join(stat_changes) if stat_changes else "변경 사항 없음", inline=False)
+            if stat_changes:
+                embed.add_field(name=f"🛠️ {weapon_name}의 변경된 스탯", value="\n".join(stat_changes) if stat_changes else "변경 사항 없음", inline=False)
         await interaction.followup.send(embed=embed)  
     
 
