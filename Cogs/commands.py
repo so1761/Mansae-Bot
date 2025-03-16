@@ -939,7 +939,8 @@ class ItemBuyButton(discord.ui.Button):
             "주사위대결기회 추가": 100,
             "숫자야구대결기회 추가": 100,
             "야추 초기화": 100,
-            "완전 익명화": 1000
+            "완전 익명화": 1000,
+            "재료": 100
         }
 
         if real_point < item_menu[self.item_name]: # 포인트가 적을 경우
@@ -1009,7 +1010,8 @@ class ItemSelect(discord.ui.Select):
             discord.SelectOption(label = "주사위대결기회 추가", value = "주사위대결기회 추가", description = "주사위 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다."),
             discord.SelectOption(label = "숫자야구대결기회 추가", value = "숫자야구대결기회 추가", description = "숫자야구 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다."),
             discord.SelectOption(label = "야추 초기화", value = "야추 초기화", description = "현재 야추 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다."),
-            discord.SelectOption(label = "완전 익명화", value = "완전 익명화", description = "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다.")
+            discord.SelectOption(label = "완전 익명화", value = "완전 익명화", description = "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다."),
+            discord.SelectOption(label = "재료", value = "재료", description = "무기를 강화할 수 있는 재료입니다. 100p로 구매 가능합니다.")
         ]
         super().__init__(
             placeholder = '구매할 아이템을 선택하세요.',
@@ -1040,7 +1042,8 @@ class ItemSelect(discord.ui.Select):
             "주사위대결기회 추가": 100,
             "숫자야구대결기회 추가": 100,
             "야추 초기화": 100,
-            "완전 익명화": 1000
+            "완전 익명화": 1000,
+            "재료": 100,
         }
 
         description = {
@@ -1054,7 +1057,8 @@ class ItemSelect(discord.ui.Select):
             "주사위대결기회 추가": "주사위 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다.",
             "숫자야구대결기회 추가": "숫자야구 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다.",
             "야추 초기화": "현재 야추 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다.",
-            "완전 익명화": "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다. 현재 구현 X"
+            "완전 익명화": "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다",
+            "재료": "무기를 강화할 수 있는 재료입니다. 100p로 구매 가능합니다"
         }
         
         item_price = item_menu[selected_item]
@@ -4599,6 +4603,13 @@ class hello(commands.Cog):
                 return
 
             ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_id}")
+            ref_data = ref.get()
+            if ref_data.get("업적해금", False):
+                embed = discord.Embed(
+                title="업적 해금 불가!",
+                description=f"{interaction.user.display_name}님은 이미 업적을 해금했습니다!",
+                color=discord.Color.blue()
+            )
             ref.update({"업적해금": True})
 
             embed = discord.Embed(
@@ -4607,6 +4618,7 @@ class hello(commands.Cog):
                 color=discord.Color.blue()
             )
 
+            point_ref.update({"포인트" : point - need_point})
             current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
             current_date = current_datetime.strftime("%Y-%m-%d")
             current_time = current_datetime.strftime("%H:%M:%S")
@@ -5634,6 +5646,8 @@ class hello(commands.Cog):
 
         refname = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트")
         name_data = refname.get()
+
+        await interaction.response.defer()
         
         # 족보 우선순위 딕셔너리 (낮은 숫자가 높은 우선순위)
         hand_rankings = {
@@ -5693,7 +5707,7 @@ class hello(commands.Cog):
         embed = discord.Embed(title="🎯 주사위 정산", color = 0x00ff00)
         embed.add_field(name="족보", value=f"**최고 족보: {yacht_hand}**(총합 : {best_total})", inline=False)
         embed.add_field(name="예상 결과", value=f"배율 : **{hand_bet_rate[best_hand_rank]}배**!\n{point_message}", inline=False)
-        await interaction.response.send_message(embed = embed)
+        await interaction.followup.send(embed = embed)
 
 
     @app_commands.command(name="주사위1등",description="현재 주사위 숫자가 가장 높은 플레이어를 보여줍니다.")
@@ -5727,13 +5741,15 @@ class hello(commands.Cog):
     
     @app_commands.command(name="강화", description="보유한 무기를 강화합니다.")
     async def enhance(self, interaction: discord.Interaction):
+
         nickname = interaction.user.name
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
         ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
         weapon_data = ref_weapon.get() or {}
-
+        ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+        item_data = ref_item.get() or {}
         weapon_name = weapon_data.get("이름", "")
 
         if weapon_name == "":
@@ -5741,7 +5757,7 @@ class hello(commands.Cog):
             return
 
         weapon_enhanced = weapon_data.get("강화", 0)
-        weapon_parts = weapon_data.get("재료", 0)
+        weapon_parts = item_data.get("재료", 0)
 
         weapon_embed = discord.Embed(title="무기 강화", color=0xff00ff)
         weapon_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
@@ -5782,21 +5798,23 @@ class hello(commands.Cog):
 
                 ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
                 weapon_data = ref_weapon.get() or {}
-
+                ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+                item_data = ref_item.get() or {}
                 weapon_enhanced = weapon_data.get("강화", 0)
-                weapon_parts = weapon_data.get("재료", 0)
+                weapon_parts = item_data.get("재료", 0)
                 
                 if weapon_parts <= 0:
                     await interaction.response.send_message("재료가 없습니다! 일일퀘스트를 통해 재료를 모아보세요!",ephemeral=True)
                     return
                 
                 await interaction.response.send_message("강화를 시작합니다!",ephemeral=True)
-                ref_weapon.update({"재료": weapon_parts - 1})
+                ref_item.update({"재료": weapon_parts - 1})
                 
 
                 enhancement_rate = weapon_data.get("강화확률",5)
 
-                channel = self.bot.get_channel(int(CHANNEL_ID))
+                ENHANCEMENT_CHANNEL = 1350434647149908070
+                channel = self.bot.get_channel(int(ENHANCEMENT_CHANNEL))
 
                 userembed = discord.Embed(title="메세지", color=discord.Color.blue())
                 userembed.add_field(name="", value=f"{interaction.user.display_name}님이 **[{weapon_name}]**의 강화를 시작했습니다!⚔️", inline=False)
@@ -5814,59 +5832,23 @@ class hello(commands.Cog):
                 if roll <= enhancement_rate:  # 성공
                     weapon_enhanced += 1
                     ref_weapon.update({"강화": weapon_enhanced})
-                    ref_weapon.update({"강화확률": enhancement_rate - 5})
+                    if enhancement_rate - 5 <= 0:
+                        ref_weapon.update({"강화확률": 1})
+                    else:
+                        ref_weapon.update({"강화확률": enhancement_rate - 5})
                 
                     # 강화 옵션 설정
                     enhancement_options = {
-                        "공격 강화": {
-                            "main_stat": "공격력",
-                            "stats": {
-                                "공격력": 20, "내구도": 30, "방어력": 3, "스피드": 1
-                            }
-                        },
-                        "치명타 대미지 강화": {
-                            "main_stat": "치명타 대미지",
-                            "stats": {
-                                "공격력": 10, "내구도": 30, "방어력": 3, "치명타 대미지": 0.1
-                            }
-                        },
-                        "치명타 확률 강화": {
-                            "main_stat": "치명타 확률",
-                            "stats": {
-                                "공격력": 10, "내구도": 30, "방어력": 3, "치명타 확률": 0.04
-                            }
-                        },
-                        "속도 강화": {
-                            "main_stat": "스피드",
-                            "stats": {
-                                "공격력": 8, "내구도": 50, "방어력": 5, "스피드": 10
-                            }
-                        },
-                        "명중 강화": {
-                            "main_stat": "명중률",
-                            "stats": {
-                                "공격력": 10, "내구도": 50, "방어력": 5, "스피드": 1, "명중률": 0.06
-                            }
-                        },
-                        "방어 강화": {
-                            "main_stat": "방어력",  
-                            "stats": {
-                                "공격력": 6, "내구도": 100, "방어력": 20
-                            }
-                        },
-                        "내구도 강화": {
-                            "main_stat": "내구도",
-                            "stats": {
-                                "공격력": 6, "내구도": 200, "방어력": 10, "스피드": 1
-                            }
-                        },
-                        "밸런스 강화": {
-                            "main_stat": "올스탯",
-                            "stats": {
-                                "공격력": 9, "내구도": 40, "방어력": 4, "스피드": 4, "명중률": 0.02, "치명타 대미지": 0.03, "치명타 확률": 0.01
-                            }
-                        }
+                        "공격 강화": {"main_stat": "공격력", "stats": {"공격력": 20, "내구도": 30, "방어력": 5, "스피드": 1}},
+                        "치명타 대미지 강화": {"main_stat": "치명타 대미지", "stats": {"공격력": 10, "내구도": 30, "방어력": 5, "치명타 대미지": 0.1}},
+                        "치명타 확률 강화": {"main_stat": "치명타 확률", "stats": {"공격력": 10, "내구도": 30, "방어력": 5, "치명타 확률": 0.04}},
+                        "속도 강화": {"main_stat": "스피드", "stats": {"공격력": 8, "내구도": 50, "방어력": 10, "스피드": 10}},
+                        "명중 강화": {"main_stat": "명중률", "stats": {"공격력": 12, "내구도": 50, "방어력": 10, "스피드": 1, "명중률": 0.06}},
+                        "방어 강화": {"main_stat": "방어력", "stats": {"공격력": 6, "내구도": 50, "방어력": 25}},
+                        "내구도 강화": {"main_stat": "내구도", "stats": {"공격력": 6, "내구도": 100, "방어력": 15}},
+                        "밸런스 강화": {"main_stat": "올스탯", "stats": {"공격력": 7, "내구도": 40, "방어력": 8, "스피드": 3, "명중률": 0.01, "치명타 대미지": 0.01, "치명타 확률": 0.01}}
                     }
+        
 
                     # 강화 함수
                     async def enhance_weapon(enhancement_type):
@@ -5881,7 +5863,7 @@ class hello(commands.Cog):
                         ref_weapon_log.update({enhancement_type : original_enhancement + 1}) # 선택한 강화 + 1
 
                         # 무기의 기존 스탯 가져오기
-                        weapon_stats = {key: value for key, value in weapon_data.items() if key not in ["재료", "강화","이름", "강화확률", "강화내역"]}
+                        weapon_stats = {key: value for key, value in weapon_data.items() if key not in ["강화","이름", "강화확률", "강화내역"]}
 
                         # 강화 옵션 가져오기
                         options = enhancement_options.get(enhancement_type, enhancement_options["밸런스 강화"])
@@ -5939,8 +5921,8 @@ class hello(commands.Cog):
                     await enhance_weapon(selected_enhance_type)
 
                 else:  # 실패
-                    await asyncio.sleep(5)
                     ref_weapon.update({"강화확률": enhancement_rate + 1})
+                    await asyncio.sleep(5)
                     result_embed = discord.Embed(title="❌ 강화 실패!", color=discord.Color.red())
                     result_embed.add_field(name="", value=f"{weapon_name}의 모습이 한 순간 빛났지만 무기에는 아무런 변화도 일어나지 않았습니다.", inline=False)
                     result_embed.add_field(name="", value=f"**[{weapon_name}](+{weapon_enhanced}) -> [{weapon_name}](+{weapon_enhanced})**", inline=False)
@@ -5954,14 +5936,14 @@ class hello(commands.Cog):
             
             
             enhance_description = {
-                "공격 강화": "공격력을 강화합니다!\n 공격력 + 20, 방어력 + 3, 속도 + 1, 내구도 + 30",
-                "치명타 확률 강화": "치명타 확률을 강화합니다!\n공격력 + 10, 방어력 + 3, 내구도 + 30, 치명타 확률 + 4%",
-                "치명타 대미지 강화": "치명타 대미지를 강화합니다!\n공격력 + 10, 방어력 + 3, 내구도 + 30, 치명타 대미지 + 10%",
-                "속도 강화": "스피드를 강화합니다!\n공격력 + 8, 방어력 + 5, 내구도 + 50, 속도 + 10",
-                "명중 강화": "명중률을 강화합니다!\n공격력 + 10, 방어력 + 5, 내구도 + 50, 속도 + 1 명중 + 6%",
-                "방어 강화": "방어력을 강화합니다!\n공격력 + 6, 방어력 + 20, 내구도 + 100",
-                "내구도 강화": "내구도를 강화합니다!\n공격력 + 6, 방어력 + 10, 내구도 + 200",
-                "밸런스 강화": "모든 스탯을 강화합니다!\n공격력 + 9, 방어력 + 4, 내구도 + 40, 치명타 확률 + 1%, 치명타 대미지 + 3%, 속도 + 3, 명중 + 2%"
+                "공격 강화": "공격력을 강화합니다!\n 공격력 + 20, 방어력 + 5, 속도 + 1, 내구도 + 30",
+                "치명타 확률 강화": "치명타 확률을 강화합니다!\n공격력 + 10, 방어력 + 5, 내구도 + 30, 치명타 확률 + 4%",
+                "치명타 대미지 강화": "치명타 대미지를 강화합니다!\n공격력 + 10, 방어력 + 5, 내구도 + 30, 치명타 대미지 + 10%",
+                "속도 강화": "스피드를 강화합니다!\n공격력 + 8, 방어력 + 10, 내구도 + 50, 속도 + 10",
+                "명중 강화": "명중률을 강화합니다!\n공격력 + 12, 방어력 + 10, 내구도 + 50, 속도 + 1 명중 + 6%",
+                "방어 강화": "방어력을 강화합니다!\n공격력 + 6, 방어력 + 25, 내구도 + 50",
+                "내구도 강화": "내구도를 강화합니다!\n공격력 + 6, 방어력 + 15, 내구도 + 100",
+                "밸런스 강화": "모든 스탯을 강화합니다!\n공격력 + 7, 방어력 + 8, 내구도 + 40, 치명타 확률 + 1%, 치명타 대미지 + 3%, 속도 + 3, 명중 + 1%"
             }
 
             enhancement_rate = weapon_data.get("강화확률",5)
@@ -6043,10 +6025,12 @@ class hello(commands.Cog):
             await interaction.response.send_message(embed=weapon_embed)
             return
         else:
-            weapon_parts = weapon_data.get('재료')
+            ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+            item_data = ref_item.get() or {}
+            weapon_parts = item_data.get('재료')
             weapon_enhance = weapon_data.get('강화')
             
-            ref_weapon.update({"재료": weapon_parts + weapon_enhance})
+            ref_item.update({"재료": weapon_parts + weapon_enhance})
             ref_weapon.update({"이름" : ""})
             weapon_embed = discord.Embed(title="무기 분해!", color=0xff0000)
             weapon_embed.add_field(name="", value=f"무기를 분해하여 {weapon_enhance}개의 재료를 얻었습니다!", inline=False)
@@ -6068,9 +6052,16 @@ class hello(commands.Cog):
                 critical_bool = True
 
             # 방어력에 따른 완벽 방어 확률 적용
-            perfect_block_chance = max(0, (defender["Defense"] - attacker["Attack"] // 10) * 0.01)
+            perfect_block_chance = max(0, min(1, (defender["Defense"] - attacker["Attack"]) * 0.001))
             if random.random() < perfect_block_chance:
-                return 0, False, False, True  # 완벽 방어 발생 시 피해 0
+                extra_attack_bool = False
+                # 스피드에 따른 추가 공격 확률 적용
+                extra_attack_chance = max(0, (attacker["Speed"] - defender["Speed"]) / 3 * 0.02)
+                if extra_attack_chance > 1:
+                    extra_attack_chance = 1 # 100% 처리
+                if random.random() < extra_attack_chance:
+                    extra_attack_bool = True
+                return 0, extra_attack_bool, False, True  # 완벽 방어 발생 시 피해 0
             
             damage_reduction = calculate_damage_reduction(defender["Defense"])
             if critical_bool: # 크리티컬 시 방어력 무시
@@ -6108,6 +6099,14 @@ class hello(commands.Cog):
             await interaction.response.send_message("상대가 무기를 가지고 있지 않습니다!",ephemeral=True)
             return
         
+        # 임베드 생성
+        embed = discord.Embed(
+            title=f"{interaction.user.display_name} vs {상대.display_name} 무기 대결",
+            description="대결이 시작되었습니다!",
+            color=discord.Color.blue()  # 원하는 색상 선택
+        )
+        await interaction.response.send_message(embed=embed)
+
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(True)
 
@@ -6120,6 +6119,7 @@ class hello(commands.Cog):
             "Speed": weapon_data_challenger.get("스피드", 0),
             "Accuracy": weapon_data_challenger.get("명중률", 0),
             "Defense": weapon_data_challenger.get("방어력", 0),
+            "Skill": weapon_data_challenger.get("스킬","")
         }
         
         opponent = {
@@ -6131,15 +6131,9 @@ class hello(commands.Cog):
             "Speed": weapon_data_opponent.get("스피드", 0),
             "Accuracy": weapon_data_opponent.get("명중률", 0),
             "Defense": weapon_data_opponent.get("방어력", 0),
+            "Skill": weapon_data_challenger.get("스킬","")
         }
 
-        # 임베드 생성
-        embed = discord.Embed(
-            title=f"{interaction.user.display_name} vs {상대.display_name} 무기 대결",
-            description="대결이 시작되었습니다!",
-            color=discord.Color.blue()  # 원하는 색상 선택
-        )
-        await interaction.response.send_message(embed=embed)
         # 비동기 전투 시뮬레이션
         attacker, defender = (challenger, opponent) if challenger["Speed"] > opponent["Speed"] else (opponent, challenger)
         
@@ -6202,24 +6196,31 @@ class hello(commands.Cog):
             
             if attacker['name'] == challenger['name']: # 도전자 공격
                 if weapon_data_opponent.get('내구도', '') >= 2000:
-                    heal_status = round(weapon_data_opponent.get('내구도', '') * 0.02) # 최대 체력의 2% 회복
+                    heal_status = round(weapon_data_opponent.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
                     battle_embed = discord.Embed(title=f"{defender['name']}의 자가 수복! ", color=discord.Color.blue())
                     battle_embed.add_field(name ="", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
                     defender["HP"] += heal_status
+                    if defender["HP"] > weapon_data_opponent.get('내구도', ''):
+                        defender["HP"] = weapon_data_opponent.get('내구도', '')
                     battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")  
+                    await thread.send(embed = battle_embed)
             elif attacker['name'] == opponent['name']: # 상대 공격
                 if weapon_data_challenger.get('내구도', '') >= 2000:
-                    heal_status = round(weapon_data_challenger.get('내구도', '') * 0.02) # 최대 체력의 2% 회복
+                    heal_status = round(weapon_data_challenger.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
                     battle_embed = discord.Embed(title=f"{defender['name']}의 자가 수복! ", color=discord.Color.red())
                     battle_embed.add_field(name ="", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
                     defender["HP"] += heal_status
-                    battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")  
-
+                    if defender["HP"] > weapon_data_challenger.get('내구도', ''):
+                        defender["HP"] = weapon_data_challenger.get('내구도', '')
+                    battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")
+                    await thread.send(embed = battle_embed)
+            
             # 공격자와 방어자 변경
             if extra_attack: # 추가 공격 찬스
                 if doubled: # 이미 추가 공격을 했다면
                     attacker, defender = defender, attacker
                     doubled = False
+                    await asyncio.sleep(2)  # 턴 간 딜레이
                 else:
                     battle_embed = discord.Embed(title=f"{attacker['name']}의 추가 턴!⚔️", color=discord.Color.lighter_gray())
                     battle_embed.add_field(name ="", value = f"**스피드 차이로 인하여 추가 공격!**",inline = False)
@@ -6228,13 +6229,721 @@ class hello(commands.Cog):
             else:
                 attacker, defender = defender, attacker
                 doubled = False
+                await asyncio.sleep(2)  # 턴 간 딜레이
             
-            # 추가 공격 찬스가 있다면 변경하지 않음
-            await asyncio.sleep(3)  # 턴 간 딜레이
 
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
 
+    @app_commands.command(name="무기배틀",description="각자의 무기로 대결합니다")
+    async def weapon_battle(self, interaction: discord.Interaction, 상대 : discord.Member):
+        # 방어력 기반 피해 감소율 계산 함수
+        def calculate_damage_reduction(defense):
+            return min(0.99, 1 - (100 / (100 + defense)))  # 방어력 공식 적용
+
+        # 공격 함수
+        def attack(attacker, defender):
+            base_damage = random.uniform(attacker["Attack"] * attacker["Accuracy"], attacker["Attack"])  # 최소~최대 피해
+            critical_bool = False
+            if random.random() < attacker["CritChance"]:
+                base_damage *= attacker["CritDamage"]
+                critical_bool = True
+
+            # 방어력에 따른 완벽 방어 확률 적용
+            perfect_block_chance = max(0, min(1, (defender["Defense"] - attacker["Attack"]) * 0.001))
+            if random.random() < perfect_block_chance:
+                extra_attack_bool = False
+                # 스피드에 따른 추가 공격 확률 적용
+                extra_attack_chance = max(0, (attacker["Speed"] - defender["Speed"]) / 3 * 0.02)
+                if extra_attack_chance > 1:
+                    extra_attack_chance = 1 # 100% 처리
+                if random.random() < extra_attack_chance:
+                    extra_attack_bool = True
+                return 0, extra_attack_bool, False, True  # 완벽 방어 발생 시 피해 0
+            
+            damage_reduction = calculate_damage_reduction(defender["Defense"])
+            if critical_bool: # 크리티컬 시 방어력 무시
+                final_damage = base_damage * (1 - damage_reduction / 2) 
+            else:
+                final_damage = base_damage * (1 - damage_reduction)  # 방어력 적용 후 최종 피해량
+            
+            extra_attack_bool = False
+            # 스피드에 따른 추가 공격 확률 적용
+            extra_attack_chance = max(0, (attacker["Speed"] - defender["Speed"]) / 3 * 0.02)
+            if extra_attack_chance > 1:
+                extra_attack_chance == 1 # 100% 처리
+            if random.random() < extra_attack_chance:
+                extra_attack_bool = True
+            
+            return max(1, round(final_damage)), extra_attack_bool, critical_bool, False  # 최소 피해량 보장
+
+        nickname = interaction.user.name
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref_weapon_challenger = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
+        weapon_data_challenger = ref_weapon_challenger.get() or {}
+
+        weapon_name_challenger = weapon_data_challenger.get("이름", "")
+        if weapon_name_challenger == "":
+            await interaction.response.send_message("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+            return
+        
+        ref_weapon_opponent = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}/무기")
+        weapon_data_opponent = ref_weapon_opponent.get() or {}
+
+        weapon_name_opponent = weapon_data_opponent.get("이름", "")
+        if weapon_name_opponent == "":
+            await interaction.response.send_message("상대가 무기를 가지고 있지 않습니다!",ephemeral=True)
+            return
+        # 임베드 생성
+        embed = discord.Embed(
+            title=f"{interaction.user.display_name} vs {상대.display_name} 무기 대결",
+            description="대결이 시작되었습니다!",
+            color=discord.Color.blue()  # 원하는 색상 선택
+        )
+        await interaction.response.send_message(embed=embed)
+
+        battle_ref = db.reference("승부예측/대결진행여부")
+        battle_ref.set(True)
+
+        challenger = {
+            "name": weapon_data_challenger.get("이름", ""),
+            "HP": weapon_data_challenger.get("내구도", 0),
+            "Attack": weapon_data_challenger.get("공격력", 0),
+            "CritChance": weapon_data_challenger.get("치명타 확률", 0),
+            "CritDamage": weapon_data_challenger.get("치명타 대미지", 0),
+            "Speed": weapon_data_challenger.get("스피드", 0),
+            "Accuracy": weapon_data_challenger.get("명중률", 0),
+            "Defense": weapon_data_challenger.get("방어력", 0),
+            "Skill": weapon_data_challenger.get("스킬","")
+        }
+        
+        opponent = {
+            "name": weapon_data_opponent.get("이름", ""),
+            "HP": weapon_data_opponent.get("내구도", 0),
+            "Attack": weapon_data_opponent.get("공격력", 0),
+            "CritChance": weapon_data_opponent.get("치명타 확률", 0),
+            "CritDamage": weapon_data_opponent.get("치명타 대미지", 0),
+            "Speed": weapon_data_opponent.get("스피드", 0),
+            "Accuracy": weapon_data_opponent.get("명중률", 0),
+            "Defense": weapon_data_opponent.get("방어력", 0),
+            "Skill": weapon_data_challenger.get("스킬","")
+        }
+
+        # 비동기 전투 시뮬레이션
+        attacker, defender = (challenger, opponent) if challenger["Speed"] > opponent["Speed"] else (opponent, challenger)
+        
+        thread = await interaction.channel.create_thread(
+            name=f"{interaction.user.display_name} vs {상대.display_name} 무기 대결",
+            type=discord.ChannelType.public_thread
+        )
+        # 비동기 전투 시뮬레이션 전에 스탯을 임베드로 전송
+        embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green())
+
+        # 챌린저 무기 스탯 정보 추가
+        embed.add_field(name=f"[{challenger['name']}](+{weapon_data_challenger.get('강화', 0)})", value=f"""
+        • 대미지: {round(challenger['Attack'] * challenger['Accuracy'])} ~ {challenger['Attack']}
+        • 내구도: {challenger['HP']}
+        • 공격력: {challenger['Attack']}
+        • 치명타 확률: {round(challenger['CritChance'] * 100, 2)}%
+        • 치명타 대미지: {round(challenger['CritDamage'] * 100, 2)}%
+        • 스피드: {challenger['Speed']}
+        • 명중률: {round(challenger['Accuracy'] * 100, 2)}%
+        • 방어력: {challenger['Defense']}
+        """, inline=False)
+
+        # 상대 무기 스탯 정보 추가
+        embed.add_field(name=f"[{opponent['name']}](+{weapon_data_opponent.get('강화', 0)})", value=f"""
+        • 대미지: {round(opponent['Attack'] * opponent['Accuracy'])} ~ {opponent['Attack']}
+        • 내구도: {opponent['HP']}
+        • 공격력: {opponent['Attack']}
+        • 치명타 확률: {round(opponent['CritChance'] * 100, 2)}%
+        • 치명타 대미지: {round(opponent['CritDamage'] * 100, 2)}%
+        • 스피드: {opponent['Speed']}
+        • 명중률: {round(opponent['Accuracy'] * 100, 2)}%
+        • 방어력: {opponent['Defense']}
+        """, inline=False)
+        await thread.send(embed=embed)
+        turn = 0
+        doubled = False 
+        while challenger["HP"] > 0 and opponent["HP"] > 0:
+            turn += 1
+            damage, extra_attack, critical, defence = attack(attacker, defender)
+            defender["HP"] -= damage
+
+            # 크리티컬 또는 방어 여부에 따라 메시지 추가
+            crit_text = "💥" if critical else ""
+            defense_text = "🛡" if defence else ""
+
+            if attacker['name'] == challenger['name']: # 도전자 공격
+                battle_embed = discord.Embed(title=f"{attacker['name']}의 공격!⚔️", color=discord.Color.blue())
+                battle_embed.add_field(name ="", value = f"**{defense_text} {damage} 대미지!{crit_text}**",inline = False)
+                battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_opponent.get('내구도', '')}]**")  
+            elif attacker['name'] == opponent['name']: # 상대 공격
+                battle_embed = discord.Embed(title=f"{attacker['name']}의 공격!⚔️", color=discord.Color.red())
+                battle_embed.add_field(name ="", value = f"**{defense_text} {damage} 대미지!{crit_text}**",inline = False)
+                battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_challenger.get('내구도', '')}]**")
+
+            await thread.send(embed = battle_embed)
+
+            if defender["HP"] <= 0:
+                await thread.send(f"**{attacker['name']} 승리!**")
+                return
+            
+            if attacker['name'] == challenger['name']: # 도전자 공격
+                if weapon_data_opponent.get('내구도', '') >= 2000:
+                    heal_status = round(weapon_data_opponent.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
+                    battle_embed = discord.Embed(title=f"{defender['name']}의 자가 수복! ", color=discord.Color.blue())
+                    battle_embed.add_field(name ="", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
+                    defender["HP"] += heal_status
+                    if defender["HP"] > weapon_data_opponent.get('내구도', ''):
+                        defender["HP"] = weapon_data_opponent.get('내구도', '')
+                    battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")  
+                    await thread.send(embed = battle_embed)
+            elif attacker['name'] == opponent['name']: # 상대 공격
+                if weapon_data_challenger.get('내구도', '') >= 2000:
+                    heal_status = round(weapon_data_challenger.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
+                    battle_embed = discord.Embed(title=f"{defender['name']}의 자가 수복! ", color=discord.Color.red())
+                    battle_embed.add_field(name ="", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
+                    defender["HP"] += heal_status
+                    if defender["HP"] > weapon_data_challenger.get('내구도', ''):
+                        defender["HP"] = weapon_data_challenger.get('내구도', '')
+                    battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")
+                    await thread.send(embed = battle_embed)
+            
+            # 공격자와 방어자 변경
+            if extra_attack: # 추가 공격 찬스
+                if doubled: # 이미 추가 공격을 했다면
+                    attacker, defender = defender, attacker
+                    doubled = False
+                    await asyncio.sleep(2)  # 턴 간 딜레이
+                else:
+                    battle_embed = discord.Embed(title=f"{attacker['name']}의 추가 턴!⚔️", color=discord.Color.lighter_gray())
+                    battle_embed.add_field(name ="", value = f"**스피드 차이로 인하여 추가 공격!**",inline = False)
+                    await thread.send(embed = battle_embed)
+                    doubled = True
+            else:
+                attacker, defender = defender, attacker
+                doubled = False
+                await asyncio.sleep(2)  # 턴 간 딜레이
+            
+
+        battle_ref = db.reference("승부예측/대결진행여부")
+        battle_ref.set(False)
+
+
+    @app_commands.command(name="파티",description = "파티의 구성원을 확인합니다.")
+    async def party(self, interaction:discord.Interaction):
+        nickname = interaction.user.name
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref_party_name = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/파티")
+        party_name = ref_party_name.get() or {}
+
+        ref_party = db.reference(f"승부예측/예측시즌/{current_predict_season}/파티/{party_name}")
+        party_data = ref_party.get()
+        members = party_data['구성원']
+
+        success_embed = discord.Embed(title="메세지", color=discord.Color.blue())
+        success_embed.add_field(name="파티 이름", value=f"{party_name}", inline=False)
+
+        # 구성원 이름을 한 줄로 이어서 추가
+        member_message = "\n".join([member for member in members])
+
+        # 구성원 필드 추가
+        success_embed.add_field(name="구성원", value=member_message, inline=False)
+
+        # Embed 보내기
+        await interaction.response.send_message(embed =success_embed)
+    
+    @app_commands.command(name="파티생성",description = "파티를 생성합니다.")
+    async def create_party(self, interaction:discord.Interaction, 이름:str):
+        nickname = interaction.user.name
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref_party = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/파티")
+        party_data = ref_party.get() or {}
+        party_name = party_data.get("파티 이름", "")
+        if party_name: # 이미 파티에 소속되어있다면
+            warning_embed = discord.Embed(title="메세지", color=discord.Color.red())
+            warning_embed.add_field(name="", value=f"이미 {party_name}에 소속되어있습니다!", inline=False)
+            await interaction.response.send_message(embed = warning_embed, ephemeral= True)
+            return
+        
+        ref_party_list = db.reference(f"승부예측/예측시즌/{current_predict_season}/파티")
+        party_list_data = ref_party_list.get() or {}
+        party_names = list(party_list_data.keys())
+        if 이름 in party_names:
+            warning_embed = discord.Embed(title="메세지", color=discord.Color.red())
+            warning_embed.add_field(name="", value=f"이미 존재하는 파티 이름입니다! 다른 이름으로 시도해주세요!", inline=False)
+            await interaction.response.send_message(embed = warning_embed, ephemeral= True)
+            return
+
+        ref_party.set(이름)
+        ref_party_list = db.reference(f"승부예측/예측시즌/{current_predict_season}/파티/{이름}")
+        ref_party_list.update({
+            "리더": nickname,
+            "구성원": [nickname,]})
+        success_embed = discord.Embed(title="메세지", color=discord.Color.blue())
+        success_embed.add_field(name="", value=f"{이름} 파티가 생성되었습니다!", inline=False)
+        await interaction.response.send_message(embed = success_embed)
+
+
+    @app_commands.command(name="파티초대",description = "파티에 멤버를 추가합니다.")
+    async def invite_party(self, interaction:discord.Interaction, 대상: discord.Member):
+        nickname = interaction.user.name
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+        
+        ref_party_inviter = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/파티")
+        inviter_party_name = ref_party_inviter.get() or {}
+
+        if not inviter_party_name: # 초대자의 파티가 없을 경우
+            warning_embed = discord.Embed(title="메세지", color=discord.Color.red())
+            warning_embed.add_field(name="", value=f"파티를 먼저 만들어주세요!", inline=False)
+            await interaction.response.send_message(embed = warning_embed, ephemeral= True)
+            return
+
+        ref_party_target = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{대상.name}/파티")
+        target_party_name = ref_party_target.get() or {}
+
+        if target_party_name: # 대상자가 파티에 이미 있을 경우
+            warning_embed = discord.Embed(title="메세지", color=discord.Color.red())
+            warning_embed.add_field(name="", value=f"{대상.display_name}님은 이미 다른 파티에 속해 있습니다.", inline=False)
+            await interaction.response.send_message(embed = warning_embed, ephemeral= True)
+            return
+        
+        ref_party = db.reference(f"승부예측/예측시즌/{current_predict_season}/파티/{inviter_party_name}")
+        party_data = ref_party.get()
+        print(party_data)
+        members = party_data['구성원']
+        if 대상.name in members: # 대상이 이미 파티에 있는지 확인
+            warning_embed = discord.Embed(title="메세지", color=discord.Color.red())
+            warning_embed.add_field(name="", value=f"{대상.display_name}님은 이미 파티에 속해 있습니다.", inline=False)
+            await interaction.response.send_message(embed = warning_embed, ephemeral= True)
+            return
+
+        # 파티 리더가 아닌 경우, 새로운 파티 결성
+        if len(members) < 3:  # 최대 3명까지만 초대 가능
+            members.append(대상.name)
+            ref_party.update({'구성원': members})
+            success_embed = discord.Embed(title="메세지", color=discord.Color.blue())
+            success_embed.add_field(name="", value=f"{대상.display_name}님이 파티에 초대되었습니다.", inline=False)
+            await interaction.response.send_message(embed = success_embed)
+        else:
+            warning_embed = discord.Embed(title="메세지", color=discord.Color.red())
+            warning_embed.add_field(name="", value="파티가 가득 찼습니다. 최대 3명까지만 초대 가능합니다.", inline=False)
+            await interaction.response.send_message(embed = warning_embed, ephemeral= True)
+
+    @app_commands.command(name="파티탈퇴",description = "자신이 속한 파티를 탈퇴합니다.")
+    async def exit_party(self, interaction:discord.Interaction):
+        nickname = interaction.user.name
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref_party_name = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/파티")
+        party_name = ref_party_name.get() or {}
+        
+        if not party_name: # 파티가 없을 경우
+            warning_embed = discord.Embed(title="메세지", color=discord.Color.red())
+            warning_embed.add_field(name="", value=f"파티에 가입되어있지 않습니다!", inline=False)
+            await interaction.response.send_message(embed = warning_embed, ephemeral= True)
+            return
+        
+        ref_party = db.reference(f"승부예측/예측시즌/{current_predict_season}/파티/{party_name}")
+        party_data = ref_party.get()
+        members = party_data['구성원']
+        members.remove(nickname)
+
+        ref_party.update({'구성원': members}) # 구성원에서 제거
+        ref_party_name.set("") # 속한 파티 이름 제거
+
+        success_embed = discord.Embed(title="메세지", color=discord.Color.blue())
+        success_embed.add_field(name="파티 이름", value=f"{party_name}에서 탈퇴했습니다!", inline=False)
+
+        # Embed 보내기  
+        await interaction.response.send_message(embed =success_embed)
+
+    @app_commands.command(name="레이드",description="테스트")
+    async def raid(self, interaction: discord.Interaction):
+        # 방어력 기반 피해 감소율 계산 함수
+        def calculate_damage_reduction(defense):
+            return min(0.99, 1 - (100 / (100 + defense)))  # 방어력 공식 적용
+
+        # 공격 함수
+        def attack(attacker, defender):
+            base_damage = random.uniform(attacker["Attack"] * attacker["Accuracy"], attacker["Attack"])  # 최소~최대 피해
+            critical_bool = False
+            if random.random() < attacker["CritChance"]:
+                base_damage *= attacker["CritDamage"]
+                critical_bool = True
+
+            # 방어력에 따른 완벽 방어 확률 적용
+            perfect_block_chance = max(0, min(1, (defender["Defense"] - attacker["Attack"]) * 0.001))
+            if random.random() < perfect_block_chance:
+                extra_attack_bool = False
+                # 스피드에 따른 추가 공격 확률 적용
+                extra_attack_chance = max(0, (attacker["Speed"] - defender["Speed"]) / 3 * 0.02)
+                if extra_attack_chance > 1:
+                    extra_attack_chance = 1 # 100% 처리
+                if random.random() < extra_attack_chance:
+                    extra_attack_bool = True
+                return 0, extra_attack_bool, False, True  # 완벽 방어 발생 시 피해 0
+            
+            damage_reduction = calculate_damage_reduction(defender["Defense"])
+            if critical_bool: # 크리티컬 시 방어력 무시
+                final_damage = base_damage * (1 - damage_reduction / 2) 
+            else:
+                final_damage = base_damage * (1 - damage_reduction)  # 방어력 적용 후 최종 피해량
+            
+            extra_attack_bool = False
+            # 스피드에 따른 추가 공격 확률 적용
+            extra_attack_chance = max(0, (attacker["Speed"] - defender["Speed"]) / 3 * 0.02)
+            if extra_attack_chance > 1:
+                extra_attack_chance == 1 # 100% 처리
+            if random.random() < extra_attack_chance:
+                extra_attack_bool = True
+            
+            return max(1, round(final_damage)), extra_attack_bool, critical_bool, False  # 최소 피해량 보장
+
+        nickname = interaction.user.name
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref_weapon_challenger = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
+        weapon_data_challenger = ref_weapon_challenger.get() or {}
+
+        weapon_name_challenger = weapon_data_challenger.get("이름", "")
+        if weapon_name_challenger == "":
+            await interaction.response.send_message("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+            return
+        
+        ref_weapon_opponent = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드")
+        weapon_data_opponent = ref_weapon_opponent.get() or {}
+
+        # 임베드 생성
+        embed = discord.Embed(
+            title=f"{interaction.user.display_name}의 레이드 시작",
+            description="레이드가 시작되었습니다!",
+            color=discord.Color.blue()  # 원하는 색상 선택
+        )
+        await interaction.response.send_message(embed=embed)
+
+        battle_ref = db.reference("승부예측/대결진행여부")
+        battle_ref.set(True)
+
+        challenger = {
+            "name": weapon_data_challenger.get("이름", ""),
+            "HP": weapon_data_challenger.get("내구도", 0),
+            "Attack": weapon_data_challenger.get("공격력", 0),
+            "CritChance": weapon_data_challenger.get("치명타 확률", 0),
+            "CritDamage": weapon_data_challenger.get("치명타 대미지", 0),
+            "Speed": weapon_data_challenger.get("스피드", 0),
+            "Accuracy": weapon_data_challenger.get("명중률", 0),
+            "Defense": weapon_data_challenger.get("방어력", 0),
+            "Skill": weapon_data_challenger.get("스킬","")
+        }
+        
+        opponent = {
+            "name": weapon_data_opponent.get("이름", ""),
+            "FirstHP": weapon_data_opponent.get("초기 내구도", 0),
+            "HP": weapon_data_opponent.get("내구도", 0),
+            "Attack": weapon_data_opponent.get("공격력", 0),
+            "CritChance": weapon_data_opponent.get("치명타 확률", 0),
+            "CritDamage": weapon_data_opponent.get("치명타 대미지", 0),
+            "Speed": weapon_data_opponent.get("스피드", 0),
+            "Accuracy": weapon_data_opponent.get("명중률", 0),
+            "Defense": weapon_data_opponent.get("방어력", 0),
+            "Skill": weapon_data_opponent.get("스킬",""),
+            "Debuff": weapon_data_opponent.get("디버프",{})
+        }
+
+        # 비동기 전투 시뮬레이션
+        attacker, defender = (challenger, opponent) if challenger["Speed"] > opponent["Speed"] else (opponent, challenger)
+        
+        thread = await interaction.channel.create_thread(
+            name=f"{interaction.user.display_name}의 {opponent['name']} 레이드",
+            type=discord.ChannelType.public_thread
+        )
+
+
+        # 비동기 전투 시뮬레이션 전에 스탯을 임베드로 전송
+        embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green())
+
+        # 챌린저 무기 스탯 정보 추가
+        embed.add_field(name=f"[{challenger['name']}](+{weapon_data_challenger.get('강화', 0)})", value=f"""
+        • 대미지: {round(challenger['Attack'] * challenger['Accuracy'])} ~ {challenger['Attack']}
+        • 내구도: {challenger['HP']}
+        • 공격력: {challenger['Attack']}
+        • 치명타 확률: {round(challenger['CritChance'] * 100, 2)}%
+        • 치명타 대미지: {round(challenger['CritDamage'] * 100, 2)}%
+        • 스피드: {challenger['Speed']}
+        • 명중률: {round(challenger['Accuracy'] * 100, 2)}%
+        • 방어력: {challenger['Defense']}
+        """, inline=False)
+
+        debuffs_info = [
+            f"{debuff}: {turns}턴" for debuff, turns in opponent["Debuff"].items()
+        ]
+
+        debuff_message = ', '.join(debuffs_info) if debuffs_info else '없음'
+        # 상대 무기 스탯 정보 추가
+        embed.add_field(name=f"[{opponent['name']}](+{weapon_data_opponent.get('강화', 0)})", value=f"""
+        • 대미지: {round(opponent['Attack'] * opponent['Accuracy'])} ~ {opponent['Attack']}
+        • 내구도: {opponent['FirstHP']}
+        • 현재 내구도: {opponent['HP']}
+        • 공격력: {opponent['Attack']}
+        • 치명타 확률: {round(opponent['CritChance'] * 100, 2)}%
+        • 치명타 대미지: {round(opponent['CritDamage'] * 100, 2)}%
+        • 스피드: {opponent['Speed']}
+        • 명중률: {round(opponent['Accuracy'] * 100, 2)}%
+        • 방어력: {opponent['Defense']}
+        • 디버프: {debuff_message}
+        """, inline=False)
+
+        await thread.send(embed=embed)
+        
+        # 디버프 감소 및 적용
+        def apply_debuffs(player):
+            # 원래 스탯을 기록해 두는 변수
+            debuff_message = ""
+            debuff_applied = False  # 디버프가 적용되었는지 체크하는 변수
+            for debuff, turns in list(player["Debuff"].items()):
+                if turns > 0:
+                    player["Debuff"][debuff] = max(0, turns - 1)  # 디버프 차감
+                    if debuff == "방어력 감소":
+                        player["Defense"] = max(0, player["Defense"] * 0.9)  # 방어력 감소
+                    if debuff == "공격력 감소":
+                        player["Attack"] = max(0, player["Attack"] * 0.8)  # 공격력 감소
+                    if debuff == "스피드 감소":
+                        player["Speed"] = max(0, player["Speed"] - 15)  # 스피드 감소
+                    
+                    debuff_message += f"**{debuff}**: {turns - 1}턴 남음\n"
+                    debuff_applied = True  # 디버프가 적용되었음을 표시
+                
+
+            # 디버프가 하나도 없으면 다른 메시지 반환
+            if not debuff_applied:
+                return False
+            
+            # 디버프가 있을 경우 embed 메시지 생성
+            embed = discord.Embed(title="디버프 정보", description=debuff_message, color=discord.Color.red())
+            return embed
+        
+        # 디버프 감소 및 적용
+        def apply_skills(player):
+            # 원래 스탯을 기록해 두는 변수
+            debuff_message = ""
+            debuff_applied = False  # 디버프가 적용되었는지 체크하는 변수
+            for debuff, turns in list(player["Skill"].items()):
+                if turns > 0:
+                    player["Debuff"][debuff] = max(0, turns - 1)  # 디버프 차감
+                    if debuff == "방어력 감소":
+                        player["Defense"] = max(0, player["Defense"] * 0.9)  # 방어력 감소
+                    if debuff == "공격력 감소":
+                        player["Attack"] = max(0, player["Attack"] * 0.8)  # 공격력 감소
+                    if debuff == "스피드 감소":
+                        player["Speed"] = max(0, player["Speed"] - 15)  # 스피드 감소
+                    
+                    debuff_message += f"**{debuff}**: {turns - 1}턴 남음\n"
+                    debuff_applied = True  # 디버프가 적용되었음을 표시
+                
+
+            # 디버프가 하나도 없으면 다른 메시지 반환
+            if not debuff_applied:
+                return False
+            
+            # 디버프가 있을 경우 embed 메시지 생성
+            embed = discord.Embed(title="디버프 정보", description=debuff_message, color=discord.Color.red())
+            return embed
+
+        turn = 0
+        doubled = False 
+
+        total_damage = 0
+        while challenger["HP"] > 0 and opponent["HP"] > 0 and turn < 30:
+            turn += 1
+            if turn > 20:
+                embed = discord.Embed(title=f"레이드 종료! ", color=discord.Color.blue())
+                embed.add_field(name ="", value = f"20턴이 지나 레이드가 종료되었습니다! ",inline = False)
+                await thread.send(embed = embed)
+                await thread.send(f"**전투 종료! {challenger['name']}의 총 대미지: {total_damage}**")
+                break
+            
+            embed = apply_debuffs(opponent)
+            if embed:
+                await thread.send(embed = embed)
+
+            #embed = apply_skills(opponent)
+            damage, extra_attack, critical, defence = attack(attacker, defender)
+            if attacker['name'] == challenger['name']:
+                total_damage += damage
+            defender["HP"] -= damage
+
+            # 크리티컬 또는 방어 여부에 따라 메시지 추가
+            crit_text = "💥" if critical else ""
+            defense_text = "🛡" if defence else ""
+
+            if attacker['name'] == challenger['name']: # 도전자 공격
+                battle_embed = discord.Embed(title=f"{attacker['name']}의 공격!⚔️ ({turn}턴)", color=discord.Color.blue())
+                battle_embed.add_field(name ="", value = f"**{defense_text} {damage} 대미지!{crit_text}**",inline = False)
+                battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {opponent['FirstHP']}]**")  
+            elif attacker['name'] == opponent['name']: # 상대 공격
+                battle_embed = discord.Embed(title=f"{attacker['name']}의 공격!⚔️ ({turn}턴)", color=discord.Color.red())
+                battle_embed.add_field(name ="", value = f"**{defense_text} {damage} 대미지!{crit_text}**",inline = False)
+                battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_challenger.get('내구도', '')}]**")
+
+            await thread.send(embed = battle_embed)
+
+            if attacker['name'] == challenger['name']:
+                if critical:
+                    opponent["Debuff"]["방어력 감소"] = 4  # 방어력 감소 4턴
+                    battle_embed = discord.Embed(title=f"방어력 감소!⚔️", color=discord.Color.blue())
+                    battle_embed.add_field(name ="", value = f"**치명타로 인해 {opponent['name']}의 방어력이 4턴간 감소합니다! (방어력 - 10%)**",inline = False)
+                    await thread.send(embed = battle_embed)
+                if extra_attack:
+                    opponent["Debuff"]["스피드 감소"] = 20  # 속도 감소 20턴
+                    battle_embed = discord.Embed(title=f"스피드 감소!⚔️", color=discord.Color.blue())
+                    battle_embed.add_field(name ="", value = f"**추가 공격으로 {opponent['name']}의 속도가 20턴간 감소합니다! (스피드 - 15)**",inline = False)
+                    await thread.send(embed = battle_embed)
+
+            else:
+                if defence:
+                    opponent["Debuff"]["공격력 감소"] = 20  # 치명타 대미지 감소 20턴
+                    battle_embed = discord.Embed(title=f"공격력 감소!⚔️", color=discord.Color.blue())
+                    battle_embed.add_field(name ="", value = f"**완벽 방어로 {opponent['name']}의 공격력이 20턴간 감소합니다! (공격력 - 20%)**",inline = False)
+                    await thread.send(embed = battle_embed)
+                    
+                
+
+            if attacker['name'] == challenger['name'] and defender["HP"] <= 0:
+                await thread.send(f"**{attacker['name']}가 레이드 보스 [{opponent['name']}]을 처치했습니다!**")
+                break
+            elif defender["HP"] <= 0:
+                await thread.send(f"**전투 종료! {defender['name']}의 총 대미지: {total_damage}**")
+                break
+            
+            if attacker['name'] == opponent['name']: # 보스 공격
+                if weapon_data_challenger.get('내구도', '') >= 2000:
+                    heal_status = round(weapon_data_challenger.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
+                    battle_embed = discord.Embed(title=f"{defender['name']}의 자가 수복! ", color=discord.Color.blue())
+                    battle_embed.add_field(name ="", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
+                    defender["HP"] += heal_status
+                    if defender["HP"] > weapon_data_challenger.get('내구도', ''):
+                        defender["HP"] = weapon_data_challenger.get('내구도', '')
+                    battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")  
+                    await thread.send(embed = battle_embed)
+            
+            original_stats = {
+                "Defense": weapon_data_opponent.get("방어력", 0),
+                "Attack": weapon_data_opponent.get("공격력", 0),
+                "Speed": weapon_data_opponent.get("스피드", 0)
+            }
+
+            opponent["Defense"] = original_stats["Defense"]
+            opponent["Attack"] = original_stats["Attack"]
+            opponent["Speed"] = original_stats["Speed"]
+
+            # 공격자와 방어자 변경
+            if extra_attack: # 추가 공격 찬스
+                if doubled: # 이미 추가 공격을 했다면
+                    attacker, defender = defender, attacker
+                    doubled = False
+                    await asyncio.sleep(2)  # 턴 간 딜레이
+                else:
+                    battle_embed = discord.Embed(title=f"{attacker['name']}의 추가 턴!⚔️", color=discord.Color.lighter_gray())
+                    battle_embed.add_field(name ="", value = f"**스피드 차이로 인하여 추가 공격!**",inline = False)
+                    turn -= 1
+                    await thread.send(embed = battle_embed)
+                    doubled = True
+            else:
+                attacker, defender = defender, attacker
+                doubled = False
+                await asyncio.sleep(2)  # 턴 간 딜레이
+            
+        db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/디버프").set(opponent["Debuff"])
+        db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/내구도").set(opponent["HP"])
+
+        battle_ref = db.reference("승부예측/대결진행여부")
+        battle_ref.set(False)
+
+
+    @app_commands.command(name="수치조정", description="무기에 밸런스 패치로 인해 변경된 스탯을 적용합니다")
+    async def stat_change(self, interaction: discord.Interaction):
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+        current_predict_season = cur_predict_seasonref.get()
+        
+        await interaction.response.defer()
+        enhancement_options = {
+            "공격 강화": {"main_stat": "공격력", "stats": {"공격력": 20, "내구도": 30, "방어력": 5, "스피드": 1}},
+            "치명타 대미지 강화": {"main_stat": "치명타 대미지", "stats": {"공격력": 10, "내구도": 30, "방어력": 5, "치명타 대미지": 0.1}},
+            "치명타 확률 강화": {"main_stat": "치명타 확률", "stats": {"공격력": 10, "내구도": 30, "방어력": 5, "치명타 확률": 0.04}},
+            "속도 강화": {"main_stat": "스피드", "stats": {"공격력": 8, "내구도": 50, "방어력": 10, "스피드": 10}},
+            "명중 강화": {"main_stat": "명중률", "stats": {"공격력": 12, "내구도": 50, "방어력": 10, "스피드": 1, "명중률": 0.06}},
+            "방어 강화": {"main_stat": "방어력", "stats": {"공격력": 6, "내구도": 50, "방어력": 25}},
+            "내구도 강화": {"main_stat": "내구도", "stats": {"공격력": 6, "내구도": 100, "방어력": 15}},
+            "밸런스 강화": {"main_stat": "올스탯", "stats": {"공격력": 7, "내구도": 40, "방어력": 8, "스피드": 3, "명중률": 0.01, "치명타 대미지": 0.01, "치명타 확률": 0.01}}
+        }
+        
+        default_stats = {
+            "공격력": 100, "내구도": 500, "방어력": 50, "스피드": 50,
+            "명중률": 0.1, "치명타 대미지": 1.5, "치명타 확률": 0.05
+        }
+        
+        ref_users = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트").get()
+        
+        if not ref_users:
+            await interaction.response.send_message("업데이트할 유저 데이터가 없습니다.", ephemeral=True)
+            return
+        
+        # 결과 메시지 Embed
+        embed = discord.Embed(title=f"⚔️ 스탯 조정 완료!", color=discord.Color.green())
+        for nickname, _ in ref_users.items():
+            ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기")
+            weapon_data = ref_weapon.get() or {}
+            weapon_name = weapon_data.get("이름", "")
+
+            ref_enhance_log = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/무기/강화내역")
+            enhance_log_data = ref_enhance_log.get() or {}
+            
+            # 기존 스탯 저장
+            old_stats = {
+                "공격력": weapon_data.get("공격력", 100),
+                "내구도": weapon_data.get("내구도", 500),
+                "방어력": weapon_data.get("방어력", 50),
+                "스피드": weapon_data.get("스피드", 50),
+                "명중률": weapon_data.get("명중률", 0.1),
+                "치명타 대미지": weapon_data.get("치명타 대미지", 1.5),
+                "치명타 확률": weapon_data.get("치명타 확률", 0.05)
+            }
+
+            # 새로운 스탯 계산
+            new_stats = default_stats.copy()
+            for enhance_type, enhance_count in enhance_log_data.items():
+                if enhance_type in enhancement_options:
+                    for stat, value in enhancement_options[enhance_type]["stats"].items():
+                        new_stats[stat] += value * enhance_count
+                        new_stats[stat] = round(new_stats[stat],3)
+
+            # 변경 사항 비교
+            stat_changes = []
+            for stat in new_stats:
+                diff = new_stats[stat] - old_stats[stat]
+                if diff > 0:
+                    stat_changes.append(f"🟢 **{stat}**: +{diff}")
+                elif diff < 0:
+                    stat_changes.append(f"🔴 **{stat}**: {diff}")
+
+            # 무기 정보 업데이트
+            ref_weapon.update(new_stats)
+
+            
+            embed.add_field(name=f"🛠️ {weapon_name}의 변경된 스탯", value="\n".join(stat_changes) if stat_changes else "변경 사항 없음", inline=False)
+        await interaction.followup.send(embed=embed)  
+    
 
     # @app_commands.command(name="강화",description="보유한 무기를 강화합니다")
     # async def enhance(self, interaction: discord.Interaction):
