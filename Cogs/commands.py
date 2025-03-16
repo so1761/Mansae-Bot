@@ -6715,7 +6715,7 @@ class hello(commands.Cog):
                     if debuff == "방어력 감소":
                         player["Defense"] = max(0, player["Defense"] * 0.9)  # 방어력 감소
                     if debuff == "공격력 감소":
-                        player["Attack"] = max(0, player["Attack"] * 0.5)  # 공격력 감소
+                        player["Attack"] = max(0, player["Attack"] - 100)  # 공격력 감소
                     if debuff == "스피드 감소":
                         player["Speed"] = max(0, player["Speed"] - 15)  # 스피드 감소
                     
@@ -6812,7 +6812,7 @@ class hello(commands.Cog):
                 if defence:
                     opponent["Debuff"]["공격력 감소"] = 10  # 공격력 감소 10턴
                     battle_embed = discord.Embed(title=f"공격력 감소!⚔️", color=discord.Color.blue())
-                    battle_embed.add_field(name ="", value = f"**완벽 방어로 {opponent['name']}의 공격력이 10턴간 감소합니다! (공격력 - 50%)**",inline = False)
+                    battle_embed.add_field(name ="", value = f"**완벽 방어로 {opponent['name']}의 공격력이 10턴간 감소합니다! (공격력 - 100)**",inline = False)
                     await thread.send(embed = battle_embed)
                     
                 
