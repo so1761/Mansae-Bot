@@ -6071,10 +6071,11 @@ class hello(commands.Cog):
                 return 0, extra_attack_bool, False, True  # 완벽 방어 발생 시 피해 0
             
             damage_reduction = calculate_damage_reduction(defender["Defense"])
-            if critical_bool: # 크리티컬 시 방어력 무시
-                final_damage = base_damage * (1 - damage_reduction / 2) 
-            else:
-                final_damage = base_damage * (1 - damage_reduction)  # 방어력 적용 후 최종 피해량
+            # if critical_bool: # 크리티컬 시 방어력 무시
+            #     final_damage = base_damage * (1 - damage_reduction / 2) 
+            # else:
+            #     final_damage = base_damage * (1 - damage_reduction)  # 방어력 적용 후 최종 피해량
+            final_damage = base_damage * (1 - damage_reduction)
             
             extra_attack_bool = False
             # 스피드에 따른 추가 공격 확률 적용
@@ -6201,28 +6202,28 @@ class hello(commands.Cog):
                 await thread.send(f"**{attacker['name']} 승리!**")
                 return
             
-            if attacker['name'] == challenger['name']: # 도전자 공격
-                heal_status = round(weapon_data_opponent.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
-                heal_ban_status = round(heal_status * calculate_heal_ban(challenger['Accuracy']))
-                if heal_ban_status > 0:
-                    battle_embed.add_field(name =f"{defender['name']}의 자가 수복!", value = f"{heal_status - heal_ban_status}(-{heal_ban_status})만큼 내구도 회복! 🩹 ",inline = False)
-                else: 
-                    battle_embed.add_field(name =f"{defender['name']}의 자가 수복!", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
-                defender["HP"] += heal_status - heal_ban_status
-                if defender["HP"] > weapon_data_opponent.get('내구도', ''):
-                    defender["HP"] = weapon_data_opponent.get('내구도', '')
-                battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - (heal_status - heal_ban_status)}] -> [{defender['HP']}(+{heal_status - heal_ban_status})]**")
-            elif attacker['name'] == opponent['name']: # 상대 공격
-                heal_status = round(weapon_data_challenger.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
-                heal_ban_status = round(heal_status * calculate_heal_ban(opponent['Accuracy']))
-                if heal_ban_status > 0:
-                    battle_embed.add_field(name =f"{defender['name']}의 자가 수복!", value = f"{heal_status - heal_ban_status}(-{heal_ban_status})만큼 내구도 회복! 🩹 ",inline = False)
-                else: 
-                    battle_embed.add_field(name =f"{defender['name']}의 자가 수복!", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
-                defender["HP"] += heal_status - heal_ban_status
-                if defender["HP"] > weapon_data_challenger.get('내구도', ''):
-                    defender["HP"] = weapon_data_challenger.get('내구도', '')
-                battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - (heal_status - heal_ban_status)}] -> [{defender['HP']}(+{heal_status - heal_ban_status})]**")
+            # if attacker['name'] == challenger['name']: # 도전자 공격
+            #     heal_status = round(weapon_data_opponent.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
+            #     heal_ban_status = round(heal_status * calculate_heal_ban(challenger['Accuracy']))
+            #     if heal_ban_status > 0:
+            #         battle_embed.add_field(name =f"{defender['name']}의 자가 수복!", value = f"{heal_status - heal_ban_status}(-{heal_ban_status})만큼 내구도 회복! 🩹 ",inline = False)
+            #     else: 
+            #         battle_embed.add_field(name =f"{defender['name']}의 자가 수복!", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
+            #     defender["HP"] += heal_status - heal_ban_status
+            #     if defender["HP"] > weapon_data_opponent.get('내구도', ''):
+            #         defender["HP"] = weapon_data_opponent.get('내구도', '')
+            #     battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - (heal_status - heal_ban_status)}] -> [{defender['HP']}(+{heal_status - heal_ban_status})]**")
+            # elif attacker['name'] == opponent['name']: # 상대 공격
+            #     heal_status = round(weapon_data_challenger.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
+            #     heal_ban_status = round(heal_status * calculate_heal_ban(opponent['Accuracy']))
+            #     if heal_ban_status > 0:
+            #         battle_embed.add_field(name =f"{defender['name']}의 자가 수복!", value = f"{heal_status - heal_ban_status}(-{heal_ban_status})만큼 내구도 회복! 🩹 ",inline = False)
+            #     else: 
+            #         battle_embed.add_field(name =f"{defender['name']}의 자가 수복!", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
+            #     defender["HP"] += heal_status - heal_ban_status
+            #     if defender["HP"] > weapon_data_challenger.get('내구도', ''):
+            #         defender["HP"] = weapon_data_challenger.get('내구도', '')
+            #     battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - (heal_status - heal_ban_status)}] -> [{defender['HP']}(+{heal_status - heal_ban_status})]**")
                     
             
             # 공격자와 방어자 변경
@@ -6231,7 +6232,10 @@ class hello(commands.Cog):
                     attacker, defender = defender, attacker
                     doubled = False
                     await thread.send(embed = battle_embed)
-                    await asyncio.sleep(3)  # 턴 간 딜레이
+                    if turn >= 100:
+                        await asyncio.sleep(1)
+                    else:
+                        await asyncio.sleep(3)  # 턴 간 딜레이
                 else:
                     battle_embed.add_field(name =f"{attacker['name']}의 추가 턴!⚔️", value = f"**스피드 차이로 인하여 추가 공격!**",inline = False)
                     await thread.send(embed = battle_embed)
@@ -6240,7 +6244,10 @@ class hello(commands.Cog):
                 attacker, defender = defender, attacker
                 doubled = False
                 await thread.send(embed = battle_embed)
-                await asyncio.sleep(3)  # 턴 간 딜레이
+                if turn >= 100:
+                    await asyncio.sleep(1)
+                else:
+                    await asyncio.sleep(3)  # 턴 간 딜레이
             
 
         battle_ref = db.reference("승부예측/대결진행여부")
@@ -6414,10 +6421,11 @@ class hello(commands.Cog):
                 return 0, extra_attack_bool, False, True  # 완벽 방어 발생 시 피해 0
             
             damage_reduction = calculate_damage_reduction(defender["Defense"])
-            if critical_bool: # 크리티컬 시 방어력 무시
-                final_damage = base_damage * (1 - damage_reduction / 2) 
-            else:
-                final_damage = base_damage * (1 - damage_reduction)  # 방어력 적용 후 최종 피해량
+            # if critical_bool: # 크리티컬 시 방어력 무시
+            #     final_damage = base_damage * (1 - damage_reduction / 2) 
+            # else:
+            #     final_damage = base_damage * (1 - damage_reduction)  # 방어력 적용 후 최종 피해량
+            final_damage = base_damage * (1 - damage_reduction)
             
             extra_attack_bool = False
             # 스피드에 따른 추가 공격 확률 적용
