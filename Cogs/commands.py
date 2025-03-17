@@ -6679,6 +6679,7 @@ class hello(commands.Cog):
                 if defender["HP"] > weapon_data_challenger.get('내구도', ''):
                     defender["HP"] = weapon_data_challenger.get('내구도', '')
                 battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - (heal_status - heal_ban_status)}] -> [{defender['HP']}(+{heal_status - heal_ban_status})]**")
+            
             await thread.send(embed = battle_embed)
             
             original_stats = {
