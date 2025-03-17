@@ -6603,7 +6603,7 @@ class hello(commands.Cog):
         total_damage = 0
         while challenger["HP"] > 0 and opponent["HP"] > 0 and turn < 30:
             turn += 1
-            if turn > 30:
+            if turn >= 30:
                 embed = discord.Embed(title=f"레이드 종료! ", color=discord.Color.blue())
                 embed.add_field(name ="", value = f"30턴이 지나 레이드가 종료되었습니다! ",inline = False)
                 await thread.send(embed = embed)
@@ -6639,18 +6639,15 @@ class hello(commands.Cog):
             if attacker['name'] == challenger['name']:
                 if critical:
                     opponent["Debuff"]["방어력 감소"] = 4  # 방어력 감소 4턴
-                    battle_embed = discord.Embed(title=f"방어력 감소!⚔️", color=discord.Color.blue())
-                    battle_embed.add_field(name ="", value = f"**치명타로 인해 {opponent['name']}의 방어력이 4턴간 감소합니다! (방어력 - 10%)**",inline = False)
+                    battle_embed.add_field(name ="방어력 감소!⚔️", value = f"**치명타로 인해 {opponent['name']}의 방어력이 4턴간 감소합니다! (방어력 - 10%)**",inline = False)
                     
                 if extra_attack:
                     opponent["Debuff"]["스피드 감소"] = 20  # 속도 감소 20턴
-                    battle_embed = discord.Embed(title=f"스피드 감소!⚔️", color=discord.Color.blue())
-                    battle_embed.add_field(name ="", value = f"**추가 공격으로 {opponent['name']}의 속도가 20턴간 감소합니다! (스피드 - 15)**",inline = False)
+                    battle_embed.add_field(name ="스피드 감소!⚔️", value = f"**추가 공격으로 {opponent['name']}의 속도가 20턴간 감소합니다! (스피드 - 15)**",inline = False)
             else:
                 if defence:
                     opponent["Debuff"]["공격력 감소"] = 10  # 공격력 감소 10턴
-                    battle_embed = discord.Embed(title=f"공격력 감소!⚔️", color=discord.Color.blue())
-                    battle_embed.add_field(name ="", value = f"**완벽 방어로 {opponent['name']}의 공격력이 10턴간 감소합니다! (공격력 - 100)**",inline = False)
+                    battle_embed.add_field(name ="공격력 감소!⚔️", value = f"**완벽 방어로 {opponent['name']}의 공격력이 10턴간 감소합니다! (공격력 - 100)**",inline = False)
                     
 
             if attacker['name'] == challenger['name'] and defender["HP"] <= 0:

@@ -29,7 +29,7 @@ def calculate_damage_reduction(defense):
     return min(0.99, 1 - (100 / (100 + defense)))  # 방어력 공식 적용
 
 def calculate_accuracy(accuracy):
-            return min(0.99, 1 - (50 / (50 + accuracy))) # 명중률 공식 적용
+    return min(0.99, 1 - (50 / (50 + accuracy))) # 명중률 공식 적용
         
 def calculate_heal_ban(accuracy):
     return max(0, ((accuracy - 100) // 5) * 0.01) # 치유 효과 감소 공식 적용
