@@ -6048,11 +6048,11 @@ class hello(commands.Cog):
             return min(0.99, 1 - (50 / (50 + accuracy))) # 명중률 공식 적용
         
         def calculate_heal_ban(accuracy):
-            return min(0, (accuracy - 100) * 0.01) # 치유 효과 감소 공식 적용
+            return max(0, (accuracy - 100) * 0.01) # 치유 효과 감소 공식 적용
         
         # 공격 함수
         def attack(attacker, defender):
-            base_damage = random.uniform(attacker["Attack"] * calculate_accuracy(attacker["Accuarcy"]), attacker["Attack"])  # 최소~최대 피해
+            base_damage = random.uniform(attacker["Attack"] * calculate_accuracy(attacker["Accuracy"]), attacker["Attack"])  # 최소~최대 피해
             critical_bool = False
             if random.random() < attacker["CritChance"]:
                 base_damage *= attacker["CritDamage"]
@@ -6391,7 +6391,7 @@ class hello(commands.Cog):
             return min(0.99, 1 - (50 / (50 + accuracy))) # 명중률 공식 적용
 
         def calculate_heal_ban(accuracy):
-            return min(0, (accuracy - 100) * 0.01) # 치유 효과 감소 공식 적용
+            return max(0, (accuracy - 100) * 0.01) # 치유 효과 감소 공식 적용
         
         # 공격 함수
         def attack(attacker, defender):
