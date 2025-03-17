@@ -5765,7 +5765,7 @@ class hello(commands.Cog):
         weapon_embed.add_field(name="공격력", value=f"{weapon_data.get('공격력', 0)}", inline=True)
         weapon_embed.add_field(name="방어력", value=f"{weapon_data.get('방어력', 0)}", inline=True)
         weapon_embed.add_field(name="스피드", value=f"{weapon_data.get('스피드', 0)}", inline=True)
-        weapon_embed.add_field(name="명중률", value=f"{weapon_data.get('명중률', 0) * 100:.1f}%", inline=True)
+        weapon_embed.add_field(name="명중", value=f"{weapon_data.get('명중', 0)}", inline=True)
         weapon_embed.add_field(name="치명타 확률", value=f"{weapon_data.get('치명타 확률', 0) * 100:.1f}%", inline=True)
         weapon_embed.add_field(name="치명타 대미지", value=f"{weapon_data.get('치명타 대미지', 0) * 100:.1f}%", inline=True)
         weapon_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
@@ -5778,7 +5778,7 @@ class hello(commands.Cog):
                 discord.SelectOption(label="치명타 확률 강화", description="치명타 확률 증가", value="치명타 확률 강화"),
                 discord.SelectOption(label="치명타 대미지 강화", description="치명타 대미지 증가", value="치명타 대미지 강화"),
                 discord.SelectOption(label="속도 강화", description="스피드 증가", value="속도 강화"),
-                discord.SelectOption(label="명중 강화", description="명중률 증가", value="명중 강화"),
+                discord.SelectOption(label="명중 강화", description="명중 증가", value="명중 강화"),
                 discord.SelectOption(label="방어 강화", description="방어력 증가", value="방어 강화"),
                 discord.SelectOption(label="내구도 강화", description="내구도 증가", value="내구도 강화"),
                 discord.SelectOption(label="밸런스 강화", description="모든 스탯 증가", value="밸런스 강화")
@@ -5843,10 +5843,10 @@ class hello(commands.Cog):
                         "치명타 대미지 강화": {"main_stat": "치명타 대미지", "stats": {"공격력": 10, "내구도": 30, "방어력": 5, "치명타 대미지": 0.1}},
                         "치명타 확률 강화": {"main_stat": "치명타 확률", "stats": {"공격력": 10, "내구도": 30, "방어력": 5, "치명타 확률": 0.04}},
                         "속도 강화": {"main_stat": "스피드", "stats": {"공격력": 8, "내구도": 50, "방어력": 10, "스피드": 10}},
-                        "명중 강화": {"main_stat": "명중률", "stats": {"공격력": 12, "내구도": 50, "방어력": 10, "스피드": 1, "명중률": 0.06}},
+                        "명중 강화": {"main_stat": "명중", "stats": {"공격력": 12, "내구도": 50, "방어력": 10, "스피드": 1, "명중": 10}},
                         "방어 강화": {"main_stat": "방어력", "stats": {"공격력": 6, "내구도": 50, "방어력": 25}},
                         "내구도 강화": {"main_stat": "내구도", "stats": {"공격력": 6, "내구도": 100, "방어력": 15}},
-                        "밸런스 강화": {"main_stat": "올스탯", "stats": {"공격력": 9, "내구도": 40, "방어력": 8, "스피드": 3, "명중률": 0.01, "치명타 대미지": 0.01, "치명타 확률": 0.01}}
+                        "밸런스 강화": {"main_stat": "올스탯", "stats": {"공격력": 9, "내구도": 40, "방어력": 8, "스피드": 3, "명중": 2, "치명타 대미지": 0.01, "치명타 확률": 0.01}}
                     }
         
 
@@ -5876,7 +5876,7 @@ class hello(commands.Cog):
                             increase = round(base_increase, 3)  # 기본 배율 적용
                             final_stat = round(weapon_stats.get(stat, 0) + increase, 3)
                             
-                            if final_stat >= 1 and stat in ["명중률","치명타 확률"]:
+                            if final_stat >= 1 and stat in ["치명타 확률"]:
                                 weapon_stats[stat] = 1
                             else:
                                 weapon_stats[stat] = final_stat
@@ -5899,14 +5899,14 @@ class hello(commands.Cog):
                         if main_stat == "올스탯":
                             for stat, increase in stats.items():
                                 value = round(increase, 3)  # 올스탯은 동일한 배율 적용
-                                if stat in ["명중률", "치명타 확률", "치명타 대미지"]:
+                                if stat in ["치명타 확률", "치명타 대미지"]:
                                     result_embed.add_field(name=stat, value=f"**{weapon_data.get(stat,0) * 100:.1f}%(+{value * 100:.1f}%)**", inline=True)
                                 else:
                                     result_embed.add_field(name=stat, value=f"**{weapon_data.get(stat,0)}(+{value})**", inline=True)
                         else:
                             # 주 강화 옵션을 맨 위에 배치
                             main_value = round(enhancement_options[enhancement_type]['stats'][main_stat], 3)
-                            if main_stat in ["명중률", "치명타 확률", "치명타 대미지"]:
+                            if main_stat in ["치명타 확률", "치명타 대미지"]:
                                 result_embed.add_field(name=main_stat, value=f"**{weapon_data.get(main_stat,0) * 100:.1f}%(+{main_value * 100:.1f}%)**", inline=False)
                             else:
                                 result_embed.add_field(name=main_stat, value=f"**{weapon_data.get(main_stat,0)}(+{main_value})**", inline=False)
@@ -5940,10 +5940,10 @@ class hello(commands.Cog):
                 "치명타 확률 강화": "치명타 확률을 강화합니다!\n공격력 + 10, 방어력 + 5, 내구도 + 30, 치명타 확률 + 4%",
                 "치명타 대미지 강화": "치명타 대미지를 강화합니다!\n공격력 + 10, 방어력 + 5, 내구도 + 30, 치명타 대미지 + 10%",
                 "속도 강화": "스피드를 강화합니다!\n공격력 + 8, 방어력 + 10, 내구도 + 50, 속도 + 10",
-                "명중 강화": "명중률을 강화합니다!\n공격력 + 12, 방어력 + 10, 내구도 + 50, 속도 + 1 명중 + 6%",
+                "명중 강화": "명중을 강화합니다!\n공격력 + 12, 방어력 + 10, 내구도 + 50, 속도 + 1 명중 + 10",
                 "방어 강화": "방어력을 강화합니다!\n공격력 + 6, 방어력 + 25, 내구도 + 50",
                 "내구도 강화": "내구도를 강화합니다!\n공격력 + 6, 방어력 + 15, 내구도 + 100",
-                "밸런스 강화": "모든 스탯을 강화합니다!\n공격력 + 9, 방어력 + 8, 내구도 + 40, 치명타 확률 + 1%, 치명타 대미지 + 3%, 속도 + 3, 명중 + 1%"
+                "밸런스 강화": "모든 스탯을 강화합니다!\n공격력 + 9, 방어력 + 8, 내구도 + 40, 치명타 확률 + 1%, 치명타 대미지 + 3%, 속도 + 3, 명중 + 2"
             }
 
             enhancement_rate = weapon_data.get("강화확률",5)
@@ -5979,7 +5979,7 @@ class hello(commands.Cog):
                 "내구도": 500,
                 "방어력": 50,
                 "스피드": 50,
-                "명중률": 0.1,
+                "명중": 0,
                 "치명타 대미지": 1.5,
                 "치명타 확률": 0.05,
                 "강화확률": 100,
@@ -5997,7 +5997,7 @@ class hello(commands.Cog):
             weapon_embed.add_field(name="공격력", value=f"{weapon_data.get('공격력', 0)}", inline=True)
             weapon_embed.add_field(name="방어력", value=f"{weapon_data.get('방어력', 0)}", inline=True)
             weapon_embed.add_field(name="스피드", value=f"{weapon_data.get('스피드', 0)}", inline=True)
-            weapon_embed.add_field(name="명중률", value=f"{weapon_data.get('명중률', 0) * 100:.1f}%", inline=True)
+            weapon_embed.add_field(name="명중", value=f"{weapon_data.get('명중', 0)}%", inline=True)
             weapon_embed.add_field(name="치명타 확률", value=f"{weapon_data.get('치명타 확률', 0) * 100:.1f}%", inline=True)
             weapon_embed.add_field(name="치명타 대미지", value=f"{weapon_data.get('치명타 대미지', 0) * 100:.1f}%", inline=True)
 
@@ -6044,9 +6044,15 @@ class hello(commands.Cog):
         def calculate_damage_reduction(defense):
             return min(0.99, 1 - (100 / (100 + defense)))  # 방어력 공식 적용
 
+        def calculate_accuracy(accuracy):
+            return min(0.99, 1 - (50 / (50 + accuracy))) # 명중률 공식 적용
+        
+        def calculate_heal_ban(accuracy):
+            return min(0, (accuracy - 100) * 0.01) # 치유 효과 감소 공식 적용
+        
         # 공격 함수
         def attack(attacker, defender):
-            base_damage = random.uniform(attacker["Attack"] * attacker["Accuracy"], attacker["Attack"])  # 최소~최대 피해
+            base_damage = random.uniform(attacker["Attack"] * calculate_accuracy(attacker["Accuarcy"]), attacker["Attack"])  # 최소~최대 피해
             critical_bool = False
             if random.random() < attacker["CritChance"]:
                 base_damage *= attacker["CritDamage"]
@@ -6117,7 +6123,7 @@ class hello(commands.Cog):
             "CritChance": weapon_data_challenger.get("치명타 확률", 0),
             "CritDamage": weapon_data_challenger.get("치명타 대미지", 0),
             "Speed": weapon_data_challenger.get("스피드", 0),
-            "Accuracy": weapon_data_challenger.get("명중률", 0),
+            "Accuracy": weapon_data_challenger.get("명중", 0),
             "Defense": weapon_data_challenger.get("방어력", 0),
             "Skill": weapon_data_challenger.get("스킬","")
         }
@@ -6129,7 +6135,7 @@ class hello(commands.Cog):
             "CritChance": weapon_data_opponent.get("치명타 확률", 0),
             "CritDamage": weapon_data_opponent.get("치명타 대미지", 0),
             "Speed": weapon_data_opponent.get("스피드", 0),
-            "Accuracy": weapon_data_opponent.get("명중률", 0),
+            "Accuracy": weapon_data_opponent.get("명중", 0),
             "Defense": weapon_data_opponent.get("방어력", 0),
             "Skill": weapon_data_challenger.get("스킬","")
         }
@@ -6146,26 +6152,28 @@ class hello(commands.Cog):
 
         # 챌린저 무기 스탯 정보 추가
         embed.add_field(name=f"[{challenger['name']}](+{weapon_data_challenger.get('강화', 0)})", value=f"""
-        • 대미지: {round(challenger['Attack'] * challenger['Accuracy'])} ~ {challenger['Attack']}
+        • 대미지: {round(challenger['Attack'] * calculate_accuracy(challenger['Accuracy']))} ~ {challenger['Attack']}
         • 내구도: {challenger['HP']}
         • 공격력: {challenger['Attack']}
         • 치명타 확률: {round(challenger['CritChance'] * 100, 2)}%
         • 치명타 대미지: {round(challenger['CritDamage'] * 100, 2)}%
         • 스피드: {challenger['Speed']}
-        • 명중률: {round(challenger['Accuracy'] * 100, 2)}%
-        • 방어력: {challenger['Defense']}
+        • 명중: {challenger['Accuracy']} (명중률: {round(calculate_accuracy(challenger['Accuracy']) * 100, 2)}%)
+        • 방어력: {challenger['Defense']} (대미지 감소율: {round(calculate_damage_reduction(opponent['Defence']) * 100, 2)}%)
+        • 치유 효과 감소: {round(calculate_heal_ban(challenger['Accuracy']) * 100, 2)}
         """, inline=False)
 
         # 상대 무기 스탯 정보 추가
         embed.add_field(name=f"[{opponent['name']}](+{weapon_data_opponent.get('강화', 0)})", value=f"""
-        • 대미지: {round(opponent['Attack'] * opponent['Accuracy'])} ~ {opponent['Attack']}
+        • 대미지: {round(opponent['Attack'] * calculate_accuracy(opponent['Accuracy']))} ~ {opponent['Attack']}
         • 내구도: {opponent['HP']}
         • 공격력: {opponent['Attack']}
         • 치명타 확률: {round(opponent['CritChance'] * 100, 2)}%
         • 치명타 대미지: {round(opponent['CritDamage'] * 100, 2)}%
         • 스피드: {opponent['Speed']}
-        • 명중률: {round(opponent['Accuracy'] * 100, 2)}%
-        • 방어력: {opponent['Defense']}
+        • 명중: {opponent['Accuracy']} (명중률: {round(calculate_accuracy(opponent['Accuracy']) * 100, 2)}%)
+        • 방어력: {opponent['Defense']} (대미지 감소율: {round(calculate_damage_reduction(opponent['Defence']) * 100, 2)}%)
+        • 치유 효과 감소: {round(calculate_heal_ban(opponent['Accuracy']) * 100, 2)}
         """, inline=False)
         await thread.send(embed=embed)
         turn = 0
@@ -6194,19 +6202,27 @@ class hello(commands.Cog):
                 return
             
             if attacker['name'] == challenger['name']: # 도전자 공격
-                    heal_status = round(weapon_data_opponent.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
+                heal_status = round(weapon_data_opponent.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
+                heal_ban_status = round(heal_status * calculate_heal_ban(challenger['Accuracy']))
+                if heal_ban_status > 0:
+                    battle_embed.add_field(name =f"{defender['name']}의 자가 수복!", value = f"{heal_status - heal_ban_status}(-{heal_ban_status})만큼 내구도 회복! 🩹 ",inline = False)
+                else: 
                     battle_embed.add_field(name =f"{defender['name']}의 자가 수복!", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
-                    defender["HP"] += heal_status
-                    if defender["HP"] > weapon_data_opponent.get('내구도', ''):
-                        defender["HP"] = weapon_data_opponent.get('내구도', '')
-                    battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")  
+                defender["HP"] += heal_status - heal_ban_status
+                if defender["HP"] > weapon_data_opponent.get('내구도', ''):
+                    defender["HP"] = weapon_data_opponent.get('내구도', '')
+                battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - (heal_status - heal_ban_status)}] -> [{defender['HP']}(+{heal_status - heal_ban_status})]**")
             elif attacker['name'] == opponent['name']: # 상대 공격
-                    heal_status = round(weapon_data_challenger.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
+                heal_status = round(weapon_data_challenger.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
+                heal_ban_status = round(heal_status * calculate_heal_ban(opponent['Accuracy']))
+                if heal_ban_status > 0:
+                    battle_embed.add_field(name =f"{defender['name']}의 자가 수복!", value = f"{heal_status - heal_ban_status}(-{heal_ban_status})만큼 내구도 회복! 🩹 ",inline = False)
+                else: 
                     battle_embed.add_field(name =f"{defender['name']}의 자가 수복!", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
-                    defender["HP"] += heal_status
-                    if defender["HP"] > weapon_data_challenger.get('내구도', ''):
-                        defender["HP"] = weapon_data_challenger.get('내구도', '')
-                    battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")
+                defender["HP"] += heal_status - heal_ban_status
+                if defender["HP"] > weapon_data_challenger.get('내구도', ''):
+                    defender["HP"] = weapon_data_challenger.get('내구도', '')
+                battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - (heal_status - heal_ban_status)}] -> [{defender['HP']}(+{heal_status - heal_ban_status})]**")
                     
             
             # 공격자와 방어자 변경
@@ -6215,7 +6231,7 @@ class hello(commands.Cog):
                     attacker, defender = defender, attacker
                     doubled = False
                     await thread.send(embed = battle_embed)
-                    await asyncio.sleep(2)  # 턴 간 딜레이
+                    await asyncio.sleep(3)  # 턴 간 딜레이
                 else:
                     battle_embed.add_field(name =f"{attacker['name']}의 추가 턴!⚔️", value = f"**스피드 차이로 인하여 추가 공격!**",inline = False)
                     await thread.send(embed = battle_embed)
@@ -6224,7 +6240,7 @@ class hello(commands.Cog):
                 attacker, defender = defender, attacker
                 doubled = False
                 await thread.send(embed = battle_embed)
-                await asyncio.sleep(2)  # 턴 간 딜레이
+                await asyncio.sleep(3)  # 턴 간 딜레이
             
 
         battle_ref = db.reference("승부예측/대결진행여부")
@@ -6371,9 +6387,15 @@ class hello(commands.Cog):
         def calculate_damage_reduction(defense):
             return min(0.99, 1 - (100 / (100 + defense)))  # 방어력 공식 적용
 
+        def calculate_accuracy(accuracy):
+            return min(0.99, 1 - (50 / (50 + accuracy))) # 명중률 공식 적용
+
+        def calculate_heal_ban(accuracy):
+            return min(0, (accuracy - 100) * 0.01) # 치유 효과 감소 공식 적용
+        
         # 공격 함수
         def attack(attacker, defender):
-            base_damage = random.uniform(attacker["Attack"] * attacker["Accuracy"], attacker["Attack"])  # 최소~최대 피해
+            base_damage = random.uniform(attacker["Attack"] * calculate_accuracy(attacker["Accuracy"]), attacker["Attack"])  # 최소~최대 피해
             critical_bool = False
             if random.random() < attacker["CritChance"]:
                 base_damage *= attacker["CritDamage"]
@@ -6455,7 +6477,7 @@ class hello(commands.Cog):
             "CritChance": weapon_data_challenger.get("치명타 확률", 0),
             "CritDamage": weapon_data_challenger.get("치명타 대미지", 0),
             "Speed": weapon_data_challenger.get("스피드", 0),
-            "Accuracy": weapon_data_challenger.get("명중률", 0),
+            "Accuracy": weapon_data_challenger.get("명중", 0),
             "Defense": weapon_data_challenger.get("방어력", 0),
             "Skill": weapon_data_challenger.get("스킬","")
         }
@@ -6468,7 +6490,7 @@ class hello(commands.Cog):
             "CritChance": weapon_data_opponent.get("치명타 확률", 0),
             "CritDamage": weapon_data_opponent.get("치명타 대미지", 0),
             "Speed": weapon_data_opponent.get("스피드", 0),
-            "Accuracy": weapon_data_opponent.get("명중률", 0),
+            "Accuracy": weapon_data_opponent.get("명중", 0),
             "Defense": weapon_data_opponent.get("방어력", 0),
             "Skill": weapon_data_opponent.get("스킬",""),
             "Debuff": weapon_data_opponent.get("디버프",{})
@@ -6484,7 +6506,7 @@ class hello(commands.Cog):
 
 
         # 비동기 전투 시뮬레이션 전에 스탯을 임베드로 전송
-        embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green())
+        embed = discord.Embed(title="⚔️ 레이드 시작!", color=discord.Color.green())
 
         # 챌린저 무기 스탯 정보 추가
         embed.add_field(name=f"[{challenger['name']}](+{weapon_data_challenger.get('강화', 0)})", value=f"""
@@ -6494,8 +6516,9 @@ class hello(commands.Cog):
         • 치명타 확률: {round(challenger['CritChance'] * 100, 2)}%
         • 치명타 대미지: {round(challenger['CritDamage'] * 100, 2)}%
         • 스피드: {challenger['Speed']}
-        • 명중률: {round(challenger['Accuracy'] * 100, 2)}%
-        • 방어력: {challenger['Defense']}
+        • 명중: {challenger['Accuracy']} (명중률: {round(calculate_accuracy(challenger['Accuracy']) * 100, 2)}%)
+        • 방어력: {challenger['Defense']} (대미지 감소율: {round(calculate_damage_reduction(challenger['Defence']) * 100, 2)}%)
+        • 치유 효과 감소: {round(calculate_heal_ban(challenger['Accuracy']) * 100, 2)}
         """, inline=False)
 
         debuffs_info = [
@@ -6512,8 +6535,9 @@ class hello(commands.Cog):
         • 치명타 확률: {round(opponent['CritChance'] * 100, 2)}%
         • 치명타 대미지: {round(opponent['CritDamage'] * 100, 2)}%
         • 스피드: {opponent['Speed']}
-        • 명중률: {round(opponent['Accuracy'] * 100, 2)}%
-        • 방어력: {opponent['Defense']}
+        • 명중: {opponent['Accuracy']} (명중률: {round(calculate_accuracy(opponent['Accuracy']) * 100, 2)}%)
+        • 방어력: {opponent['Defense']} (대미지 감소율: {round(calculate_damage_reduction(opponent['Defence']) * 100, 2)}%)
+        • 치유 효과 감소: {round(calculate_heal_ban(opponent['Accuracy']) * 100, 2)}
         • 디버프: {debuff_message}
         """, inline=False)
 
@@ -6579,9 +6603,9 @@ class hello(commands.Cog):
         total_damage = 0
         while challenger["HP"] > 0 and opponent["HP"] > 0 and turn < 30:
             turn += 1
-            if turn > 20:
+            if turn > 30:
                 embed = discord.Embed(title=f"레이드 종료! ", color=discord.Color.blue())
-                embed.add_field(name ="", value = f"20턴이 지나 레이드가 종료되었습니다! ",inline = False)
+                embed.add_field(name ="", value = f"30턴이 지나 레이드가 종료되었습니다! ",inline = False)
                 await thread.send(embed = embed)
                 await thread.send(f"**전투 종료! {challenger['name']}의 총 대미지: {total_damage}**")
                 ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/레이드")
@@ -6611,30 +6635,26 @@ class hello(commands.Cog):
                 battle_embed.add_field(name ="", value = f"**{defense_text} {damage} 대미지!{crit_text}**",inline = False)
                 battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_challenger.get('내구도', '')}]**")
 
-            await thread.send(embed = battle_embed)
 
             if attacker['name'] == challenger['name']:
                 if critical:
                     opponent["Debuff"]["방어력 감소"] = 4  # 방어력 감소 4턴
                     battle_embed = discord.Embed(title=f"방어력 감소!⚔️", color=discord.Color.blue())
                     battle_embed.add_field(name ="", value = f"**치명타로 인해 {opponent['name']}의 방어력이 4턴간 감소합니다! (방어력 - 10%)**",inline = False)
-                    await thread.send(embed = battle_embed)
+                    
                 if extra_attack:
                     opponent["Debuff"]["스피드 감소"] = 20  # 속도 감소 20턴
                     battle_embed = discord.Embed(title=f"스피드 감소!⚔️", color=discord.Color.blue())
                     battle_embed.add_field(name ="", value = f"**추가 공격으로 {opponent['name']}의 속도가 20턴간 감소합니다! (스피드 - 15)**",inline = False)
-                    await thread.send(embed = battle_embed)
-
             else:
                 if defence:
                     opponent["Debuff"]["공격력 감소"] = 10  # 공격력 감소 10턴
                     battle_embed = discord.Embed(title=f"공격력 감소!⚔️", color=discord.Color.blue())
                     battle_embed.add_field(name ="", value = f"**완벽 방어로 {opponent['name']}의 공격력이 10턴간 감소합니다! (공격력 - 100)**",inline = False)
-                    await thread.send(embed = battle_embed)
                     
-                
 
             if attacker['name'] == challenger['name'] and defender["HP"] <= 0:
+                await thread.send(embed = battle_embed)
                 await thread.send(f"**{attacker['name']}가 레이드 보스 [{opponent['name']}]을 처치했습니다!**")
                 await thread.send(f"**전투 종료! {challenger['name']}의 총 대미지: {total_damage}**")
                 ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/레이드")
@@ -6642,6 +6662,7 @@ class hello(commands.Cog):
                 ref_raid.update({"막타" : True})
                 break
             elif defender["HP"] <= 0:
+                await thread.send(embed = battle_embed)
                 await thread.send(f"**전투 종료! {challenger['name']}의 총 대미지: {total_damage}**")
                 ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/레이드")
                 ref_raid.update({"총 대미지": total_damage})
@@ -6649,13 +6670,16 @@ class hello(commands.Cog):
             
             if attacker['name'] == opponent['name']: # 보스 공격
                 heal_status = round(weapon_data_challenger.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
-                battle_embed = discord.Embed(title=f"{defender['name']}의 자가 수복! ", color=discord.Color.blue())
-                battle_embed.add_field(name ="", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
-                defender["HP"] += heal_status
+                heal_ban_status = round(heal_status * calculate_heal_ban(opponent['Accuracy']))
+                if heal_ban_status > 0:
+                    battle_embed.add_field(name =f"{defender['name']}의 자가 수복!", value = f"{heal_status - heal_ban_status}(-{heal_ban_status})만큼 내구도 회복! 🩹 ",inline = False)
+                else: 
+                    battle_embed.add_field(name =f"{defender['name']}의 자가 수복!", value = f"{heal_status}만큼 내구도 회복! 🩹 ",inline = False)
+                defender["HP"] += heal_status - heal_ban_status
                 if defender["HP"] > weapon_data_challenger.get('내구도', ''):
                     defender["HP"] = weapon_data_challenger.get('내구도', '')
-                battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - heal_status}] -> [{defender['HP']}(+{heal_status})]**")  
-                await thread.send(embed = battle_embed)
+                battle_embed.add_field(name = "내구도 회복!", value=f"**[{defender['HP'] - (heal_status - heal_ban_status)}] -> [{defender['HP']}(+{heal_status - heal_ban_status})]**")
+            await thread.send(embed = battle_embed)
             
             original_stats = {
                 "Defense": weapon_data_opponent.get("방어력", 0),
@@ -6705,15 +6729,15 @@ class hello(commands.Cog):
             "치명타 대미지 강화": {"main_stat": "치명타 대미지", "stats": {"공격력": 10, "내구도": 30, "방어력": 5, "치명타 대미지": 0.1}},
             "치명타 확률 강화": {"main_stat": "치명타 확률", "stats": {"공격력": 10, "내구도": 30, "방어력": 5, "치명타 확률": 0.04}},
             "속도 강화": {"main_stat": "스피드", "stats": {"공격력": 8, "내구도": 50, "방어력": 10, "스피드": 10}},
-            "명중 강화": {"main_stat": "명중률", "stats": {"공격력": 12, "내구도": 50, "방어력": 10, "스피드": 1, "명중률": 0.06}},
+            "명중 강화": {"main_stat": "명중", "stats": {"공격력": 12, "내구도": 50, "방어력": 10, "스피드": 1, "명중": 10}},
             "방어 강화": {"main_stat": "방어력", "stats": {"공격력": 6, "내구도": 50, "방어력": 25}},
             "내구도 강화": {"main_stat": "내구도", "stats": {"공격력": 6, "내구도": 100, "방어력": 15}},
-            "밸런스 강화": {"main_stat": "올스탯", "stats": {"공격력": 9, "내구도": 40, "방어력": 8, "스피드": 3, "명중률": 0.01, "치명타 대미지": 0.01, "치명타 확률": 0.01}}
+            "밸런스 강화": {"main_stat": "올스탯", "stats": {"공격력": 9, "내구도": 40, "방어력": 8, "스피드": 3, "명중": 2, "치명타 대미지": 0.01, "치명타 확률": 0.01}}
         }
         
         default_stats = {
             "공격력": 100, "내구도": 500, "방어력": 50, "스피드": 50,
-            "명중률": 0.1, "치명타 대미지": 1.5, "치명타 확률": 0.05
+            "명중": 0, "치명타 대미지": 1.5, "치명타 확률": 0.05
         }
         
         ref_users = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트").get()
@@ -6738,7 +6762,7 @@ class hello(commands.Cog):
                 "내구도": weapon_data.get("내구도", 500),
                 "방어력": weapon_data.get("방어력", 50),
                 "스피드": weapon_data.get("스피드", 50),
-                "명중률": weapon_data.get("명중률", 0.1),
+                "명중": weapon_data.get("명중", 0),
                 "치명타 대미지": weapon_data.get("치명타 대미지", 1.5),
                 "치명타 확률": weapon_data.get("치명타 확률", 0.05)
             }
