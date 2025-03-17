@@ -6159,7 +6159,7 @@ class hello(commands.Cog):
         • 치명타 대미지: {round(challenger['CritDamage'] * 100, 2)}%
         • 스피드: {challenger['Speed']}
         • 명중: {challenger['Accuracy']} (명중률: {round(calculate_accuracy(challenger['Accuracy']) * 100, 2)}%)
-        • 방어력: {challenger['Defense']} (대미지 감소율: {round(calculate_damage_reduction(opponent['Defense']) * 100, 2)}%)
+        • 방어력: {challenger['Defense']} (대미지 감소율: {round(calculate_damage_reduction(challenger['Defense']) * 100, 2)}%)
         • 치유 효과 감소: {round(calculate_heal_ban(challenger['Accuracy']) * 100, 2)}
         """, inline=False)
 
