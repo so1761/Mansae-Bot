@@ -6510,7 +6510,7 @@ class hello(commands.Cog):
 
         # 챌린저 무기 스탯 정보 추가
         embed.add_field(name=f"[{challenger['name']}](+{weapon_data_challenger.get('강화', 0)})", value=f"""
-        • 대미지: {round(challenger['Attack'] * challenger['Accuracy'])} ~ {challenger['Attack']}
+        • 대미지: {round(challenger['Attack'] * calculate_accuracy(challenger['Accuracy']))} ~ {challenger['Attack']}
         • 내구도: {challenger['HP']}
         • 공격력: {challenger['Attack']}
         • 치명타 확률: {round(challenger['CritChance'] * 100, 2)}%
@@ -6528,7 +6528,7 @@ class hello(commands.Cog):
         debuff_message = ', '.join(debuffs_info) if debuffs_info else '없음'
         # 상대 무기 스탯 정보 추가
         embed.add_field(name=f"[{opponent['name']}](+{weapon_data_opponent.get('강화', 0)})", value=f"""
-        • 대미지: {round(opponent['Attack'] * opponent['Accuracy'])} ~ {opponent['Attack']}
+        • 대미지: {round(opponent['Attack'] * calculate_accuracy(opponent['Accuracy']))} ~ {opponent['Attack']}
         • 내구도: {opponent['FirstHP']}
         • 현재 내구도: {opponent['HP']}
         • 공격력: {opponent['Attack']}
