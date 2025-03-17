@@ -6048,7 +6048,7 @@ class hello(commands.Cog):
             return min(0.99, 1 - (50 / (50 + accuracy))) # 명중률 공식 적용
         
         def calculate_heal_ban(accuracy):
-            return max(0, (accuracy - 100) * 0.01) # 치유 효과 감소 공식 적용
+            return max(0, ((accuracy - 100) // 5) * 0.01) # 치유 효과 감소 공식 적용
         
         # 공격 함수
         def attack(attacker, defender):
@@ -6160,7 +6160,7 @@ class hello(commands.Cog):
         • 스피드: {challenger['Speed']}
         • 명중: {challenger['Accuracy']} (명중률: {round(calculate_accuracy(challenger['Accuracy']) * 100, 2)}%)
         • 방어력: {challenger['Defense']} (대미지 감소율: {round(calculate_damage_reduction(challenger['Defense']) * 100, 2)}%)
-        • 치유 효과 감소: {round(calculate_heal_ban(challenger['Accuracy']) * 100, 2)}
+        • 치유 효과 감소: {round(calculate_heal_ban(challenger['Accuracy']) * 100, 2)}%
         """, inline=False)
 
         # 상대 무기 스탯 정보 추가
@@ -6173,7 +6173,7 @@ class hello(commands.Cog):
         • 스피드: {opponent['Speed']}
         • 명중: {opponent['Accuracy']} (명중률: {round(calculate_accuracy(opponent['Accuracy']) * 100, 2)}%)
         • 방어력: {opponent['Defense']} (대미지 감소율: {round(calculate_damage_reduction(opponent['Defense']) * 100, 2)}%)
-        • 치유 효과 감소: {round(calculate_heal_ban(opponent['Accuracy']) * 100, 2)}
+        • 치유 효과 감소: {round(calculate_heal_ban(opponent['Accuracy']) * 100, 2)}%
         """, inline=False)
         await thread.send(embed=embed)
         turn = 0
@@ -6391,7 +6391,7 @@ class hello(commands.Cog):
             return min(0.99, 1 - (50 / (50 + accuracy))) # 명중률 공식 적용
 
         def calculate_heal_ban(accuracy):
-            return max(0, (accuracy - 100) * 0.01) # 치유 효과 감소 공식 적용
+            return max(0, ((accuracy - 100) // 5) * 0.01) # 치유 효과 감소 공식 적용
         
         # 공격 함수
         def attack(attacker, defender):
@@ -6518,7 +6518,7 @@ class hello(commands.Cog):
         • 스피드: {challenger['Speed']}
         • 명중: {challenger['Accuracy']} (명중률: {round(calculate_accuracy(challenger['Accuracy']) * 100, 2)}%)
         • 방어력: {challenger['Defense']} (대미지 감소율: {round(calculate_damage_reduction(challenger['Defense']) * 100, 2)}%)
-        • 치유 효과 감소: {round(calculate_heal_ban(challenger['Accuracy']) * 100, 2)}
+        • 치유 효과 감소: {round(calculate_heal_ban(challenger['Accuracy']) * 100, 2)}%
         """, inline=False)
 
         debuffs_info = [
@@ -6537,7 +6537,7 @@ class hello(commands.Cog):
         • 스피드: {opponent['Speed']}
         • 명중: {opponent['Accuracy']} (명중률: {round(calculate_accuracy(opponent['Accuracy']) * 100, 2)}%)
         • 방어력: {opponent['Defense']} (대미지 감소율: {round(calculate_damage_reduction(opponent['Defense']) * 100, 2)}%)
-        • 치유 효과 감소: {round(calculate_heal_ban(opponent['Accuracy']) * 100, 2)}
+        • 치유 효과 감소: {round(calculate_heal_ban(opponent['Accuracy']) * 100, 2)}%
         • 디버프: {debuff_message}
         """, inline=False)
 
