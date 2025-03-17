@@ -6232,10 +6232,10 @@ class hello(commands.Cog):
                     attacker, defender = defender, attacker
                     doubled = False
                     await thread.send(embed = battle_embed)
-                    if turn >= 100:
+                    if turn >= 30:
                         await asyncio.sleep(1)
                     else:
-                        await asyncio.sleep(3)  # 턴 간 딜레이
+                        await asyncio.sleep(2)  # 턴 간 딜레이
                 else:
                     battle_embed.add_field(name =f"{attacker['name']}의 추가 턴!⚔️", value = f"**스피드 차이로 인하여 추가 공격!**",inline = False)
                     await thread.send(embed = battle_embed)
@@ -6244,10 +6244,10 @@ class hello(commands.Cog):
                 attacker, defender = defender, attacker
                 doubled = False
                 await thread.send(embed = battle_embed)
-                if turn >= 100:
+                if turn >= 30:
                     await asyncio.sleep(1)
                 else:
-                    await asyncio.sleep(3)  # 턴 간 딜레이
+                    await asyncio.sleep(2)  # 턴 간 딜레이
             
 
         battle_ref = db.reference("승부예측/대결진행여부")
