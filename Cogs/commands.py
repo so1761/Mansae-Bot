@@ -6147,7 +6147,7 @@ class hello(commands.Cog):
 
             # 더미의 최종 스탯 계산
             opponent = {
-                "name": 더미,
+                "name": "더미",
                 "HP": basic_stats["내구도"] + balance_enhance_stats["내구도"] * enhance_count,
                 "Attack": basic_stats["공격력"] + balance_enhance_stats["공격력"] * enhance_count,
                 "CritChance": basic_stats["치명타 확률"] + balance_enhance_stats["치명타 확률"] * enhance_count,
