@@ -6110,7 +6110,8 @@ class hello(commands.Cog):
             return
         
         if 상대 is None:
-            상대 = None
+            상대 = {}
+            상대.display_name = "더미"
             embed = discord.Embed(
                 title=f"{interaction.user.display_name} vs 더미 무기 대결",
                 description="대결이 시작되었습니다!",
