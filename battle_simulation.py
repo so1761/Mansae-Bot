@@ -3,26 +3,26 @@ import random
 # 캐릭터 스탯 정의
 A = {
     "name": "방어",
-    "OriginalHP": 1000,
-    "HP": 1000,
-    "Attack": 150,
+    "OriginalHP": 2750,
+    "HP": 2750,
+    "Attack": 370,
     "CritChance": 0.05,
     "CritDamage": 1.5,
     "Speed": 50,
     "Accuracy": 0,
-    "Defense": 180,
+    "Defense": 1175,
 }
 
 B = {
     "name": "스피드",
-    "OriginalHP": 1000,
-    "HP": 1000,
-    "Attack": 150,
-    "CritChance": 0.05,
+    "OriginalHP": 2750,
+    "HP": 2750,
+    "Attack": 460,
+    "CritChance": 0.5,
     "CritDamage": 1.5,
-    "Speed": 50,
+    "Speed": 500,
     "Accuracy": 0,
-    "Defense": 180,
+    "Defense": 480,
 }
 
 def calculate_damage_reduction(defense):
@@ -50,10 +50,11 @@ def attack(attacker, defender):
         return 0, False, False, True  # 완벽 방어 발생 시 피해 0
     
     damage_reduction = calculate_damage_reduction(defender["Defense"])
-    if critical_bool: # 크리티컬 시 방어력 무시
-        final_damage = base_damage * (1 - damage_reduction * 0.5)
-    else:
-        final_damage = base_damage * (1 - damage_reduction)  # 방어력 적용 후 최종 피해량
+    # if critical_bool: # 크리티컬 시 방어력 무시
+    #     final_damage = base_damage * (1 - damage_reduction * 0.5)
+    # else:
+    #     final_damage = base_damage * (1 - damage_reduction)  # 방어력 적용 후 최종 피해량
+    final_damage = base_damage * (1 - damage_reduction)  # 방어력 적용 후 최종 피해량
     
     extra_attack_bool = False
     # 스피드에 따른 추가 공격 확률 적용
@@ -91,9 +92,9 @@ def battle_simulation(A, B):
         if B["HP"] <= 0:
             return "A 승리"
         
-        heal_status = round(defender['OriginalHP'] * 0.01) # 최대 체력의 1% 회복
-        heal_ban_status = round(heal_status * calculate_heal_ban(attacker['Accuracy']))
-        defender["HP"] += heal_status - heal_ban_status
+        # heal_status = round(defender['OriginalHP'] * 0.01) # 최대 체력의 1% 회복
+        # heal_ban_status = round(heal_status * calculate_heal_ban(attacker['Accuracy']))
+        # defender["HP"] += heal_status - heal_ban_status
         #print(f"{attacker['name']}의 공격! {damage} 대미지! [남은 체력 : {defender['HP']}]")
 
         # 공격자가 변경되며, 공격자와 수비자 교체

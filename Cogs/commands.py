@@ -6039,7 +6039,7 @@ class hello(commands.Cog):
 
 
     @app_commands.command(name="무기배틀",description="각자의 무기로 대결합니다")
-    async def weapon_battle(self, interaction: discord.Interaction, 상대 : discord.Member):
+    async def weapon_battle(self, interaction: discord.Interaction, 상대 : discord.Member = None):
         # 방어력 기반 피해 감소율 계산 함수
         def calculate_damage_reduction(defense):
             return min(0.99, 1 - (100 / (100 + defense)))  # 방어력 공식 적용
@@ -6098,47 +6098,105 @@ class hello(commands.Cog):
             await interaction.response.send_message("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
             return
         
-        ref_weapon_opponent = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}/무기")
-        weapon_data_opponent = ref_weapon_opponent.get() or {}
+        if 상대 is None:
+            상대 = None
+            embed = discord.Embed(
+                title=f"{interaction.user.display_name} vs 더미 무기 대결",
+                description="대결이 시작되었습니다!",
+                color=discord.Color.blue()  # 원하는 색상 선택
+            )
+            await interaction.response.send_message(embed=embed)
 
-        weapon_name_opponent = weapon_data_opponent.get("이름", "")
-        if weapon_name_opponent == "":
-            await interaction.response.send_message("상대가 무기를 가지고 있지 않습니다!",ephemeral=True)
-            return
-        # 임베드 생성
-        embed = discord.Embed(
-            title=f"{interaction.user.display_name} vs {상대.display_name} 무기 대결",
-            description="대결이 시작되었습니다!",
-            color=discord.Color.blue()  # 원하는 색상 선택
-        )
-        await interaction.response.send_message(embed=embed)
+            challenger = {
+                "name": weapon_data_challenger.get("이름", ""),
+                "HP": weapon_data_challenger.get("내구도", 0),
+                "Attack": weapon_data_challenger.get("공격력", 0),
+                "CritChance": weapon_data_challenger.get("치명타 확률", 0),
+                "CritDamage": weapon_data_challenger.get("치명타 대미지", 0),
+                "Speed": weapon_data_challenger.get("스피드", 0),
+                "Accuracy": weapon_data_challenger.get("명중", 0),
+                "Defense": weapon_data_challenger.get("방어력", 0),
+                "Skill": weapon_data_challenger.get("스킬","")
+            }
+            
+            # 기본 스탯 (더미의 기본 스탯)
+            basic_stats = {
+                "공격력": 100,  # 기본 공격력
+                "내구도": 500,  # 기본 내구도
+                "방어력": 30,  # 기본 방어력
+                "스피드": 50,  # 기본 스피드
+                "명중": 0,  # 기본 명중
+                "치명타 대미지": 1.5,  # 기본 치명타 대미지
+                "치명타 확률": 0.05,  # 기본 치명타 확률
+            }
 
-        battle_ref = db.reference("승부예측/대결진행여부")
-        battle_ref.set(True)
+            # 밸런스 강화의 스탯 값
+            balance_enhance_stats = {
+                "공격력": 9,
+                "내구도": 40,
+                "방어력": 8,
+                "스피드": 3,
+                "명중": 3,
+                "치명타 대미지": 0.01,
+                "치명타 확률": 0.01
+            }
 
-        challenger = {
-            "name": weapon_data_challenger.get("이름", ""),
-            "HP": weapon_data_challenger.get("내구도", 0),
-            "Attack": weapon_data_challenger.get("공격력", 0),
-            "CritChance": weapon_data_challenger.get("치명타 확률", 0),
-            "CritDamage": weapon_data_challenger.get("치명타 대미지", 0),
-            "Speed": weapon_data_challenger.get("스피드", 0),
-            "Accuracy": weapon_data_challenger.get("명중", 0),
-            "Defense": weapon_data_challenger.get("방어력", 0),
-            "Skill": weapon_data_challenger.get("스킬","")
-        }
-        
-        opponent = {
-            "name": weapon_data_opponent.get("이름", ""),
-            "HP": weapon_data_opponent.get("내구도", 0),
-            "Attack": weapon_data_opponent.get("공격력", 0),
-            "CritChance": weapon_data_opponent.get("치명타 확률", 0),
-            "CritDamage": weapon_data_opponent.get("치명타 대미지", 0),
-            "Speed": weapon_data_opponent.get("스피드", 0),
-            "Accuracy": weapon_data_opponent.get("명중", 0),
-            "Defense": weapon_data_opponent.get("방어력", 0),
-            "Skill": weapon_data_challenger.get("스킬","")
-        }
+            # 강화 횟수
+            enhance_count = weapon_data_challenger.get("강화", 0)
+
+            # 더미의 최종 스탯 계산
+            opponent = {
+                "name": 더미,
+                "HP": basic_stats["내구도"] + balance_enhance_stats["내구도"] * enhance_count,
+                "Attack": basic_stats["공격력"] + balance_enhance_stats["공격력"] * enhance_count,
+                "CritChance": basic_stats["치명타 확률"] + balance_enhance_stats["치명타 확률"] * enhance_count,
+                "CritDamage": basic_stats["치명타 대미지"] + balance_enhance_stats["치명타 대미지"] * enhance_count,
+                "Speed": basic_stats["스피드"] + balance_enhance_stats["스피드"] * enhance_count,
+                "Accuracy": basic_stats["명중"] + balance_enhance_stats["명중"] * enhance_count,
+                "Defense": basic_stats["방어력"] + balance_enhance_stats["방어력"] * enhance_count,
+            }
+        else:
+            ref_weapon_opponent = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}/무기")
+            weapon_data_opponent = ref_weapon_opponent.get() or {}
+
+            weapon_name_opponent = weapon_data_opponent.get("이름", "")
+            if weapon_name_opponent == "":
+                await interaction.response.send_message("상대가 무기를 가지고 있지 않습니다!",ephemeral=True)
+                return
+            # 임베드 생성
+            embed = discord.Embed(
+                title=f"{interaction.user.display_name} vs {상대.display_name} 무기 대결",
+                description="대결이 시작되었습니다!",
+                color=discord.Color.blue()  # 원하는 색상 선택
+            )
+            await interaction.response.send_message(embed=embed)
+
+            battle_ref = db.reference("승부예측/대결진행여부")
+            battle_ref.set(True)
+
+            challenger = {
+                "name": weapon_data_challenger.get("이름", ""),
+                "HP": weapon_data_challenger.get("내구도", 0),
+                "Attack": weapon_data_challenger.get("공격력", 0),
+                "CritChance": weapon_data_challenger.get("치명타 확률", 0),
+                "CritDamage": weapon_data_challenger.get("치명타 대미지", 0),
+                "Speed": weapon_data_challenger.get("스피드", 0),
+                "Accuracy": weapon_data_challenger.get("명중", 0),
+                "Defense": weapon_data_challenger.get("방어력", 0),
+                "Skill": weapon_data_challenger.get("스킬","")
+            }
+            
+            opponent = {
+                "name": weapon_data_opponent.get("이름", ""),
+                "HP": weapon_data_opponent.get("내구도", 0),
+                "Attack": weapon_data_opponent.get("공격력", 0),
+                "CritChance": weapon_data_opponent.get("치명타 확률", 0),
+                "CritDamage": weapon_data_opponent.get("치명타 대미지", 0),
+                "Speed": weapon_data_opponent.get("스피드", 0),
+                "Accuracy": weapon_data_opponent.get("명중", 0),
+                "Defense": weapon_data_opponent.get("방어력", 0),
+                "Skill": weapon_data_challenger.get("스킬","")
+            }
 
         # 비동기 전투 시뮬레이션
         attacker, defender = (challenger, opponent) if challenger["Speed"] > opponent["Speed"] else (opponent, challenger)
