@@ -6156,10 +6156,10 @@ class hello(commands.Cog):
                 "Accuracy": basic_stats["명중"] + balance_enhance_stats["명중"] * enhance_count,
                 "Defense": basic_stats["방어력"] + balance_enhance_stats["방어력"] * enhance_count,
             }
-
+            weapon_data_opponent = {}
             weapon_data_opponent['내구도'] = opponent['HP']
             weapon_data_opponent['강화'] = enhance_count
-            
+
         else:
             ref_weapon_opponent = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}/무기")
             weapon_data_opponent = ref_weapon_opponent.get() or {}
