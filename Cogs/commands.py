@@ -6110,10 +6110,9 @@ class hello(commands.Cog):
             return
         
         if 상대 is None:
-            상대 = {}
-            상대.display_name = "더미"
+            상대 = None
             embed = discord.Embed(
-                title=f"{interaction.user.display_name} vs 더미 무기 대결",
+                title=f"{interaction.user.display_name} vs 더미({강화}) 무기 대결",
                 description="대결이 시작되었습니다!",
                 color=discord.Color.blue()  # 원하는 색상 선택
             )
@@ -6223,10 +6222,16 @@ class hello(commands.Cog):
         # 비동기 전투 시뮬레이션
         attacker, defender = (challenger, opponent) if challenger["Speed"] > opponent["Speed"] else (opponent, challenger)
         
-        thread = await interaction.channel.create_thread(
-            name=f"{interaction.user.display_name} vs {상대.display_name} 무기 대결",
+        if 상대 is None:
+            thread = await interaction.channel.create_thread(
+            name=f"{interaction.user.display_name} vs 더미({강화}) 무기 대결",
             type=discord.ChannelType.public_thread
-        )
+            )
+        else:
+            thread = await interaction.channel.create_thread(
+                name=f"{interaction.user.display_name} vs {상대.display_name} 무기 대결",
+                type=discord.ChannelType.public_thread
+            )
         # 비동기 전투 시뮬레이션 전에 스탯을 임베드로 전송
         embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green())
 
