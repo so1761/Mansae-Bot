@@ -6039,7 +6039,17 @@ class hello(commands.Cog):
 
 
     @app_commands.command(name="무기배틀",description="각자의 무기로 대결합니다")
-    async def weapon_battle(self, interaction: discord.Interaction, 상대 : discord.Member = None):
+    @app_commands.choices(강화=[
+    Choice(name='공격 강화', value='공격 강화'),
+    Choice(name='치명타 대미지 강화', value='치명타 대미지 강화'),
+    Choice(name='치명타 확률 강화', value='치명타 확률 강화'),
+    Choice(name='속도 강화', value='속도 강화'),
+    Choice(name='명중 강화', value='명중 강화'),
+    Choice(name='방어 강화', value='방어 강화'),
+    Choice(name='내구도 강화', value='내구도 강화'),
+    Choice(name='밸런스 강화', value='밸런스 강화')
+    ])
+    async def weapon_battle(self, interaction: discord.Interaction, 상대 : discord.Member = None, 강화 : str = "밸런스 강화"):
         # 방어력 기반 피해 감소율 계산 함수
         def calculate_damage_reduction(defense):
             return min(0.99, 1 - (100 / (100 + defense)))  # 방어력 공식 적용
@@ -6131,30 +6141,36 @@ class hello(commands.Cog):
                 "치명타 확률": 0.05,  # 기본 치명타 확률
             }
 
-            # 밸런스 강화의 스탯 값
-            balance_enhance_stats = {
-                "공격력": 9,
-                "내구도": 40,
-                "방어력": 8,
-                "스피드": 3,
-                "명중": 3,
-                "치명타 대미지": 0.01,
-                "치명타 확률": 0.01
+            # 강화 옵션 딕셔너리
+            enhancement_options = {
+                "공격 강화": {"main_stat": "공격력", "stats": {"공격력": 22, "내구도": 30, "방어력": 5, "스피드": 1}},
+                "치명타 대미지 강화": {"main_stat": "치명타 대미지", "stats": {"공격력": 10, "내구도": 30, "방어력": 5, "치명타 대미지": 0.1}},
+                "치명타 확률 강화": {"main_stat": "치명타 확률", "stats": {"공격력": 10, "내구도": 30, "방어력": 5, "치명타 확률": 0.04}},
+                "속도 강화": {"main_stat": "스피드", "stats": {"공격력": 8, "내구도": 50, "방어력": 10, "스피드": 10}},
+                "명중 강화": {"main_stat": "명중", "stats": {"공격력": 12, "내구도": 50, "방어력": 10, "스피드": 1, "명중": 10}},
+                "방어 강화": {"main_stat": "방어력", "stats": {"공격력": 6, "내구도": 50, "방어력": 25}},
+                "내구도 강화": {"main_stat": "내구도", "stats": {"공격력": 6, "내구도": 100, "방어력": 15}},
+                "밸런스 강화": {"main_stat": "올스탯", "stats": {"공격력": 9, "내구도": 40, "방어력": 8, "스피드": 3, "명중": 3, "치명타 대미지": 0.01, "치명타 확률": 0.01}}
             }
+
+            selected_enhancement = 강화
 
             # 강화 횟수
             enhance_count = weapon_data_challenger.get("강화", 0)
 
-            # 더미의 최종 스탯 계산
+            selected_stats = enhancement_options[selected_enhancement]["stats"]
+
+            # 더미의 최종 스탯 계산 (기본 스탯 + 선택한 강화 형태의 스탯 * 강화 횟수)
             opponent = {
-                "name": "더미",
-                "HP": basic_stats["내구도"] + balance_enhance_stats["내구도"] * enhance_count,
-                "Attack": basic_stats["공격력"] + balance_enhance_stats["공격력"] * enhance_count,
-                "CritChance": basic_stats["치명타 확률"] + balance_enhance_stats["치명타 확률"] * enhance_count,
-                "CritDamage": basic_stats["치명타 대미지"] + balance_enhance_stats["치명타 대미지"] * enhance_count,
-                "Speed": basic_stats["스피드"] + balance_enhance_stats["스피드"] * enhance_count,
-                "Accuracy": basic_stats["명중"] + balance_enhance_stats["명중"] * enhance_count,
-                "Defense": basic_stats["방어력"] + balance_enhance_stats["방어력"] * enhance_count,
+                "name": "더미",  # 더미 이름
+                "HP": basic_stats["내구도"] + selected_stats["내구도"] * enhance_count,
+                "Attack": basic_stats["공격력"] + selected_stats["공격력"] * enhance_count,
+                "CritChance": basic_stats["치명타 확률"] + selected_stats["치명타 확률"] * enhance_count,
+                "CritDamage": basic_stats["치명타 대미지"] + selected_stats["치명타 대미지"] * enhance_count,
+                "Speed": basic_stats["스피드"] + selected_stats["스피드"] * enhance_count,
+                "Accuracy": basic_stats["명중"] + selected_stats["명중"] * enhance_count,
+                "Defense": basic_stats["방어력"] + selected_stats["방어력"] * enhance_count,
+                "Skill": "None"  # 스킬은 필요시 추가
             }
             weapon_data_opponent = {}
             weapon_data_opponent['내구도'] = opponent['HP']
