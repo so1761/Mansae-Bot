@@ -6163,13 +6163,13 @@ class hello(commands.Cog):
             # 더미의 최종 스탯 계산 (기본 스탯 + 선택한 강화 형태의 스탯 * 강화 횟수)
             opponent = {
                 "name": "더미",  # 더미 이름
-                "HP": basic_stats["내구도"] + selected_stats["내구도"] * enhance_count,
-                "Attack": basic_stats["공격력"] + selected_stats["공격력"] * enhance_count,
-                "CritChance": basic_stats["치명타 확률"] + selected_stats["치명타 확률"] * enhance_count,
-                "CritDamage": basic_stats["치명타 대미지"] + selected_stats["치명타 대미지"] * enhance_count,
-                "Speed": basic_stats["스피드"] + selected_stats["스피드"] * enhance_count,
-                "Accuracy": basic_stats["명중"] + selected_stats["명중"] * enhance_count,
-                "Defense": basic_stats["방어력"] + selected_stats["방어력"] * enhance_count,
+                "HP": basic_stats["내구도"] + (selected_stats.get("내구도", 0) * enhance_count),
+                "Attack": basic_stats["공격력"] + (selected_stats.get("공격력", 0) * enhance_count),
+                "CritChance": basic_stats["치명타 확률"] + (selected_stats.get("치명타 확률", 0) * enhance_count),
+                "CritDamage": basic_stats["치명타 대미지"] + (selected_stats.get("치명타 대미지", 0) * enhance_count),
+                "Speed": basic_stats["스피드"] + (selected_stats.get("스피드", 0) * enhance_count),
+                "Accuracy": basic_stats["명중"] + (selected_stats.get("명중", 0) * enhance_count),
+                "Defense": basic_stats["방어력"] + (selected_stats.get("방어력", 0) * enhance_count),
                 "Skill": "None"  # 스킬은 필요시 추가
             }
             weapon_data_opponent = {}
