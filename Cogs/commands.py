@@ -1391,8 +1391,6 @@ class DiceRollView(discord.ui.View):
         """타이머 백그라운드 태스크 시작"""
         self.keep_alive_task = asyncio.create_task(self.timer_task())
 
-
-
 # 야추 다이스 버튼
 class DiceButton(discord.ui.Button):
     def __init__(self, index, label, view):
@@ -1601,6 +1599,234 @@ class WarnCommandView(discord.ui.View):
             discord.SelectOption(label=member.display_name, value=str(member.id))
             for member in guild.members if not member.bot
         ]
+
+# 무기 설정
+weapons = {
+    "단검": {"range": 1, "type": "melee", "special": "charge_cancel", "atk": 8, "charge": 4},
+    "대검": {"range": 2, "type": "melee", "special": "charge_damage", "atk": 12, "charge": 10},
+    "활": {"range": 4, "type": "ranged", "special": "mana_skill", "atk": 6, "charge": 3}
+}
+
+# 속성 상성
+attributes = {"불": "풀", "풀": "물", "물": "불"}
+
+class Battle:
+    def __init__(self, player_weapon, player_attr, enemy_weapon, enemy_attr):
+        self.player_hp = 100
+        self.enemy_hp = 100
+        self.player_weapon = player_weapon
+        self.enemy_weapon = enemy_weapon
+        self.player_attr = player_attr
+        self.enemy_attr = enemy_attr
+        self.player_damage = 0
+        self.enemy_damage = 0
+        self.distance = 3
+        self.player_charge = 0
+        self.enemy_charge = 0
+        self.turn_count = 0
+        self.turn = 0 # 0 : 플레이어 1 : 상대
+        self.turn_num = 1 # 1턴, 2턴
+        self.message = None
+        self.last_turn_log = None  # 마지막 턴 로그 저장
+
+    async def show_status(self, channel=None, player=None, action=None):
+        embed = discord.Embed(title=f"전투 상황 (턴 {self.turn_count})")
+        embed.add_field(name="내 무기 | 적 무기", value=f"{self.player_weapon} | {self.enemy_weapon}", inline=False)
+        embed.add_field(name="내 속성 | 적 속성", value=f"{self.player_attr} | {self.enemy_attr}", inline=False)
+        embed.add_field(name="내 HP | 적 HP", value=f"{int(self.player_hp)} | {int(self.enemy_hp)}", inline=False)
+        embed.add_field(name="거리", value=str(self.distance), inline=False)
+        embed.add_field(name="내 차징 | 적 차징", value=f"{self.player_charge} | {self.enemy_charge}", inline=False)
+        if self.turn == 0:
+            embed.add_field(name = "턴", value = f"플레이어의 턴! ({self.turn_num}/2)")
+        else:
+            embed.add_field(name = "턴", value = f"상대 턴! ({self.turn_num}/2)")
+
+        if action:
+            if action == "attack":
+                if player == "플레이어":
+                    embed.add_field(name="공격!", value=f"{player}가 공격했습니다! (대미지 : **{self.player_damage}**)", inline=False)
+                else:
+                    embed.add_field(name="공격!", value=f"{player}이 공격했습니다! (대미지 : **{self.enemy_damage}**)", inline=False)
+            elif action == "forward":
+                if player == "플레이어":
+                    embed.add_field(name="전진!", value=f"{player}가 전진했습니다! (거리 -1)", inline=False)
+                else:
+                    embed.add_field(name="전진!", value=f"{player}이 전진했습니다! (거리 -1)", inline=False)
+            elif action == "backward":
+                if player == "플레이어":
+                    embed.add_field(name="후퇴!", value=f"{player}가 후퇴했습니다! (거리 +1)", inline=False)
+                else:
+                    embed.add_field(name="후퇴!", value=f"{player}이 후퇴했습니다! (거리 +1)", inline=False)
+            elif action == "charge":
+                if player == "플레이어":
+                    embed.add_field(name="차징!", value=f"{player}가 차징중입니다! (차징 턴 : {self.player_charge})", inline=False)
+                else:
+                    embed.add_field(name="차징!", value=f"{player}이 차징중입니다! (차징 턴 : {self.enemy_charge})", inline=False)
+
+        view = BattleView(self)
+
+        if channel:
+            self.message = await channel.send(embed=embed, view=view)
+        else:
+            await self.message.edit(embed=embed, view=view)
+
+    async def player_action(self, action, interaction):
+        self.turn_count += 1
+
+        if action == "attack":
+            if abs(self.distance) <= weapons[self.player_weapon]["range"]:
+                if self.distance == 1 and self.player_weapon == "활":
+                    await interaction.followup.send("거리가 가까워서 공격 불가!", ephemeral=True)
+                    return
+                if self.player_charge and self.player_weapon == "활":
+                    await interaction.followup.send(f"차징 샷! {self.player_charge}만큼 넉백!")
+                    self.distance += self.player_charge
+                    if self.distance > 5:
+                        self.distance = 5
+                self.player_damage = weapons[self.player_weapon]["atk"] + (self.player_charge * weapons[self.player_weapon]["charge"])
+                if attributes[self.player_attr] == self.enemy_attr:
+                    self.player_damage *= 1.2
+                self.player_damage = round(self.player_damage)
+                if self.enemy_charge > 0 and self.player_weapon == "단검":
+                    self.enemy_charge = 0  # 차징 캔슬
+                self.enemy_hp -= self.player_damage
+                self.player_charge = 0
+            else:
+                await interaction.followup.send("거리가 멀어서 공격 불가!", ephemeral=True)
+                return
+        elif action == "forward":
+            forward_distance = 1
+            if self.player_weapon == "단검":
+                forward_distance = 2
+            if self.distance == 1:
+                await interaction.followup.send("이미 가장 가까운 상태입니다!", ephemeral=True)
+                return
+            self.distance -= forward_distance
+            if self.distance < 1:
+                self.distance = 1
+        elif action == "backward":
+            if self.distance + 1 > 5:
+                await interaction.followup.send("이미 가장 먼 상태입니다!", ephemeral=True)
+                return
+            self.distance += 1
+        elif action == "charge":
+            if self.player_charge + 1 > 3:
+                await interaction.followup.send("최고 차징중!", ephemeral=True)
+                return
+            self.player_charge += 1
+
+        # 이전 턴 로그를 현재 턴에 추가
+        if action:
+            if action == "attack":
+                self.last_turn_log = f"플레이어가 공격했습니다! (대미지 : **{self.player_damage}**)"
+            elif action == "forward":
+                self.last_turn_log = f"플레이어가 전진했습니다!"
+            elif action == "backward":
+                self.last_turn_log = f"플레이어가 후퇴했습니다!"
+            elif action == "charge":
+                self.last_turn_log = f"플레이어가 차징중입니다! (차징 턴 : {self.player_charge})"
+
+        if self.enemy_hp > 0:
+            if self.turn_num == 1:
+                self.turn_num = 2
+                await self.show_status(player="플레이어", action=action)
+            elif self.turn_num == 2: # 턴 변경
+                self.turn_num = 1
+                self.turn = 1 
+                await self.show_status(player="플레이어", action=action)
+                await asyncio.sleep(3)
+                await self.enemy_turn(interaction)
+    
+            
+            if self.player_hp <= 0:
+                await interaction.channel.send(content="패배했습니다...", embed=None, view=None)
+        else:
+            await self.show_status(player="플레이어", action=action)
+            await interaction.channel.send(content="승리했습니다!", embed=None, view=None)
+
+    async def enemy_turn(self, interaction):
+        if self.distance > weapons[self.enemy_weapon]["range"]:
+            action = random.choice(["forward", "charge"])
+        elif self.enemy_charge >= 2:
+            if self.distance > weapons[self.enemy_weapon]["range"]:
+                action = "forward"
+            else:
+                action = "attack"
+        else:
+            action = random.choice(["attack", "charge", "backward"])
+
+        if action == "attack" and abs(self.distance) <= weapons[self.enemy_weapon]["range"]:
+            if self.enemy_charge and self.enemy_weapon == "활":
+                await interaction.followup.send(f"적 차징 샷! {self.player_charge}만큼 넉백!")
+                self.distance += self.enemy_charge
+                if self.distance > 5:
+                    self.distance = 5
+            self.enemy_damage = weapons[self.enemy_weapon]["atk"] + (self.enemy_charge *  weapons[self.enemy_weapon]["charge"])
+            if attributes[self.enemy_attr] == self.player_attr:
+                self.enemy_damage *= 1.2
+            self.enemy_damage = round(self.enemy_damage)
+            self.player_hp -= self.enemy_damage
+            self.enemy_charge = 0
+        elif action == "forward":
+            forward_distance = 1
+            if self.enemy_weapon == "단검":
+                forward_distance = 2
+            self.distance -= forward_distance
+            if self.distance < 1:
+                self.distance = 1
+        elif action == "backward":
+            self.distance += 1
+        elif action == "charge":
+            if self.enemy_charge < 3:
+                self.enemy_charge += 1
+
+        # 적의 턴 로그 저장
+        if action:
+            if action == "attack":
+                self.last_turn_log = f"적이 공격했습니다! (대미지 : **{self.enemy_damage}**)"
+            elif action == "forward":
+                self.last_turn_log = f"적이 전진했습니다!"
+            elif action == "backward":
+                self.last_turn_log = f"적이 후퇴했습니다!"
+            elif action == "charge":
+                self.last_turn_log = f"적이 차징중입니다! (차징 턴 : {self.enemy_charge})"
+
+
+        if self.turn_num == 1:
+            self.turn_num = 2
+            await self.show_status(player="적", action=action)
+            await asyncio.sleep(3)
+            await self.enemy_turn(interaction)
+        elif self.turn_num == 2: # 턴 변경
+            self.turn_num = 1
+            self.turn = 0
+            await self.show_status(player="적", action=action)
+            
+            
+        
+class BattleView(discord.ui.View):
+    def __init__(self, battle):
+        super().__init__(timeout=None)
+        self.battle = battle
+
+        # 각 버튼에 색상 다르게 설정
+        self.add_item(BattleButton("공격", "attack", battle, discord.ButtonStyle.danger))  # 빨간색
+        self.add_item(BattleButton("전진", "forward", battle, discord.ButtonStyle.success))  # 녹색
+        self.add_item(BattleButton("후퇴", "backward", battle, discord.ButtonStyle.secondary))  # 회색
+        self.add_item(BattleButton("차징", "charge", battle, discord.ButtonStyle.primary))  # 파란색
+
+class BattleButton(discord.ui.Button):
+    def __init__(self, label, action, battle, style):
+        super().__init__(label=label, style=style)  # 스타일 인자를 추가
+        self.action = action
+        self.battle = battle
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        if self.battle.turn == 0: #자신 턴일때만
+            await self.battle.player_action(self.action, interaction)
+        else:
+            await interaction.followup.send("당신의 턴이 아닙니다!",ephemeral=True)
 
 def plot_lp_difference_firebase(season=None,name=None,rank=None):
     if season == None:
@@ -6881,6 +7107,26 @@ class hello(commands.Cog):
                 embed.add_field(name=f"🛠️ {weapon_name}의 변경된 스탯", value="\n".join(stat_changes) if stat_changes else "변경 사항 없음", inline=False)
         await interaction.followup.send(embed=embed)  
     
+
+    @app_commands.command(name= "배틀테스트", description="배틀테스트")
+    @app_commands.choices(무기=[
+    Choice(name='단검', value='단검'),
+    Choice(name='대검', value='대검'),
+    Choice(name='활', value='활')
+    ])
+    @app_commands.choices(속성=[
+    Choice(name='불', value='불'),
+    Choice(name='물', value='물'),
+    Choice(name='풀', value='풀')
+    ])
+    async def battleTest(self, interaction: discord.Interaction, 무기: str, 속성: str):
+        await interaction.response.send_message("전투 시작!",ephemeral=True)
+        battle = Battle(무기, 속성, random.choice(list(weapons.keys())), random.choice(list(attributes.keys())))
+        thread = await interaction.channel.create_thread(
+            name=f"테스트 대결",
+            type=discord.ChannelType.public_thread
+        )
+        await battle.show_status(thread)
 
     # @app_commands.command(name="강화",description="보유한 무기를 강화합니다")
     # async def enhance(self, interaction: discord.Interaction):
