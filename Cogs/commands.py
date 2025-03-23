@@ -1610,6 +1610,130 @@ weapons = {
 # 속성 상성
 attributes = {"불": "풀", "풀": "물", "물": "불"}
 
+class Battle2:
+    def __init__(self, player_weapon, player_attr, enemy_weapon, enemy_attr, channel):
+        self.player_hp = 100
+        self.enemy_hp = 100
+        self.player_weapon = player_weapon
+        self.enemy_weapon = enemy_weapon
+        self.player_attr = player_attr
+        self.enemy_attr = enemy_attr
+        self.player_damage = 0
+        self.enemy_damage = 0
+        self.distance = 3
+        self.player_charge = 0
+        self.enemy_charge = 0
+        self.turn_count = 0
+        self.turn = 0  # 0 : 플레이어, 1 : 상대
+        self.turn_num = 1  # 1턴, 2턴
+        self.channel = channel
+        self.message = None
+
+    async def show_status(self, action=None, player=None):
+        embed = discord.Embed(title=f"전투 상황 (턴 {self.turn_count})")
+        embed.add_field(name="내 무기 | 적 무기", value=f"{self.player_weapon} | {self.enemy_weapon}", inline=False)
+        embed.add_field(name="내 속성 | 적 속성", value=f"{self.player_attr} | {self.enemy_attr}", inline=False)
+        embed.add_field(name="내 HP | 적 HP", value=f"{int(self.player_hp)} | {int(self.enemy_hp)}", inline=False)
+        embed.add_field(name="거리", value=str(self.distance), inline=False)
+        embed.add_field(name="내 차징 | 적 차징", value=f"{self.player_charge} | {self.enemy_charge}", inline=False)
+        if self.turn == 0:
+            embed.add_field(name="턴", value=f"플레이어의 턴! ({self.turn_num}/2)")
+        else:
+            embed.add_field(name="턴", value=f"상대 턴! ({self.turn_num}/2)")
+
+        if action:
+            embed.add_field(name="행동", value=f"{player}이/가 {action} 했습니다.",inline = False)
+
+        if self.message:
+            await self.message.edit(embed=embed)
+        else:
+            self.message = await self.channel.send(embed=embed)
+
+    async def player_action(self, action):
+        self.turn_count += 1
+        self.turn_num = 2 if self.turn_num == 1 else 1
+        if action == "attack":
+            if abs(self.distance) <= weapons[self.player_weapon]["range"]:
+                self.player_damage = weapons[self.player_weapon]["atk"] + (self.player_charge * weapons[self.player_weapon]["charge"])
+                self.player_damage = round(self.player_damage)
+                if self.enemy_charge > 0 and self.player_weapon == "단검":
+                    self.enemy_charge = 0  # 차징 캔슬
+                self.enemy_hp -= self.player_damage
+                self.player_charge = 0
+                await self.show_status(action="공격", player="플레이어")
+            else:
+                await self.show_status(action="공격 불가", player="플레이어")
+                return
+        elif action == "forward":
+            if self.distance > 1:
+                self.distance -= 1
+                await self.show_status(action="전진", player="플레이어")
+            else:
+                await self.show_status(action="이미 전진 불가", player="플레이어")
+                return
+        elif action == "backward":
+            if self.distance < 5:
+                self.distance += 1
+                await self.show_status(action="후퇴", player="플레이어")
+            else:
+                await self.show_status(action="이미 후퇴 불가", player="플레이어")
+                return
+        elif action == "charge":
+            if self.player_charge < 3:
+                self.player_charge += 1
+                await self.show_status(action="차징", player="플레이어")
+            else:
+                await self.show_status(action="최고 차징 중", player="플레이어")
+                return
+
+        # 적 턴 진행
+        await asyncio.sleep(3)
+        await self.enemy_turn()
+
+    async def enemy_turn(self):
+        if self.enemy_hp <= 0:
+            await self.show_status(action="패배", player="플레이어")
+            await self.channel.send("전투에서 승리했습니다!")
+            return
+
+        # 적의 행동을 랜덤으로 선택
+        action = random.choice(["attack", "forward", "backward", "charge"])
+        if action == "attack" and abs(self.distance) <= weapons[self.enemy_weapon]["range"]:
+            self.enemy_damage = weapons[self.enemy_weapon]["atk"] + (self.enemy_charge * weapons[self.enemy_weapon]["charge"])
+            self.enemy_damage = round(self.enemy_damage)
+            self.player_hp -= self.enemy_damage
+            self.enemy_charge = 0
+            await self.show_status(action="공격", player="상대")
+        elif action == "forward":
+            if self.distance > 1:
+                self.distance -= 1
+                await self.show_status(action="전진", player="상대")
+            else:
+                await self.show_status(action="이미 전진 불가", player="상대")
+                return
+        elif action == "backward":
+            if self.distance < 5:
+                self.distance += 1
+                await self.show_status(action="후퇴", player="상대")
+            else:
+                await self.show_status(action="이미 후퇴 불가", player="상대")
+                return
+        elif action == "charge":
+            if self.enemy_charge < 3:
+                self.enemy_charge += 1
+                await self.show_status(action="차징", player="상대")
+            else:
+                await self.show_status(action="최고 차징 중", player="상대")
+
+        # 플레이어 턴으로 돌아가기
+        await asyncio.sleep(3)
+        if self.player_hp <= 0:
+            await self.show_status(action="패배", player="상대")
+            await self.channel.send("전투에서 패배했습니다!")
+            return
+        await self.show_status(action="턴 전환", player="시스템")
+        await self.player_action(random.choice(["attack", "forward", "backward", "charge"]))
+
 class Battle:
     def __init__(self, player_weapon, player_attr, enemy_weapon, enemy_attr):
         self.player_hp = 100
@@ -7127,6 +7251,22 @@ class hello(commands.Cog):
             type=discord.ChannelType.public_thread
         )
         await battle.show_status(thread)
+
+
+    @app_commands.command(name="배틀테스트2", description="전투를 시작합니다.")
+    async def start_battle(self, interaction: discord.Interaction):
+        player_weapon = random.choice(list(weapons.keys()))
+        player_attr = random.choice(list(attributes.keys()))
+        enemy_weapon = random.choice(list(weapons.keys()))
+        enemy_attr = random.choice(list(attributes.keys()))
+        thread = await interaction.channel.create_thread(
+            name=f"테스트 대결",
+            type=discord.ChannelType.public_thread
+        )
+        battle = Battle2(player_weapon, player_attr, enemy_weapon, enemy_attr, thread)
+        
+        await battle.show_status(action="전투 시작", player="시스템")
+        await battle.player_action("attack")
 
     # @app_commands.command(name="강화",description="보유한 무기를 강화합니다")
     # async def enhance(self, interaction: discord.Interaction):
