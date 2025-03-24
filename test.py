@@ -41,6 +41,7 @@ cur_dur = raid_boss_data.get("내구도", 0)
 total_dur = raid_boss_data.get("초기 내구도",0)
 
 refraidboss.update({"내구도" : total_dur})
+refraid.set("")
 
 # 순위표를 포함한 embed 내용
 data = {
@@ -62,3 +63,5 @@ data = {
         }
     ]
 }
+
+response = requests.post(WEBHOOK_URL, json=data)

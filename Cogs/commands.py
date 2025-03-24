@@ -6088,6 +6088,34 @@ class hello(commands.Cog):
         embed.add_field(name="예상 결과", value=point_message, inline=False)
         await interaction.followup.send(embed = embed)
 
+    @app_commands.command(name="레이드현황",description="현재 레이드 현황을 보여줍니다.")
+    async def raid_status(self, interaction: discord.Interaction):
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        refraid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/내역")
+        raid_data = refraid.get() or {}
+
+        raid_data_sorted = sorted(raid_data.items(), key=lambda x: x[1]['대미지'], reverse=True)
+
+        # 순위별로 대미지 항목을 생성
+        rankings = []
+        for idx, (nickname, data) in enumerate(raid_data_sorted, start=1):
+            damage = data['대미지']
+            if data.get('막타', False):
+                rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지 🎯")
+            else:
+                rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지")
+
+        refraidboss = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/")
+        raid_boss_data = refraidboss.get() or {}
+        cur_dur = raid_boss_data.get("내구도", 0)
+        total_dur = raid_boss_data.get("초기 내구도",0)
+        
+        embed = discord.Embed(title="🎯 레이드 현황", color = 0x00ff00)
+        embed.add_field(name="레이드 보스의 현재 체력", value=f"[{cur_dur}/{total_dur}]", inline=False)
+        embed.add_field(name="현재 대미지", value="\n".join(rankings), inline=False)
+        await interaction.followup.send(embed = embed)
     
     @app_commands.command(name="강화", description="보유한 무기를 강화합니다.")
     async def enhance(self, interaction: discord.Interaction):
