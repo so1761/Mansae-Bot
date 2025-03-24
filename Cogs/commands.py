@@ -6090,6 +6090,7 @@ class hello(commands.Cog):
 
     @app_commands.command(name="레이드현황",description="현재 레이드 현황을 보여줍니다.")
     async def raid_status(self, interaction: discord.Interaction):
+        await interaction.response.defer()
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
