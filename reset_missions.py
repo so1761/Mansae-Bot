@@ -33,7 +33,7 @@ max_dice_num = max(dice_nums, key=lambda x: x[0])[0]
 
 winners = [name for num, name in dice_nums if num == max_dice_num]
 
-if len(winners) == 1:
+if len(winners) > 1:
     point_message = f"{', '.join([f'**{winner}**' for winner in winners])}에게 **{max_dice_num}**포인트 지급! 🎉"
 else:
     point_message = f"**{winners[0]}**님에게 **{max_dice_num}**포인트 지급! 🎉"
@@ -103,7 +103,7 @@ for nickname, point_data in name_data.items():
         if total == best_total:
             best_player.append(nickname)
 
-if len(best_player) == 1:
+if len(best_player) > 1:
     point_message = f"{', '.join([f'**{winner}**' for winner in best_player])}에게 **{best_total * hand_bet_rate[best_hand_rank]}**포인트 지급! 🎉"
 else:
     point_message = f"**{best_player[0]}**님에게 **{best_total * hand_bet_rate[best_hand_rank]}**포인트 지급! 🎉"

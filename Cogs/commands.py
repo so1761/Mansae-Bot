@@ -6543,7 +6543,16 @@ class hello(commands.Cog):
             await interaction.response.send_message(embed=embed)
 
             battle_ref = db.reference("승부예측/대결진행여부")
+            is_battle = battle_ref.get() or False
+            if is_battle:
+                warnembed = discord.Embed(title="실패",color = discord.Color.red())
+                warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+                await interaction.response.send_message(embed = warnembed)
+                return
+            
             battle_ref.set(True)
+
+            
 
             challenger = {
                 "name": weapon_data_challenger.get("이름", ""),
@@ -6634,7 +6643,7 @@ class hello(commands.Cog):
             if defender["HP"] <= 0:
                 await thread.send(embed = battle_embed)
                 await thread.send(f"**{attacker['name']} 승리!**")
-                return
+                break
             
             # if attacker['name'] == challenger['name']: # 도전자 공격
             #     heal_status = round(weapon_data_opponent.get('내구도', '') * 0.01) # 최대 체력의 1% 회복
@@ -6883,7 +6892,7 @@ class hello(commands.Cog):
             await interaction.response.send_message("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
             return
         
-        ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/레이드")
+        ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/내역/{nickname}")
         raid_data = ref_raid.get() or {}
         raid_bool = raid_data.get("레이드여부", False)
         if raid_bool:
@@ -6910,6 +6919,12 @@ class hello(commands.Cog):
         await interaction.response.send_message(embed=embed)
 
         battle_ref = db.reference("승부예측/대결진행여부")
+        is_battle = battle_ref.get() or {}
+        if is_battle:
+                warnembed = discord.Embed(title="실패",color = discord.Color.red())
+                warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+                await interaction.response.send_message(embed = warnembed)
+                return
         battle_ref.set(True)
 
         challenger = {
@@ -7050,8 +7065,8 @@ class hello(commands.Cog):
                 embed.add_field(name ="", value = f"30턴이 지나 레이드가 종료되었습니다! ",inline = False)
                 await thread.send(embed = embed)
                 await thread.send(f"**전투 종료! {challenger['name']}의 총 대미지: {total_damage}**")
-                ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/레이드")
-                ref_raid.update({"총 대미지": total_damage})
+                ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/내역/{nickname}")
+                ref_raid.update({"대미지": total_damage})
                 break
             
             embed = apply_debuffs(opponent)
@@ -7096,15 +7111,15 @@ class hello(commands.Cog):
                 await thread.send(embed = battle_embed)
                 await thread.send(f"**{attacker['name']}가 레이드 보스 [{opponent['name']}]을 처치했습니다!**")
                 await thread.send(f"**전투 종료! {challenger['name']}의 총 대미지: {total_damage}**")
-                ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/레이드")
-                ref_raid.update({"총 대미지": total_damage})
+                ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/내역/{nickname}")
+                ref_raid.update({"대미지": total_damage})
                 ref_raid.update({"막타" : True})
                 break
             elif defender["HP"] <= 0:
                 await thread.send(embed = battle_embed)
                 await thread.send(f"**전투 종료! {challenger['name']}의 총 대미지: {total_damage}**")
-                ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/레이드")
-                ref_raid.update({"총 대미지": total_damage})
+                ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/내역/{nickname}")
+                ref_raid.update({"대미지": total_damage})
                 break
             
             if attacker['name'] == opponent['name']: # 보스 공격
@@ -7151,7 +7166,7 @@ class hello(commands.Cog):
         db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/디버프").set(opponent["Debuff"])
         db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/내구도").set(opponent["HP"])
 
-        ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/레이드")
+        ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/내역/{nickname}")
         ref_raid.update({"레이드여부": True})
 
         battle_ref = db.reference("승부예측/대결진행여부")
