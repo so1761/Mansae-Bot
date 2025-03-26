@@ -5294,6 +5294,18 @@ class hello(commands.Cog):
             상대.name : 포인트
         }
 
+        # ====================  [미션]  ====================
+        # 일일미션 : 숫자야구 또는 주사위 대결 1회
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+        current_predict_season = cur_predict_seasonref.get()
+        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/일일미션/숫자야구 또는 주사위 대결 1회")
+        mission_bool = ref.get()['완료']
+        if not mission_bool:
+            ref.update({"완료": True})
+            print(f"{interaction.user.display_name}의 [숫자야구 또는 주사위 대결 1회] 미션 완료")
+
+        # ====================  [미션]  ====================
+
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
@@ -5472,6 +5484,18 @@ class hello(commands.Cog):
         bettingPoint = ref2.get()
         ref.update({"베팅포인트" : bettingPoint + 포인트})
 
+        # ====================  [미션]  ====================
+        # 일일미션 : 숫자야구 또는 주사위 대결 1회
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+        current_predict_season = cur_predict_seasonref.get()
+        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/일일미션/숫자야구 또는 주사위 대결 1회")
+        mission_bool = ref.get()['완료']
+        if not mission_bool:
+            ref.update({"완료": True})
+            print(f"{interaction.user.display_name}의 [숫자야구 또는 주사위 대결 1회] 미션 완료")
+
+        # ====================  [미션]  ====================
+            
         class GuessModal(discord.ui.Modal, title="숫자 맞추기"):
             def __init__(self, game, player):
                 super().__init__()
