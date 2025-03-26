@@ -136,6 +136,48 @@ yacht_data = {
     ]
 }
 
+refraid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/내역")
+raid_data = refraid.get() or {}
+
+raid_data_sorted = sorted(raid_data.items(), key=lambda x: x[1]['대미지'], reverse=True)
+
+# 순위별로 대미지 항목을 생성
+rankings = []
+for idx, (nickname, data) in enumerate(raid_data_sorted, start=1):
+    damage = data['대미지']
+    if data.get('막타', False):
+        rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지 🎯")
+    else:
+        rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지")
+
+refraidboss = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/")
+raid_boss_data = refraidboss.get() or {}
+cur_dur = raid_boss_data.get("내구도", 0)
+total_dur = raid_boss_data.get("초기 내구도",0)
+
+refraidboss.update({"내구도" : total_dur})
+refraid.set("")
+
+# 순위표를 포함한 embed 내용
+raid_result = {
+    "content": "",
+    "embeds": [
+        {
+            "title": "🎯 레이드 정산",
+            "description": f"레이드 보스의 체력 [{cur_dur}/{total_dur}]",
+            "color": 0x00ff00,  # 초록색
+            "fields": [
+                {
+                    "name": "결과",
+                    "value": "\n".join(rankings)  # 순위표를 필드에 추가
+                }
+            ],
+            "footer": {
+                "text": "Raid Bot",
+            }
+        }
+    ]
+}
 
 # 포인트 지급
 for winner in best_player:
@@ -187,6 +229,13 @@ if response.status_code == 204:
 else:
     print(f"❌ 메시지 전송 실패! 상태 코드: {response.status_code}")
 
+response = requests.post(WEBHOOK_URL, json=raid_result)
+
+if response.status_code == 204:
+    print("✅ 레이드 메시지 전송 성공!")
+else:
+    print(f"❌ 메시지 전송 실패! 상태 코드: {response.status_code}")
+    
 ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트")
 users = ref.get()
 
