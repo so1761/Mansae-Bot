@@ -5299,7 +5299,8 @@ class hello(commands.Cog):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/일일미션/숫자야구 또는 주사위 대결 1회")
-        mission_bool = ref.get()['완료']
+        mission_data = ref.get() or {}
+        mission_bool = mission_data.get('완료',False)
         if not mission_bool:
             ref.update({"완료": True})
             print(f"{interaction.user.display_name}의 [숫자야구 또는 주사위 대결 1회] 미션 완료")
@@ -5311,7 +5312,8 @@ class hello(commands.Cog):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}/미션/일일미션/숫자야구 또는 주사위 대결 1회")
-        mission_bool = ref.get()['완료']
+        mission_data = ref.get() or {}
+        mission_bool = mission_data.get('완료',False)
         if not mission_bool:
             ref.update({"완료": True})
             print(f"{상대.display_name}의 [숫자야구 또는 주사위 대결 1회] 미션 완료")
@@ -5501,7 +5503,8 @@ class hello(commands.Cog):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/일일미션/숫자야구 또는 주사위 대결 1회")
-        mission_bool = ref.get()['완료']
+        mission_data = ref.get() or {}
+        mission_bool = mission_data.get('완료',False)
         if not mission_bool:
             ref.update({"완료": True})
             print(f"{interaction.user.display_name}의 [숫자야구 또는 주사위 대결 1회] 미션 완료")
@@ -5513,7 +5516,8 @@ class hello(commands.Cog):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{상대.name}/미션/일일미션/숫자야구 또는 주사위 대결 1회")
-        mission_bool = ref.get()['완료']
+        mission_data = ref.get() or {}
+        mission_bool = mission_data.get('완료',False)
         if not mission_bool:
             ref.update({"완료": True})
             print(f"{상대.display_name}의 [숫자야구 또는 주사위 대결 1회] 미션 완료")
@@ -6707,7 +6711,7 @@ class hello(commands.Cog):
             if attacker["Evasion"] > 0.6: 
                 attacker["Evasion"] = 0.6
             apply_status_for_turn(attacker, "은신", duration=2)  # 은신 상태 2턴 지속
-            return f"**은신** 사용! 2턴간 회피율이 {round(attacker["Evasion"] * 100)}% 증가합니다!"
+            return f"**은신** 사용! 2턴간 회피율이 {round(attacker['Evasion'] * 100)}% 증가합니다!"
 
         def smash(attacker,skill_level):
             # 다음 공격은 반드시 치명타로 적용, 치명타 대미지 증가
