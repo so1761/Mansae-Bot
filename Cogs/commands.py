@@ -6753,7 +6753,7 @@ class hello(commands.Cog):
             remove_status_effects(attacker)
             
             if "장전" in attacker['Status']: 
-                result_message += f"장전 중! ({attacker["Status"]["장전"]["duration"]}턴 남음!)"
+                result_message += f"장전 중! ({attacker['Status']['장전']['duration']}턴 남음!)"
                 # 공격 후, 각 스킬의 현재 쿨타임을 감소시키는 부분
                 for skill, cooldown_data in attacker["Skills"].items():
                     if cooldown_data["현재 쿨타임"] > 0:
@@ -7023,13 +7023,13 @@ class hello(commands.Cog):
                 if attacker['name'] == challenger['name']: # 도전자 공격
                     battle_embed = discord.Embed(title=f"{attacker['name']}의 출혈!🩸", color=discord.Color.blue())
                     battle_embed.add_field(name="", value = f"출혈 상태로 인하여 {bleed_damage} 대미지를 받았습니다!", inline = False)
-                    battle_embed.add_field(name="남은 턴", value = f"출혈 상태 남은 턴 : {attacker["Status"]["출혈"]["duration"]}", inline = False)
+                    battle_embed.add_field(name="남은 턴", value = f"출혈 상태 남은 턴 : {attacker['Status']['출혈']['duration']}", inline = False)
                     attacker["HP"] -= bleed_damage
                     battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {weapon_data_challenger.get('내구도', '')}]**")
                 elif attacker['name'] == opponent['name']: # 상대 공격
                     battle_embed = discord.Embed(title=f"{attacker['name']}의 출혈!🩸", color=discord.Color.red())
                     battle_embed.add_field(name="", value = f"출혈 상태로 인하여 {bleed_damage} 대미지를 받았습니다!", inline = False)
-                    battle_embed.add_field(name="남은 턴", value = f"출혈 상태 남은 턴 : {attacker["Status"]["출혈"]["duration"]}", inline = False)
+                    battle_embed.add_field(name="남은 턴", value = f"출혈 상태 남은 턴 : {attacker['Status']['출혈']['duration']}", inline = False)
                     attacker["HP"] -= bleed_damage
                     battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {weapon_data_opponent.get('내구도', '')}]**")
 
