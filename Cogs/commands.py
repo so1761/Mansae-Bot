@@ -453,9 +453,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         def electronic_line(defender, skill_level):
             global battle_distance
             damage = 20 + (10 * skill_level)
-            if battle_distance >= 2 and battle_distance <= 3:
+            if battle_distance == 2:
                 defender['HP'] -= damage
-                return f"\n**전깃줄** 사용!\n거리가 2 ~ 3인 상대에게 **{damage}**의 고정 대미지!\n내구도 변화: **[{defender['HP'] + damage} -> {defender['HP']}]**"
+                return f"\n**전깃줄** 사용!\n거리가 2인 상대에게 **{damage}**의 고정 대미지!\n내구도 변화: **[{defender['HP'] + damage} -> {defender['HP']}]**"
             else:
                 return f"\n**전깃줄** 사용 불가!\n적이 적정 거리에 없어 스킬 사용을 실패했습니다!\n현재 거리: {battle_distance}\n"
         
@@ -1951,6 +1951,7 @@ class ItemSelect(discord.ui.Select):
             discord.SelectOption(label = "숫자야구대결기회 추가", value = "숫자야구대결기회 추가", description = "숫자야구 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다."),
             discord.SelectOption(label = "야추 초기화", value = "야추 초기화", description = "현재 야추 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다."),
             discord.SelectOption(label = "완전 익명화", value = "완전 익명화", description = "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다."),
+            discord.SelectOption(label = "레이드 재도전", value = "레이드 재도전", description = "레이드에 참여했던 기록을 없애고 다시 도전합니다. 500p로 구매 가능합니다."),
         ]
         super().__init__(
             placeholder = '구매할 아이템을 선택하세요.',
@@ -1981,7 +1982,8 @@ class ItemSelect(discord.ui.Select):
             "주사위대결기회 추가": 100,
             "숫자야구대결기회 추가": 100,
             "야추 초기화": 100,
-            "완전 익명화": 1000,
+            "완전 익명화": 300,
+            "레이드 재도전": 500,
         }
 
         description = {
@@ -1995,7 +1997,8 @@ class ItemSelect(discord.ui.Select):
             "주사위대결기회 추가": "주사위 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다.",
             "숫자야구대결기회 추가": "숫자야구 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다.",
             "야추 초기화": "현재 야추 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다.",
-            "완전 익명화": "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다",
+            "완전 익명화": "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 300p로 구매 가능합니다",
+            "레이드 재도전": "레이드에 참여했던 기록을 없애고 다시 도전합니다. 500p로 구매 가능합니다.",
         }
         
         item_price = item_menu[selected_item]
@@ -7168,22 +7171,96 @@ class hello(commands.Cog):
             warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
             await interaction.response.send_message(embed = warnembed)
             return
-
-        ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss_name}/내역/{nickname}")
-        raid_data = ref_raid.get() or {}
-        raid_bool = raid_data.get("레이드여부", False)
-        if raid_bool:
-            warning_embed = discord.Embed(title="메세지", color=discord.Color.red())
-            warning_embed.add_field(name="", value="오늘은 이미 레이드를 참여했습니다!", inline=False)
-            await interaction.response.send_message(embed = warning_embed, ephemeral= True)
-            return
-
+        
         if weapon_data_opponent.get("내구도", 0) <= 0:
             warning_embed = discord.Embed(title="메세지", color=discord.Color.red())
             warning_embed.add_field(name="", value="오늘의 레이드보스는 이미 처치되었습니다!", inline=False)
             await interaction.response.send_message(embed = warning_embed, ephemeral= True)
             return
 
+        ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss_name}/내역/{nickname}")
+        raid_data = ref_raid.get() or {}
+        raid_damage = raid_data.get("대미지", 0)
+        raid_bool = raid_data.get("레이드여부", False)
+        
+        result = False
+        ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+        item_data = ref_item.get() or {}
+        raid_refresh = item_data.get("레이드 재도전", 0)
+        if raid_bool:
+            if raid_refresh: # 레이드 재도전권 있다면?
+                retry_embed = discord.Embed(title="레이드 재도전", color=discord.Color.orange())
+                retry_embed = discord.Embed(
+                    title="레이드 재도전🔄 ",
+                    description="이미 레이드를 참여하셨습니다.",
+                    color=discord.Color.orange()
+                )
+                retry_embed.add_field(
+                    name="넣은 대미지",
+                    value=f"**{raid_damage}💥 **",
+                    inline=False
+                )
+                retry_embed.add_field(
+                    name="",
+                    value="**재도전권을 사용하시겠습니까?**",
+                    inline=False
+                )
+                retry_embed.set_footer(text="재도전시 기존 기록이 삭제됩니다!")
+                
+                class RaidRetryView(discord.ui.View):
+                    def __init__(self, user_id):
+                        super().__init__(timeout=60)  # 60초 후 자동 종료
+                        self.user_id = user_id
+                        self.future = asyncio.Future()  # 버튼 결과 저장 (True/False)
+
+                    def disable_all_buttons(self):
+                        """모든 버튼을 비활성화 상태로 변경"""
+                        for child in self.children:
+                            if isinstance(child, discord.ui.Button):
+                                child.disabled = True
+
+                    @discord.ui.button(label="사용하기", style=discord.ButtonStyle.green)
+                    async def use_retry(self, interaction: discord.Interaction, button: discord.ui.Button):
+                        # 레이드 재도전권 사용 로직
+                        ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/아이템")
+                        item_data = ref_item.get() or {}
+                        raid_refresh = item_data.get("레이드 재도전", 0)
+
+                        # 버튼 비활성화 처리
+                        self.disable_all_buttons()
+                        
+                        if raid_refresh > 0:
+                            ref_item.update({"레이드 재도전": raid_refresh - 1})  # 사용 후 갱신
+                            await interaction.response.edit_message(content="레이드 재도전권을 사용했습니다!", view=None)
+
+                            refraid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss_name}/내역/{interaction.user.name}")
+                            refraid.delete() 
+
+                            ref_boss = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss_name}")
+                            boss_data = ref_boss.get() or {}
+                            Boss_HP = boss_data.get("내구도", 0)
+                            ref_boss.update({"내구도" : Boss_HP + raid_damage})
+
+                            self.future.set_result(True)  # ✅ True 반환 (재도전 성공)
+                        else:
+                            await interaction.response.edit_message(content="레이드 재도전권이 없습니다!", view=None)
+                            self.future.set_result(False)  # ✅ False 반환 (재도전 불가)
+                
+                view = RaidRetryView(interaction.user.id)
+                await interaction.response.send_message(embed=retry_embed, view=view, ephemeral=True)
+
+                # ✅ 버튼 클릭 결과 대기 (True = 진행, False = 중단)
+                result = await view.future
+
+                if not result:
+                    return  # 재도전 불가면 함수 종료
+            else:
+                warning_embed = discord.Embed(title="메세지", color=discord.Color.red())
+                warning_embed.add_field(name="", value="오늘은 이미 레이드를 참여했습니다!", inline=False)
+                await interaction.response.send_message(embed = warning_embed, ephemeral= True)
+                return
+
+        
         battle_ref.set(True)
 
         # 임베드 생성
@@ -7192,7 +7269,10 @@ class hello(commands.Cog):
             description="대결이 시작되었습니다!",
             color=discord.Color.blue()  # 원하는 색상 선택
         )
-        await interaction.response.send_message(embed=embed)
+        if result:
+            await interaction.channel.send(embed = embed)
+        else:
+            await interaction.response.send_message(embed=embed)
         await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = boss_name, raid = True)
 
         battle_ref = db.reference("승부예측/대결진행여부")
