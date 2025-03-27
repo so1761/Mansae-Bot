@@ -1881,6 +1881,7 @@ class ItemBuyButton(discord.ui.Button):
             "숫자야구대결기회 추가": 100,
             "야추 초기화": 100,
             "완전 익명화": 1000,
+            "레이드 재도전": 500
         }
 
         if real_point < item_menu[self.item_name]: # 포인트가 적을 경우
