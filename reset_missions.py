@@ -37,7 +37,7 @@ if len(winners) > 1:
     point_message = f"{', '.join([f'**{winner}**' for winner in winners])}에게 **{max_dice_num}**포인트 지급! 🎉"
 else:
     point_message = f"**{winners[0]}**님에게 **{max_dice_num}**포인트 지급! 🎉"
-data = {
+dice_data = {
     "content": "",
     "embeds": [
         {
@@ -135,9 +135,15 @@ yacht_data = {
         }
     ]
 }
-
-refraid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/내역")
+boss_name = "스우"
+refraid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss_name}/내역")
 raid_data = refraid.get() or {}
+
+# 전체 대미지 합산
+total_damage = sum(data['대미지'] for data in raid_data.values())
+
+# 100으로 나눈 몫 계산
+reward_count = total_damage // 100  # 전체 참가자에게 줄 아이템 개수
 
 raid_data_sorted = sorted(raid_data.items(), key=lambda x: x[1]['대미지'], reverse=True)
 
@@ -150,13 +156,24 @@ for idx, (nickname, data) in enumerate(raid_data_sorted, start=1):
     else:
         rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지")
 
-refraidboss = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/")
+
+refraidboss = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss_name}")
 raid_boss_data = refraidboss.get() or {}
 cur_dur = raid_boss_data.get("내구도", 0)
-total_dur = raid_boss_data.get("초기 내구도",0)
+total_dur = raid_boss_data.get("총 내구도",0)
+
+if cur_dur <= 0: # 보스 처치 시
+    reward_count *= 2 # 보상 2배
 
 refraidboss.update({"내구도" : total_dur})
 refraid.set("")
+
+participants = list(raid_data.keys())
+for participant in participants:
+    ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{participant}/아이템")
+    item_data = ref_item.get() or {}
+    weapon_parts = item_data.get("강화재료", 0)
+    ref_item.update({"강화재료" : weapon_parts + reward_count})
 
 # 순위표를 포함한 embed 내용
 raid_result = {
@@ -170,6 +187,10 @@ raid_result = {
                 {
                     "name": "결과",
                     "value": "\n".join(rankings)  # 순위표를 필드에 추가
+                },
+                {
+                    "name": "보상",
+                    "value": f"강화 재료 **{reward_count}개** 지급!"
                 }
             ],
             "footer": {
@@ -215,7 +236,7 @@ for winner in winners:
         "사유": "주사위 이벤트"
     })
     
-response = requests.post(WEBHOOK_URL, json=data)
+response = requests.post(WEBHOOK_URL, json=dice_data)
 
 if response.status_code == 204:
     print("✅ 주사위 메시지 전송 성공!")
