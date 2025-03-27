@@ -7134,7 +7134,7 @@ class hello(commands.Cog):
 
         # 임베드 생성
         embed = discord.Embed(
-            title=f"{interaction.user.display_name}의 {weapon_data_opponent.get("이름", "")} 레이드",
+            title=f"{interaction.user.display_name}의 {weapon_data_opponent.get('이름', '')} 레이드",
             description="대결이 시작되었습니다!",
             color=discord.Color.blue()  # 원하는 색상 선택
         )
