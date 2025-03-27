@@ -262,28 +262,36 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             상태가 사라졌을 때 효과를 되돌리는 함수
             """
             
-            if "은신" not in character["Status"]:
-                # 은신 상태가 사라지면 회피율을 원래대로 복구
-                character["Evasion"] = 0
+            # 기본값으로 초기화
+            character["Evasion"] = 0
+            character["CritDamage"] = character["BaseCritDamage"]
+            character["CritChance"] = character["BaseCritChance"]
+            character["Attack"] = character["BaseAttack"]
+            character["Accuracy"] = character["BaseAccuracy"]
+            character["Speed"] = character["BaseSpeed"]
+            character["DefenseIgnore"] = 0
 
-            if "강타" not in character["Status"]:
-                # 강타 상태가 사라지면 치명타 확률과 대미지를 원래대로 복구
-                character["CritDamage"] = character["BaseCritDamage"]
-                character["CritChance"] = character["BaseCritChance"]
+            # 현재 적용 중인 상태 효과를 확인하고 반영
+            if "은신" in character["Status"]:
+                character["Evasion"] = 50  # 예시 값 (회피율 증가)
 
-            if "차징샷" not in character["Status"]:
-                character["Attack"] = character["BaseAttack"]
-                character["Accuracy"] = character["BaseAccuracy"]
+            if "강타" in character["Status"]:
+                character["CritDamage"] *= 1.5  # 예시 값
+                character["CritChance"] += 0.2  # 예시 값
 
-            if "헤드샷" not in character["Status"]:
-                # 헤드샷 상태가 사라지면 공격력과 방어력 관통을 원래대로 복구
-                character["Attack"] = character["BaseAttack"]
-                character["DefenseIgnore"] = 0
+            if "차징샷" in character["Status"]:
+                character["Attack"] *= 1.3  # 예시 값
+                character["Accuracy"] += 0.15  # 예시 값
 
-            if "창격" not in character["Status"]:
-                # 창격 상태가 사라지면 치명타 확률과 명중률을 원래대로 복구
-                character["CritChance"] = character["BaseCritChance"]
-                character["Accuracy"] = character["BaseAccuracy"]
+            if "헤드샷" in character["Status"]:
+                character["Attack"] *= 1.2  # 예시 값
+                character["DefenseIgnore"] = 50  # 예시 값
+
+            if "창격" in character["Status"]:
+                character["CritChance"] += 0.25  # 예시 값
+                character["Accuracy"] += 0.2  # 예시 값
+
+
                 
         async def end(attacker, defender, winner, raid):
             await weapon_battle_thread.send(embed = battle_embed)
