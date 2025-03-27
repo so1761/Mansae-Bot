@@ -451,10 +451,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
         # 공격 함수
         async def attack(attacker, defender, evasion, reloading):
-
-            update_status(attacker)  # 공격자의 상태 업데이트 (은신 등)
-            remove_status_effects(attacker)
-            
+     
             if reloading: 
                 return 0, False, False, False
         
@@ -485,6 +482,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 defense = 0
             damage_reduction = calculate_damage_reduction(defense)
             final_damage = base_damage * (1 - damage_reduction)
+            
+            update_status(attacker)  # 공격자의 상태 업데이트 (은신 등)
+            remove_status_effects(attacker)
             
             return max(1, round(final_damage)), critical_bool, distance_bool, False # 최소 피해량 보장
 
