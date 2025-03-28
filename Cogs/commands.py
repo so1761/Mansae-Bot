@@ -24,6 +24,7 @@ from discord import Object
 from datetime import datetime
 from matplotlib import font_manager, rc
 from dotenv import load_dotenv
+from collections import Counter
 
 API_KEY = None
 
@@ -103,6 +104,17 @@ enhancement_probabilities = {
     17: 5,  # 17강 - 5% 성공
     18: 3,  # 18강 - 3% 성공
     19: 1,   # 19강 - 1% 성공
+}
+
+enhancement_options = {
+    "공격 강화": {"main_stat": "공격력", "stats": {"공격력": 3, "내구도": 10, "방어력": 2, "스피드": 1}},
+    "치명타 대미지 강화": {"main_stat": "치명타 대미지", "stats": {"공격력": 1, "내구도": 5, "방어력": 1, "치명타 대미지": 0.1}},
+    "치명타 확률 강화": {"main_stat": "치명타 확률", "stats": {"공격력": 1, "내구도": 5, "방어력": 1, "치명타 확률": 0.04}},
+    "속도 강화": {"main_stat": "스피드", "stats": {"공격력": 1, "내구도": 10, "방어력": 1, "스피드": 3}},
+    "명중 강화": {"main_stat": "명중", "stats": {"공격력": 2, "내구도": 10, "방어력": 2, "스피드": 1, "명중": 5}},
+    "방어 강화": {"main_stat": "방어력", "stats": {"내구도": 20, "방어력": 5}},
+    "내구도 강화": {"main_stat": "내구도", "stats": {"내구도": 30, "방어력": 3}},
+    "밸런스 강화": {"main_stat": "올스탯", "stats": {"공격력": 1, "내구도": 10, "방어력": 1, "스피드": 1, "명중": 1, "치명타 대미지": 0.02, "치명타 확률": 0.01}}
 }
 
 base_weapon_stats = {
@@ -572,6 +584,30 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         # 비동기 전투 시뮬레이션 전에 스탯을 임베드로 전송
         embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green())
 
+        # 스킬 정보 추가
+        skills_message_challenger = "• 스킬: "
+        skills_list_challenger = []
+
+        # challenger['Skills']에서 모든 스킬 이름과 레벨을 가져와서 형식에 맞게 저장
+        for skill_name, skill_data in challenger['Skills'].items():
+            skill_level = skill_data['레벨']  # 스킬 레벨을 가져옴
+            skills_list_challenger.append(f"{skill_name} Lv {skill_level}")
+
+        # 스킬 목록을 콤마로 구분하여 메시지에 추가
+        skills_message_challenger += " ".join(skills_list_challenger)
+
+        # 스킬 정보 추가
+        skills_message_opponent = "• 스킬: "
+        skills_list_opponent = []
+
+        # challenger['Skills']에서 모든 스킬 이름과 레벨을 가져와서 형식에 맞게 저장
+        for skill_name, skill_data in opponent['Skills'].items():
+            skill_level = skill_data['레벨']  # 스킬 레벨을 가져옴
+            skills_list_opponent.append(f"{skill_name} Lv {skill_level}")
+
+        # 스킬 목록을 콤마로 구분하여 메시지에 추가
+        skills_message_opponent += " ".join(skills_list_opponent)
+
         # 챌린저 무기 스탯 정보 추가
         embed.add_field(name=f"[{challenger['name']}](+{weapon_data_challenger.get('강화', 0)})", value=f"""
         • 무기 타입: {challenger['Weapon']}
@@ -584,6 +620,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         • 사거리: {challenger['WeaponRange']}
         • 명중: {challenger['Accuracy']} (명중률: {round(calculate_accuracy(challenger['Accuracy']) * 100, 2)}%)
         • 방어력: {challenger['Defense']} (대미지 감소율: {round(calculate_damage_reduction(challenger['Defense']) * 100, 2)}%)
+        {skills_message_challenger}
         """, inline=False)
 
         # 상대 무기 스탯 정보 추가
@@ -598,6 +635,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         • 사거리: {opponent['WeaponRange']}
         • 명중: {opponent['Accuracy']} (명중률: {round(calculate_accuracy(opponent['Accuracy']) * 100, 2)}%)
         • 방어력: {opponent['Defense']} (대미지 감소율: {round(calculate_damage_reduction(opponent['Defense']) * 100, 2)}%)
+        {skills_message_opponent}
         """, inline=False)
 
         await weapon_battle_thread.send(embed=embed)
@@ -1112,16 +1150,77 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
 
         inherit = self.weapon_data.get("계승", 0)
         inherit_log = self.weapon_data.get("계승 내역", {})
-        for key in inherit_log:
-            if key == self.inherit_type:
-                inherit_log[key] += 1
-                break
+
+        # 🔹 기존 계승 내역 업데이트
+        if self.inherit_type in inherit_log:
+            inherit_log[self.inherit_type] += 1
         else:
-            # 계승 내역에 해당 항목이 없으면 새로 추가
             inherit_log[self.inherit_type] = 1
+
+        # 🔹 강화 내역 가져오기
+        nickname = interaction.user.name
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref_enhancement_log = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}/강화내역")
+        enhancement_log = ref_enhancement_log.get() or {}
+
+        # 🔹 15강 이상이면 계승할 강화 옵션 선택
+        current_upgrade_level = self.weapon_data.get("강화", 0)
+        if current_upgrade_level > 15:
+            num_inherit_upgrades = current_upgrade_level - 15  # 16강부터 1강당 1개씩 계승
+            available_options = list(enhancement_log.keys())  # 강화된 항목 리스트
+            selected_options = []
+
+            while len(selected_options) < num_inherit_upgrades and available_options:
+                option = random.choice(available_options)
+                
+                # 해당 강화 옵션을 최대 강화 횟수까지만 계승 가능
+                if selected_options.count(option) < enhancement_log[option]:
+                    selected_options.append(option)
+                else:
+                    available_options.remove(option)  # 최대 계승 횟수 초과 시 제거
+
+            # 🔹 계승 내역에 추가
+            for option in selected_options:
+                # "추가강화" 키가 계승 내역에 존재하는지 확인하고 없으면 생성
+                if "추가강화" not in inherit_log:
+                    inherit_log["추가강화"] = {}  # "추가강화"가 없다면 새로 생성
+
+                # 해당 옵션이 추가강화 내역에 있는지 확인
+                if option in inherit_log["추가강화"]:
+                    inherit_log["추가강화"][option] += 1  # 이미 있다면 개수 증가
+                else:
+                    inherit_log["추가강화"][option] = 1  # 없으면 1로 시작
+
 
         base_stat_increase = inherit_log.get("기본 스탯 증가", 0) * 0.5 + 1
         base_weapon_stat = base_weapon_stats[self.selected_weapon_type]
+
+        # 계승 내역에 각 강화 유형을 추가
+        enhanced_stats = {}
+
+        # 계승 내역에서 각 강화 옵션을 확인하고, 해당 스탯을 강화 내역에 추가
+        for enhancement_type, enhancement_data in inherit_log.items():
+            if enhancement_type == "추가강화":  # 추가강화 항목만 따로 처리
+                # "추가강화" 내역에서 각 강화 옵션을 확인
+                for option, enhancement_count in enhancement_data.items():
+                    # 해당 옵션에 대한 stats를 업데이트
+                    if option in enhancement_options:
+                        stats = enhancement_options[option]["stats"]
+                        # 강화된 수치를 적용
+                        for stat, increment in stats.items():
+                            if stat in enhanced_stats:
+                                enhanced_stats[stat] += increment * enhancement_count  # 강화 내역 수 만큼 적용
+                            else:
+                                enhanced_stats[stat] = increment * enhancement_count  # 처음 추가되는 stat은 그 값으로 설정
+
+        new_enhancement_log = dict(Counter(selected_options))
+
+        # 메시지 템플릿에 추가된 강화 내역을 포함
+        enhancement_message = "\n강화 내역:\n"
+        for option, count in new_enhancement_log.items():
+            enhancement_message += f"{option}: {count}회\n"
 
         basic_skill_levelup = inherit_log.get("기본 스킬 레벨 증가", 0)
         
@@ -1132,21 +1231,21 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
                 skills[skill_name]["레벨"] += basic_skill_levelup
 
         new_weapon_data = {
-            "강화": 0,
+            "강화": 0,  # 기본 강화 값
             "계승": inherit + 1,
             "이름": new_weapon_name,
             "무기타입": self.selected_weapon_type,
-            "공격력": round(base_weapon_stat["공격력"] * base_stat_increase),
-            "내구도": round(base_weapon_stat["내구도"] * base_stat_increase),
-            "방어력": round(base_weapon_stat["방어력"] * base_stat_increase),
-            "스피드": round(base_weapon_stat["스피드"] * base_stat_increase),
-            "명중": round(base_weapon_stat["명중"] * base_stat_increase),
-            "사거리": base_weapon_stat["사거리"],
-            "치명타 대미지": base_weapon_stat["치명타 대미지"],
-            "치명타 확률": base_weapon_stat["치명타 확률"],
+            "공격력": round(base_weapon_stat["공격력"] * base_stat_increase + enhanced_stats.get("공격력", 0)),
+            "내구도": round(base_weapon_stat["내구도"] * base_stat_increase + enhanced_stats.get("내구도", 0)),
+            "방어력": round(base_weapon_stat["방어력"] * base_stat_increase + enhanced_stats.get("방어력", 0)),
+            "스피드": round(base_weapon_stat["스피드"] * base_stat_increase + enhanced_stats.get("스피드", 0)),
+            "명중": round(base_weapon_stat["명중"] * base_stat_increase + enhanced_stats.get("명중", 0)),
+            "사거리": base_weapon_stat["사거리"],  # 사거리는 변경되지 않음
+            "치명타 대미지": base_weapon_stat["치명타 대미지"] + enhanced_stats.get("치명타 대미지", 0),
+            "치명타 확률": base_weapon_stat["치명타 확률"] + enhanced_stats.get("치명타 확률", 0),
             "스킬": skills,
-            "강화내역": "",
-            "계승 내역": inherit_log
+            "강화내역": new_enhancement_log,
+            "계승 내역": inherit_log 
         }
 
         nickname = interaction.user.name
@@ -1158,7 +1257,8 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
 
         await interaction.response.send_message(
             f"[{self.weapon_data.get('이름', '이전 무기')}]의 힘을 계승한 **[{new_weapon_name}](🌟 +{inherit + 1})** 무기가 생성되었습니다!\n"
-            f"계승 타입: [{self.inherit_type}] 계승이 적용되었습니다!", 
+            f"계승 타입: [{self.inherit_type}] 계승이 적용되었습니다!\n"
+            f"{enhancement_message}" 
         )
 
 # 대결 신청
@@ -6853,16 +6953,7 @@ class hello(commands.Cog):
                     ref_weapon.update({"강화": weapon_enhanced})
                 
                     # 강화 옵션 설정
-                    enhancement_options = {
-                        "공격 강화": {"main_stat": "공격력", "stats": {"공격력": 3, "내구도": 10, "방어력": 2, "스피드": 1}},
-                        "치명타 대미지 강화": {"main_stat": "치명타 대미지", "stats": {"공격력": 1, "내구도": 5, "방어력": 1, "치명타 대미지": 0.1}},
-                        "치명타 확률 강화": {"main_stat": "치명타 확률", "stats": {"공격력": 1, "내구도": 5, "방어력": 1, "치명타 확률": 0.04}},
-                        "속도 강화": {"main_stat": "스피드", "stats": {"공격력": 1, "내구도": 10, "방어력": 1, "스피드": 3}},
-                        "명중 강화": {"main_stat": "명중", "stats": {"공격력": 2, "내구도": 10, "방어력": 2, "스피드": 1, "명중": 5}},
-                        "방어 강화": {"main_stat": "방어력", "stats": {"내구도": 20, "방어력": 5}},
-                        "내구도 강화": {"main_stat": "내구도", "stats": {"내구도": 30, "방어력": 3}},
-                        "밸런스 강화": {"main_stat": "올스탯", "stats": {"공격력": 1, "내구도": 10, "방어력": 1, "스피드": 1, "명중": 1, "치명타 대미지": 0.02, "치명타 확률": 0.01}}
-                    }
+                    global enhancement_options
         
 
                     # 강화 함수
@@ -7083,18 +7174,19 @@ class hello(commands.Cog):
         weapon_data = ref_weapon.get() or {}
 
         weapon_enhanced = weapon_data.get("강화")
-        if weapon_enhanced < 20: # 강화가 최고 단계가 아닐 경우
+        if weapon_enhanced < 15: # 강화가 15단계 이상이 아닐 경우
             warn_embed = discord.Embed(title="계승 불가!", color=0xff0000)
-            warn_embed.add_field(name="", value=f"아직 무기가 최고 단계에 도달하지 않았습니다.", inline=False)
+            warn_embed.add_field(name="", value=f"아직 무기가 15단계에 도달하지 않았습니다.", inline=False)
             await interaction.response.send_message(embed = warn_embed,ephemeral=True)
             return
         
         inherit_embed = discord.Embed(
-        title="🎯 20강 달성! 계승 가능!",
+        title=f"🎯 {weapon_enhanced}강 달성! 계승 가능!",
         description=(
             "계승 시:\n"
             "- 새로운 무기 종류를 선택합니다.\n"
             "- 강화 단계가 초기화됩니다.\n"
+            "- +15 이후 강화한 횟수만큼 기존 강화 내역을 계승합니다.\n"
             "- 계승 보상 1종을 획득합니다.\n\n"
             "👉 아래 **계승 진행** 버튼을 눌러 계승을 완료하세요."
         ),
