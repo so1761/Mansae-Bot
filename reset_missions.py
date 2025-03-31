@@ -6,6 +6,7 @@ from firebase_admin import db
 from firebase_admin import credentials
 from datetime import datetime
 from dotenv import load_dotenv
+import math
 
 load_dotenv()
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
@@ -136,14 +137,11 @@ yacht_data = {
     ]
 }
 boss_name = "스우"
-refraid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss_name}/내역")
+refraid = db.reference(f"레이드/{boss_name}/내역")
 raid_data = refraid.get() or {}
 
 # 전체 대미지 합산
 total_damage = sum(data['대미지'] for data in raid_data.values())
-
-# 100으로 나눈 몫 계산
-reward_count = total_damage // 100  # 전체 참가자에게 줄 아이템 개수
 
 raid_data_sorted = sorted(raid_data.items(), key=lambda x: x[1]['대미지'], reverse=True)
 
@@ -157,15 +155,20 @@ for idx, (nickname, data) in enumerate(raid_data_sorted, start=1):
         rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지")
 
 
-refraidboss = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss_name}")
+refraidboss = db.reference(f"레이드/{boss_name}")
 raid_boss_data = refraidboss.get() or {}
 cur_dur = raid_boss_data.get("내구도", 0)
 total_dur = raid_boss_data.get("총 내구도",0)
 
-if cur_dur <= 0: # 보스 처치 시
-    reward_count *= 2 # 보상 2배
+# 내구도 비율 계산
+if total_dur > 0:
+    durability_ratio = (total_dur - cur_dur) / total_dur  # 0과 1 사이의 값
+    reward_count = math.floor(20 * durability_ratio)  # 총 20개의 재료 중, 내구도에 비례한 개수만큼 지급
+else:
+    reward_count = 0  # 보스가 이미 처치된 경우
 
-refraidboss.update({"내구도" : total_dur})
+refraidboss.update({"총 내구도" : total_dur + 100})
+refraidboss.update({"내구도" : total_dur + 100})
 refraid.set("")
 
 participants = list(raid_data.keys())
@@ -184,7 +187,7 @@ raid_result = {
             "description": f"레이드 보스의 체력 [{cur_dur}/{total_dur}]",
             "color": 0x00ff00,  # 초록색
             "fields": [
-                {
+                {   
                     "name": "결과",
                     "value": "\n".join(rankings)  # 순위표를 필드에 추가
                 },
