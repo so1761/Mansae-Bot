@@ -90,6 +90,6 @@ cur_predict_seasonref.set(next_season)
 print(f"시즌이 {next_season}으로 변경되었습니다.")
 
 if response.status_code == 204:
-    print("✅ 주사위 메시지 전송 성공!")
+    print("✅ 시즌 종료 메시지 전송 성공!")
 else:
     print(f"❌ 메시지 전송 실패! 상태 코드: {response.status_code}")
