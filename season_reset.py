@@ -45,7 +45,7 @@ if winner:
         "description": f"🎉 {winner_name}님이 1등을 차지했습니다! 축하합니다! 🎉",
         "color": 0xFFD700,
         "fields": [
-            {"name": "최종 포인트", "value": f"{winner_info['포인트']}", "inline": True},
+            {"name": "최종 포인트", "value": f"**{winner_info['포인트']}**", "inline": True},
             {"name": "적중률", "value": f"{winner_info['적중률']} ({winner_info['적중 횟수']}/{winner_info['총 예측 횟수']})", "inline": True},
         ],
         "footer": {"text": "새 시즌도 많은 참여 부탁드립니다!"},
@@ -64,26 +64,21 @@ else:
 response = requests.post(WEBHOOK_URL, json={"embeds": [embed]})
 
 # 기존 시즌의 강화 재료 가져오기
-current_items_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}')
+current_items_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트')
 current_items = current_items_ref.get() or {}
 
 # 새로운 시즌의 아이템 레퍼런스
-next_items_ref = db.reference(f'승부예측/예측시즌/{next_season}')
+next_items_ref = db.reference(f'승부예측/예측시즌/{next_season}/예측포인트')
 
 # 기존 시즌의 각 사용자에 대해 강화 재료 추가
 for user, user_items in current_items.items():  # 사용자 닉네임 순회
-    for item, details in user_items.get('아이템', {}).items():  # 해당 사용자의 아이템 순회
-        if "강화재료" in details:
+    for item, num in user_items.get('아이템', {}).items():  # 해당 사용자의 아이템 순회
+        if item == "강화재료":
             # 새로운 시즌의 사용자 아이템 레퍼런스
             next_user_items_ref = next_items_ref.child(user).child('아이템')
             next_user_items = next_user_items_ref.get() or {}
 
-            if item in next_user_items:
-                # 기존 아이템에 강화재료 업데이트
-                next_user_items_ref.child(item).update({"강화재료": details["강화재료"]})
-            else:
-                # 새로운 아이템에 강화재료 추가
-                next_user_items_ref.child(item).set({"강화재료": details["강화재료"]})
+            next_user_items_ref.update({"강화재료": num})
 
 # 시즌 업데이트 (다음 시즌으로 변경)
 cur_predict_seasonref.set(next_season)
