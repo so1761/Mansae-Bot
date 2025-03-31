@@ -494,13 +494,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
-        ref_weapon_challenger = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{challenger_m.name}")
+        ref_weapon_challenger = db.reference(f"무기/{challenger_m.name}")
         weapon_data_challenger = ref_weapon_challenger.get() or {}
 
         if raid:
-            ref_weapon_opponent = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss}")
+            ref_weapon_opponent = db.reference(f"레이드/{boss}")
         else:
-            ref_weapon_opponent = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{opponent_m.name}")
+            ref_weapon_opponent = db.reference(f"무기/{opponent_m.name}")
         weapon_data_opponent = ref_weapon_opponent.get() or {}
 
         # 공격 함수
@@ -1195,7 +1195,7 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
-        ref_enhancement_log = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}/강화내역")
+        ref_enhancement_log = db.reference(f"무기/{nickname}/강화내역")
         enhancement_log = ref_enhancement_log.get() or {}
 
         # 🔹 15강 이상이면 계승할 강화 옵션 선택
@@ -1285,7 +1285,7 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
-        ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}")
+        ref_weapon = db.reference(f"무기/{nickname}")
         ref_weapon.update(new_weapon_data)
 
         await interaction.response.send_message(
@@ -6877,7 +6877,7 @@ class hello(commands.Cog):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
-        ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}")
+        ref_weapon = db.reference(f"무기/{nickname}")
         weapon_data = ref_weapon.get() or {}
         ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
         item_data = ref_item.get() or {}
@@ -6927,7 +6927,7 @@ class hello(commands.Cog):
                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
                 current_predict_season = cur_predict_seasonref.get()
 
-                ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}")
+                ref_weapon = db.reference(f"무기/{nickname}")
                 weapon_data = ref_weapon.get() or {}
                 ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
                 item_data = ref_item.get() or {}
@@ -6996,10 +6996,10 @@ class hello(commands.Cog):
                     # 강화 함수
                     async def enhance_weapon(enhancement_type):
                         
-                        ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}")
+                        ref_weapon = db.reference(f"무기/{nickname}")
                         weapon_data = ref_weapon.get() or {}
 
-                        ref_weapon_log = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}/강화내역")
+                        ref_weapon_log = db.reference(f"무기/{nickname}/강화내역")
                         weapon_log_data = ref_weapon_log.get() or {}
 
                         original_enhancement = weapon_log_data.get(enhancement_type,0)
@@ -7034,7 +7034,7 @@ class hello(commands.Cog):
                         result_embed.add_field(name="강화 종류", value=f"{selected_enhance_type}", inline=False)
 
                         
-                        ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}")
+                        ref_weapon = db.reference(f"무기/{nickname}")
                         weapon_data = ref_weapon.get() or {}
                         
                         await asyncio.sleep(5)
@@ -7119,13 +7119,13 @@ class hello(commands.Cog):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
-        ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}")
+        ref_weapon = db.reference(f"무기/{nickname}")
         weapon_data = ref_weapon.get() or {}
 
         weapon_name = weapon_data.get("이름", "")
         if weapon_name == "":
             global base_weapon_stats
-            ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}")
+            ref_weapon = db.reference(f"무기/{nickname}")
             ref_weapon.update(base_weapon_stats[무기타입])
             ref_weapon.update({
                 "이름" : 이름,
@@ -7164,7 +7164,7 @@ class hello(commands.Cog):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
-        ref_weapon_challenger = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}")
+        ref_weapon_challenger = db.reference(f"무기/{nickname}")
         weapon_data_challenger = ref_weapon_challenger.get() or {}
 
         weapon_name_challenger = weapon_data_challenger.get("이름", "")
@@ -7172,7 +7172,7 @@ class hello(commands.Cog):
             await interaction.response.send_message("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
             return
         
-        ref_weapon_opponent = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{상대.name}")
+        ref_weapon_opponent = db.reference(f"무기/{상대.name}")
         weapon_data_opponent = ref_weapon_opponent.get() or {}
 
         weapon_name_opponent = weapon_data_opponent.get("이름", "")
@@ -7207,7 +7207,7 @@ class hello(commands.Cog):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
-        ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}")
+        ref_weapon = db.reference(f"무기/{nickname}")
         weapon_data = ref_weapon.get() or {}
 
         weapon_enhanced = weapon_data.get("강화")
@@ -7275,7 +7275,7 @@ class hello(commands.Cog):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
-        ref_weapon_challenger = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}")
+        ref_weapon_challenger = db.reference(f"무기/{nickname}")
         weapon_data_challenger = ref_weapon_challenger.get() or {}
 
         weapon_name_challenger = weapon_data_challenger.get("이름", "")
@@ -7285,7 +7285,7 @@ class hello(commands.Cog):
         
         boss_name = "스우"
         
-        ref_weapon_opponent = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss_name}")
+        ref_weapon_opponent = db.reference(f"레이드/{boss_name}")
         weapon_data_opponent = ref_weapon_opponent.get() or {}
 
         weapon_name_opponent = weapon_data_opponent.get("이름", "")
@@ -7456,7 +7456,7 @@ class hello(commands.Cog):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
-        ref_weapon_challenger = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}")
+        ref_weapon_challenger = db.reference(f"무기/{nickname}")
         weapon_data_challenger = ref_weapon_challenger.get() or {}
 
         weapon_name_challenger = weapon_data_challenger.get("이름", "")
@@ -7466,7 +7466,7 @@ class hello(commands.Cog):
         
         boss_name = "스우"
         
-        ref_weapon_opponent = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss_name}")
+        ref_weapon_opponent = db.reference(f"레이드/{boss_name}")
         weapon_data_opponent = ref_weapon_opponent.get() or {}
 
         weapon_name_opponent = weapon_data_opponent.get("이름", "")
@@ -7503,9 +7503,6 @@ class hello(commands.Cog):
         current_predict_season = cur_predict_seasonref.get()
         
         await interaction.response.defer()
-        enhancement_options
-        
-        
         
         ref_users = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트").get()
         
@@ -7516,14 +7513,14 @@ class hello(commands.Cog):
         # 결과 메시지 Embed
         embed = discord.Embed(title=f"⚔️ 스탯 조정 완료!", color=discord.Color.green())
         for nickname, _ in ref_users.items():
-            ref_weapon = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}")
+            ref_weapon = db.reference(f"무기/{nickname}")
             weapon_data = ref_weapon.get() or {}
             weapon_name = weapon_data.get("이름", "")
 
-            ref_enhance_log = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}/강화내역")
+            ref_enhance_log = db.reference(f"무기/{nickname}/강화내역")
             enhance_log_data = ref_enhance_log.get() or {}
 
-            ref_inherit_log = db.reference(f"승부예측/예측시즌/{current_predict_season}/무기/{nickname}/계승내역")
+            ref_inherit_log = db.reference(f"무기/{nickname}/계승내역")
             inherit_log_data = ref_inherit_log.get() or {}
             
             # 계승 내역 적용 (기본 스탯 증가)
