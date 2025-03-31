@@ -117,6 +117,7 @@ enhancement_options = {
     "밸런스 강화": {"main_stat": "올스탯", "stats": {"공격력": 1, "내구도": 10, "방어력": 1, "스피드": 1, "명중": 1, "치명타 대미지": 0.02, "치명타 확률": 0.01}}
 }
 
+global base_weapon_stats
 base_weapon_stats = {
     "활": {
         "강화": 0,
@@ -138,10 +139,10 @@ base_weapon_stats = {
     },
     "단검": {
         "강화": 0,
-        "공격력": 15,
+        "공격력": 10,
         "내구도": 100,
         "방어력": 7,
-        "스피드": 25,
+        "스피드": 20,
         "명중": 10,
         "사거리": 1,
         "치명타 대미지": 1.5,
@@ -286,9 +287,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             # 현재 적용 중인 상태 효과를 확인하고 반영
             if "은신" in character["Status"]:
                 skill_level = character["Skills"]["은신"]["레벨"]
-                character["Evasion"] = round(0.25 + skill_level * 0.05,1) # 회피율 증가
-                if character["Evasion"] > 0.6: 
-                    character["Evasion"] = 0.6
+                DefenseIgnore_increase = 15 * skill_level
+                character["DefenseIgnore"] += DefenseIgnore_increase
+                skill_level = character["Skills"]["은신"]["레벨"]
+                character["Evasion"] = round(0.3 + skill_level * 0.1,1) # 회피율 증가
+                if character["Evasion"] > 0.8: 
+                    character["Evasion"] = 0.8
 
             if "차징샷" in character["Status"]:
                 skill_level = character["Skills"]["차징샷"]["레벨"]
@@ -333,10 +337,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             if raid: #레이드 상황
                 if not practice:
-                    ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss}/내역/{challenger_m.name}")
+                    ref_raid = db.reference(f"레이드/{boss}/내역/{challenger_m.name}")
                     ref_raid.update({"레이드여부": True})
 
-                ref_boss = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss}")
+                ref_boss = db.reference(f"레이드/{boss}")
                 if winner == "attacker": # 일반적인 상황
                     if defender['name'] == challenger['name']: # 패배한 사람이 플레이어일 경우
                         final_HP = attacker['HP']
@@ -403,13 +407,15 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
         def invisibility(attacker,skill_level):
             # 은신 상태에서 회피율 증가
-            attacker["Evasion"] = round(0.25 + skill_level * 0.05,1) # 회피율 증가
-            if attacker["Evasion"] > 0.6: 
-                attacker["Evasion"] = 0.6
+            DefenseIgnore_increase = 10 * skill_level
+            attacker["DefenseIgnore"] += DefenseIgnore_increase
+            attacker["Evasion"] = round(0.3 + skill_level * 0.1,1) # 회피율 증가
+            if attacker["Evasion"] > 0.8: 
+                attacker["Evasion"] = 0.8
             apply_status_for_turn(attacker, "은신", duration=2)  # 은신 상태 2턴 지속
             return f"**은신** 사용! 2턴간 회피율이 {round(attacker['Evasion'] * 100)}% 증가합니다!\n"
 
-        def smash(attacker, moving, skill_level):
+        def smash(attacker, skill_level):
             # 다음 공격은 반드시 치명타로 적용, 치명타 대미지 증가
             attacker["CritChance"] = 1
             CritDamageIncrease = (skill_level) * 0.5
@@ -417,7 +423,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             attack_increase = skill_level * 15
             attacker["Attack"] += attack_increase
             apply_status_for_turn(attacker, "강타", duration=1)  # 강타 상태 1턴 지속
-            if battle_distance == 1 or (battle_distance == 2 and moving):
+            if battle_distance == 1:
                 return f"**강타** 사용!\n이번 공격에 치명타 대미지 + {round(CritDamageIncrease * 100)}%, 공격력 + {attack_increase} 부여!\n"
             elif battle_distance > 1:
                 return f"**강타** 사용 불가!\n적이 멀리 있어 스킬 사용을 실패했습니다!\n"
@@ -432,14 +438,14 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             apply_status_for_turn(attacker, "장전", duration=cooldown + 1)
             return f"**헤드샷** 사용!\n이번 공격에 공격력 x {attack_increase}, 방어력 관통 + {DefenseIgnore_increase} 부여!\n**장전**상태가 됩니다.\n"
         
-        def spearShot(attacker,moving,evasion,skill_level):
+        def spearShot(attacker,evasion,skill_level):
             global battle_distance
             if evasion:
                 return f"\n**창격** 사용 불가!\n공격이 빗나갔습니다!\n"
             if battle_distance <= 2: # 붙었을 땐 밀치기
-                battle_distance += 1
-                return f"**창격(근접)** 사용!\n상대를 1만큼 날려버립니다!\n"
-            elif battle_distance == 3 or (battle_distance == 4 and moving): # 적정거리면 추가 대미지
+                battle_distance += 2
+                return f"**창격(근접)** 사용!\n상대를 2만큼 날려버립니다!\n"
+            elif battle_distance == 3: # 적정거리면 추가 대미지
                 attacker["CritChance"] = 1
                 Accuacy_increase = 30 + (skill_level * 20)
                 attacker["Accuracy"] += Accuacy_increase
@@ -573,11 +579,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             "Attack": weapon_data_opponent.get("공격력", 0),
             "BaseAttack": weapon_data_opponent.get("공격력", 0),
             "CritChance": weapon_data_opponent.get("치명타 확률", 0),
-            "BaseCritChance" : weapon_data_challenger.get("치명타 확률", 0),
+            "BaseCritChance" : weapon_data_opponent.get("치명타 확률", 0),
             "CritDamage": weapon_data_opponent.get("치명타 대미지", 0),
-            "BaseCritDamage" : weapon_data_challenger.get("치명타 대미지", 0),
+            "BaseCritDamage" : weapon_data_opponent.get("치명타 대미지", 0),
             "Speed": weapon_data_opponent.get("스피드", 0),
-            "BaseSpeed": weapon_data_challenger.get("스피드", 0),
+            "BaseSpeed": weapon_data_opponent.get("스피드", 0),
             "WeaponRange": weapon_data_opponent.get("사거리",""),
             "DefenseIgnore": 0,
             "Evasion" : 0,
@@ -598,10 +604,16 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 type=discord.ChannelType.public_thread
             )
         if raid:
-            weapon_battle_thread = await channel.create_thread(
-                name=f"{challenger_m.display_name}의 {boss} 레이드",
-                type=discord.ChannelType.public_thread
-            )
+            if practice:
+                weapon_battle_thread = await channel.create_thread(
+                    name=f"{challenger_m.display_name}의 {boss} 레이드 모의전",
+                    type=discord.ChannelType.public_thread
+                )
+            else:
+                weapon_battle_thread = await channel.create_thread(
+                    name=f"{challenger_m.display_name}의 {boss} 레이드",
+                    type=discord.ChannelType.public_thread
+                )
         # 비동기 전투 시뮬레이션 전에 스탯을 임베드로 전송
         embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green())
 
@@ -660,6 +672,29 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         """, inline=False)
 
         await weapon_battle_thread.send(embed=embed)
+
+        embed = discord.Embed(title="⚔️ 무기 강화 내역", color=discord.Color.green())
+        
+        # 챌린저 무기 스탯 정보 추가
+        challenger_weapon_enhancement = ""
+        for enhancement, count in weapon_data_challenger.get('강화내역', {}).items():
+            challenger_weapon_enhancement += f"• {enhancement}: {count}\n"
+
+        embed.add_field(name=f"[{challenger['name']}](+{weapon_data_challenger.get('강화', 0)})", value=f"""
+        {challenger_weapon_enhancement if challenger_weapon_enhancement else "강화 내역 없음"}
+        """, inline=False)
+
+        # 상대 무기 스탯 정보 추가
+        opponent_weapon_enhancement = ""
+        for enhancement, count in weapon_data_opponent.get('강화내역', {}).items():
+            opponent_weapon_enhancement += f"• **{enhancement}** +{count}\n"
+
+        embed.add_field(name=f"[{opponent['name']}](+{weapon_data_opponent.get('강화', 0)})", value=f"""
+        {opponent_weapon_enhancement if opponent_weapon_enhancement else "강화 내역 없음"}
+        """, inline=False)
+
+        await weapon_battle_thread.send(embed=embed)
+        
         turn = 0
         
         if raid: # 레이드 시 처음 내구도를 저장
@@ -676,9 +711,68 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             move_chance = min(0.9, base_move_chance + attacker["Speed"] * 0.01)  # 1% 확률 증가 per speed, max = 90%
             attack_range = attacker["WeaponRange"]
 
-            moving = False
-            if random.random() < move_chance and "속박" not in attacker["Status"]:
-                moving = True
+            dash = False
+            retreat = False
+            # 돌진 후 공격 (한 사이클)
+            if battle_distance > attack_range: # 거리가 사거리를 넘을 경우 돌진!
+                if random.random() < move_chance and "속박" not in attacker["Status"]:  # 이동 확률에 따라 돌진(속박 상태가 아니라면)
+                    if attacker["Weapon"] == "단검":
+                        skill_level = attacker["Skills"]["은신"]["레벨"]
+                        double_move_chance = 0.2 + (skill_level * 0.1)
+                        if random.random() < double_move_chance:
+                            battle_distance -= 2
+                            distance = 2
+                            if battle_distance < 1: # 사거리가 1 미만이 될 경우 1로 조정 (최소 거리: 1)
+                                battle_distance = 1 
+                                distance = 1
+                        else:
+                            battle_distance -= 1  # 돌진 시 거리를 감소시킴
+                            distance = 1  
+                    else:
+                        battle_distance -= 1  # 돌진 시 거리를 감소시킴
+                        distance = 1
+
+                    # 돌진 후 사거리 내에 적이 있으면 공격
+                    if abs(battle_distance) <= attack_range:
+                        dash = True
+                        attacked = True
+                    else: # 돌진 후에 사거리 내에 적이 없을 경우
+                        dash = True
+                        attacked = False
+                else: # 돌진 실패 -> 공격 실패 -> 돌진만 함
+                    if "속박" in attacker["Status"]: # 속박이라면 이동 불가
+                        attacked = False
+                    else:
+                        if attacker["Weapon"] == "단검":
+                            skill_level = attacker["Skills"]["은신"]["레벨"]
+                            double_move_chance = 0.4 + (skill_level * 0.1)
+                            if random.random() < double_move_chance:
+                                battle_distance -= 2
+                                distance = 2
+                                if battle_distance < 1: # 사거리가 1 미만이 될 경우 1로 조정 (최소 거리: 1)
+                                    battle_distance = 1 
+                                    distance = 1
+                            else:
+                                battle_distance -= 1  # 돌진 시 거리를 감소시킴
+                                distance = 1  
+                        else:
+                            battle_distance -= 1  # 돌진 시 거리를 감소시킴
+                            distance = 1
+
+                        dash = True
+                    
+            elif battle_distance < attack_range: # 거리가 사거리 미만일 경우 후퇴!
+                if random.random() < move_chance and "속박" not in attacker["Status"]:  # 이동 확률에 따라 후퇴
+                    battle_distance += 1  # 후퇴 시 거리를 증가시킴
+                    distance = 1
+                    # 후퇴 후 사거리 내에 적이 있으면 공격
+                    retreat = True
+                else: # 이동하지 않고 공격
+                    retreat = False
+                attacked = True
+            else: # 거리가 사거리와 같을 경우 움직이지 않음
+                retreat = False
+                attacked = True
 
             if "출혈" in attacker["Status"]:
                 skill_level = defender['Skills']['은신']['레벨']
@@ -739,8 +833,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             
             battle_embed = discord.Embed(title=f"{attacker['name']}의 공격!⚔️", color=discord.Color.blue())
 
-            
-
             if "차징샷" in skill_names:
                 skill_name = "차징샷"
                 skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
@@ -763,7 +855,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
-                    result_message += smash(attacker,moving,skill_level)
+                    result_message += smash(attacker,skill_level)
                     used_skill.append(skill_name)
                 else:
                     result_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
@@ -791,7 +883,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 if skill_cooldown_current == 0:
                     attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
                     if "창격" in skill_names:
-                        result_message += spearShot(attacker,moving,evasion,skill_level)
+                        result_message += spearShot(attacker,evasion,skill_level)
                         used_skill.append(skill_name)
                 else:
                     result_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
@@ -851,158 +943,61 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 else:
                     result_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
-            if "은신" in defender["Status"] and not evasion: # 은신 상태일 때 회피 못했을 경우 상대의 은신 상태 해제
+            if "은신" in defender["Status"] and not (evasion or reloading): # 은신 상태일 때 회피 못했을 경우 상대의 은신 상태 해제
                 del defender["Status"]["은신"]
                 result_message += f"\n**{attacker['name']}의 공격 적중**!\n{defender['name']}의 은신 상태 해제!\n"
 
             if "은신" in attacker["Status"]: # 은신 상태일 경우, 추가 대미지 + 일정 확률로 '출혈' 상태 부여
                 skill_level = attacker["Skills"]["은신"]["레벨"]
-                bleed_chance = 0.05 * skill_level
+                DefenseIgnore_increase = skill_level * 15
+                bleed_chance = 0.1 * skill_level
                 if random.random() < bleed_chance: # 출혈 부여
                     apply_status_for_turn(defender, "출혈", duration=3)
                     result_message +=f"\n**🩸{attacker['name']}의 은신 공격**!\n3턴간 출혈 상태 부여!\n"   
-                result_message +=f"\n**{attacker['name']}의 은신 공격**!\n{round(0.3 * skill_level * 100)}% 추가 대미지!\n"
+                result_message +=f"\n**{attacker['name']}의 은신 공격**!\n방어력 관통 + {DefenseIgnore_increase}!\n{round(0.3 * skill_level * 100)}% 추가 대미지!\n"
 
-            # 돌진 후 공격 (한 사이클)
-            if battle_distance > attack_range: # 거리가 사거리를 넘을 경우 돌진!
-                if moving:  # 이동 확률에 따라 돌진(속박 상태가 아니라면)
-                    if attacker["Weapon"] == "단검":
-                        skill_level = attacker["Skills"]["은신"]["레벨"]
-                        double_move_chance = 0.4 + (skill_level * 0.1)
-                        if random.random() < double_move_chance:
-                            battle_distance -= 2
-                            distance = 2
-                            if battle_distance < 1: # 사거리가 1 미만이 될 경우 1로 조정 (최소 거리: 1)
-                                battle_distance = 1 
-                                distance = 1
-                        else:
-                            battle_distance -= 1  # 돌진 시 거리를 감소시킴
-                            distance = 1  
+
+            # 공격 처리 (돌진 후 또는 후퇴 후)
+            if attacked: # 공격 시
+                battle_embed.title = f"{attacker['name']}의 공격!⚔️"
+                if attacker['name'] == challenger['name']: # 도전자 공격
+                    battle_embed.color = discord.Color.blue()
+                elif attacker['name'] == opponent['name']: # 상대 공격
+                    battle_embed.color = discord.Color.red() 
+                battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
+                if dash:
+                    battle_embed.add_field(name="돌진!", value = f"{attacker['name']}의 돌진! 거리가 {distance}만큼 줄어듭니다!", inline = False)
+                elif retreat:
+                    battle_embed.add_field(name="후퇴!", value = f"{attacker['name']}의 후퇴! 거리가 {distance}만큼 늘어납니다!", inline = False)
+                damage, critical, dist, evade = await attack(attacker, defender, evasion, reloading)
+                defender["HP"] -= damage
+            else: # 공격 불가 시
+                if dash:
+                    if attacker['name'] == challenger['name']: # 도전자 공격
+                        battle_embed.color = discord.Color.blue()
+                    elif attacker['name'] == opponent['name']: # 상대 공격
+                        battle_embed.color = discord.Color.red()
+
+                    battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
+                    battle_embed.add_field(name="돌진!", value = f"{attacker['name']}의 돌진! 거리가 {distance}만큼 줄어듭니다!", inline = False)
+                    if attacker["WeaponRange"] < battle_distance:
+                        battle_embed.title = f"{attacker['name']}의 공격!⚔️"
+                        battle_embed.add_field(name="공격 불가!", value = f"적이 사거리 밖에 있어 공격이 불가합니다\n", inline = False)
                     else:
-                        battle_distance -= 1  # 돌진 시 거리를 감소시킴
-                        distance = 1
-
-                    # 돌진 후 사거리 내에 적이 있으면 공격
-                    if abs(battle_distance) <= attack_range:
-                        if attacker['name'] == challenger['name']: # 도전자 공격
-                            battle_embed.title = f"{attacker['name']}의 공격!⚔️"
-                            battle_embed.color = discord.Color.blue()
-                            battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
-                            battle_embed.add_field(name="돌진!", value = f"{attacker['name']}의 돌진! 거리가 {distance}만큼 줄어듭니다!", inline = False)
-                            damage, critical, dist, evade = await attack(attacker, defender, evasion, reloading)
-                            defender["HP"] -= damage
-                        elif attacker['name'] == opponent['name']: # 상대 공격
-                            battle_embed.title = f"{attacker['name']}의 공격!⚔️"
-                            battle_embed.color = discord.Color.red()
-                            battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
-                            battle_embed.add_field(name="돌진!", value = f"{attacker['name']}의 돌진! 거리가 {distance}만큼 줄어듭니다!", inline = False)
-                            damage, critical, dist, evade = await attack(attacker, defender, evasion, reloading)
-                            defender["HP"] -= damage
-                        attacked = True
-                    else: # 돌진 후에 사거리 내에 적이 없을 경우
-                        if attacker['name'] == challenger['name']: # 도전자 공격
-                            battle_embed.title = f"{attacker['name']}의 공격!⚔️"
-                            battle_embed.color = discord.Color.blue()
-                            battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
-                            battle_embed.add_field(name="돌진!", value = f"{attacker['name']}의 돌진! 거리가 {distance}만큼 줄어듭니다!", inline = False)
-                            battle_embed.add_field(name="공격 불가!", value = f"적이 사거리 밖에 있어 공격이 불가합니다\n", inline = False)
-                        elif attacker['name'] == opponent['name']: # 상대 공격
-                            battle_embed.title = f"{attacker['name']}의 공격!⚔️"
-                            battle_embed.color = discord.Color.red()
-                            battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
-                            battle_embed.add_field(name="돌진!", value = f"{attacker['name']}의 돌진! 거리가 {distance}만큼 줄어듭니다!", inline = False)
-                            battle_embed.add_field(name="공격 불가!", value = f"적이 사거리 밖에 있어 공격이 불가합니다!", inline = False)
-                        remove_status_effects(attacker,defender)
-                        update_status(attacker)  # 공격자의 상태 업데이트
-                else: # 돌진 실패 -> 공격 실패 -> 돌진만 함
-                    if "속박" in attacker["Status"]: # 속박이라면 공격 불가
-                        if attacker['name'] == challenger['name']: # 도전자 공격
-                            battle_embed.title = f"{attacker['name']}의 공격!⚔️"
-                            battle_embed.color = discord.Color.blue()
-                            battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
-                            battle_embed.add_field(name="공격 불가!", value = f"적이 사거리 밖에 있어 공격이 불가합니다!", inline = False)
-                        elif attacker['name'] == opponent['name']: # 상대 공격
-                            battle_embed.title = f"{attacker['name']}의 공격!⚔️"
-                            battle_embed.color = discord.Color.red()
-                            battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
-                            battle_embed.add_field(name="공격 불가!", value = f"적이 사거리 밖에 있어 공격이 불가합니다!", inline = False)
-                    else:
-                        if attacker["Weapon"] == "단검":
-                            skill_level = attacker["Skills"]["은신"]["레벨"]
-                            double_move_chance = 0.4 + (skill_level * 0.1)
-                            if random.random() < double_move_chance:
-                                battle_distance -= 2
-                                distance = 2
-                                if battle_distance < 1: # 사거리가 1 미만이 될 경우 1로 조정 (최소 거리: 1)
-                                    battle_distance = 1 
-                                    distance = 1
-                            else:
-                                battle_distance -= 1  # 돌진 시 거리를 감소시킴
-                                distance = 1  
-                        else:
-                            battle_distance -= 1  # 돌진 시 거리를 감소시킴
-                            distance = 1
-
-                        if attacker['name'] == challenger['name']: # 도전자 공격
-                            battle_embed.title = f"{attacker['name']}의 돌진!⚔️"
-                            battle_embed.color = discord.Color.blue()
-                            battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
-                            battle_embed.add_field(name="돌진!", value = f"{attacker['name']}의 돌진! 거리가 {distance}만큼 줄어듭니다!", inline = False)
-                        elif attacker['name'] == opponent['name']: # 상대 공격
-                            battle_embed.title = f"{attacker['name']}의 돌진!⚔️"
-                            battle_embed.color = discord.Color.red()
-                            battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
-                            battle_embed.add_field(name="돌진!", value = f"{attacker['name']}의 돌진! 거리가 {distance}만큼 줄어듭니다!", inline = False)
+                        battle_embed.title = f"{attacker['name']}의 돌진!⚔️"
+                        battle_embed.add_field(name="공격 불가!", value = f"속도가 느려 공격할 수 없습니다!\n", inline = False)
                     remove_status_effects(attacker,defender)
                     update_status(attacker)  # 공격자의 상태 업데이트
-                    
-            elif battle_distance < attack_range: # 거리가 사거리 미만일 경우 후퇴!
-                if moving:  # 이동 확률에 따라 후퇴
-                    battle_distance += 1  # 후퇴 시 거리를 증가시킴
-                    distance = 1
-                    # 후퇴 후 사거리 내에 적이 있으면 공격
-                    if attacker['name'] == challenger['name']: # 도전자 공격
-                        battle_embed.title = f"{attacker['name']}의 공격!⚔️"
-                        battle_embed.color = discord.Color.blue()
-                        battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
-                        battle_embed.add_field(name="후퇴!", value = f"{attacker['name']}의 후퇴! 거리가 {distance}만큼 늘어납니다!", inline = False)
-                        damage, critical, dist, evade = await attack(attacker, defender, evasion, reloading)
-                        defender["HP"] -= damage
-                    elif attacker['name'] == opponent['name']: # 상대 공격
-                        battle_embed.title = f"{attacker['name']}의 공격!⚔️"
-                        battle_embed.color = discord.Color.red()
-                        battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
-                        battle_embed.add_field(name="후퇴!", value = f"{attacker['name']}의 후퇴! 거리가 {distance}만큼 늘어납니다!", inline = False)
-                        damage, critical, dist, evade = await attack(attacker, defender, evasion, reloading)
-                        defender["HP"] -= damage
-                else: # 이동하지 않고 공격
-                    if attacker['name'] == challenger['name']: # 도전자 공격
-                        battle_embed.title = f"{attacker['name']}의 공격!⚔️"
-                        battle_embed.color = discord.Color.blue()
-                        battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
-                        damage, critical, dist, evade = await attack(attacker, defender, evasion, reloading)
-                        defender["HP"] -= damage
-                    elif attacker['name'] == opponent['name']: # 상대 공격
-                        battle_embed.title = f"{attacker['name']}의 공격!⚔️"
-                        battle_embed.color = discord.Color.red()
-                        battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
-                        damage, critical, dist, evade = await attack(attacker, defender, evasion, reloading)
-                        defender["HP"] -= damage
-                attacked = True
-            else: # 거리가 사거리와 같을 경우 움직이지 않음
-                if attacker['name'] == challenger['name']: # 도전자 공격
+                else:
                     battle_embed.title = f"{attacker['name']}의 공격!⚔️"
-                    battle_embed.color = discord.Color.blue()
+                    if attacker['name'] == challenger['name']: # 도전자 공격
+                        battle_embed.color = discord.Color.blue()
+                    elif attacker['name'] == opponent['name']: # 상대 공격
+                        battle_embed.color = discord.Color.red()
                     battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
-                    damage, critical, dist, evade = await attack(attacker, defender, evasion, reloading)
-                    defender["HP"] -= damage
-                elif attacker['name'] == opponent['name']: # 상대 공격
-                    battle_embed.title = f"{attacker['name']}의 공격!⚔️"
-                    battle_embed.color = discord.Color.red()
-                    battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
-                    damage, critical, dist, evade = await attack(attacker, defender,evasion, reloading)
-                    defender["HP"] -= damage
-                attacked = True
+                    battle_embed.add_field(name="공격 불가!", value = f"적이 사거리 밖에 있어 공격이 불가합니다!", inline = False)
+                    remove_status_effects(attacker,defender)
+                    update_status(attacker)  # 공격자의 상태 업데이트
 
             
             # 공격 후, 각 스킬의 현재 쿨타임을 감소시키는 부분
@@ -1011,14 +1006,19 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 현재 쿨타임 감소
 
                     # 가속 확률 계산 (스피드 10당 1% 확률)
-                    speed = attacker.get("스피드", 0)
+                    speed = attacker.get("Speed", 0)
                     acceleration_chance = speed // 10  # 예: 스피드 50이면 5% 확률
 
-                    if random.randint(1, 100) <= acceleration_chance:
+                    if acceleration_chance > 0 and random.randint(1, 100) <= acceleration_chance:
                         attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 추가 1 감소
                         if attacker["Skills"][skill]["현재 쿨타임"] < 0:
                             attacker["Skills"][skill]["현재 쿨타임"] = 0
-                        result_message += f"💨 {attacker['name']}의 스피드 효과로 {skill}의 쿨타임이 추가로 감소했습니다!\n"
+                        if skill == "헤드샷":
+                            if "장전" in attacker["Status"]:  # 장전이 있는지 확인
+                                attacker["Status"]["장전"]["duration"] -= 1
+                                if attacker["Status"]["장전"]["duration"] <= 0:
+                                    del attacker["Status"]["장전"]
+                        result_message += f"💨 {attacker['name']}의 가속! {skill}의 쿨타임이 추가로 감소했습니다!\n"
 
             if attacked:
                 # 크리티컬 또는 방어 여부에 따라 메시지 추가
@@ -1227,7 +1227,7 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
                     inherit_log["추가강화"][option] = 1  # 없으면 1로 시작
 
 
-        base_stat_increase = inherit_log.get("기본 스탯 증가", 0) * 0.5 + 1
+        base_stat_increase = inherit_log.get("기본 스탯 증가", 0) * 0.2 + 1
         base_weapon_stat = base_weapon_stats[self.selected_weapon_type]
 
         # 계승 내역에 각 강화 유형을 추가
@@ -1255,6 +1255,9 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
         for option, count in new_enhancement_log.items():
             enhancement_message += f"{option}: {count}회\n"
 
+        if "추가강화" in inherit_log:
+            new_enhancement_log = Counter(inherit_log["추가강화"])  # 기존 내역 추가
+        
         basic_skill_levelup = inherit_log.get("기본 스킬 레벨 증가", 0)
         
         basic_skills = ["차징샷", "은신", "강타", "헤드샷", "창격"]
@@ -4026,7 +4029,8 @@ class hello(commands.Cog):
     Choice(name='예측시즌 2', value='예측시즌2'),
     Choice(name='예측시즌 3', value='예측시즌3'),
     Choice(name='정규시즌 1', value='정규시즌1'),
-    Choice(name='정규시즌 2', value='정규시즌2')
+    Choice(name='정규시즌 2', value='정규시즌2'),
+    Choice(name='정규시즌 3', value='정규시즌3'),
     ])
     async def 예측순위(self, interaction: discord.Interaction, 시즌:str):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
@@ -6942,7 +6946,7 @@ class hello(commands.Cog):
                     await interaction.response.send_message("이미 최고 강화입니다!",ephemeral=True)
                     return
                 
-                await interaction.response.send_message("강화를 시작합니다!",ephemeral=True)
+                await interaction.response.defer()
                 ref_item.update({"강화재료": weapon_parts - 1})
                 
                 enhancement_probabilities = {
@@ -7308,7 +7312,7 @@ class hello(commands.Cog):
             await interaction.response.send_message(embed = warning_embed, ephemeral= True)
             return
 
-        ref_raid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss_name}/내역/{nickname}")
+        ref_raid = db.reference(f"레이드/{boss_name}/내역/{nickname}")
         raid_data = ref_raid.get() or {}
         raid_damage = raid_data.get("대미지", 0)
         raid_bool = raid_data.get("레이드여부", False)
@@ -7363,10 +7367,10 @@ class hello(commands.Cog):
                             ref_item.update({"레이드 재도전": raid_refresh - 1})  # 사용 후 갱신
                             await interaction.response.edit_message(content="레이드 재도전권을 사용했습니다!", view=None)
 
-                            refraid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss_name}/내역/{interaction.user.name}")
+                            refraid = db.reference(f"레이드/{boss_name}/내역/{interaction.user.name}")
                             refraid.delete() 
 
-                            ref_boss = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss_name}")
+                            ref_boss = db.reference(f"레이드/{boss_name}")
                             boss_data = ref_boss.get() or {}
                             Boss_HP = boss_data.get("내구도", 0)
                             ref_boss.update({"내구도" : Boss_HP + raid_damage})
@@ -7415,14 +7419,11 @@ class hello(commands.Cog):
         current_predict_season = cur_predict_seasonref.get()
 
         boss_name = "스우"
-        refraid = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss_name}/내역")
+        refraid = db.reference(f"레이드/{boss_name}/내역")
         raid_data = refraid.get() or {}
 
         # 전체 대미지 합산
         total_damage = sum(data['대미지'] for data in raid_data.values())
-
-        # 100으로 나눈 몫 계산
-        reward_count = total_damage // 100  # 전체 참가자에게 줄 아이템 개수
 
         raid_data_sorted = sorted(raid_data.items(), key=lambda x: x[1]['대미지'], reverse=True)
 
@@ -7435,16 +7436,22 @@ class hello(commands.Cog):
             else:
                 rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지")
 
-        refraidboss = db.reference(f"승부예측/예측시즌/{current_predict_season}/레이드/{boss_name}")
+        refraidboss = db.reference(f"레이드/{boss_name}")
         raid_boss_data = refraidboss.get() or {}
         cur_dur = raid_boss_data.get("내구도", 0)
         total_dur = raid_boss_data.get("총 내구도",0)
         
-        if cur_dur <= 0: # 보스 처치 시
-            reward_count *= 2 # 보상 2배
+        # 내구도 비율 계산
+        if total_dur > 0:
+            durability_ratio = (total_dur - cur_dur) / total_dur  # 0과 1 사이의 값
+            reward_count = math.floor(20 * durability_ratio)  # 총 20개의 재료 중, 내구도에 비례한 개수만큼 지급
+        else:
+            reward_count = 0  # 보스가 이미 처치된 경우
+
+        remain_durability_ratio = round(cur_dur / total_dur * 100,2)
     
         embed = discord.Embed(title="🎯 레이드 현황", color = 0x00ff00)
-        embed.add_field(name="레이드 보스의 현재 체력", value=f"[{cur_dur}/{total_dur}]", inline=False)
+        embed.add_field(name="레이드 보스의 현재 체력", value=f"[{cur_dur}/{total_dur}] {remain_durability_ratio}%", inline=False)
         embed.add_field(name="현재 대미지", value="\n".join(rankings), inline=False)
         embed.add_field(name="보상 현황", value=f"강화재료 **{reward_count}개** 지급 예정!", inline=False)
         await interaction.followup.send(embed = embed)
@@ -7504,7 +7511,7 @@ class hello(commands.Cog):
         
         await interaction.response.defer()
         
-        ref_users = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트").get()
+        ref_users = db.reference(f"무기").get()
         
         if not ref_users:
             await interaction.response.send_message("업데이트할 유저 데이터가 없습니다.", ephemeral=True)
@@ -7520,14 +7527,13 @@ class hello(commands.Cog):
             ref_enhance_log = db.reference(f"무기/{nickname}/강화내역")
             enhance_log_data = ref_enhance_log.get() or {}
 
-            ref_inherit_log = db.reference(f"무기/{nickname}/계승내역")
+            ref_inherit_log = db.reference(f"무기/{nickname}/계승 내역")
             inherit_log_data = ref_inherit_log.get() or {}
             
             # 계승 내역 적용 (기본 스탯 증가)
             inherit_level = inherit_log_data.get("기본 스탯 증가", 0)  # 계승 레벨 가져오기
-            inherit_multiplier = 1 + (inherit_level * 0.5)  # 1마다 0.5배 증가
+            inherit_multiplier = 1 + (inherit_level * 0.2)  # 1마다 0.2배 증가
 
-                    
             # 기존 스탯 저장
             old_stats = {
                 "공격력": weapon_data.get("공격력", 10),
@@ -7541,8 +7547,17 @@ class hello(commands.Cog):
 
             weapon_type = weapon_data.get("무기타입", "")
 
-            # 기본 스탯 (계승 배율 적용)
-            new_stats = {stat: round(value * inherit_multiplier, 3) for stat, value in base_weapon_stats[weapon_type].items()}
+            # 계승 배율을 적용할 스탯
+            inherit_stats = ["공격력", "내구도", "방어력", "스피드", "명중"]
+
+
+
+            # 강화 항목을 제외한 새로운 스탯 딕셔너리 생성
+            new_stats = {
+                stat: round(value * inherit_multiplier) if stat in inherit_stats else value
+                for stat, value in base_weapon_stats[weapon_type].items()
+                if stat not in ["강화","스킬"]  # 강화 항목 제외
+            }
 
             for enhance_type, enhance_count in enhance_log_data.items():
                 if enhance_type in enhancement_options:
@@ -7550,17 +7565,16 @@ class hello(commands.Cog):
                         new_stats[stat] += value * enhance_count
                         new_stats[stat] = round(new_stats[stat],3)
 
-            
-
             # 변경 사항 비교
             stat_changes = []
-            for stat in new_stats:
-                diff = new_stats[stat] - old_stats[stat]
-                if diff > 0:
-                    stat_changes.append(f"🟢 **{stat}**: +{diff}")
-                elif diff < 0:
-                    stat_changes.append(f"🔴 **{stat}**: {diff}")
-
+            selected_stats = ["공격력", "내구도", "방어력", "스피드", "명중", "치명타 대미지", "치명타 확률"]
+            for stat in selected_stats:
+                if stat in new_stats and stat in old_stats:  # 안전하게 키 체크
+                    diff = new_stats[stat] - old_stats[stat]
+                    if diff > 0:
+                        stat_changes.append(f"🟢 **{stat}**: +{diff}")
+                    elif diff < 0:
+                        stat_changes.append(f"🔴 **{stat}**: {diff}")
             # 무기 정보 업데이트
             ref_weapon.update(new_stats)
 

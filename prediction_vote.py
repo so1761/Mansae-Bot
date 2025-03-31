@@ -69,4 +69,7 @@ jimo_event = asyncio.Event()
 melon_event = asyncio.Event()
 battle_event = asyncio.Event()
 
+jimo_current_predict_season = ""
+melon_current_predict_season = ""
+
 battle_message = ""

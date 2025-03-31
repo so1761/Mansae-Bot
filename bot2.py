@@ -839,9 +839,25 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
             onoffref = db.reference("승부예측/투표온오프") # 투표가 off 되어있을 경우 결과 출력 X
             onoffbool = onoffref.get()
+            
             if not onoffbool:
                 await refresh_prediction(name,False,False,prediction_votes) # 베팅내역 공개
                 await refresh_kda_prediction(name,False,kda_votes) # KDA 예측내역 공개
+                
+                if name == "지모":
+                    if p.jimo_current_predict_season != current_predict_season: # 예측 시즌이 변경되었을 경우
+                        kda_votes['up'].clear()
+                        kda_votes['down'].clear()
+                        kda_votes['perfect'].clear()
+                        prediction_votes['win'].clear()
+                        prediction_votes['lose'].clear()
+                if name == "Melon":
+                    if p.melon_current_predict_season != current_predict_season:
+                        kda_votes['up'].clear()
+                        kda_votes['down'].clear()
+                        kda_votes['perfect'].clear()
+                        prediction_votes['win'].clear()
+                        prediction_votes['lose'].clear()
 
                 complete_anonymref = db.reference(f"승부예측/완전익명{name}온오프")
                 complete_anonymref.set(False) # 완전 익명 해제
@@ -912,7 +928,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                 else:
                     userembed = discord.Embed(title="메세지", color=discord.Color.red())
                 
-    
+
                 userembed.add_field(name="게임 종료", value=f"{name}의 {rank_type} 게임이 종료되었습니다!\n{'승리!' if result else '패배..'}\n점수변동: {point_change}")
 
                 winners = prediction_votes['win'] if result else prediction_votes['lose']
@@ -1409,12 +1425,14 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     p.jimo_current_match_id_solo = await get_summoner_recentmatch_id(puuid)
                 else:
                     p.jimo_current_match_id_flex = await get_summoner_recentmatch_id(puuid)
+                p.jimo_current_predict_season = current_predict_season
             elif name == "Melon":
                 if current_game_type == "솔로랭크":
                     p.melon_current_match_id_solo = await get_summoner_recentmatch_id(puuid)
                 else:
                     p.melon_current_match_id_flex = await get_summoner_recentmatch_id(puuid)
-            
+                p.melon_current_predict_season = current_predict_season
+
             winbutton.disabled = onoffbool
             losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label="패배",disabled=onoffbool)
             betratebutton = discord.ui.Button(style=discord.ButtonStyle.primary,label="아이템 사용",disabled=onoffbool)
