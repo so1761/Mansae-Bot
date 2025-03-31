@@ -13,6 +13,7 @@ import subprocess
 import os
 import math
 import secrets
+import matplotlib.dates as mdates
 from discord.ui import Modal, TextInput
 from discord import TextStyle
 from firebase_admin import db
@@ -2776,56 +2777,54 @@ def plot_lp_difference_firebase(season=None,name=None,rank=None):
     plt.close()
     return 0
 
-def plot_prediction_graph(season=None,name=None):
+async def plot_prediction_graph(season=None,name=None):
     # 로그 데이터가 저장된 경로
-    log_ref = db.reference(f"승부예측/예측시즌/{season}/예측포인트변동로그")
-    logs = log_ref.get()
-
-    # 분석할 대상 닉네임 (원하는 닉네임으로 수정)
-    target_nickname = name
-
-    timestamps = []
+    data_ref = db.reference(f"승부예측/예측시즌/{season}/예측포인트변동로그")
+    # 날짜 리스트와 포인트 리스트
+    dates = []
     points = []
 
-    # 로그는 {날짜: {시간: {닉네임: {포인트: value, ...} or value}}} 형태라고 가정
-    if logs:
-        for date_str, times in logs.items():
-            # date_str 예: "2025-02-28" (포맷에 맞게 수정)
-            for time_str, nicknames in times.items():
-                # 해당 시간에 target_nickname이 있는지 확인
-                if target_nickname in nicknames:
-                    log_entry = nicknames[target_nickname]
-                    # log_entry가 dict이면 "포인트" 키를 통해 값을 추출, 그렇지 않으면 직접 값 사용
-                    point_value = log_entry.get("포인트", 0) if isinstance(log_entry, dict) else log_entry
-                    # 날짜와 시간 문자열을 합쳐 datetime 객체로 변환 (예: "YYYY-MM-DD HH:MM:SS")
-                    dt_str = f"{date_str} {time_str}"
-                    try:
-                        dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
-                    except ValueError:
-                        # 시간 포맷이 다르다면 적절히 수정 필요
-                        dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
-                    timestamps.append(dt)
-                    points.append(point_value)
+    # Firebase에서 날짜별 포인트 변동 로그 가져오기
+    logs = data_ref.get()
 
-    # 시간 순으로 정렬
-    data = sorted(zip(timestamps, points), key=lambda x: x[0])
-    if data:
-        sorted_timestamps, sorted_points = zip(*data)
-    else:
-        sorted_timestamps, sorted_points = [], []
+    for date_str, date_data in logs.items():
+        # 날짜 포맷을 datetime 객체로 변환
+        try:
+            date = datetime.strptime(date_str, '%Y-%m-%d')  # 날짜 형식에 맞게 수정
+        except ValueError:
+            continue  # 날짜 형식이 맞지 않으면 건너뜁니다
 
-    # matplotlib를 이용해 그래프 그리기
-    plt.figure(figsize=(10, 5))
-    plt.plot(sorted_timestamps, sorted_points, marker='o', linestyle='-')
-    plt.title(f"{target_nickname}님의 포인트 변동 그래프")
-    plt.xlabel("시간")
-    plt.ylabel("포인트")
-    plt.xticks(rotation=45)
-    plt.tight_layout()
+        # 해당 날짜에 대한 특정 사용자의 포인트 정보 가져오기
+        user_data = date_data.get(name)
+        if user_data:
+            for log_key, log_data in user_data.items():
+                # 포인트 변동 값
+                point = log_data.get('포인트')
+
+                if point is not None:
+                    dates.append(date)
+                    points.append(point)
+
+    # 그래프 그리기
+    if dates and points:
+        plt.figure(figsize=(10, 6))
+        plt.plot(dates, points, marker='o', linestyle='-', color='b', label=f"{name}의 포인트")
+
+        # 날짜 포맷 설정
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+        plt.gca().xaxis.set_major_locator(mdates.WeekdayLocator())
+
+        plt.title(f'{name}의 포인트 변동 그래프')
+        plt.xlabel('날짜')
+        plt.ylabel('포인트')
+        plt.xticks(rotation=45)  # 날짜 라벨 회전
+        plt.grid(True)
+        plt.tight_layout()
 
     # 그림을 파일로 저장
     plt.savefig('prediction_graph.png')
     plt.close()
+    return 1
 
 async def plot_candle_graph(시즌:str, 이름:str, 랭크:str):
     ref = db.reference(f'전적분석/{시즌}/점수변동/{이름}/{랭크}')
@@ -4002,11 +4001,10 @@ class hello(commands.Cog):
         # 그래프 이미지 파일을 Discord 메시지로 전송
         await interaction.followup.send(file=discord.File('candle_graph.png'),embed = result)
 
-    '''
+    
     @app_commands.command(name="예측시즌그래프",description="예측시즌 점수를 캔들그래프로 보여줍니다")
-    @app_commands.describe(시즌 = "시즌을 선택하세요",이름='누구의 그래프를 볼지 선택하세요')
+    @app_commands.describe(시즌 = "시즌을 선택하세요")
     @app_commands.choices(시즌=[
-    Choice(name='정규시즌1', value='정규시즌1'),
     Choice(name='정규시즌2', value='정규시즌2')
     ])
     async def 예측시즌그래프(self, interaction: discord.Interaction, 시즌:str):
@@ -4015,12 +4013,12 @@ class hello(commands.Cog):
         name = interaction.user.name
         result = await plot_prediction_graph(시즌,name)
         if result == None:
-            await interaction.response.send_message("해당 시즌 데이터가 존재하지 않습니다.")
+            await interaction.followup.send("해당 시즌 데이터가 존재하지 않습니다.",ephemeral=True)
             return
         
         # 그래프 이미지 파일을 Discord 메시지로 전송
         await interaction.followup.send(file=discord.File('prediction_graph.png'))
-    '''
+    
 
     @app_commands.command(name="예측순위",description="승부예측 포인트 순위를 보여줍니다. 현재 진행 중인 시즌은 포인트를 사용하여 순위를 확인할 수 있습니다.")
     @app_commands.describe(시즌 = "시즌을 선택하세요")
