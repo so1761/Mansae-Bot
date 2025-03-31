@@ -70,11 +70,11 @@ next_items_ref = db.reference(f'승부예측/예측시즌/{next_season}/아이�
 
 # 기존 시즌의 강화 재료를 새로운 시즌으로 추가
 for item, details in current_items.items():
-    if "강화 재료" in details:
+    if "강화재료" in details:
         if item in next_items_ref.get() or {}:
-            next_items_ref.child(item).update({"강화 재료": details["강화 재료"]})
+            next_items_ref.child(item).update({"강화재료": details["강화재료"]})
         else:
-            next_items_ref.child(item).set({"강화 재료": details["강화 재료"]})
+            next_items_ref.child(item).set({"강화재료": details["강화재료"]})
 
 # 시즌 업데이트 (다음 시즌으로 변경)
 cur_predict_seasonref.set(next_season)
