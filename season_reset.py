@@ -64,17 +64,26 @@ else:
 response = requests.post(WEBHOOK_URL, json={"embeds": [embed]})
 
 # 기존 시즌의 강화 재료 가져오기
-current_items_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/아이템')
+current_items_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}')
 current_items = current_items_ref.get() or {}
-next_items_ref = db.reference(f'승부예측/예측시즌/{next_season}/아이템')
 
-# 기존 시즌의 강화 재료를 새로운 시즌으로 추가
-for item, details in current_items.items():
-    if "강화재료" in details:
-        if item in next_items_ref.get() or {}:
-            next_items_ref.child(item).update({"강화재료": details["강화재료"]})
-        else:
-            next_items_ref.child(item).set({"강화재료": details["강화재료"]})
+# 새로운 시즌의 아이템 레퍼런스
+next_items_ref = db.reference(f'승부예측/예측시즌/{next_season}')
+
+# 기존 시즌의 각 사용자에 대해 강화 재료 추가
+for user, user_items in current_items.items():  # 사용자 닉네임 순회
+    for item, details in user_items.get('아이템', {}).items():  # 해당 사용자의 아이템 순회
+        if "강화재료" in details:
+            # 새로운 시즌의 사용자 아이템 레퍼런스
+            next_user_items_ref = next_items_ref.child(user).child('아이템')
+            next_user_items = next_user_items_ref.get() or {}
+
+            if item in next_user_items:
+                # 기존 아이템에 강화재료 업데이트
+                next_user_items_ref.child(item).update({"강화재료": details["강화재료"]})
+            else:
+                # 새로운 아이템에 강화재료 추가
+                next_user_items_ref.child(item).set({"강화재료": details["강화재료"]})
 
 # 시즌 업데이트 (다음 시즌으로 변경)
 cur_predict_seasonref.set(next_season)
