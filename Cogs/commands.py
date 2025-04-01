@@ -952,7 +952,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"]["은신"]["레벨"]
                 DefenseIgnore_increase = skill_level * 15
                 bleed_chance = 0.1 * skill_level
-                if random.random() < bleed_chance: # 출혈 부여
+                if random.random() < bleed_chance and not evasion: # 출혈 부여
                     apply_status_for_turn(defender, "출혈", duration=3)
                     result_message +=f"\n**🩸{attacker['name']}의 은신 공격**!\n3턴간 출혈 상태 부여!\n"   
                 result_message +=f"\n**{attacker['name']}의 은신 공격**!\n방어력 관통 + {DefenseIgnore_increase}!\n{round(0.3 * skill_level * 100)}% 추가 대미지!\n"
@@ -5241,11 +5241,11 @@ class hello(commands.Cog):
             # 일일미션 : 야추 1회
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
             current_predict_season = cur_predict_seasonref.get()
-            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/야추 1회")
-            mission_data = ref.get() or {}
+            ref_mission = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/야추 1회")
+            mission_data = ref_mission.get() or {}
             mission_bool = mission_data.get('완료',0)
             if not mission_bool:
-                ref.update({"완료": True})
+                ref_mission.update({"완료": True})
                 print(f"{nickname}의 [야추 1회] 미션 완료")
 
             # ====================  [미션]  ====================
