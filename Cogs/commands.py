@@ -1008,7 +1008,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                     # 가속 확률 계산 (스피드 10당 1% 확률)
                     speed = attacker.get("Speed", 0)
-                    acceleration_chance = speed // 10  # 예: 스피드 50이면 5% 확률
+                    acceleration_chance = speed // 5  # 예: 스피드 50이면 10% 확률
 
                     if acceleration_chance > 0 and random.randint(1, 100) <= acceleration_chance:
                         attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 추가 1 감소
