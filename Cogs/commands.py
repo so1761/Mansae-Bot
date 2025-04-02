@@ -507,12 +507,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             """패시브 - 뇌진탕 펀치: 공격 적중 시 뇌진탕 스택 부여, 4스택 시 기절"""
             target["뇌진탕"] = target.get("뇌진탕", 0) + 1
 
-            message = f"**뇌진탕 펀치** 효과로 {target['Name']}에게 뇌진탕 스택 {target['뇌진탕']}/4 부여!"
+            message = f"**뇌진탕 펀치** 효과로 {target['name']}에게 뇌진탕 스택 {target['뇌진탕']}/4 부여!"
             
             if target["뇌진탕"] >= 4:
                 target["뇌진탕"] = 0
                 apply_status_for_turn(target, "기절", duration=1)
-                message += f"\n**뇌진탕 폭발!** {target['Name']}이(가) 1턴간 기절!"
+                message += f"\n**뇌진탕 폭발!** {target['name']}이(가) 1턴간 기절!"
             return message
 
         def frostbite(attacker, target, skill_level):
@@ -524,11 +524,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             speed_decrease = 0.1 * (1 + skill_level)
             target["Speed"] *= (1- speed_decrease)
             
-            message = f"**동상** 사용! {target['Name']}에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n뇌진탕을 부여하고, 스피드가 2턴간 {int(speed_decrease * 100)}% 감소!"
+            message = f"**동상** 사용! {target['name']}에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n뇌진탕을 부여하고, 스피드가 2턴간 {int(speed_decrease * 100)}% 감소!"
             if target["뇌진탕"] >= 4:
                 target["뇌진탕"] = 0
                 apply_status_for_turn(target, "기절", duration=1)
-                message += f"\n**뇌진탕 폭발!** {target['Name']}이(가) 1턴간 기절!"
+                message += f"\n**뇌진탕 폭발!** {target['name']}이(가) 1턴간 기절!"
             return message, skill_damage
 
         def glacial_fissure(attacker, target, skill_level):
@@ -540,7 +540,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             skill_damage = base_damage + attacker["Spell"] * skill_multiplier
             apply_status_for_turn(target,"기절",1)
 
-            message = f"**빙하 균열** 사용! {target['Name']}에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n{target['Name']}이(가) 1턴간 기절!"
+            message = f"**빙하 균열** 사용! {target['name']}에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n{target['Name']}이(가) 1턴간 기절!"
 
             return message, skill_damage
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
