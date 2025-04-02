@@ -151,7 +151,7 @@ base_weapon_stats = {
         "스킬": {
             "은신": {
                 "전체 쿨타임": 4,
-                "현재 쿨타임": 4,
+                "현재 쿨타임": 0,
                 "레벨" : 1
             }
         }
@@ -496,6 +496,40 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             else:
                 return f"\n**전깃줄** 사용 불가!\n적이 적정 거리에 없어 스킬 사용을 실패했습니다!\n현재 거리: {battle_distance}\n"
         
+        def unyielding(defender, skill_level):
+            """불굴: 거리에 비례해 받는 대미지를 감소시킴"""
+            damage_reduction = min(0.9, battle_distance * (0.04 + 0.01 * skill_level))  # 최대 90% 감소 제한
+            defender["DamageReduction"] = damage_reduction
+            return f"\n**불굴** 발동!\n거리에 비례하여 받는 대미지 {int(damage_reduction * 100)}% 감소!\n"
+        
+        def concussion_punch(target):
+            """패시브 - 뇌진탕 펀치: 공격 적중 시 뇌진탕 스택 부여, 4스택 시 기절"""
+            target["뇌진탕"] = target.get("뇌진탕", 0) + 1
+
+            message = f"**뇌진탕 펀치** 효과로 {target['Name']}에게 뇌진탕 스택 {target['뇌진탕']}/4 부여!"
+            
+            if target["뇌진탕"] >= 4:
+                target["뇌진탕"] = 0
+                apply_status_for_turn(target, "기절", duration=1)
+                message += f"\n**뇌진탕 폭발!** {target['Name']}이(가) 1턴간 기절!"
+            return message
+
+        def frostbite(attacker, target, skill_level):
+            """액티브 - 동상: 스킬 피해 + 스피드 감소"""
+            skill_multiplier = (0.5 + 0.3 * skill_level)
+            skill_damage = attacker["Attack"] * skill_multiplier
+            apply_status_for_turn(target, "스피드 감소", duration=2)
+            speed_decrease = 0.1 * (1 + skill_level)
+            target["Speed"] *= (1- speed_decrease)
+            
+            message = f"**동상** 사용! {target['Name']}에게 공격력 {int(skill_multiplier * 100)}%의 스킬 피해!\n뇌진탕을 부여하고, 스피드가 2턴간 {int(speed_decrease * 100)}% 감소!"
+            if target["뇌진탕"] >= 4:
+                target["뇌진탕"] = 0
+                apply_status_for_turn(target, "기절", duration=1)
+                message += f"\n**뇌진탕 폭발!** {target['Name']}이(가) 1턴간 기절!"
+            return message, skill_damage
+
+
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
@@ -522,7 +556,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             base_damage = random.uniform(attacker["Attack"] * accuracy, attacker["Attack"])  # 최소 ~ 최대 피해
             distance_bool = False
             critical_bool = False
-            
+
             if evasion: # 회피
                 return 0, False, False, True
 
@@ -543,8 +577,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             if defense < 0:
                 defense = 0
             damage_reduction = calculate_damage_reduction(defense)
-            final_damage = base_damage * (1 - damage_reduction)
-            
+            defend_damage = base_damage * (1 - damage_reduction)
+            final_damage = defend_damage * (1 - defender['DamageReduction']) # 대미지 감소 적용
             
             return max(1, round(final_damage)), critical_bool, distance_bool, False # 최소 피해량 보장
 
@@ -563,6 +597,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             "WeaponRange": weapon_data_challenger.get("사거리",""),
             "DefenseIgnore": 0,
             "Evasion" : 0,
+            "DamageReduction" : 0,
             "Accuracy": weapon_data_challenger.get("명중", 0),
             "BaseAccuracy": weapon_data_challenger.get("명중", 0),
             "Defense": weapon_data_challenger.get("방어력", 0),
@@ -586,6 +621,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             "WeaponRange": weapon_data_opponent.get("사거리",""),
             "DefenseIgnore": 0,
             "Evasion" : 0,
+            "DamageReduction" : 0,
             "Accuracy": weapon_data_opponent.get("명중", 0),
             "BaseAccuracy": weapon_data_opponent.get("명중", 0),
             "Defense": weapon_data_opponent.get("방어력", 0),
@@ -700,6 +736,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             first_HP = opponent['HP']
             if boss == "스우":
                 apply_status_for_turn(opponent, "속박", 2669)
+            elif boss == "브라움":
+                apply_status_for_turn(opponent, "불굴", 2669)
 
         while challenger["HP"] > 0 and opponent["HP"] > 0:
             turn += 1
@@ -710,6 +748,44 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             move_chance = min(0.9, base_move_chance + attacker["Speed"] * 0.01)  # 1% 확률 증가 per speed, max = 90%
             attack_range = attacker["WeaponRange"]
 
+            if "출혈" in attacker["Status"]:
+                skill_level = defender['Skills']['은신']['레벨']
+                bleed_damage = 10 + skill_level * 5
+                if attacker['name'] == challenger['name']: # 도전자 공격
+                    battle_embed = discord.Embed(title=f"{attacker['name']}의 출혈!🩸", color=discord.Color.red())
+                    battle_embed.add_field(name="", value = f"출혈 상태로 인하여 {bleed_damage} 대미지를 받았습니다!", inline = False)
+                    battle_embed.add_field(name="남은 턴", value = f"출혈 상태 남은 턴 : {attacker['Status']['출혈']['duration']}", inline = False)
+                    attacker["HP"] -= bleed_damage
+                    battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {weapon_data_challenger.get('내구도', '')}]**")
+                elif attacker['name'] == opponent['name']: # 상대 공격
+                    battle_embed = discord.Embed(title=f"{attacker['name']}의 출혈!🩸", color=discord.Color.blue())
+                    battle_embed.add_field(name="", value = f"출혈 상태로 인하여 {bleed_damage} 대미지를 받았습니다!", inline = False)
+                    battle_embed.add_field(name="남은 턴", value = f"출혈 상태 남은 턴 : {attacker['Status']['출혈']['duration']}", inline = False)
+                    attacker["HP"] -= bleed_damage
+                    if raid:
+                        battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['FullHP']}]**")
+                    else:
+                        battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {weapon_data_opponent.get('내구도', '')}]**")
+
+                if attacker["HP"] <= 0:
+                    await weapon_battle_thread.send(embed = battle_embed)
+                    await end(attacker,defender,"defender",raid)
+                    break
+                else:
+                    await weapon_battle_thread.send(embed = battle_embed)
+
+            if "기절" in attacker["Status"]: # 기절 상태일 경우 바로 턴을 넘김
+                # 공격자와 방어자 변경
+                battle_embed = discord.Embed(title=f"{attacker['name']}의 턴!⚔️", color=discord.Color.blue())
+                battle_embed.add_field(name="행동 불가!", value = f"기절 상태이상으로 인해 행동할 수 없습니다!\n기절 상태 남은 턴 : {attacker['Status']['기절']['duration']}", inline = False)
+                attacker, defender = defender, attacker
+                await weapon_battle_thread.send(embed = battle_embed)
+                if turn >= 30:
+                    await asyncio.sleep(1)
+                else:
+                    await asyncio.sleep(2)  # 턴 간 딜레이
+                continue
+                    
             skill_names = list(attacker["Skills"].keys())
             used_skill = []
             result_message = ""
@@ -791,34 +867,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 retreat = False
                 attacked = True
 
-            if "출혈" in attacker["Status"]:
-                skill_level = defender['Skills']['은신']['레벨']
-                bleed_damage = 10 + skill_level * 5
-                if attacker['name'] == challenger['name']: # 도전자 공격
-                    battle_embed = discord.Embed(title=f"{attacker['name']}의 출혈!🩸", color=discord.Color.red())
-                    battle_embed.add_field(name="", value = f"출혈 상태로 인하여 {bleed_damage} 대미지를 받았습니다!", inline = False)
-                    battle_embed.add_field(name="남은 턴", value = f"출혈 상태 남은 턴 : {attacker['Status']['출혈']['duration']}", inline = False)
-                    attacker["HP"] -= bleed_damage
-                    battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {weapon_data_challenger.get('내구도', '')}]**")
-                elif attacker['name'] == opponent['name']: # 상대 공격
-                    battle_embed = discord.Embed(title=f"{attacker['name']}의 출혈!🩸", color=discord.Color.blue())
-                    battle_embed.add_field(name="", value = f"출혈 상태로 인하여 {bleed_damage} 대미지를 받았습니다!", inline = False)
-                    battle_embed.add_field(name="남은 턴", value = f"출혈 상태 남은 턴 : {attacker['Status']['출혈']['duration']}", inline = False)
-                    attacker["HP"] -= bleed_damage
-                    if raid:
-                        battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['FullHP']}]**")
-                    else:
-                        battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {weapon_data_opponent.get('내구도', '')}]**")
-
-                if attacker["HP"] <= 0:
-                    await weapon_battle_thread.send(embed = battle_embed)
-                    await end(attacker,defender,"defender",raid)
-                    break
-                else:
-                    await weapon_battle_thread.send(embed = battle_embed)
-
-            
-            
+           
 
             if "은신" in skill_names:
                 skill_name = "은신"
@@ -903,6 +952,16 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         used_skill.append(skill_name)
                 else:
                     result_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+
+            if attacked: #공격 시 방어자가 '불굴' 상태라면 대미지 감소
+                if "불굴" in defender["Status"]:
+                    skill_level = defender["Skills"]["불굴"]["레벨"]
+                    result_message += unyielding(defender, skill_level)
+                
+                if "뇌진탕 펀치" in attacker["Status"]:
+                    result_message += concussion_punch(defender)
+
+                
 
             if "기계팔 방출" in skill_names:
                 skill_name = "기계팔 방출"
@@ -7041,18 +7100,6 @@ class hello(commands.Cog):
         else:
             reward_count = 0  # 보스가 이미 처치된 경우
 
-        # 현재 날짜와 시간 가져오기
-        now = datetime.now()
-        month = now.month
-        day = now.day
-        hour = now.hour
-
-        # 4월 2일 ~ 4월 3일 오전 5시 체크
-        event_active = (month == 4 and day == 2) or (month == 4 and day == 3 and hour <= 5)
-
-        # 4월 2일 ~ 3일 오전 5시 사이면 보상 10배 증가
-        if event_active:
-            reward_count *= 10
 
         remain_durability_ratio = round(cur_dur / total_dur * 100, 2)
 
@@ -7060,11 +7107,6 @@ class hello(commands.Cog):
         embed = discord.Embed(title="🎯 레이드 현황", color=0x00ff00)
         embed.add_field(name="레이드 보스의 현재 체력", value=f"[{cur_dur}/{total_dur}] {remain_durability_ratio}%", inline=False)
         embed.add_field(name="현재 대미지", value="\n".join(rankings), inline=False)
-
-        # 보상 필드 추가
-        if event_active:
-            embed.add_field(name="🎉 지모 다이아 기념!", value="특별한 날을 기념하여 보상 10배 지급!", inline=False)
-
         embed.add_field(name="보상 현황", value=f"강화재료 **{reward_count}개** 지급 예정!", inline=False)
         await interaction.followup.send(embed = embed)
 

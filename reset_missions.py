@@ -171,18 +171,6 @@ refraidboss.update({"총 내구도" : total_dur + 100})
 refraidboss.update({"내구도" : total_dur + 100})
 refraid.set("")
 
-# 현재 날짜와 시간 가져오기
-now = datetime.now()
-month = now.month
-day = now.day
-hour = now.hour
-
-# 4월 2일 ~ 4월 3일 오전 5시 체크
-event_active = (month == 4 and day == 2) or (month == 4 and day == 3 and hour <= 5)
-
-if event_active:
-    reward_count *= 10
-
 participants = list(raid_data.keys())
 for participant in participants:
     ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{participant}/아이템")
@@ -197,13 +185,6 @@ fields = [
         "value": "\n".join(rankings)  # 순위표 추가
     }
 ]
-
-# 이벤트 기간이면 "지모 다이아 기념!" 문구 추가
-if event_active:
-    fields.append({
-        "name": "🎉 지모 다이아 기념!",
-        "value": "특별한 날을 기념하여 보상 10배 지급!"
-    })
 
 # 보상 필드 추가
 fields.append({
