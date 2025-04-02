@@ -961,7 +961,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                 userembed.add_field(
                     name="", 
                     value=f"베팅 배율: {BonusRate}배" if BonusRate == 0 else 
-                    f"베팅 배율: {BonusRate}배!((({winnerNum + loserNum}/{winnerNum} - 1) x 0.5 + 1) {bonus_string})", 
+                    f"베팅 배율: {BonusRate}배!((({winnerNum + loserNum}/{winnerNum} - 1) x 0.3 + 1) {bonus_string})", 
                     inline=False
                 )
 
