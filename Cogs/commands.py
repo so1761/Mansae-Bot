@@ -613,7 +613,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             for skill_name in skills:
                 skill_data = attacker["Skills"].get(skill_name, None)
                 if not skill_data or skill_data["현재 쿨타임"] > 0:
-                    result_message += f"{skill_name}의 남은 쿨타임 : {skill_data["현재 쿨타임"]}턴\n"
+                    result_message += f"{skill_name}의 남은 쿨타임 : {skill_data['현재 쿨타임']}턴\n"
                     return None, result_message  # 스킬이 없거나 쿨타임 중이면 실행하지 않음
 
                 if reloading:
