@@ -711,6 +711,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             attack_range = attacker["WeaponRange"]
 
             skill_names = list(attacker["Skills"].keys())
+            used_skill = []
+            result_message = ""
+            
             if "자력 발산" in skill_names:
                 skill_name = "자력 발산"
                 skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
@@ -815,8 +818,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     await weapon_battle_thread.send(embed = battle_embed)
 
             
-            used_skill = []
-            result_message = ""
+            
 
             if "은신" in skill_names:
                 skill_name = "은신"
