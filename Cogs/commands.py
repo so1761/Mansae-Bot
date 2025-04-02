@@ -710,6 +710,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             move_chance = min(0.9, base_move_chance + attacker["Speed"] * 0.01)  # 1% 확률 증가 per speed, max = 90%
             attack_range = attacker["WeaponRange"]
 
+            skill_names = list(attacker["Skills"].keys())
             if "자력 발산" in skill_names:
                 skill_name = "자력 발산"
                 skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
@@ -813,7 +814,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 else:
                     await weapon_battle_thread.send(embed = battle_embed)
 
-            skill_names = list(attacker["Skills"].keys())
+            
             used_skill = []
             result_message = ""
 
@@ -7043,7 +7044,7 @@ class hello(commands.Cog):
         # 4월 2일 또는 4월 3일이면 10배 증가
         if today in ["04-02", "04-03"]:
             reward_count *= 10
-            
+
         remain_durability_ratio = round(cur_dur / total_dur * 100,2)
     
         embed = discord.Embed(title="🎯 레이드 현황", color = 0x00ff00)
