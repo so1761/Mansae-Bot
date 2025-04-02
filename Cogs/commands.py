@@ -466,7 +466,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 if defender["Speed"] < 0:
                     defender["Speed"] = 0
                 apply_status_for_turn(defender, "기계팔 방출", duration=1)
-                return f"\n**기계팔 방출** 사용!\n상대를 1만큼 날려버립니다!\n 상대의 속도가 1턴간 {speed_decrease} 감소합니다!\n현재 거리: {battle_distance}\n"
+                return f"\n**기계팔 방출** 사용!\n상대를 1만큼 날려버립니다!\n 상대의 속도가 2턴간 {speed_decrease} 감소합니다!\n현재 거리: {battle_distance}\n"
             else:
                 return f"\n**기계팔 방출** 사용 불가!\n적이 멀리 있어 스킬 사용을 실패했습니다!\n현재 거리: {battle_distance}\n"
         
@@ -483,11 +483,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 if defender["Speed"] < 0:
                     defender["Speed"] = 0
                 apply_status_for_turn(defender, "자력 발산", duration=1)
-                return f"\n**자력 발산** 사용!\n상대를 {distance}만큼 끌어옵니다!\n 상대의 속도가 1턴간 {speed_decrease} 감소합니다!\n현재 거리: {battle_distance}\n"
+                return f"\n**자력 발산** 사용!\n상대를 {distance}만큼 끌어옵니다!\n 상대의 속도가 2턴간 {speed_decrease} 감소합니다!\n현재 거리: {battle_distance}\n"
             else:
                 return f"\n**자력 발산** 사용 불가!\n적이 가까이 있어 스킬 사용을 실패했습니다!\n현재 거리: {battle_distance}\n"
 
-        def electronic_line(defender, evasion, skill_level):
+        def electronic_line(defender,skill_level):
             global battle_distance
             damage = 20 + (10 * skill_level)
             if battle_distance == 2:
@@ -924,7 +924,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 if skill_cooldown_current == 0:
                     attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
                     if "전깃줄" in skill_names:
-                        result_message += electronic_line(defender, evasion, skill_level)
+                        result_message += electronic_line(defender, skill_level)
                         if defender['HP'] <= 0: # 전깃줄에 막타맞은 경우
                             battle_embed.add_field(name="스킬", value = result_message.rstrip("\n"), inline = False)
                             battle_embed.color = discord.Color.blue()
@@ -7038,6 +7038,12 @@ class hello(commands.Cog):
         else:
             reward_count = 0  # 보스가 이미 처치된 경우
 
+        # 현재 날짜 가져오기
+        today = datetime.today().strftime("%m-%d")
+        # 4월 2일 또는 4월 3일이면 10배 증가
+        if today in ["04-02", "04-03"]:
+            reward_count *= 10
+            
         remain_durability_ratio = round(cur_dur / total_dur * 100,2)
     
         embed = discord.Embed(title="🎯 레이드 현황", color = 0x00ff00)

@@ -171,6 +171,12 @@ refraidboss.update({"총 내구도" : total_dur + 100})
 refraidboss.update({"내구도" : total_dur + 100})
 refraid.set("")
 
+# 현재 날짜 가져오기
+today = datetime.today().strftime("%m-%d")
+# 4월 2일 또는 4월 3일이면 10배 증가
+if today in ["04-02", "04-03"]:
+    reward_count *= 10
+
 participants = list(raid_data.keys())
 for participant in participants:
     ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{participant}/아이템")
