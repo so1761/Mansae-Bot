@@ -472,8 +472,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         
         def Magnetic(defender, skill_level):
             global battle_distance
-            if evasion:
-                return f"\n**자력 발산** 사용 불가!\n공격이 빗나갔습니다!\n"
             if battle_distance > 2: # 멀리있을 땐 끌어오기
                 battle_distance -= 2
                 distance = 2
@@ -712,6 +710,20 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             move_chance = min(0.9, base_move_chance + attacker["Speed"] * 0.01)  # 1% 확률 증가 per speed, max = 90%
             attack_range = attacker["WeaponRange"]
 
+            if "자력 발산" in skill_names:
+                skill_name = "자력 발산"
+                skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
+                skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
+                skill_level = attacker["Skills"][skill_name]["레벨"]
+
+                if skill_cooldown_current == 0:
+                    attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
+                    if "자력 발산" in skill_names:
+                        result_message += Magnetic(defender, skill_level)
+                        used_skill.append(skill_name)
+                else:
+                    result_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+
             dash = False
             retreat = False
             # 돌진 후 공격 (한 사이클)
@@ -885,20 +897,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
                     if "창격" in skill_names:
                         result_message += spearShot(attacker,evasion,skill_level)
-                        used_skill.append(skill_name)
-                else:
-                    result_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
-            
-            if "자력 발산" in skill_names:
-                skill_name = "자력 발산"
-                skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
-                skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
-                skill_level = attacker["Skills"][skill_name]["레벨"]
-
-                if skill_cooldown_current == 0:
-                    attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
-                    if "자력 발산" in skill_names:
-                        result_message += Magnetic(defender, skill_level)
                         used_skill.append(skill_name)
                 else:
                     result_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
