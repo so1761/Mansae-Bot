@@ -171,10 +171,16 @@ refraidboss.update({"총 내구도" : total_dur + 100})
 refraidboss.update({"내구도" : total_dur + 100})
 refraid.set("")
 
-# 현재 날짜 가져오기
-today = datetime.today().strftime("%m-%d")
-# 4월 2일 또는 4월 3일이면 10배 증가
-if today in ["04-02", "04-03"]:
+# 현재 날짜와 시간 가져오기
+now = datetime.now()
+month = now.month
+day = now.day
+hour = now.hour
+
+# 4월 2일 ~ 4월 3일 오전 5시 체크
+event_active = (month == 4 and day == 2) or (month == 4 and day == 3 and hour <= 5)
+
+if event_active:
     reward_count *= 10
 
 participants = list(raid_data.keys())
@@ -184,7 +190,28 @@ for participant in participants:
     weapon_parts = item_data.get("강화재료", 0)
     ref_item.update({"강화재료" : weapon_parts + reward_count})
 
-# 순위표를 포함한 embed 내용
+# 기본 필드 리스트
+fields = [
+    {   
+        "name": "결과",
+        "value": "\n".join(rankings)  # 순위표 추가
+    }
+]
+
+# 이벤트 기간이면 "지모 다이아 기념!" 문구 추가
+if event_active:
+    fields.append({
+        "name": "🎉 지모 다이아 기념!",
+        "value": "특별한 날을 기념하여 보상 10배 지급!"
+    })
+
+# 보상 필드 추가
+fields.append({
+    "name": "보상",
+    "value": f"강화 재료 **{reward_count}개** 지급!"
+})
+
+# 임베드 메시지 생성
 raid_result = {
     "content": "",
     "embeds": [
@@ -192,16 +219,7 @@ raid_result = {
             "title": "🎯 레이드 정산",
             "description": f"레이드 보스의 체력 [{cur_dur}/{total_dur}]",
             "color": 0x00ff00,  # 초록색
-            "fields": [
-                {   
-                    "name": "결과",
-                    "value": "\n".join(rankings)  # 순위표를 필드에 추가
-                },
-                {
-                    "name": "보상",
-                    "value": f"강화 재료 **{reward_count}개** 지급!"
-                }
-            ],
+            "fields": fields,
             "footer": {
                 "text": "Raid Bot",
             }

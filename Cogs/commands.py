@@ -713,7 +713,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             skill_names = list(attacker["Skills"].keys())
             used_skill = []
             result_message = ""
-            
+
             if "자력 발산" in skill_names:
                 skill_name = "자력 발산"
                 skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
@@ -7041,17 +7041,30 @@ class hello(commands.Cog):
         else:
             reward_count = 0  # 보스가 이미 처치된 경우
 
-        # 현재 날짜 가져오기
-        today = datetime.today().strftime("%m-%d")
-        # 4월 2일 또는 4월 3일이면 10배 증가
-        if today in ["04-02", "04-03"]:
+        # 현재 날짜와 시간 가져오기
+        now = datetime.now()
+        month = now.month
+        day = now.day
+        hour = now.hour
+
+        # 4월 2일 ~ 4월 3일 오전 5시 체크
+        event_active = (month == 4 and day == 2) or (month == 4 and day == 3 and hour <= 5)
+
+        # 4월 2일 ~ 3일 오전 5시 사이면 보상 10배 증가
+        if event_active:
             reward_count *= 10
 
-        remain_durability_ratio = round(cur_dur / total_dur * 100,2)
-    
-        embed = discord.Embed(title="🎯 레이드 현황", color = 0x00ff00)
+        remain_durability_ratio = round(cur_dur / total_dur * 100, 2)
+
+        # 디스코드 임베드 생성
+        embed = discord.Embed(title="🎯 레이드 현황", color=0x00ff00)
         embed.add_field(name="레이드 보스의 현재 체력", value=f"[{cur_dur}/{total_dur}] {remain_durability_ratio}%", inline=False)
         embed.add_field(name="현재 대미지", value="\n".join(rankings), inline=False)
+
+        # 보상 필드 추가
+        if event_active:
+            embed.add_field(name="🎉 지모 다이아 기념!", value="특별한 날을 기념하여 보상 10배 지급!", inline=False)
+
         embed.add_field(name="보상 현황", value=f"강화재료 **{reward_count}개** 지급 예정!", inline=False)
         await interaction.followup.send(embed = embed)
 
