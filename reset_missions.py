@@ -136,7 +136,9 @@ yacht_data = {
         }
     ]
 }
-boss_name = "스우"
+ref_current_boss = db.reference(f"레이드/현재 레이드 보스")
+boss_name = ref_current_boss.get()
+
 refraid = db.reference(f"레이드/{boss_name}/내역")
 raid_data = refraid.get() or {}
 
@@ -172,11 +174,15 @@ refraidboss.update({"내구도" : total_dur + 100})
 refraid.set("")
 
 participants = list(raid_data.keys())
-for participant in participants:
+for participant, data in raid_data:
     ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{participant}/아이템")
     item_data = ref_item.get() or {}
     weapon_parts = item_data.get("강화재료", 0)
     ref_item.update({"강화재료" : weapon_parts + reward_count})
+
+    if data.get('막타',False):
+        raid_retry = item_data.get("레이드 재도전")
+        ref_item.update({"레이드 재도전": raid_retry + 1})
 
 # 기본 필드 리스트
 fields = [
