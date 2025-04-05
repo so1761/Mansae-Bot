@@ -5695,7 +5695,7 @@ class hello(commands.Cog):
                     description=f"{interaction.user.display_name}님은 이미 야추 다이스를 플레이 했습니다.",
                     color=discord.Color.red()
                 )
-                await interaction.response.send_message(embed=embed)
+                await interaction.followup.send(embed=embed)
 
 
     @app_commands.command(name="업적해금", description="1000포인트를 지불하여, 아직 달성하지 않은 시즌미션의 상세 정보까지 전부 확인합니다. 15일 이후만 가능합니다.")
