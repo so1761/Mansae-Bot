@@ -762,6 +762,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 if not skill_data or skill_data["현재 쿨타임"] > 0:
                     result_message += f"{skill_name}의 남은 쿨타임 : {skill_data['현재 쿨타임']}턴\n"
                     return None, result_message, critical_bool  # 쿨타임 중
+                
+                skill_level = skill_data["레벨"]
+                skill_cooldown = skill_data["전체 쿨타임"]
 
                 if reloading:
                     result_message += f"재장전 중이라 {skill_name}을 사용할 수 없습니다!\n"
@@ -774,8 +777,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
                     return None, result_message, critical_bool  # 사거리가 안닿는 경우 쿨타임을 돌림
                 
-                skill_level = skill_data["레벨"]
-                skill_cooldown = skill_data["전체 쿨타임"]
+                
                 if skill_name == "빙하 균열":
                     skill_message, damage= glacial_fissure(attacker,defender,evasion,skill_level)
                     result_message += skill_message

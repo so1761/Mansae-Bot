@@ -101,7 +101,7 @@ for nickname, point_data in name_data.items():
         if total > best_total:
             best_player = [nickname]
             best_total = total
-        if total == best_total:
+        elif total == best_total:
             best_player.append(nickname)
 
 if len(best_player) > 1:
@@ -174,7 +174,7 @@ refraidboss.update({"내구도" : total_dur + 100})
 refraid.set("")
 
 participants = list(raid_data.keys())
-for participant, data in raid_data:
+for participant, data in raid_data.items():
     ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{participant}/아이템")
     item_data = ref_item.get() or {}
     weapon_parts = item_data.get("강화재료", 0)
