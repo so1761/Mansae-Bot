@@ -737,7 +737,7 @@ def get_participant_id(match_info, puuid): # match정보와 puuid를 통해 그 
 def calculate_bonus(streak):
     bonus = 0
     
-    bonus += min(2, streak) * 0.1
+    bonus += streak * 0.1
 
     return round(bonus,1)
 
