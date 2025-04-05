@@ -581,11 +581,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             return message,skill_damage
         
         def Reap(attacker, evasion, skill_level):
-            # 수확: (10 + 레벨 당 5) + 스킬 증폭 40% + 레벨 당 5% 추가 피해
+            # 수확: (20 + 레벨 당 5) + 스킬 증폭 40% + 레벨 당 5% 추가 피해 + 공격력 30% + 레벨 당 5% 추가 피해
             if not evasion:
-                base_damage = 10 + 5 * skill_level
+                base_damage = 20 + 5 * skill_level
                 skill_multiplier = (0.4 + 0.05 * skill_level)
-                attack_multiplier = (0.2 + 0.05 * skill_level)
+                attack_multiplier = (0.3 + 0.05 * skill_level)
                 skill_damage = base_damage + attacker["Spell"] * skill_multiplier + attacker["Attack"] * attack_multiplier
                 message = f"\n**수확** 사용!\n상대에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%) + (공격력 {int(attack_multiplier * 100)}%)의 스킬 피해!\n"
             else:
@@ -807,7 +807,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 elif skill_name == "수확":
                     skill_message, damage = Reap(attacker,evasion,skill_level)
                     result_message += skill_message
-                    total_damage += damage
                     if evasion:
                         # 스킬 쿨타임 적용
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
