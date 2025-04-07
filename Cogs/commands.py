@@ -115,7 +115,7 @@ enhancement_options = {
     "명중 강화": {"main_stat": "명중", "stats": {"공격력": 2, "내구도": 5, "방어력": 2, "스피드": 1, "명중": 5}},
     "방어 강화": {"main_stat": "방어력", "stats": {"내구도": 10, "방어력": 5}},
     "내구도 강화": {"main_stat": "내구도", "stats": {"내구도": 20, "방어력": 3}},
-    "스킬 강화": {"main_stat": "내구도", "stats": {"내구도": 5, "방어력": 1, "스킬 증폭": 10}},
+    "스킬 강화": {"main_stat": "스킬 증폭", "stats": {"내구도": 5, "방어력": 1, "스킬 증폭": 10}},
     "밸런스 강화": {"main_stat": "올스탯", "stats": {"공격력": 1, "내구도": 7, "방어력": 1, "스피드": 1, "명중": 1, "스킬 증폭": 2, "치명타 대미지": 0.02, "치명타 확률": 0.01}}
 }
 
@@ -227,7 +227,7 @@ base_weapon_stats = {
                 "전체 쿨타임": 2,
                 "현재 쿨타임": 2,
                 "레벨" : 1,
-                "사거리" : 3
+                "사거리" : 4
             }
         }
     }
@@ -262,7 +262,7 @@ def restart_script(): # 봇 재시작 명령어
     except Exception as e:
         print(f"Unexpected error: {e}")
 
-async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = False, practice = False):
+async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = False, practice = False, tower = False):
         # 전장 크기 (-8 ~ 8), 0은 없음
         MAX_DISTANCE = 8
         MIN_DISTANCE = -8
@@ -405,6 +405,40 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 
                 if not practice:      
                     ref_raid.update({"대미지": total_damage})
+            elif tower:
+                ref_current_floor = db.reference(f"탑/유저/{challenger_m.name}")
+                tower_data = ref_current_floor.get() or {}
+                current_floor = tower_data.get("층수", 1)
+
+                if winner == "attacker": # 일반적인 상황
+                    if defender['name'] == challenger['name']: # 패배한 사람이 플레이어일 경우
+                        await weapon_battle_thread.send(f"**{attacker['name']}**에게 패배!")
+                        result = False
+                    else: # 플레이어가 승리한 경우
+                        await weapon_battle_thread.send(f"**{attacker['name']}** 승리! {current_floor}층 클리어!")
+                        result = True
+                elif winner == "defender": # 출혈 등 특수한 상황
+                    if attacker['name'] == challenger['name']: # 패배한 사람이 플레이어일 경우
+                        await weapon_battle_thread.send(f"**{attacker['name']}**에게 패배!")
+                        result = False
+                    else: # 플레이어가 승리한 경우
+                        await weapon_battle_thread.send(f"**{attacker['name']}** 승리! {current_floor}층 클리어!")
+                        result = True
+
+                if result:
+                    ref_current_floor.update({"층수" : current_floor + 1}) # 층수 1 올리기
+                    ref_tc = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger_m.name}/아이템')
+                    tc_data = ref_tc.get()
+                    TC = tc_data.get('탑코인', 0)
+                    if current_floor % 10 == 0:
+                        ref_tc.update({"탑코인" : TC + 10})
+                        await weapon_battle_thread.send(f"탑코인 10개 지급!")
+                    else:
+                        ref_tc.update({"탑코인" : TC + 1})
+                        await weapon_battle_thread.send(f"탑코인 1개 지급!")
+                else:
+                    ref_current_floor.update({"등반여부": True})
+
             else: # 일반 배틀
                 if winner == "attacker": # 일반적인 상황
                     await weapon_battle_thread.send(f"**{attacker['name']}** 승리!")
@@ -581,11 +615,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             return message,skill_damage
         
         def Reap(attacker, evasion, skill_level):
-            # 수확: (20 + 레벨 당 5) + 스킬 증폭 40% + 레벨 당 5% 추가 피해 + 공격력 30% + 레벨 당 5% 추가 피해
+            # 수확: (30 + 레벨 당 10) + 스킬 증폭 60% + 레벨 당 8% 추가 피해 + 공격력 20% + 레벨 당 5% 추가 피해
             if not evasion:
-                base_damage = 20 + 5 * skill_level
-                skill_multiplier = (0.4 + 0.05 * skill_level)
-                attack_multiplier = (0.3 + 0.05 * skill_level)
+                base_damage = 30 + 10 * skill_level
+                skill_multiplier = (0.6 + 0.08 * skill_level)
+                attack_multiplier = (0.2 + 0.05 * skill_level)
                 skill_damage = base_damage + attacker["Spell"] * skill_multiplier + attacker["Attack"] * attack_multiplier
                 message = f"\n**수확** 사용!\n상대에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%) + (공격력 {int(attack_multiplier * 100)}%)의 스킬 피해!\n"
             else:
@@ -699,6 +733,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
         if raid:
             ref_weapon_opponent = db.reference(f"레이드/{boss}")
+        elif tower:
+            ref_current_floor = db.reference(f"탑/유저/{challenger_m.name}")
+            tower_data = ref_current_floor.get() or {}
+            current_floor = tower_data.get("층수", 1)
+            ref_weapon_opponent = db.reference(f"탑/{current_floor}층")
         else:
             ref_weapon_opponent = db.reference(f"무기/{opponent_m.name}")
         weapon_data_opponent = ref_weapon_opponent.get() or {}
@@ -905,12 +944,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         # 비동기 전투 시뮬레이션
         attacker, defender = (challenger, opponent) if challenger["Speed"] > opponent["Speed"] else (opponent, challenger)
         
-        if not raid:
-            global weapon_battle_thread
-            weapon_battle_thread = await channel.create_thread(
-                name=f"{challenger_m.display_name} vs {opponent_m.display_name} 무기 대결",
-                type=discord.ChannelType.public_thread
-            )
+        global weapon_battle_thread
+        
         if raid:
             if practice:
                 weapon_battle_thread = await channel.create_thread(
@@ -922,6 +957,17 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     name=f"{challenger_m.display_name}의 {boss} 레이드",
                     type=discord.ChannelType.public_thread
                 )
+        elif tower:
+            weapon_battle_thread = await channel.create_thread(
+                name=f"{challenger_m.display_name}의 타워 등반",
+                type=discord.ChannelType.public_thread
+            )
+        else:
+            weapon_battle_thread = await channel.create_thread(
+                name=f"{challenger_m.display_name} vs {opponent_m.display_name} 무기 대결",
+                type=discord.ChannelType.public_thread
+            )
+                
         # 비동기 전투 시뮬레이션 전에 스탯을 임베드로 전송
         embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green())
 
@@ -2065,7 +2111,8 @@ class DiceRevealView(discord.ui.View):
                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                 current_predict_season = cur_predict_seasonref.get()
                 ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name'].name}/미션/일일미션/승부예측 1회 적중")
-                mission_bool = ref.get()['완료']
+                mission_data = ref.get() or {}
+                mission_bool = mission_data.get('완료', False)
                 if not mission_bool:
                     ref.update({"완료": True})
                     print(f"{winner['name'].display_name}의 [승부예측 1회 적중] 미션 완료")
@@ -2361,23 +2408,42 @@ class ItemBuyButton(discord.ui.Button):
         real_point = point - bettingPoint
 
         item_menu = {
-            "배율증가1": 250 if round(real_point * 0.05) < 250 else round(real_point * 0.05),
-            "배율증가3": 500 if round(real_point * 0.1) < 500 else round(real_point * 0.1),
-            "배율증가5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
-            "배율감소1": 250 if round(real_point * 0.05) < 250 else round(real_point * 0.05),
-            "배율감소3": 500 if round(real_point * 0.1) < 500 else round(real_point * 0.1),
-            "배율감소5": 1000 if round(real_point * 0.2) < 1000 else round(real_point * 0.2),
-            "주사위 초기화": 20,
-            "주사위대결기회 추가": 100,
-            "숫자야구대결기회 추가": 100,
-            "야추 초기화": 100,
-            "완전 익명화": 1000,
-            "레이드 재도전": 500
+            "배율증가1": {"cost": 50 if round(real_point * 0.05) < 50 else round(real_point * 0.05), "currency": "P"},
+            "배율증가3": {"cost": 100 if round(real_point * 0.1) < 100 else round(real_point * 0.1), "currency": "P"},
+            "배율증가5": {"cost": 200 if round(real_point * 0.2) < 200 else round(real_point * 0.2), "currency": "P"},
+            "배율감소1": {"cost": 50 if round(real_point * 0.05) < 50 else round(real_point * 0.05), "currency": "P"},
+            "배율감소3": {"cost": 100 if round(real_point * 0.1) < 100 else round(real_point * 0.1), "currency": "P"},
+            "배율감소5": {"cost": 200 if round(real_point * 0.2) < 200 else round(real_point * 0.2), "currency": "P"},
+            "주사위 초기화": {"cost": 20, "currency": "P"},
+            "주사위대결기회 추가": {"cost": 100, "currency": "P"},
+            "숫자야구대결기회 추가": {"cost": 100, "currency": "P"},
+            "야추 초기화": {"cost": 100, "currency": "P"},
+            "완전 익명화": {"cost": 300, "currency": "P"},
+            "레이드 재도전": {"cost": 500, "currency": "P"},
+            "강화재료": {"cost": 1, "currency": "TC"},
+            "연마제": {"cost": 5, "currency": "TC"},
+            "랜덤박스": {"cost": 5, "currency": "TC"},
         }
 
-        if real_point < item_menu[self.item_name]: # 포인트가 적을 경우
-            await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트 : {real_point}P | 필요 포인트 : {item_menu[self.item_name]}",ephemeral=True)
-            return
+        item_info = item_menu[self.item_name]
+        currency = item_info["currency"]
+        cost = item_info["cost"]
+        if real_point < item_menu[self.item_name]["cost"]: # 포인트가 적을 경우
+
+            if currency == "P":
+                if real_point < cost:
+                    await interaction.response.send_message(
+                        f"포인트가 부족합니다!\n현재 포인트 : {real_point}P | 필요 포인트 : {cost}P", ephemeral=True
+                    )
+                    return
+            elif currency == "TC":
+                tc_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/아이템/탑코인")
+                topcoin = tc_ref.get() or 0
+                if topcoin < cost:
+                    await interaction.response.send_message(
+                        f"탑코인이 부족합니다!\n현재 탑코인 : {topcoin}TC | 필요 탑코인 : {cost}TC", ephemeral=True
+                    )
+                    return
         
         class NumberInputModal(discord.ui.Modal, title="개수 입력"):
             def __init__(self, item_name: str):
@@ -2397,12 +2463,13 @@ class ItemBuyButton(discord.ui.Button):
             async def on_submit(self, interaction: discord.Interaction):
                 try:
                     num = int(self.number.value)  # 입력값을 정수로 변환
-                    if real_point < (item_menu[self.item_name] * num): # 포인트가 적을 경우
-                        await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트 : {real_point}P | 필요 포인트 : {item_menu[self.item_name] * num}",ephemeral=True)
-                        return
-                    else:
+                    if currency == "P":
+                        total_cost = cost * num
+                        if real_point < total_cost: # 포인트가 적을 경우
+                            await interaction.response.send_message(f"포인트가 부족합니다!\n현재 포인트 : {real_point}P | 필요 포인트 : {total_cost}P",ephemeral=True)
+                            return       
                         give_item(interaction.user.name,self.item_name, num)
-                        point_ref.update({"포인트" : point - (item_menu[self.item_name] * num)})
+                        point_ref.update({"포인트" : point - total_cost})
 
                         current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
                         current_date = current_datetime.strftime("%Y-%m-%d")
@@ -2410,12 +2477,24 @@ class ItemBuyButton(discord.ui.Button):
                         change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{interaction.user.name}")
                         change_ref.push({
                             "시간": current_time,
-                            "포인트": point - (item_menu[self.item_name] * num),
-                            "포인트 변동": -item_menu[self.item_name] * num,
+                            "포인트": point - total_cost,
+                            "포인트 변동": -total_cost,
                             "사유": f"{self.item_name} 구매"
                         })
 
-                        await interaction.response.send_message(f"[{self.item_name}] 아이템을 {num}개 구매했습니다!\n현재 포인트 : {real_point - (item_menu[self.item_name] * num)}P (-{item_menu[self.item_name] * num}P)",ephemeral=True)
+                        await interaction.response.send_message(f"[{self.item_name}] 아이템을 {num}개 구매했습니다!\n현재 포인트 : {real_point - total_cost}P (-{total_cost}P)",ephemeral=True)
+                    
+                    elif currency == "TC":
+                        total_cost = cost * num
+                        tc_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/아이템/탑코인")
+                        topcoin = tc_ref.get() or 0
+                        if topcoin < total_cost:
+                            await interaction.response.send_message(f"탑코인이 부족합니다!\n현재 탑코인 : {topcoin}TC | 필요 탑코인 : {total_cost}TC",ephemeral=True)
+                            return
+                        give_item(interaction.user.name,self.item_name, num)
+                        tc_ref.set(topcoin - total_cost)
+                        await interaction.response.send_message(f"[{self.item_name}] 아이템을 {num}개 구매했습니다!\n현재 탑코인 : {topcoin - total_cost}TC (-{total_cost}TC)",ephemeral=True)
+                    
                 except ValueError:
                     await interaction.response.send_message("올바른 숫자를 입력해주세요!", ephemeral=True)
 
@@ -2442,8 +2521,11 @@ class ItemSelect(discord.ui.Select):
             discord.SelectOption(label = "주사위대결기회 추가", value = "주사위대결기회 추가", description = "주사위 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다."),
             discord.SelectOption(label = "숫자야구대결기회 추가", value = "숫자야구대결기회 추가", description = "숫자야구 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다."),
             discord.SelectOption(label = "야추 초기화", value = "야추 초기화", description = "현재 야추 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다."),
-            discord.SelectOption(label = "완전 익명화", value = "완전 익명화", description = "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 1000p로 구매 가능합니다."),
+            discord.SelectOption(label = "완전 익명화", value = "완전 익명화", description = "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 300p로 구매 가능합니다."),
             discord.SelectOption(label = "레이드 재도전", value = "레이드 재도전", description = "레이드에 참여했던 기록을 없애고 다시 도전합니다. 500p로 구매 가능합니다."),
+            discord.SelectOption(label = "강화재료", value = "강화재료", description = "강화에 필요한 재료입니다. 1TC로 구매 가능합니다."),
+            discord.SelectOption(label = "연마제", value = "연마제", description = "강화 확률을 5% 올립니다. 5TC로 구매 가능합니다."),
+            discord.SelectOption(label = "랜덤박스", value = "랜덤박스", description = "강화재료, 연마제, 레이드 재도전권, 고급연마제가 들어있는 랜덤박스입니다. 5TC로 구매 가능합니다."),
         ]
         super().__init__(
             placeholder = '구매할 아이템을 선택하세요.',
@@ -2464,18 +2546,21 @@ class ItemSelect(discord.ui.Select):
 
         real_point = point - bettingPoint
         item_menu = {
-            "배율증가1": 50 if round(real_point * 0.05) < 50 else round(real_point * 0.05),
-            "배율증가3": 100 if round(real_point * 0.1) < 100 else round(real_point * 0.1),
-            "배율증가5": 200 if round(real_point * 0.2) < 200 else round(real_point * 0.2),
-            "배율감소1": 50 if round(real_point * 0.05) < 50 else round(real_point * 0.05),
-            "배율감소3": 100 if round(real_point * 0.1) < 100 else round(real_point * 0.1),
-            "배율감소5": 200 if round(real_point * 0.2) < 200 else round(real_point * 0.2),
-            "주사위 초기화": 20,
-            "주사위대결기회 추가": 100,
-            "숫자야구대결기회 추가": 100,
-            "야추 초기화": 100,
-            "완전 익명화": 300,
-            "레이드 재도전": 500,
+            "배율증가1": {"cost": 50 if round(real_point * 0.05) < 50 else round(real_point * 0.05), "currency": "P"},
+            "배율증가3": {"cost": 100 if round(real_point * 0.1) < 100 else round(real_point * 0.1), "currency": "P"},
+            "배율증가5": {"cost": 200 if round(real_point * 0.2) < 200 else round(real_point * 0.2), "currency": "P"},
+            "배율감소1": {"cost": 50 if round(real_point * 0.05) < 50 else round(real_point * 0.05), "currency": "P"},
+            "배율감소3": {"cost": 100 if round(real_point * 0.1) < 100 else round(real_point * 0.1), "currency": "P"},
+            "배율감소5": {"cost": 200 if round(real_point * 0.2) < 200 else round(real_point * 0.2), "currency": "P"},
+            "주사위 초기화": {"cost": 20, "currency": "P"},
+            "주사위대결기회 추가": {"cost": 100, "currency": "P"},
+            "숫자야구대결기회 추가": {"cost": 100, "currency": "P"},
+            "야추 초기화": {"cost": 100, "currency": "P"},
+            "완전 익명화": {"cost": 300, "currency": "P"},
+            "레이드 재도전": {"cost": 500, "currency": "P"},
+            "강화재료": {"cost": 1, "currency": "TC"},
+            "연마제": {"cost": 5, "currency": "TC"},
+            "랜덤박스": {"cost": 5, "currency": "TC"},
         }
 
         description = {
@@ -2491,12 +2576,23 @@ class ItemSelect(discord.ui.Select):
             "야추 초기화": "현재 야추 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다.",
             "완전 익명화": "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 300p로 구매 가능합니다",
             "레이드 재도전": "레이드에 참여했던 기록을 없애고 다시 도전합니다. 500p로 구매 가능합니다.",
+            "강화재료" : "강화에 필요한 재료입니다. 1TC로 구매 가능합니다.",
+            "연마제" : "다음 강화 확률을 5% 올립니다. 5TC로 구매 가능합니다.",
+            "랜덤박스" : "강화재료, 연마제, 레이드 재도전권, 고급연마제가 들어있는 랜덤박스입니다. 5TC로 구매 가능합니다."
         }
         
-        item_price = item_menu[selected_item]
+        ref_tc = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/아이템')
+        tc_data = ref_tc.get()
+        TC = tc_data.get('탑코인', 0)
+
+        item_price = item_menu[selected_item]["cost"]
+        item_currency = item_menu[selected_item]["currency"]
         shop_embed = discord.Embed(title = '구매할 아이템을 선택하세요', color = 0xfffff)
-        shop_embed.add_field(name = f'{interaction.user.name}의 현재 포인트', value = f'**{point - bettingPoint}P** (베팅포인트 **{bettingPoint}P** 제외)', inline = False)
-        shop_embed.add_field(name = f'아이템 가격', value = f'**{item_price}P**', inline = False)
+        if item_currency == "P":
+            shop_embed.add_field(name = f'{interaction.user.name}의 현재 포인트', value = f'**{point - bettingPoint}P** (베팅포인트 **{bettingPoint}P** 제외)', inline = False)
+        else:
+            shop_embed.add_field(name = f'{interaction.user.name}의 현재 탑코인', value = f'**{TC}TC**', inline = False)
+        shop_embed.add_field(name = f'아이템 가격', value = f'**{item_price}{item_currency}**', inline = False)
         shop_embed.add_field(name = f'설명', value = f'**{description[selected_item]}**', inline = False)
 
         buy_button = next(
@@ -4557,6 +4653,10 @@ class hello(commands.Cog):
         ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{username}')
         point_data = ref.get()
 
+        ref_tc = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{username}/아이템')
+        tc_data = ref_tc.get()
+        TC = tc_data.get('탑코인', 0)
+
         embed = discord.Embed(title=f'{username}의 포인트', color = discord.Color.blue())
 
         if (point_data['지모승리예측'] + point_data['지모패배예측']) != 0:
@@ -4573,6 +4673,7 @@ class hello(commands.Cog):
             battle_prediction_rate = 0
 
         embed.add_field(name='',value=f"**{point_data['포인트']}**포인트(베팅 포인트:**{point_data['베팅포인트']}**)", inline=False)
+        embed.add_field(name='',value=f"**{TC}**탑코인", inline=False)
         embed.add_field(name=f"승부예측 데이터", value=f"연속적중 **{point_data['연승']}**, 포인트 **{point_data['포인트']}**, 적중률 **{point_data['적중률']}**({point_data['적중 횟수']}/{point_data['총 예측 횟수']}), ", inline=False)
         embed.add_field(name=f"", value=f"연속승리예측 **{point_data['승리예측연속']}**, 연속패배예측 **{point_data['패배예측연속']}**, 적중률(대결) **{battle_prediction_rate}%**({(point_data['적중 횟수'] - point_data['지모적중'] - point_data['Melon적중'])} / {(point_data['총 예측 횟수'] - (point_data['지모승리예측'] + point_data['지모패배예측']) - (point_data['Melon승리예측'] + point_data['Melon패배예측']))})", inline=False)
         embed.add_field(name=f"", value=f"지모승리예측 **{point_data['지모승리예측']}**, 지모패배예측 **{point_data['지모패배예측']}**, 적중률(지모) **{jimo_prediction_rate}%**({point_data['지모적중']} / {point_data['지모승리예측'] + point_data['지모패배예측']})", inline=False)
@@ -4959,7 +5060,8 @@ class hello(commands.Cog):
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
             current_predict_season = cur_predict_seasonref.get()
             ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{이름.name}/미션/일일미션/승부예측 1회 적중")
-            mission_bool = ref.get()['완료']
+            mission_data = ref.get() or {}
+            mission_bool = mission_data.get('완료', False)
             if not mission_bool:
                 ref.update({"완료": True})
                 print(f"{이름.display_name}의 [승부예측 1회 적중] 미션 완료")
@@ -5957,8 +6059,13 @@ class hello(commands.Cog):
         point = predict_data["포인트"]
         bettingPoint = predict_data["베팅포인트"]
 
+        ref_tc = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/아이템')
+        tc_data = ref_tc.get()
+        TC = tc_data.get('탑코인', 0)
+
         shop_embed = discord.Embed(title = '구매할 아이템을 선택하세요', color = 0xfffff)
-        shop_embed.add_field(name = f'{interaction.user.name}의 현재 포인트', value = f'**{point - bettingPoint}P** (베팅포인트 **{bettingPoint}P** 제외)')
+        shop_embed.add_field(name = f'{interaction.user.name}의 현재 포인트', value = f'**{point - bettingPoint}P** (베팅포인트 **{bettingPoint}P** 제외)', inline = False)
+        shop_embed.add_field(name = f'{interaction.user.name}의 현재 탑코인', value = f'**{TC}TC**', inline = False)
         view = ItemBuyView()
         await interaction.response.send_message(embed = shop_embed, view = view, ephemeral = True)
 
@@ -6339,7 +6446,8 @@ class hello(commands.Cog):
                         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
                         current_predict_season = cur_predict_seasonref.get()
                         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name'].name}/미션/일일미션/승부예측 1회 적중")
-                        mission_bool = ref.get()['완료']
+                        mission_data = ref.get() or {}
+                        mission_bool = mission_data.get('완료', False)
                         if not mission_bool:
                             ref.update({"완료": True})
                             print(f"{winner['name'].display_name}의 [승부예측 1회 적중] 미션 완료")
@@ -6920,10 +7028,95 @@ class hello(commands.Cog):
         async def select_callback(interaction: discord.Interaction):
             selected_enhance_type = select.values[0]
 
-            # 강화 버튼을 추가하고 콜백 설정
+            ref_weapon = db.reference(f"무기/{nickname}")
+            weapon_data = ref_weapon.get() or {}
+            ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+            item_data = ref_item.get() or {}
+            weapon_name = weapon_data.get("이름", "")
+            weapon_enhanced = weapon_data.get("강화", 0)
+            weapon_parts = item_data.get("강화재료", 0)
+            
+            polish_available = item_data.get("연마제", 0)
+            speacial_polish_available = item_data.get("특수 연마제", 0)
+            # 초기 연마 상태 (False: 미사용, True: 사용)
+            polish_state = False
+            speacial_polish_state = False
+            # 세부 강화 버튼
             enhance_button = discord.ui.Button(label="세부 강화", style=discord.ButtonStyle.green)
 
+            # 연마제 토글 버튼 (초기에는 미사용 상태)
+            polish_button = discord.ui.Button(label="🛠️연마: 미사용", style=discord.ButtonStyle.secondary)
+
+            async def polish_callback(interaction: discord.Interaction):
+                nonlocal polish_state
+                # 연마제가 없으면 토글 불가
+                if polish_available <= 0:
+                    await interaction.response.send_message("연마제가 없습니다!", ephemeral=True)
+                    return
+                # 토글 상태 변경
+                polish_state = not polish_state
+                polish_button.label = "🛠️연마: 사용" if polish_state else "🛠️연마: 미사용"
+                polish_button.style = discord.ButtonStyle.success if polish_state else discord.ButtonStyle.secondary
+                # 변경된 버튼 상태를 반영한 뷰로 메시지 업데이트
+                ref_weapon = db.reference(f"무기/{nickname}")
+                weapon_data = ref_weapon.get() or {}
+                ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+                item_data = ref_item.get() or {}
+                weapon_name = weapon_data.get("이름", "")
+                weapon_enhanced = weapon_data.get("강화", 0)
+                weapon_parts = item_data.get("강화재료", 0)
+                enhancement_rate = enhancement_probabilities[weapon_enhanced]
+                if polish_state:
+                    enhancement_rate += 5
+                if speacial_polish_state:
+                    enhancement_rate += 30
+
+                enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
+                enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
+                enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
+                enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} -> +{weapon_enhanced + 1})**", inline=False)
+                enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
+                await interaction.response.edit_message(embed=enhance_embed, view=weapon_view)
+
+            speacial_polish_button = discord.ui.Button(label="💎특수 연마: 미사용", style=discord.ButtonStyle.secondary)
+
+            async def speacial_polish_callback(interaction: discord.Interaction):
+                nonlocal speacial_polish_state
+                # 연마제가 없으면 토글 불가
+                if speacial_polish_available <= 0:
+                    await interaction.response.send_message("특수 연마제가 없습니다!", ephemeral=True)
+                    return
+                # 토글 상태 변경
+                speacial_polish_state = not speacial_polish_state
+                speacial_polish_button.label = "💎특수 연마: 사용" if speacial_polish_state else "💎특수 연마: 미사용"
+                speacial_polish_button.style = discord.ButtonStyle.success if speacial_polish_state else discord.ButtonStyle.secondary
+                # 변경된 버튼 상태를 반영한 뷰로 메시지 업데이트
+                ref_weapon = db.reference(f"무기/{nickname}")
+                weapon_data = ref_weapon.get() or {}
+                ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+                item_data = ref_item.get() or {}
+                weapon_name = weapon_data.get("이름", "")
+                weapon_enhanced = weapon_data.get("강화", 0)
+                weapon_parts = item_data.get("강화재료", 0)
+                enhancement_rate = enhancement_probabilities[weapon_enhanced]
+                if polish_state:
+                    enhancement_rate += 5
+                if speacial_polish_state:
+                    enhancement_rate += 30
+
+                enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
+                enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
+                enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
+                enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} -> +{weapon_enhanced + 1})**", inline=False)
+                enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
+                await interaction.response.edit_message(embed=enhance_embed, view=weapon_view)
+
+            polish_button.callback = polish_callback
+            speacial_polish_button.callback = speacial_polish_callback
+
             async def enhance_callback(interaction: discord.Interaction):
+                nonlocal polish_state
+                nonlocal speacial_polish_state
                 nickname = interaction.user.name
                 cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
                 current_predict_season = cur_predict_seasonref.get()
@@ -6943,32 +7136,53 @@ class hello(commands.Cog):
                     await interaction.response.send_message("이미 최고 강화입니다!",ephemeral=True)
                     return
                 
-                await interaction.response.defer()
+                #await interaction.response.defer()
                 ref_item.update({"강화재료": weapon_parts - 1})
-                
-                enhancement_probabilities = {
-                    0: 100,  # 0강 - 100% 성공
-                    1: 90,   # 1강 - 90% 성공
-                    2: 90,   # 2강 - 90% 성공
-                    3: 80,   # 3강 - 80% 성공
-                    4: 80,   # 4강 - 80% 성공
-                    5: 80,   # 5강 - 80% 성공
-                    6: 70,   # 6강 - 50% 성공
-                    7: 60,   # 7강 - 50% 성공
-                    8: 60,   # 8강 - 50% 성공
-                    9: 40,   # 9강 - 50% 성공
-                    10: 40,  # 10강 - 50% 성공
-                    11: 30,  # 11강 - 45% 성공
-                    12: 20,  # 12강 - 40% 성공
-                    13: 20,  # 13강 - 35% 성공
-                    14: 10,  # 14강 - 30% 성공
-                    15: 10,  # 15강 - 25% 성공
-                    16: 5,  # 16강 - 20% 성공
-                    17: 5,  # 17강 - 15% 성공
-                    18: 3,  # 18강 - 10% 성공
-                    19: 1,   # 19강 - 5% 성공
-                }
+
                 enhancement_rate = enhancement_probabilities[weapon_enhanced]
+                if polish_state:
+                    enhancement_rate += 5
+                    polish_state = False
+                    polish_button.label = "🛠️연마: 미사용"
+                    polish_button.style = discord.ButtonStyle.secondary
+                    # 연마제 차감
+                    item_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+                    current_items = item_ref.get() or {}
+                    polish_count = current_items.get("연마제", 0)
+                    if polish_count > 0:
+                        item_ref.update({"연마제": polish_count - 1})
+                if speacial_polish_state:
+                    enhancement_rate += 30
+                    speacial_polish_state = False
+                    speacial_polish_button.label = "💎특수 연마: 미사용"
+                    speacial_polish_button.style = discord.ButtonStyle.secondary
+                    # 특수연마제 차감
+                    item_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+                    current_items = item_ref.get() or {}
+                    special_polish_count = current_items.get("특수 연마제", 0)
+                    if special_polish_count > 0:
+                        item_ref.update({"특수연마제": special_polish_count - 1})
+
+
+                ref_weapon = db.reference(f"무기/{nickname}")
+                weapon_data = ref_weapon.get() or {}
+                ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+                item_data = ref_item.get() or {}
+                weapon_name = weapon_data.get("이름", "")
+                weapon_enhanced = weapon_data.get("강화", 0)
+                weapon_parts = item_data.get("강화재료", 0)
+                enhancement_rate = enhancement_probabilities[weapon_enhanced]
+                if polish_state:
+                    enhancement_rate += 5
+                if speacial_polish_state:
+                    enhancement_rate += 30
+                    
+                enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
+                enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
+                enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
+                enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} -> +{weapon_enhanced + 1})**", inline=False)
+                enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
+                await interaction.response.edit_message(embed=enhance_embed, view=weapon_view)
 
                 ENHANCEMENT_CHANNEL = 1350434647149908070
                 channel = self.bot.get_channel(int(ENHANCEMENT_CHANNEL))
@@ -6992,7 +7206,6 @@ class hello(commands.Cog):
                 
                     # 강화 옵션 설정
                     global enhancement_options
-        
 
                     # 강화 함수
                     async def enhance_weapon(enhancement_type):
@@ -7076,8 +7289,9 @@ class hello(commands.Cog):
             weapon_view = discord.ui.View()
             weapon_view.add_item(select)
             weapon_view.add_item(enhance_button)
-            
-            
+            weapon_view.add_item(polish_button)
+            weapon_view.add_item(speacial_polish_button)
+
             enhance_description = {
                 "공격 강화": "공격력을 강화합니다!\n 공격력 + 3, 방어력 + 2, 속도 + 1, 내구도 + 5",
                 "치명타 확률 강화": "치명타 확률을 강화합니다!\n공격력 + 1, 방어력 + 1, 내구도 + 5, 치명타 확률 + 4%",
@@ -7092,7 +7306,10 @@ class hello(commands.Cog):
 
             global enhancement_probabilities
             enhancement_rate = enhancement_probabilities[weapon_enhanced]
-
+            if polish_state:
+                enhancement_rate += 5
+            if speacial_polish_state:
+                enhancement_rate += 30
             enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
             enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
             enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
@@ -7593,6 +7810,193 @@ class hello(commands.Cog):
         await interaction.followup.send(embed=embed)  
 
 
+    @app_commands.command(name="탑",description="탑을 등반하여 강화 재료를 획득합니다.")
+    async def infinity_tower(self, interaction: discord.Interaction):
+        nickname = interaction.user.name
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref_weapon_challenger = db.reference(f"무기/{nickname}")
+        weapon_data_challenger = ref_weapon_challenger.get() or {}
+
+        weapon_name_challenger = weapon_data_challenger.get("이름", "")
+        if weapon_name_challenger == "":
+            await interaction.response.send_message("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+            return
+        
+        ref_current_floor = db.reference(f"탑/유저/{nickname}")
+        tower_data = ref_current_floor.get() or {}
+        if not tower_data:
+            ref_current_floor.set({"층수": 1})
+            current_floor = 1
+        else:
+            current_floor = tower_data.get("층수", 1)
+        
+        ref_weapon_opponent = db.reference(f"탑/{current_floor}층")
+        weapon_data_opponent = ref_weapon_opponent.get() or {}
+
+        weapon_name_opponent = weapon_data_opponent.get("이름", "")
+        if weapon_name_opponent == "":
+            await interaction.response.send_message("상대가 없습니다!",ephemeral=True)
+            return
+        
+        tower_bool = tower_data.get("등반여부", False)
+        if tower_bool:
+            warnembed = discord.Embed(title="실패",color = discord.Color.red())
+            warnembed.add_field(name="",value="오늘의 도전 기회를 다 사용했습니다! ❌")
+            await interaction.response.send_message(embed = warnembed)
+            return
+
+        battle_ref = db.reference("승부예측/대결진행여부")
+        is_battle = battle_ref.get() or {}
+        if is_battle:
+            warnembed = discord.Embed(title="실패",color = discord.Color.red())
+            warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+            await interaction.response.send_message(embed = warnembed)
+            return
+        
+        battle_ref.set(True)
+
+        # ====================  [미션]  ====================
+        # 일일미션 : 탑 1회 도전
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+        current_predict_season = cur_predict_seasonref.get()
+        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/탑 1회 도전")
+        mission_data = ref.get() or {}
+        mission_bool = mission_data.get('완료', False)
+        if not mission_bool:
+            ref.update({"완료": True})
+            print(f"{interaction.user.display_name}의 [탑 1회 도전] 미션 완료")
+
+        # ====================  [미션]  ====================
+                    
+        # 임베드 생성
+        embed = discord.Embed(
+            title=f"{interaction.user.display_name}의 탑 등반({current_floor}층)",
+            description="전투가 시작되었습니다!",
+            color=discord.Color.blue()  # 원하는 색상 선택
+        )
+        await interaction.response.send_message(embed=embed)
+        await Battle(channel = interaction.channel,challenger_m = interaction.user, tower = True)
+
+        battle_ref = db.reference("승부예측/대결진행여부")
+        battle_ref.set(False)
+
+    @app_commands.command(name="랜덤박스", description="랜덤 박스를 열어 아이템을 얻습니다!")
+    @app_commands.describe(개수="개봉할 랜덤박스 개수 (기본값: 1)")
+    async def 랜덤박스(self, interaction: discord.Interaction, 개수: int = 1):
+        nickname = interaction.user.name
+        reward_pool = [
+            ("강화재료", 3, 20),       # 20% 확률로 강화재료 3개
+            ("레이드 재도전", 1, 20),  # 20% 확률로 레이드 재도전권 1개
+            ("강화재료", 5, 30),       # 30% 확률로 강화재료 5개
+            ("연마제", 1, 15),         # 15% 확률로 연마제 1개
+            ("특수연마제", 1, 1),     # 1% 확률로 특수연마제 1개
+            ("강화재료", 10, 10),     # 10% 확률로 강화재료 10개
+            ("꽝", 0, 4),              # 4% 확률로 꽝
+        ]
+        
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+        
+        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+        current_data = ref.get() or {}
+        random_box = current_data.get("랜덤박스", 0)
+
+        if random_box < 개수:
+            embed = discord.Embed(
+                title="사용 불가!",
+                description=f"❌ 랜덤박스가 {개수}개 필요합니다. 현재 보유: {random_box}개",
+                color=discord.Color.red()
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+        
+        # 결과 누적용
+        result_summary = {}
+        꽝_횟수 = 0
+        last_reward = None
+
+        for _ in range(개수):
+            roll = random.randint(1, 100)
+            current = 0
+            for name, amount, chance in reward_pool:
+                current += chance
+                if roll <= current:
+                    if name == "꽝":
+                        꽝_횟수 += 1
+                    else:
+                        result_summary[name] = result_summary.get(name, 0) + amount
+                        last_reward = (name, amount)
+                    break
+
+        # DB 업데이트
+        ref.update({"랜덤박스": random_box - 개수})
+        for name, total_amount in result_summary.items():
+            previous = current_data.get(name, 0)
+            ref.update({name: previous + total_amount})
+
+        # ✅ 결과 출력
+        if 개수 == 1:
+            if last_reward:
+                name, amount = last_reward
+                embed = discord.Embed(title=f"🎁 랜덤박스 개봉 결과", color=discord.Color.gold())
+                embed.add_field(name=f"", value=f"🎉 **{interaction.user.mention}님이 랜덤박스를 열어 `{name} {amount}개`를 획득하셨습니다!**", inline=False)
+                await interaction.response.send_message(embed = embed)
+            else:
+                embed.add_field(name=f"", value=f"😭 아쉽게도 아무것도 얻지 못했습니다!", inline=False)
+                await interaction.response.send_message(embed = embed)
+        else:
+            embed = discord.Embed(title=f"🎁 랜덤박스 {개수}개 개봉 결과", color=discord.Color.gold())
+
+            if result_summary:
+                for name, amount in result_summary.items():
+                    embed.add_field(name=f"🧧 {name}", value=f"{amount}개", inline=False)
+
+            if 꽝_횟수 > 0:
+                embed.add_field(name="😢 꽝", value=f"{꽝_횟수}번", inline=False)
+
+            await interaction.response.send_message(embed=embed)
+    
+    @app_commands.command(name="탑순위", description="탑 층수 순위를 보여줍니다.")
+    async def tower_ranking(self,interaction: discord.Interaction):
+        await interaction.response.defer()
+
+        ref_all_users = db.reference("탑/유저").get()
+        if not ref_all_users:
+            await interaction.followup.send("탑 도전 기록이 없습니다.", ephemeral=True)
+            return
+
+        # 유저 이름과 층수 데이터 모음
+        user_floors = []
+        for name, data in ref_all_users.items():
+            floor = data.get("층수", 0)
+            user_floors.append((name, floor))
+
+        # 내림차순 정렬 (높은 층 우선)
+        user_floors.sort(key=lambda x: x[1], reverse=True)
+
+        # Embed 생성
+        embed = discord.Embed(
+            title="🏆 탑 도전 순위",
+            description="이번 주 탑 순위!",
+            color=discord.Color.gold()
+        )
+
+        for i, (name, floor) in enumerate(user_floors[:10], start=1):
+            top = ""
+            if i == 1:
+                rank_emoji = "🥇"
+                top = "👑"
+            elif i == 2:
+                rank_emoji = "🥈"
+            elif i == 3:
+                rank_emoji = "🥉"
+            else:
+                rank_emoji = ""
+            embed.add_field(name=f"", value=f"{rank_emoji} {i}위 - {name} : **{floor - 1}층 {top}** ", inline=False)
+
+        await interaction.followup.send(embed=embed)
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(
         hello(bot),
