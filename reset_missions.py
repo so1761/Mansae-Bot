@@ -285,16 +285,16 @@ if users:
         yacht_ref.update({"족보" : ""})
         yacht_ref.update({"결과" : []})
         yacht_ref.update({"실행 여부" : False})
-        # ====================  [미션]  ====================
-        # 시즌미션 : 주사위주사위주사위주사위주사위
-        # 호출 횟수 초기화
-        dice_mission_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/시즌미션/주사위주사위주사위주사위주사위")
+
+        ref_current_floor = db.reference(f"탑/유저/{nickname}")
+        tower_data = ref_current_floor.get() or {}
+        if not tower_data:
+            ref_current_floor.set({"층수": 1})
+            current_floor = 1
+        else:
+            current_floor = tower_data.get("층수", 1)
         
-        mission_data = dice_mission_ref.get() or {}
-        mission_bool = mission_data.get('완료',0)
-        if not mission_bool:
-            dice_mission_ref.update({"호출" : 0})
-        # ====================  [미션]  ====================
+        ref_current_floor.set({"등반여부": False})
 
         dice_ref.update({"배틀여부" : False})
         dice_ref.update({"숫자야구배틀여부" : False})
@@ -327,5 +327,6 @@ if today.weekday() == 6:
         }
     ]
     }
+    
 
     response = requests.post(WEBHOOK_URL, json=data)
