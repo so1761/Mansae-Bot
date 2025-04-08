@@ -294,7 +294,7 @@ if users:
         else:
             current_floor = tower_data.get("층수", 1)
         
-        ref_current_floor.set({"등반여부": False})
+        ref_current_floor.update({"등반여부": False})
 
         dice_ref.update({"배틀여부" : False})
         dice_ref.update({"숫자야구배틀여부" : False})
