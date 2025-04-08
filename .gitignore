@@ -13,3 +13,6 @@ anaconda3/
 .profile
 .selected_editor
 musicbot.py
+
+!weapon_front/**
+
