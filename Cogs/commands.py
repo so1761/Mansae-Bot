@@ -430,9 +430,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     ref_tc = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger_m.name}/아이템')
                     tc_data = ref_tc.get()
                     TC = tc_data.get('탑코인', 0)
-                    if current_floor % 10 == 0:
-                        ref_tc.update({"탑코인" : TC + 10})
-                        await weapon_battle_thread.send(f"탑코인 10개 지급!")
+                    if current_floor % 5 == 0:
+                        ref_tc.update({"탑코인" : TC + 5})
+                        await weapon_battle_thread.send(f"탑코인 5개 지급!")
                     else:
                         ref_tc.update({"탑코인" : TC + 1})
                         await weapon_battle_thread.send(f"탑코인 1개 지급!")
@@ -708,9 +708,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 
                 defense = max(0, defender["Defense"] - attacker["DefenseIgnore"])
                 damage_reduction = calculate_damage_reduction(defense)
-                final_damage = base_damage * (1 - damage_reduction) * (multiplier + skill_level * 0.1)
+                defend_damage = base_damage * (1 - damage_reduction) * (multiplier + skill_level * 0.1)
+                final_damage = defend_damage * (1 - defender['DamageReduction']) # 대미지 감소 적용
                 return max(1, round(final_damage)), critical_bool, evasion_bool
-            
+                
             message = ""
             for i in range(hit_count):
                 multiplier = 0.2 if i < hit_count - 1 else 0.8  # 마지막 공격은 조금 더 강하게
@@ -876,7 +877,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     # 방어력 계산 적용
                     defense = max(0, defender["Defense"] - attacker["DefenseIgnore"])
                     damage_reduction = calculate_damage_reduction(defense)
-                    final_damage = damage * (1 - damage_reduction)
+                    defend_damage = damage * (1 - damage_reduction)
+                    final_damage = defend_damage * (1 - defender['DamageReduction']) # 대미지 감소 적용
                     total_damage += final_damage
 
                     if skill_name == "수확" and not evasion:
@@ -5256,6 +5258,8 @@ class hello(commands.Cog):
     Choice(name='야추 초기화', value='야추 초기화'),
     Choice(name='레이드 재도전', value='레이드 재도전'),
     Choice(name='강화재료', value='강화재료'),
+    Choice(name='탑코인', value='탑코인'),
+    Choice(name='랜덤박스', value='랜덤박스'),
     ])
     async def 아이템지급(self, interaction: discord.Interaction, 이름: discord.Member, 아이템:str, 개수:int):
         if interaction.user.name == "toe_kyung":
@@ -5274,11 +5278,16 @@ class hello(commands.Cog):
     Choice(name='배율증가 0.1', value='배율증가1'),
     Choice(name='배율증가 0.3', value='배율증가3'),
     Choice(name='배율증가 0.5', value='배율증가5'),
+    Choice(name='주사위 초기화', value='주사위 초기화'),
+    Choice(name='야추 초기화', value='야추 초기화'),
     Choice(name='레이드 재도전', value='레이드 재도전'),
     Choice(name='강화재료', value='강화재료'),
+    Choice(name='탑코인', value='탑코인'),
+    Choice(name='랜덤박스', value='랜덤박스'),
     ])
     async def 아이템전체지급(self, interaction: discord.Interaction,아이템:str, 개수:int):
         if interaction.user.name == "toe_kyung":
+            await interaction.response.defer()
             cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
             current_predict_season = cur_predict_seasonref.get()
             ref_users = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트')
@@ -5290,7 +5299,7 @@ class hello(commands.Cog):
             userembed = discord.Embed(title="메세지", color=discord.Color.light_gray())
             userembed.add_field(name="",value=f"모두에게 [{아이템}] {개수}개가 지급되었습니다!", inline=False)
             await channel.send(f"\n",embed = userembed)
-            await interaction.response.send_message(f"모두에게 [{아이템}] {개수}개 지급 완료!",ephemeral=True)
+            await interaction.followup.send(f"모두에게 [{아이템}] {개수}개 지급 완료!",ephemeral=True)
         else:
             await interaction.response.send_message("권한이 없습니다",ephemeral=True)
 
@@ -7994,7 +8003,8 @@ class hello(commands.Cog):
                 rank_emoji = "🥉"
             else:
                 rank_emoji = ""
-            embed.add_field(name=f"", value=f"{rank_emoji} {i}위 - {name} : **{floor - 1}층 {top}** ", inline=False)
+            if floor >= 2:
+                embed.add_field(name=f"", value=f"{rank_emoji} {i}위 - {name} : **{floor - 1}층 {top}** ", inline=False)
 
         await interaction.followup.send(embed=embed)
 async def setup(bot: commands.Bot) -> None:
