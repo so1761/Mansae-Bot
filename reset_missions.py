@@ -181,7 +181,7 @@ for participant, data in raid_data.items():
     ref_item.update({"강화재료" : weapon_parts + reward_count})
 
     if data.get('막타',False):
-        raid_retry = item_data.get("레이드 재도전")
+        raid_retry = item_data.get("레이드 재도전") or 0
         ref_item.update({"레이드 재도전": raid_retry + 1})
 
 # 기본 필드 리스트

@@ -266,7 +266,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         # 전장 크기 (-8 ~ 8), 0은 없음
         MAX_DISTANCE = 8
         MIN_DISTANCE = -8
-    # 방어력 기반 피해 감소율 계산 함수
+
+        ref_skill_data = db.reference("무기/스킬")
+        skill_data_firebase = ref_skill_data.get() or {}
+
+        # 방어력 기반 피해 감소율 계산 함수
         def calculate_damage_reduction(defense):
             return min(0.99, 1 - (100 / (100 + defense)))  # 방어력 공식 적용
 
@@ -315,50 +319,73 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             # 현재 적용 중인 상태 효과를 확인하고 반영
             if "은신" in character["Status"]:
                 skill_level = character["Skills"]["은신"]["레벨"]
-                DefenseIgnore_increase = 15 * skill_level
+                invisibility_data = skill_data_firebase['은신']['values']
+                DefenseIgnore_increase = invisibility_data['은신공격_레벨당_방관_증가'] * skill_level
                 character["DefenseIgnore"] += DefenseIgnore_increase
                 skill_level = character["Skills"]["은신"]["레벨"]
-                character["Evasion"] = round(0.3 + skill_level * 0.1,1) # 회피율 증가
-                if character["Evasion"] > 0.8: 
-                    character["Evasion"] = 0.8
+
+                base_evasion = invisibility_data['기본_회피율']
+                evasion_increase = invisibility_data['레벨당_회피율_증가']
+                evasion_max = invisibility_data['최대_회피율']
+                character["Evasion"] = round(base_evasion + skill_level * evasion_increase, 1) # 회피율 증가
+
+                if character["Evasion"] > evasion_max: 
+                    character["Evasion"] = evasion_max
 
             if "차징샷" in character["Status"]:
                 skill_level = character["Skills"]["차징샷"]["레벨"]
-                attack_increase = (20 * skill_level)
-                accuracy_increase = (30 * skill_level)
+                charging_shot_data = skill_data_firebase['차징샷']['values']
+
+                attack_increase_level = charging_shot_data['적정거리_공격력증가']
+                accuracy_increase_level = charging_shot_data['적정거리_명중증가']
+                attack_increase = (attack_increase_level * skill_level)
+                accuracy_increase = (accuracy_increase_level * skill_level)
                 character["Attack"] += attack_increase
                 character["Accuracy"] += accuracy_increase
             if "강타" in character["Status"]:
                 skill_level = character["Skills"]["강타"]["레벨"]
+                smash_data = skill_data_firebase['강타']['values']
                 character["CritChance"] = 1
-                CritDamageIncrease = (skill_level) * 0.5
+                
+                CritDamageIncrease_level = smash_data['레벨당_치명타피해_증가']
+                CritDamageIncrease = (skill_level) * CritDamageIncrease_level
                 character["CritDamage"] += CritDamageIncrease
-                attack_increase = skill_level * 15
+                attack_increase_level = smash_data['레벨당_공격력_증가']
+                attack_increase = skill_level * attack_increase_level
                 character["Attack"] += attack_increase
+
             if "헤드샷" in character["Status"]:
                 skill_level = character["Skills"]["헤드샷"]["레벨"]
-                attack_increase = 1.5 + (skill_level * 0.5)
+                headShot_data = skill_data_firebase['헤드샷']['values']
+                base_attack_increase = headShot_data['기본_공격력_배율']
+                attack_increase_level = headShot_data['레벨당_공격력_배율_증가']
+                attack_increase = base_attack_increase + (skill_level * attack_increase_level)
                 character["Attack"] *= attack_increase
-                DefenseIgnore_increase = 10 * skill_level
+                DefenseIgnore_increase_level = headShot_data['레벨당_방어관통_증가']
+                DefenseIgnore_increase = DefenseIgnore_increase_level * skill_level
                 character["DefenseIgnore"] += DefenseIgnore_increase
             if "창격" in character["Status"]:
                 skill_level = character["Skills"]["창격"]["레벨"]
-                if battle_distance == 3: # 적정거리면 추가 대미지
+                spearShot_data = skill_data_firebase['창격']['values']
+                distance_condition = spearShot_data['중거리_조건_거리']
+                if battle_distance == distance_condition: # 적정거리면 추가 대미지
                     character["CritChance"] = 1
-                    Accuacy_increase = 30 + (skill_level * 20)
+                    base_accuracy_increase = spearShot_data['중거리_기본_명중_증가']
+                    accuracy_increase_level = spearShot_data['중거리_레벨당_명중_증가']
+                    Accuacy_increase = base_accuracy_increase + (skill_level * accuracy_increase_level)
                     character["Accuracy"] += Accuacy_increase
             if "기계팔 방출" in character["Status"]:
                 skill_level = opponent["Skills"]["기계팔 방출"]["레벨"]
-                speed_decrease = 10 * skill_level
-                character["Speed"] -= speed_decrease
-                if character["Speed"] < 0:
-                    character["Speed"] = 0
+                mech_Arm_data = skill_data_firebase['기계팔 방출']['values']
+                speed_decrease_level = mech_Arm_data['레벨당_속도감소_배율']
+                speed_decrease = speed_decrease_level * skill_level
+                character["Speed"] *= 1 - speed_decrease
             if "자력 발산" in character["Status"]:
                 skill_level = opponent["Skills"]["자력 발산"]["레벨"]
-                speed_decrease = 10 * skill_level
-                character["Speed"] -= speed_decrease
-                if character["Speed"] < 0:
-                    character["Speed"] = 0
+                Magnetic_data = skill_data_firebase['자력 발산']['values']
+                speed_decrease_level = Magnetic_data['레벨당_속도감소_배율']
+                speed_decrease = speed_decrease_level * skill_level
+                character["Speed"] *= 1 - speed_decrease
 
         async def end(attacker, defender, winner, raid):
             await weapon_battle_thread.send(embed = battle_embed)
@@ -462,47 +489,57 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     pos = new_pos  
             return pos
 
-        
-
         def charging_shot(attacker, defender,evasion,skill_level):
             if not evasion:
+                charging_shot_data = skill_data_firebase['차징샷']['values']
                 global battle_distance
-                move_distance = 1
+                move_distance = charging_shot_data['넉백거리']
                 knockback_direction = -1 if defender['name'] == opponent['name'] else 1
                 defender["Position"] = adjust_position(defender["Position"], move_distance, knockback_direction)
                 if (attacker["Position"] < 0 and defender["Position"] > 0) or (attacker["Position"] > 0 and defender["Position"] < 0):
                     battle_distance = abs(attacker["Position"] - defender["Position"]) - 1  # 0을 건너뛰므로 -1
                 else:
                     battle_distance = abs(attacker["Position"] - defender["Position"])  # 같은 방향이면 그대로 계산
-                if battle_distance >= 4:
-                    attack_increase = (20 * skill_level)
-                    accuracy_increase = (30 * skill_level)
+                if battle_distance >= charging_shot_data['적정거리']:
+                    attack_increase_level = charging_shot_data['적정거리_공격력증가']
+                    attack_increase = (attack_increase_level * skill_level)
+                    accuracy_increase_level = charging_shot_data['적정거리_명중증가']
+                    accuracy_increase = (accuracy_increase_level * skill_level)
                     attacker["Attack"] += attack_increase
                     attacker["Accuracy"] += accuracy_increase
-                    apply_status_for_turn(defender, "속박", duration=1)  # 속박 상태 1턴 지속
+                    apply_status_for_turn(defender, "속박", duration=charging_shot_data['속박_지속시간'])  # 속박 상태 지속시간만큼 지속
                     apply_status_for_turn(attacker, "차징샷", duration=1)
-                    return f"**차징샷** 사용!\n상대를 1만큼 날려버리고, 한 턴간 속박합니다.\n적정 거리 추가 효과!\n이번 공격에 공격력 +{attack_increase}, 명중률 +{accuracy_increase} 부여!\n현재 거리: {battle_distance}\n"
+                    return f"**차징샷** 사용!\n상대를 {move_distance}만큼 날려버리고, {charging_shot_data['속박_지속시간']}턴간 속박합니다.\n적정 거리 추가 효과!\n이번 공격에 공격력 +{attack_increase}, 명중률 +{accuracy_increase} 부여!\n현재 거리: {battle_distance}\n"
                 else:
-                    apply_status_for_turn(defender, "속박", duration=1)  # 속박 상태 1턴 지속
-                    return f"**차징샷** 사용!\n상대를 1만큼 날려버리고, 한 턴간 속박합니다.\n현재 거리: {battle_distance}\n"
+                    apply_status_for_turn(defender, "속박", duration=charging_shot_data['속박_지속시간'])  # 속박 상태 지속시간만큼 지속
+                    return f"**차징샷** 사용!\n상대를 {move_distance}만큼 날려버리고, {charging_shot_data['속박_지속시간']}턴간 속박합니다.\n현재 거리: {battle_distance}\n"
             else:
                 return "**차징샷**이 빗나갔습니다!"
 
         def invisibility(attacker,skill_level):
             # 은신 상태에서 회피율 증가
-            DefenseIgnore_increase = 10 * skill_level
+            invisibility_data = skill_data_firebase['은신']['values']
+            DefenseIgnore_increase_level =  invisibility_data['은신공격_레벨당_방관_증가']
+            DefenseIgnore_increase = DefenseIgnore_increase_level * skill_level
             attacker["DefenseIgnore"] += DefenseIgnore_increase
-            attacker["Evasion"] = round(0.3 + skill_level * 0.1,1) # 회피율 증가
-            if attacker["Evasion"] > 0.8: 
-                attacker["Evasion"] = 0.8
-            apply_status_for_turn(attacker, "은신", duration=2)  # 은신 상태 2턴 지속
-            return f"**은신** 사용! 2턴간 회피율이 {round(attacker['Evasion'] * 100)}% 증가합니다!\n"
+            base_evasion = invisibility_data['기본_회피율']
+            evasion_level = invisibility_data['레벨당_회피율_증가']
+            max_evasion = invisibility_data['최대_회피율']
+            attacker["Evasion"] = round(base_evasion + skill_level * evasion_level,1) # 회피율 증가
+            if attacker["Evasion"] > max_evasion: 
+                attacker["Evasion"] = max_evasion
+            invisibility_turns = invisibility_data['지속시간']
+            apply_status_for_turn(attacker, "은신", duration=invisibility_turns)  # 은신 상태 지속시간만큼 지속
+            return f"**은신** 사용! {invisibility_turns}턴간 회피율이 {round(attacker['Evasion'] * 100)}% 증가합니다!\n"
 
         def smash(attacker, evasion, skill_level):
             # 다음 공격은 반드시 치명타로 적용, 치명타 대미지 증가
             if not evasion:
-                CritDamageIncrease = (skill_level) * 0.5
-                attack_increase = skill_level * 15
+                smash_data = skill_data_firebase['강타']['values']
+                CritDamageIncrease_level = smash_data['레벨당_치명타피해_증가']
+                CritDamageIncrease = skill_level * CritDamageIncrease_level
+                attack_increase_level = smash_data['레벨당_공격력_증가']
+                attack_increase = skill_level * attack_increase_level
                 accuracy = calculate_accuracy(attacker["Accuracy"]) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
                 base_damage = random.uniform((attacker["Attack"] + attack_increase) * accuracy, (attacker["Attack"] + attack_increase))  # 최소 ~ 최대 피해
                 skill_damage = base_damage * (attacker["CritDamage"] + CritDamageIncrease)
@@ -515,9 +552,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             
         def headShot(attacker, cooldown,skill_level):
             # 공격력, 명중 + 50, 장전 상태 돌입
-            attack_increase = 1.5 + (0.5 * skill_level)
+            headShot_data = skill_data_firebase['헤드샷']['values']
+            base_attack_increase = headShot_data['기본_공격력_배율']
+            attack_increase_level = headShot_data['레벨당_공격력_배율_증가']
+            attack_increase = base_attack_increase + (attack_increase_level * skill_level)
             attacker["Attack"] *= attack_increase
-            DefenseIgnore_increase = 10 * skill_level
+            DefenseIgnore_increase_level = headShot_data['레벨당_방어관통_증가']
+            DefenseIgnore_increase = DefenseIgnore_increase_level * skill_level
             attacker["DefenseIgnore"] += DefenseIgnore_increase
             apply_status_for_turn(attacker, "헤드샷", duration=1)
             apply_status_for_turn(attacker, "장전", duration=cooldown + 1)
@@ -525,46 +566,53 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         
         def spearShot(attacker,evasion,skill_level):
             global battle_distance
+            spearShot_data = skill_data_firebase['창격']['values']
+            near_distance = spearShot_data['밀쳐내기_조건_거리']
+            condition_distance = spearShot_data['중거리_조건_거리']
             if evasion:
                 return f"\n**창격** 사용 불가!\n공격이 빗나갔습니다!\n"
-            if battle_distance <= 2: # 붙었을 땐 밀치기
-                move_distance = 2
+            if battle_distance <= near_distance: # 붙었을 땐 밀치기
+                move_distance = spearShot_data['근접_밀쳐내기_거리']
                 knockback_direction = -1 if defender['name'] == opponent['name'] else 1
                 defender["Position"] = adjust_position(defender["Position"], move_distance, knockback_direction)
                 if (attacker["Position"] < 0 and defender["Position"] > 0) or (attacker["Position"] > 0 and defender["Position"] < 0):
                     battle_distance = abs(attacker["Position"] - defender["Position"]) - 1  # 0을 건너뛰므로 -1
                 else:
                     battle_distance = abs(attacker["Position"] - defender["Position"])  # 같은 방향이면 그대로 계산
-                return f"**창격(근접)** 사용!\n상대를 2만큼 날려버립니다!\n"
-            elif battle_distance == 3: # 적정거리면 추가 대미지
+                return f"**창격(근접)** 사용!\n상대를 {move_distance}만큼 날려버립니다!\n"
+            elif battle_distance == condition_distance: # 적정거리면 추가 대미지
                 attacker["CritChance"] = 1
-                Accuacy_increase = 30 + (skill_level * 20)
+                base_accuracy_increase = spearShot_data['중거리_기본_명중_증가']
+                accuracy_increase_level = spearShot_data['중거리_레벨당_명중_증가']
+                Accuacy_increase = base_accuracy_increase + (skill_level * accuracy_increase_level)
                 attacker["Accuracy"] += Accuacy_increase
                 apply_status_for_turn(attacker, "창격", duration=1)
                 return f"**창격(적정 거리)** 사용!\n이번 공격은 반드시 치명타로 적용되고, 명중이 {Accuacy_increase} 증가합니다!\n"
-            elif battle_distance >= 4:
+            elif battle_distance >= condition_distance + 1:
                 return f"**창격** 사용 불가!\n적이 멀리 있어 스킬 사용을 실패했습니다!\n"
             
         def mech_Arm(attacker,defender, evasion, skill_level):
             # 기계팔 방출: (20 + 레벨 당 5) + 스킬 증폭 20% + 레벨당 10% 추가 피해
             global battle_distance
             if not evasion:
-                base_damage = 20 + 5 * skill_level
-                skill_multiplier = (0.2 + 0.1 * skill_level)
+                mech_Arm_data = skill_data_firebase['기계팔 방출']['values']
+                base_damage = mech_Arm_data['기본_피해량'] + mech_Arm_data['레벨당_피해량_증가'] * skill_level
+                skill_multiplier = (mech_Arm_data['기본_스킬증폭_계수'] + mech_Arm_data['레벨당_스킬증폭_계수_증가'] * skill_level)
                 skill_damage = base_damage + attacker["Spell"] * skill_multiplier
-                move_distance = 1
+                move_distance = mech_Arm_data['밀쳐내기_거리']
                 knockback_direction = -1 if defender['name'] == opponent['name'] else 1
                 defender["Position"] = adjust_position(defender["Position"], move_distance, knockback_direction)
                 if (attacker["Position"] < 0 and defender["Position"] > 0) or (attacker["Position"] > 0 and defender["Position"] < 0):
                     battle_distance = abs(attacker["Position"] - defender["Position"]) - 1  # 0을 건너뛰므로 -1
                 else:
                     battle_distance = abs(attacker["Position"] - defender["Position"])  # 같은 방향이면 그대로 계산
-                speed_decrease = 0.1 * skill_level
+                speed_decrease = mech_Arm_data['레벨당_속도감소_배율'] * skill_level
                 defender["Speed"] *= 1 - speed_decrease
                 if defender["Speed"] < 0:
                     defender["Speed"] = 0
+                debuff_turns = mech_Arm_data['디버프_지속시간']
                 apply_status_for_turn(defender, "기계팔 방출", duration=2)
-                message = f"\n**기계팔 방출** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해를 입힌 후 상대를 1만큼 날려버립니다!\n상대의 속도가 2턴간 {int(speed_decrease * 100)}% 감소합니다!\n현재 거리: {battle_distance}\n"
+                message = f"\n**기계팔 방출** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해를 입힌 후 상대를 {move_distance}만큼 날려버립니다!\n상대의 속도가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소합니다!\n현재 거리: {battle_distance}\n"
             else:
                 skill_damage = 0
                 message = f"\n**기계팔 방출이 빗나갔습니다!**\n"
@@ -573,13 +621,15 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         
         def Magnetic(attacker, defender, skill_level):
             # 자력 발산: (10 + 레벨 당 2) + 스킬 증폭 10% + 레벨당 5% 추가 피해
+            Magnetic_data = skill_data_firebase['자력 발산']['values']
+            grap_distance = Magnetic_data['최소_조건_거리']
             global battle_distance
-            if battle_distance > 2:
-                move_distance = 2
-                if battle_distance == 1:
+            if battle_distance >= grap_distance:
+                move_distance = Magnetic_data['끌어오기_거리']
+                if battle_distance <= 1:
                     move_distance = 1
-                base_damage = 10 + 2 * skill_level
-                skill_multiplier = (0.1 + 0.05 * skill_level)
+                base_damage = Magnetic_data['기본 피해량'] + Magnetic_data['레벨당_피해량_증가'] * skill_level
+                skill_multiplier = (Magnetic_data['기본_스킬증폭_계수'] + Magnetic_data['레벨당_스킬증폭_계수_증가'] * skill_level)
                 skill_damage = base_damage + attacker["Spell"] * skill_multiplier
                 grab_direction = 1 if defender['name'] == opponent['name'] else -1
                 defender["Position"] = adjust_position(defender["Position"], move_distance, grab_direction)
@@ -587,12 +637,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     battle_distance = abs(attacker["Position"] - defender["Position"]) - 1  # 0을 건너뛰므로 -1
                 else:
                     battle_distance = abs(attacker["Position"] - defender["Position"])  # 같은 방향이면 그대로 계산
-                speed_decrease = 0.1 * skill_level
+                speed_decrease = Magnetic_data['레벨당_속도감소_배율'] * skill_level
                 defender["Speed"] *= 1 - speed_decrease
                 if defender["Speed"] < 0:
                     defender["Speed"] = 0
-                apply_status_for_turn(defender, "자력 발산", duration=2)
-                message =  f"\n**자력 발산** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해를 입힌 후 상대를 {move_distance}만큼 끌어옵니다!\n상대의 속도가 2턴간 {int(speed_decrease * 100)}% 감소합니다!\n현재 거리: {battle_distance}\n"
+                debuff_turns = Magnetic_data['디버프_지속시간']
+                apply_status_for_turn(defender, "자력 발산", duration=debuff_turns)
+                message =  f"\n**자력 발산** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해를 입힌 후 상대를 {move_distance}만큼 끌어옵니다!\n상대의 속도가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소합니다!\n현재 거리: {battle_distance}\n"
             else:
                 skill_damage = 0
                 message = f"\n거리가 너무 가까워 **자력 발산**을 사용할 수 없습니다!\n"
@@ -604,8 +655,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             global battle_distance
             
             if not evasion:
-                base_damage = 40 + 10 * skill_level
-                skill_multiplier = (0.5 + 0.2 * skill_level)
+                electronic_line_data = skill_data_firebase['전깃줄']['values']
+                base_damage = electronic_line_data['기본_피해량'] + electronic_line_data['레벨당_피해량_증가'] * skill_level
+                skill_multiplier = (electronic_line_data['기본_스킬증폭_계수'] + electronic_line_data['레벨당_스킬증폭_계수_증가'] * skill_level)
                 skill_damage = base_damage + attacker["Spell"] * skill_multiplier
                 message = f"\n**전깃줄** 사용!\n거리가 3 이내인 상대에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n"
             else:
@@ -617,9 +669,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         def Reap(attacker, evasion, skill_level):
             # 수확: (30 + 레벨 당 10) + 스킬 증폭 60% + 레벨 당 8% 추가 피해 + 공격력 20% + 레벨 당 5% 추가 피해
             if not evasion:
-                base_damage = 30 + 10 * skill_level
-                skill_multiplier = (0.6 + 0.08 * skill_level)
-                attack_multiplier = (0.2 + 0.05 * skill_level)
+                Reap_data = skill_data_firebase['수확']['values']
+                base_damage = Reap_data['기본_피해량'] + Reap_data['레벨당_피해량_증가'] * skill_level
+                skill_multiplier = (Reap_data['기본_스킬증폭_계수'] + Reap_data['레벨당_스킬증폭_계수_증가'] * skill_level)
+                attack_multiplier = (Reap_data['기본_공격력_계수'] + Reap_data['레벨당_공격력_계수_증가'] * skill_level)
                 skill_damage = base_damage + attacker["Spell"] * skill_multiplier + attacker["Attack"] * attack_multiplier
                 message = f"\n**수확** 사용!\n상대에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%) + (공격력 {int(attack_multiplier * 100)}%)의 스킬 피해!\n"
             else:
@@ -629,7 +682,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
         def unyielding(defender, skill_level):
             """불굴: 거리에 비례해 받는 대미지를 감소시킴"""
-            damage_reduction = min(0.9, battle_distance * (0.04 + 0.01 * skill_level))  # 최대 90% 감소 제한
+            unyielding_data = skill_data_firebase['불굴']['values']
+            damage_reduction = min(unyielding_data['최대_피해감소율'], battle_distance * (unyielding_data['거리당_기본_피해감소'] + unyielding_data['거리당_레벨당_피해감소'] * skill_level))  # 최대 90% 감소 제한
             defender["DamageReduction"] = damage_reduction
             return f"\n**불굴** 발동!\n거리에 비례하여 받는 대미지 {int(damage_reduction * 100)}% 감소!\n"
         
@@ -649,15 +703,17 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             """액티브 - 동상: 스킬 피해 + 스피드 감소"""
             # 동상: (20 + 레벨 당 5) +스킬 증폭 30% + 레벨당 10% 추가 피해
             if not evasion:
-                base_damage = 20 + (5 * skill_level)
-                skill_multiplier = (0.3 + 0.1 * skill_level)
+                frostbite_data = skill_data_firebase['동상']['values']
+                base_damage = frostbite_data['기본_피해량'] + (frostbite_data['레벨당_피해량_증가'] * skill_level)
+                skill_multiplier = (frostbite_data['기본_스킬증폭_계수'] + frostbite_data['레벨당_스킬증폭_계수_증가'] * skill_level)
                 skill_damage = base_damage + attacker["Spell"] * skill_multiplier
-                apply_status_for_turn(target, "동상", duration=2)
-                speed_decrease = 0.1 * (1 + skill_level)
+                debuff_turns = frostbite_data['디버프_지속시간']
+                apply_status_for_turn(target, "동상", duration=debuff_turns)
+                speed_decrease = frostbite_data['속도감소_기본수치'] + (frostbite_data['레벨당_속도감소_증가'] * skill_level)
                 target["Speed"] *= (1- speed_decrease)
                 target["뇌진탕"] = target.get("뇌진탕", 0) + 1
 
-                message = f"\n**동상 사용!**\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n뇌진탕을 부여하고, 스피드가 2턴간 {int(speed_decrease * 100)}% 감소!\n뇌진탕 스택 {target['뇌진탕']}/4 부여!\n"
+                message = f"\n**동상 사용!**\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n뇌진탕을 부여하고, 스피드가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소!\n뇌진탕 스택 {target['뇌진탕']}/4 부여!\n"
                 
                 if target["뇌진탕"] >= 4:
                     target["뇌진탕"] = 0
@@ -671,10 +727,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
         def glacial_fissure(attacker, target, evasion,skill_level):
             # 빙하 균열: (40 + 레벨 당 30) +스킬 증폭 60% + 레벨당 30% + 거리 추가 피해 (1당 5%)
-            if not evasion:       
-                base_damage = 40 + (30 * skill_level)
-                skill_multiplier = (0.6 + 0.3 * skill_level)
-                distance_bonus = min(0.05 * skill_level * battle_distance, 0.3)
+            if not evasion:
+                glacial_fissure_data = skill_data_firebase['빙하 균열']['values']       
+                base_damage = glacial_fissure_data['기본_피해량'] + (glacial_fissure_data['레벨당_피해량_증가'] * skill_level)
+                skill_multiplier = (glacial_fissure_data['기본_스킬증폭_계수'] + glacial_fissure_data['레벨당_스킬증폭_계수_증가'] * skill_level)
+                distance_bonus = min(glacial_fissure_data['거리당_레벨당_피해배율_증가'] * skill_level * battle_distance, glacial_fissure_data['최대_거리_피해배율_보너스'])
                 skill_damage = base_damage + attacker["Spell"] * skill_multiplier * (1 + distance_bonus)
                 apply_status_for_turn(target,"기절",1)
 
@@ -687,9 +744,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         
         def rapid_fire(attacker, defender, skill_level):
             """스피드에 비례하여 연속 공격하는 속사 스킬"""
-            
+            rapid_fire_data = skill_data_firebase['속사']['values']
+
             speed = attacker["Speed"]
-            hit_count = max(2, speed // 20)  # 최소 2회, 스피드 20당 1회 추가
+            hit_count = max(2, speed // rapid_fire_data['타격횟수결정_스피드값'])  # 최소 2회, 스피드 20당 1회 추가
             total_damage = 0
 
             def calculate_damage(attacker,defender,multiplier):
@@ -708,13 +766,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 
                 defense = max(0, defender["Defense"] - attacker["DefenseIgnore"])
                 damage_reduction = calculate_damage_reduction(defense)
-                defend_damage = base_damage * (1 - damage_reduction) * (multiplier + skill_level * 0.1)
+                defend_damage = base_damage * (1 - damage_reduction) * (multiplier + skill_level * rapid_fire_data['레벨당_피해배율'])
                 final_damage = defend_damage * (1 - defender['DamageReduction']) # 대미지 감소 적용
                 return max(1, round(final_damage)), critical_bool, evasion_bool
                 
             message = ""
             for i in range(hit_count):
-                multiplier = 0.2 if i < hit_count - 1 else 0.8  # 마지막 공격은 조금 더 강하게
+                multiplier = rapid_fire_data['일반타격_기본_피해배율'] if i < hit_count - 1 else rapid_fire_data['마지막타격_레벨당_피해배율']  # 마지막 공격은 조금 더 강하게
                 damage, critical, evade = calculate_damage(attacker, defender, multiplier=multiplier)
 
                 crit_text = "💥" if critical else ""
@@ -771,12 +829,14 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             if attacker["Weapon"] == "창" and battle_distance == 3: #창 적정거리 추가 대미지
                 skill_level = attacker["Skills"]["창격"]["레벨"]
-                base_damage *= 1 + (0.1 * skill_level)
+                spearShot_data = skill_data_firebase['창격']['values']
+                base_damage *= 1 + (spearShot_data['중거리_기본공격_추가피해_레벨당'] * skill_level)
                 distance_bool = True
 
             if "은신" in attacker["Status"]: # 은신 상태일 경우, 추가 대미지 + 일정 확률로 '출혈' 상태 부여
                 skill_level = attacker["Skills"]["은신"]["레벨"]
-                base_damage *= 1 + (0.3 * skill_level)
+                invisibility_data = skill_data_firebase['은신']['values']
+                base_damage *= 1 + (invisibility_data['은신공격_레벨당_피해_배율'] * skill_level)
 
             if random.random() < attacker["CritChance"]:
                 base_damage *= attacker["CritDamage"]
@@ -882,7 +942,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     total_damage += final_damage
 
                     if skill_name == "수확" and not evasion:
-                        heal_multiplier = min(1, (0.1 + 0.004 * attacker["Spell"]))
+                        Reap_data = skill_data_firebase['수확']['values']
+                        heal_multiplier = min(1, (Reap_data['기본_흡혈_비율'] + Reap_data['스킬증폭당_추가흡혈_비율'] * attacker["Spell"]))
                         heal_amount = round(final_damage * heal_multiplier)
                         result_message += f"가한 대미지의 {int(heal_multiplier * 100)}% 흡혈! (+{heal_amount} 회복)\n내구도: [{attacker['HP']}] → [{attacker['HP'] + heal_amount}] ❤️ (+{heal_amount})"
                         attacker['HP'] += heal_amount
@@ -1073,7 +1134,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             if "출혈" in attacker["Status"]:
                 skill_level = defender['Skills']['은신']['레벨']
-                bleed_damage = 10 + skill_level * 5
+                invisibility_data = skill_data_firebase['은신']['values']
+                bleed_damage = invisibility_data['은신공격_출혈_기본_지속피해'] + skill_level * invisibility_data['은신공격_출혈_레벨당_지속피해']
                 if attacker['name'] == challenger['name']: # 도전자 공격
                     battle_embed = discord.Embed(title=f"{attacker['name']}의 출혈!🩸", color=discord.Color.red())
                     battle_embed.add_field(name="", value = f"출혈 상태로 인하여 {bleed_damage} 대미지를 받았습니다!", inline = False)
@@ -1357,12 +1419,14 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             if "은신" in attacker["Status"]: # 은신 상태일 경우, 추가 대미지 + 일정 확률로 '출혈' 상태 부여
                 skill_level = attacker["Skills"]["은신"]["레벨"]
-                DefenseIgnore_increase = skill_level * 15
-                bleed_chance = 0.1 * skill_level
+                invisibility_data = skill_data_firebase['은신']['values']
+                DefenseIgnore_increase = skill_level * invisibility_data['은신공격_레벨당_방관_증가']
+                bleed_chance = invisibility_data['은신공격_레벨당_출혈_확률'] * skill_level
                 if random.random() < bleed_chance and not evasion and attacked: # 출혈 부여
-                    apply_status_for_turn(defender, "출혈", duration=3)
-                    result_message +=f"\n**🩸{attacker['name']}의 은신 공격**!\n3턴간 출혈 상태 부여!\n"   
-                result_message +=f"\n**{attacker['name']}의 은신 공격**!\n방어력 관통 + {DefenseIgnore_increase}!\n{round(0.3 * skill_level * 100)}% 추가 대미지!\n"
+                    bleed_turns = invisibility_data['은신공격_출혈_지속시간']
+                    apply_status_for_turn(defender, "출혈", duration=bleed_turns)
+                    result_message +=f"\n**🩸{attacker['name']}의 은신 공격**!\n{bleed_turns}턴간 출혈 상태 부여!\n"   
+                result_message +=f"\n**{attacker['name']}의 은신 공격**!\n방어력 관통 + {DefenseIgnore_increase}!\n{round(invisibility_data['은신공격_레벨당_피해_배율'] * skill_level * 100)}% 추가 대미지!\n"
 
             # 공격 처리 (돌진 후 또는 후퇴 후)
             if skill_attack_names: # 공격 스킬 사용 시
