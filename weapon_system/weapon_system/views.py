@@ -9,6 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from .firebase_config import initialize_firebase
 from firebase_admin import db
+from jinja2 import Template
 import json
 import os
 from dotenv import load_dotenv
@@ -117,7 +118,7 @@ def get_weapon_data(request, discord_username):
     weapon_type = weapon_data.get('무기타입')
     weapon_base_data = base_weapon_stats.get(weapon_type)  # 선택한 무기의 데이터
 
-    ref_inherit_log = db.reference(f"무기/{discord_username}/계승 내역")
+    ref_inherit_log = db.reference(f"무기/유저/{discord_username}/계승 내역")
     inherit_log_data = ref_inherit_log.get() or {}
     
     # 계승 내역 적용 (기본 스탯 증가)
@@ -135,7 +136,7 @@ def get_weapon_data(request, discord_username):
     base_critical_hit_chance = weapon_base_data.get("치명타 확률", 0)
     
 
-    ref_enhance_log = db.reference(f"무기/{discord_username}/강화내역")
+    ref_enhance_log = db.reference(f"무기/유저/{discord_username}/강화내역")
     enhance_log_data = ref_enhance_log.get() or {}
     
     enhanced = {}
@@ -211,13 +212,31 @@ def get_weapon_data(request, discord_username):
 
     # 스킬 처리
     skill_data = weapon_data.get('스킬', {})
+
     for skill_name, skill_info in skill_data.items():
+        ref_skill_data = db.reference(f"무기/스킬/{skill_name}")
+        skill_server_data = ref_skill_data.get() or {}
+
+        values = skill_server_data.get('values', {})
+        level = skill_info.get('레벨', 1)  # 없으면 1로 가정
+
+        # 템플릿 변수로 사용할 딕셔너리 준비
+
+        template_context = {
+            **values,           # 거리, 계수 등
+            '레벨': level       # 스킬 레벨도 포함
+        }
+
+        notes_template = skill_server_data.get('notes', '')
+        rendered_notes = Template(notes_template).render(template_context).replace("\n", "<br />")
         Skill.objects.create(
             weapon=weapon,
             skill_name=skill_name,
-            level=skill_info.get('레벨', 0),
+            level=level,
             cooldown=skill_info.get('전체 쿨타임', 0),
             current_cooldown=skill_info.get('현재 쿨타임', 0),
+            skill_description=skill_server_data.get('description', "스킬 설명이 없습니다"),
+            skill_notes=rendered_notes  # 💡 여기!
         )
 
     # 변환된 무기 정보를 반환
@@ -290,6 +309,8 @@ def get_weapon_data(request, discord_username):
                 'level': skill.level,
                 'cooldown': skill.cooldown,
                 'current_cooldown': skill.current_cooldown,
+                'skill_description': skill.skill_description,
+                'skill_notes': skill.skill_notes
             } for skill in Skill.objects.filter(weapon=weapon)
         ]
     }, safe=False)

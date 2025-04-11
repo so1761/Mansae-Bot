@@ -646,7 +646,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 
             message = ""
             for i in range(hit_count):
-                multiplier = rapid_fire_data['일반타격_기본_피해배율'] if i < hit_count - 1 else rapid_fire_data['마지막타격_레벨당_피해배율']  # 마지막 공격은 조금 더 강하게
+                multiplier = rapid_fire_data['일반타격_기본_피해배율'] if i < hit_count - 1 else rapid_fire_data['마지막타격_기본_피해배율']  # 마지막 공격은 조금 더 강하게
                 damage, critical, evade = calculate_damage(attacker, defender, multiplier=multiplier)
 
                 crit_text = "💥" if critical else ""

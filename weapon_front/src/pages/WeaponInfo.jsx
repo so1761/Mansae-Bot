@@ -295,7 +295,7 @@ function WeaponInfo() {
                       className="font-semibold text-indigo-600"
                       data-tooltip-id="tooltip-base-skill"
                       data-tooltip-content={`기본 스킬 레벨이 +${weaponData.inheritance.base_skill_level_increase} 증가합니다.`} // 툴팁 내용 추가
-                      data-tooltip-place="left"
+                      data-tooltip-place="top"
                     >
                       +{weaponData.inheritance.base_skill_level_increase}
                     </span>
@@ -318,24 +318,35 @@ function WeaponInfo() {
                 </div>
               </div>
             );
-      case "skills":
-        return (
-          <div className="space-y-4">
-            <h3 className="text-xl font-semibold text-indigo-500">스킬</h3>
-            {weaponData.skills.length === 0 ? (
-              <p className="text-gray-700">스킬이 없습니다.</p>
-            ) : (
-              weaponData.skills.map((skill, index) => (
-                <div key={index} className="mb-4">
-                  <h4 className="text-lg font-semibold text-indigo-400">{skill.skill_name}</h4>
-                  <p className="text-gray-700">레벨: {skill.level}</p>
-                  <p className="text-gray-700">쿨타임: {skill.cooldown}턴</p>
-                  <p className="text-gray-700">초기 쿨타임: {skill.current_cooldown}턴</p>
-                </div>
-              ))
-            )}
-          </div>
-        );
+          case "skills":
+            return (
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-indigo-500">스킬</h3>
+                {weaponData.skills.length === 0 ? (
+                  <p className="text-gray-700">스킬이 없습니다.</p>
+                ) : (
+                  weaponData.skills.map((skill, index) => (
+                    <div key={index} className="mb-4 p-4 border border-gray-200 rounded-xl shadow-sm bg-white">
+                      <h4 className="text-lg font-semibold text-indigo-400">
+                        {skill.skill_name} Lv.{skill.level}
+                      </h4>
+                      <p className="text-gray-700">쿨타임: {skill.cooldown}턴</p>
+                      <p className="text-gray-700">초기 쿨타임: {skill.current_cooldown}턴</p>
+                      <p className="text-gray-800 mt-2 whitespace-pre-wrap">
+                        <span className="font-semibold text-gray-900">📘 설명:</span><br />
+                        {skill.skill_description}
+                      </p>
+                      {skill.skill_notes && (
+                        <p
+                          className="text-gray-800 mt-2 whitespace-pre-wrap"
+                          dangerouslySetInnerHTML={{ __html: `<span class="font-semibold text-gray-900">📌 노트:</span><br />${skill.skill_notes}` }}
+                        />
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            );
       default:
         return null;
     }
