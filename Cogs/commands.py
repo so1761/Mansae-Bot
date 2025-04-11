@@ -1605,7 +1605,7 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
                 else:
                     inherit_log["추가강화"][option] = 1  # 없으면 1로 시작
 
-        ref_weapon_base = db.reference(f"무기/기본스탯")
+        ref_weapon_base = db.reference(f"무기/기본 스탯")
         base_weapon_stats = ref_weapon_base.get() or {}
 
         base_stat_increase = inherit_log.get("기본 스탯 증가", 0) * 0.2 + 1
@@ -7295,7 +7295,7 @@ class hello(commands.Cog):
 
         weapon_name = weapon_data.get("이름", "")
         if weapon_name == "":
-            ref_weapon_base = db.reference(f"무기/기본스탯")
+            ref_weapon_base = db.reference(f"무기/기본 스탯")
             base_weapon_stats = ref_weapon_base.get() or {}
             ref_weapon = db.reference(f"무기/{nickname}")
             ref_weapon.update(base_weapon_stats[무기타입])
@@ -7690,9 +7690,6 @@ class hello(commands.Cog):
         
         await interaction.response.defer()
         
-        ref_weapon_base = db.reference(f"무기/기본스탯")
-        base_weapon_stats = ref_weapon_base.get() or {}
-        
         ref_users = db.reference(f"무기").get()
         
         if not ref_users:
@@ -7733,7 +7730,9 @@ class hello(commands.Cog):
             inherit_stats = ["공격력", "내구도", "방어력", "스피드", "명중"]
 
 
-
+            ref_weapon_base = db.reference(f"무기/기본 스탯")
+            base_weapon_stats = ref_weapon_base.get() or {}
+            
             # 강화 항목을 제외한 새로운 스탯 딕셔너리 생성
             new_stats = {
                 stat: round(value * inherit_multiplier) if stat in inherit_stats else value
