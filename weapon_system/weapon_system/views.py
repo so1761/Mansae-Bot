@@ -99,7 +99,7 @@ def discord_logout(request):
 # Firebase에서 데이터 가져오기
 def get_weapon_data(request, discord_username):
     # Firebase 경로에서 무기 데이터 가져오기
-    ref = db.reference(f"무기/{discord_username}")
+    ref = db.reference(f"무기/유저/{discord_username}")
     weapon_data = ref.get()
 
     if not weapon_data:
