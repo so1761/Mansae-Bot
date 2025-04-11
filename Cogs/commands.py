@@ -107,132 +107,6 @@ enhancement_probabilities = {
     19: 1,   # 19강 - 1% 성공
 }
 
-enhancement_options = {
-    "공격 강화": {"main_stat": "공격력", "stats": {"공격력": 3, "내구도": 5, "방어력": 2, "스피드": 1}},
-    "치명타 대미지 강화": {"main_stat": "치명타 대미지", "stats": {"공격력": 1, "내구도": 5, "방어력": 1, "치명타 대미지": 0.1}},
-    "치명타 확률 강화": {"main_stat": "치명타 확률", "stats": {"공격력": 1, "내구도": 5, "방어력": 1, "치명타 확률": 0.04}},
-    "속도 강화": {"main_stat": "스피드", "stats": {"공격력": 1, "내구도": 5, "방어력": 1, "스피드": 5}},
-    "명중 강화": {"main_stat": "명중", "stats": {"공격력": 2, "내구도": 5, "방어력": 2, "스피드": 1, "명중": 5}},
-    "방어 강화": {"main_stat": "방어력", "stats": {"내구도": 10, "방어력": 5}},
-    "내구도 강화": {"main_stat": "내구도", "stats": {"내구도": 20, "방어력": 3}},
-    "스킬 강화": {"main_stat": "스킬 증폭", "stats": {"내구도": 5, "방어력": 1, "스킬 증폭": 10}},
-    "밸런스 강화": {"main_stat": "올스탯", "stats": {"공격력": 1, "내구도": 7, "방어력": 1, "스피드": 1, "명중": 1, "스킬 증폭": 2, "치명타 대미지": 0.02, "치명타 확률": 0.01}}
-}
-
-global base_weapon_stats
-base_weapon_stats = {
-    "활": {
-        "강화": 0,
-        "공격력": 12,
-        "내구도": 80,
-        "방어력": 5,
-        "스피드": 20,
-        "명중": 30,
-        "사거리": 5,
-        "치명타 대미지": 1.5,
-        "치명타 확률": 0.05,
-        "스킬": {
-            "속사": {
-                "전체 쿨타임": 3,
-                "현재 쿨타임": 3,
-                "사거리": 5,
-                "레벨" : 1
-            }
-        }
-    },
-    "단검": {
-        "강화": 0,
-        "공격력": 15,
-        "내구도": 100,
-        "방어력": 7,
-        "스피드": 30,
-        "명중": 10,
-        "사거리": 1,
-        "치명타 대미지": 1.5,
-        "치명타 확률": 0.05,
-        "스킬": {
-            "은신": {
-                "전체 쿨타임": 4,
-                "현재 쿨타임": 0,
-                "레벨" : 1
-            }
-        }
-    },
-    "대검": {
-        "강화": 0,
-        "공격력": 25,
-        "내구도": 100,
-        "방어력": 10,
-        "스피드": 5,
-        "명중": 5,
-        "사거리": 1,
-        "치명타 대미지": 1.5,
-        "치명타 확률": 0.05,
-        "스킬": {
-            "강타": {
-                "전체 쿨타임": 3,
-                "현재 쿨타임": 3,
-                "레벨" : 1
-            }
-        }
-    },
-    "조총": {
-        "강화": 0,
-        "공격력": 20,
-        "내구도": 80,
-        "방어력": 5,
-        "스피드": 10,
-        "명중": 10,
-        "사거리": 5,
-        "치명타 대미지": 1.5,
-        "치명타 확률": 0.05,
-        "스킬": {
-            "헤드샷": {
-                "전체 쿨타임": 3,
-                "현재 쿨타임": 0,
-                "레벨" : 1
-            }
-        }
-    },
-    "창": {
-        "강화": 0,
-        "공격력": 12,
-        "내구도": 90,
-        "방어력": 5,
-        "스피드": 15,
-        "명중": 10,
-        "사거리": 3,
-        "치명타 대미지": 1.5,
-        "치명타 확률": 0.05,
-        "스킬": {
-            "창격": {
-                "전체 쿨타임": 4,
-                "현재 쿨타임": 4,
-                "레벨" : 1
-            }
-        }
-    },
-    "낫": {
-        "강화": 0,
-        "공격력": 15,
-        "내구도": 95,
-        "방어력": 5,
-        "스피드": 15,
-        "명중": 5,
-        "사거리": 2,
-        "치명타 대미지": 1.5,
-        "치명타 확률": 0.05,
-        "스킬": {
-            "수확": {
-                "전체 쿨타임": 2,
-                "현재 쿨타임": 2,
-                "레벨" : 1,
-                "사거리" : 4
-            }
-        }
-    }
-}
-
 class NotFoundError(Exception):
     pass
 
@@ -1731,7 +1605,8 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
                 else:
                     inherit_log["추가강화"][option] = 1  # 없으면 1로 시작
 
-        
+        ref_weapon_base = db.reference(f"무기/기본스탯")
+        base_weapon_stats = ref_weapon_base.get() or {}
 
         base_stat_increase = inherit_log.get("기본 스탯 증가", 0) * 0.2 + 1
         base_weapon_stat = base_weapon_stats[self.selected_weapon_type]
@@ -1739,6 +1614,8 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
         # 계승 내역에 각 강화 유형을 추가
         enhanced_stats = {}
 
+        ref_weapon_enhance = db.reference(f"무기/강화")
+        enhancement_options = ref_weapon_enhance.get() or {}
         # 계승 내역에서 각 강화 옵션을 확인하고, 해당 스탯을 강화 내역에 추가
         for enhancement_type, enhancement_data in inherit_log.items():
             if enhancement_type == "추가강화":  # 추가강화 항목만 따로 처리
@@ -7278,7 +7155,6 @@ class hello(commands.Cog):
                     ref_weapon.update({"강화": weapon_enhanced})
                 
                     # 강화 옵션 설정
-                    global enhancement_options
 
                     # 강화 함수
                     async def enhance_weapon(enhancement_type):
@@ -7296,6 +7172,8 @@ class hello(commands.Cog):
                         weapon_stats = {key: value for key, value in weapon_data.items() if key not in ["강화","이름", "강화확률", "강화내역"]}
 
                         # 강화 옵션 가져오기
+                        ref_weapon_enhance = db.reference(f"무기/강화")
+                        enhancement_options = ref_weapon_enhance.get() or {}
                         options = enhancement_options.get(enhancement_type, enhancement_options["밸런스 강화"])
                         stats = options["stats"]  # 실제 강화 수치가 있는 부분
                         main_stat = options["main_stat"]
@@ -7417,7 +7295,8 @@ class hello(commands.Cog):
 
         weapon_name = weapon_data.get("이름", "")
         if weapon_name == "":
-            global base_weapon_stats
+            ref_weapon_base = db.reference(f"무기/기본스탯")
+            base_weapon_stats = ref_weapon_base.get() or {}
             ref_weapon = db.reference(f"무기/{nickname}")
             ref_weapon.update(base_weapon_stats[무기타입])
             ref_weapon.update({
@@ -7811,6 +7690,9 @@ class hello(commands.Cog):
         
         await interaction.response.defer()
         
+        ref_weapon_base = db.reference(f"무기/기본스탯")
+        base_weapon_stats = ref_weapon_base.get() or {}
+        
         ref_users = db.reference(f"무기").get()
         
         if not ref_users:
@@ -7859,6 +7741,8 @@ class hello(commands.Cog):
                 if stat not in ["강화","스킬"]  # 강화 항목 제외
             }
 
+            ref_weapon_enhance = db.reference(f"무기/강화")
+            enhancement_options = ref_weapon_enhance.get() or {}
             for enhance_type, enhance_count in enhance_log_data.items():
                 if enhance_type in enhancement_options:
                     for stat, value in enhancement_options[enhance_type]["stats"].items():
