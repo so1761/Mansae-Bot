@@ -26,7 +26,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["35.203.142.179", "weaponsimulator.kro.kr", "localhost", "127.0.0.1"]
 
 
 # Application definition
@@ -57,7 +57,8 @@ ROOT_URLCONF = "weapon_system.urls"
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # 프론트 주소
-    "http://35.203.142.179:3000" # 서버에서의 프론트 주소
+    "http://35.203.142.179:3000", # 서버에서의 프론트 주소
+    "weaponsimulator.kro.kr:3000"
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # 세션 쿠키 주고받기 허용
