@@ -471,11 +471,11 @@ def enhance_weapon(request):
                         "title": status_text,
                         "color": embed_color,
                         "fields": [
-                            {"name": "무기 이름", "value": f"`{weapon_data.get('이름',"무기")}`", "inline": True},
+                            {"name": "무기 이름", "value": f"`{weapon_data.get('이름','무기')}`", "inline": True},
                             {"name": "강화 종류", "value": enhance_type, "inline": True},
                             {"name": "현재 강화 수치", "value": f"{weapon_enhanced}강 ➜ {'{}강'.format(weapon_enhanced+1) if success else '{}강'.format(weapon_enhanced+1)}", "inline": True},
                             {"name": "사용한 아이템", "value": ', '.join(used_items) if used_items else "없음", "inline": False},
-                            {"name": "성공 확률", "value": f"{enhancement_rate}%", "inline": True},
+                            {"name": "성공 확률", "value": f"{enhancement_rate  }%", "inline": True},
                         ],
                         "footer": {"text": "무기 강화 시스템"},
                     }
