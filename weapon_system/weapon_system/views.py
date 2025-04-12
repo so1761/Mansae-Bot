@@ -400,6 +400,22 @@ def enhance_weapon(request):
             weapon_enhanced = weapon_data.get("강화", 0)
             weapon_parts = item_data.get("강화재료", 0)
             
+            weapon_parts = item_data.get("강화재료", 0)
+
+            # 재료 부족 예외 처리
+            if weapon_parts <= 0:
+                return JsonResponse({'error': '강화 재료가 부족합니다.'}, status=400)
+
+            if use_polish:
+                polish_count = item_data.get("연마제", 0)
+                if polish_count <= 0:
+                    return JsonResponse({'error': '연마제가 부족합니다.'}, status=400)
+
+            if use_high_polish:
+                special_polish_count = item_data.get("특수 연마제", 0)
+                if special_polish_count <= 0:
+                    return JsonResponse({'error': '특수 연마제가 부족합니다.'}, status=400)
+                
             ref_item.update({"강화재료": weapon_parts - 1})
 
             enhancement_rate = enhancement_probabilities[weapon_enhanced]

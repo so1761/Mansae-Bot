@@ -214,12 +214,22 @@ export default function EnhanceWeaponPage() {
       });
   
       const data = await res.json();
-      console.log("서버 응답 데이터:", data); // 서버에서 반환한 데이터 확인
+      console.log("서버 응답 데이터:", data);
       
-      if (data.success) {
-        setEnhanceResult('success');
+      if (res.ok) {
+        if (data.success) {
+          setEnhanceResult('success');
+        } else {
+          setEnhanceResult('failure');
+        }
       } else {
-        setEnhanceResult('failure');
+        // 서버에서 명시적으로 에러를 보냈을 경우
+        if (data.error) {
+          alert(`에러: ${data.error}`); // 또는 setEnhanceError(data.error) 등으로 UI 표시
+        } else {
+          alert('알 수 없는 오류가 발생했습니다.');
+        }
+        setEnhanceResult('error');
       }
       
       // 강화 후 캐시 무효화 + 최신 데이터 반영
