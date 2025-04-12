@@ -55,9 +55,9 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "weapon_system.urls"
 
-# 개발 중이니까 임시로 전체 허용
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # 프론트 주소
+    "http://35.203.142.179:3000" # 서버에서의 프론트 주소
 ]
 
 CORS_ALLOW_CREDENTIALS = True  # 세션 쿠키 주고받기 허용

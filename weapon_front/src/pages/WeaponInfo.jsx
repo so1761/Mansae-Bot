@@ -20,6 +20,7 @@ import {
   RotateCcw
 } from "lucide-react"; // 필요한 아이콘만 쓰기
 
+const baseUrl = process.env.REACT_APP_API_BASE_URL;
 const enhancementIcons = {
   attack_enhance: <Sword size={16} />,
   durability_enhance: <Heart size={16} />,
@@ -57,7 +58,7 @@ function WeaponInfo() {
       if (cachedData) {
         setWeaponData(JSON.parse(cachedData));
       } else {
-        fetch(`http://localhost:8000/api/weapon/${discordUsername}/`, {
+        fetch(`${baseUrl}/api/weapon/${discordUsername}/`, {
           credentials: "include",
         })
           .then((res) => res.json())
@@ -93,7 +94,7 @@ function WeaponInfo() {
   
     try {
       setIsRefreshing(true);
-      const res = await fetch(`http://localhost:8000/api/weapon/${discordUsername}/`, {
+      const res = await fetch(`${baseUrl}/api/weapon/${discordUsername}/`, {
         credentials: "include",
       });
       const data = await res.json();

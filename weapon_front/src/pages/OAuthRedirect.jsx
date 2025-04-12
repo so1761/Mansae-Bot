@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-
+const baseUrl = process.env.REACT_APP_API_BASE_URL;
 export default function OAuthRedirect() {
   const navigate = useNavigate();
   const hasFetchedRef = useRef(false); // ✅ 중복 요청 방지용 ref
@@ -12,7 +12,7 @@ export default function OAuthRedirect() {
     const code = new URLSearchParams(window.location.search).get("code");
 
     if (code) {
-      fetch("http://localhost:8000/api/discord/callback/", {
+      fetch(`${baseUrl}/api/discord/callback/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

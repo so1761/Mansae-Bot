@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+const baseUrl = process.env.REACT_APP_API_BASE_URL;
 
 export default function EnhancementInfoPage() {
   const [enhancementOptions, setEnhancementOptions] = useState({});
@@ -21,7 +22,7 @@ export default function EnhancementInfoPage() {
       }
 
       try {
-        const response = await fetch("http://localhost:8000/api/enhancement-info/");
+        const response = await fetch(`${baseUrl}/api/enhancement-info/`);
         const data = await response.json();
         setEnhancementOptions(data);
         sessionStorage.setItem(cacheKey, JSON.stringify(data));

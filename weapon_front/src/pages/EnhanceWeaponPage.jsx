@@ -3,6 +3,7 @@ import ToggleSwitch from "../components/ui/ToggleSwitch";
 import { useAuth } from "../context/AuthContext";
 import { RotateCcw} from "lucide-react"; // 필요한 아이콘만 쓰기
 
+const baseUrl = process.env.REACT_APP_API_BASE_URL;
 export default function EnhanceWeaponPage() {
   const { isLoggedIn, user } = useAuth();
   const [weaponData, setWeaponData] = useState(null);
@@ -70,7 +71,7 @@ export default function EnhanceWeaponPage() {
       if (weaponCached && weaponCachedTime && now - parseInt(weaponCachedTime) < weaponTTL) {
         setWeaponData(JSON.parse(weaponCached));
       } else {
-        const weaponRes = await fetch(`http://localhost:8000/api/weapon/${discordUsername}/`, {
+        const weaponRes = await fetch(`${baseUrl}/api/weapon/${discordUsername}/`, {
           credentials: "include",
         });
         const weaponData = await weaponRes.json();
@@ -89,7 +90,7 @@ export default function EnhanceWeaponPage() {
       if (itemCached && itemCachedTime && now - parseInt(itemCachedTime) < itemTTL) {
         setItemData(JSON.parse(itemCached));
       } else {
-        const itemRes = await fetch(`http://localhost:8000/api/item/${discordUsername}/`, {
+        const itemRes = await fetch(`${baseUrl}/api/item/${discordUsername}/`, {
           credentials: "include",
         });
         const itemData = await itemRes.json();
@@ -108,7 +109,7 @@ export default function EnhanceWeaponPage() {
       if (enhCached && enhCachedTime && now - parseInt(enhCachedTime) < enhTTL) {
         setEnhancementOptions(JSON.parse(enhCached));
       } else {
-        const enhRes = await fetch("http://localhost:8000/api/enhancement-info/");
+        const enhRes = await fetch(`${baseUrl}/api/enhancement-info/`);
         const enhData = await enhRes.json();
         setEnhancementOptions(enhData);
         sessionStorage.setItem(enhCacheKey, JSON.stringify(enhData));
@@ -161,7 +162,7 @@ export default function EnhanceWeaponPage() {
       setIsRefreshing(true);
   
       // 무기 정보
-      const weaponRes = await fetch(`http://localhost:8000/api/weapon/${discordUsername}/`, {
+      const weaponRes = await fetch(`${baseUrl}/api/weapon/${discordUsername}/`, {
         credentials: "include",
       });
       const weaponData = await weaponRes.json();
@@ -170,7 +171,7 @@ export default function EnhanceWeaponPage() {
       sessionStorage.setItem(`weapon_${discordUsername}_time`, Date.now().toString());
   
       // 아이템 정보
-      const itemRes = await fetch(`http://localhost:8000/api/item/${discordUsername}/`, {
+      const itemRes = await fetch(`${baseUrl}/api/item/${discordUsername}/`, {
         credentials: "include",
       });
       const itemData = await itemRes.json();
@@ -179,7 +180,7 @@ export default function EnhanceWeaponPage() {
       sessionStorage.setItem(`items_${discordUsername}_time`, Date.now().toString());
   
       // 강화 수치 정보
-      const enhancementRes = await fetch("http://localhost:8000/api/enhancement-info/");
+      const enhancementRes = await fetch(`${baseUrl}/api/enhancement-info/`);
       const enhancementData = await enhancementRes.json();
       setEnhancementOptions(enhancementData);
       sessionStorage.setItem("enhancementOptions", JSON.stringify(enhancementData));
@@ -201,7 +202,7 @@ export default function EnhanceWeaponPage() {
     const discordUsername = user.discord_username;
 
     try {
-      const res = await fetch('http://localhost:8000/api/enhance', {
+      const res = await fetch(`${baseUrl}/api/enhance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
