@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-
+const baseUrl = process.env.REACT_APP_API_BASE_URL;
 // Context 생성
 const AuthContext = createContext();
 
@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         // 로그인 상태와 유저 정보를 확인하는 API 요청
-        fetch("http://localhost:8000/api/user/", { credentials: "include" })
+        fetch(`${baseUrl}/api/user/`, { credentials: "include" })
             .then((res) => {
                 if (!res.ok) {
                     console.warn("Failed to fetch user info");
@@ -29,11 +29,11 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const handleLogin = () => {
-        window.location.href = "http://localhost:8000/login/";
+        window.location.href = `${baseUrl}/login/`;
     };
 
     const handleLogout = () => {
-        fetch("http://localhost:8000/logout/", {
+        fetch(`${baseUrl}/logout/`, {
             credentials: "include"
         })
         .then((res) => {
