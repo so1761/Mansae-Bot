@@ -474,15 +474,22 @@ export default function EnhanceWeaponPage() {
         <div>
           <button
             className={`bg-blue-600 text-white px-4 py-2 rounded-xl transition w-full 
-              ${isEnhancing || enhancementLevel === 20 || !selectedStats || selectedStats.length === 0 
-                ? 'bg-gray-400 cursor-not-allowed' 
-                : 'hover:bg-blue-700'}`}
+              ${
+                isEnhancing ||
+                enhancementLevel === 20 ||
+                !selectedStats ||
+                selectedStats.length === 0 ||
+                itemData.강화재료 === 0  // ⬅️ 여기가 추가된 부분
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'hover:bg-blue-700'
+              }`}
             onClick={handleEnhance}
             disabled={
               isEnhancing ||
               enhancementLevel === 20 ||
               !selectedStats ||
-              selectedStats.length === 0
+              selectedStats.length === 0 ||
+              itemData.강화재료 === 0  // ⬅️ 여기도 추가
             }
           >
             {enhancementLevel === 20
@@ -491,6 +498,8 @@ export default function EnhanceWeaponPage() {
               ? '강화 중...'
               : !selectedStats || selectedStats.length === 0
               ? '강화 항목을 선택하세요'
+              : itemData.강화재료 === 0
+              ? '재료가 부족합니다' // ⬅️ 메시지도 추가
               : '강화하기'}
           </button>
         </div>

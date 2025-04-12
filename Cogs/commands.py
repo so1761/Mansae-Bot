@@ -502,7 +502,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 move_distance = Magnetic_data['끌어오기_거리']
                 if battle_distance <= 1:
                     move_distance = 1
-                base_damage = Magnetic_data['기본 피해량'] + Magnetic_data['레벨당_피해량_증가'] * skill_level
+                base_damage = Magnetic_data['기본_피해량'] + Magnetic_data['레벨당_피해량_증가'] * skill_level
                 skill_multiplier = (Magnetic_data['기본_스킬증폭_계수'] + Magnetic_data['레벨당_스킬증폭_계수_증가'] * skill_level)
                 skill_damage = base_damage + attacker["Spell"] * skill_multiplier
                 grab_direction = 1 if defender['name'] == opponent['name'] else -1
