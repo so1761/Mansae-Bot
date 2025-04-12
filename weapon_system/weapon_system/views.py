@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from .firebase_config import initialize_firebase
 from firebase_admin import db
-from jinja2 import Template
+import random
 import json
 import os
 from dotenv import load_dotenv
@@ -19,11 +19,12 @@ initialize_firebase()
 DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
 DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("REDIRECT_URI")
-
+DISCORD_ENHANCE_WEBHOOK_URL = os.getenv("DISCORD_ENHANCE_WEBHOOK_URL")
+DISCORD_OAUTH_URL = os.getenv("DISCORD_OAUTH_URL")
 # 디스코드 로그인 페이지로 리다이렉트
 def discord_login(request):
     # 디스코드 OAuth URL 생성
-    oauth_url = f'https://discord.com/oauth2/authorize?client_id=1359041889936080896&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Foauth%2Fredirect&scope=identify+email'
+    oauth_url = DISCORD_OAUTH_URL
     return redirect(oauth_url)
 
 @csrf_exempt
@@ -212,31 +213,42 @@ def get_weapon_data(request, discord_username):
 
     # 스킬 처리
     skill_data = weapon_data.get('스킬', {})
-
+    ref_weapon_stats = db.reference(f"무기/유저/{discord_username}")
+    weapon_stats_data = ref_weapon_stats.get() or {}
+    
     for skill_name, skill_info in skill_data.items():
         ref_skill_data = db.reference(f"무기/스킬/{skill_name}")
         skill_server_data = ref_skill_data.get() or {}
 
         values = skill_server_data.get('values', {})
         level = skill_info.get('레벨', 1)  # 없으면 1로 가정
-
+        
         # 템플릿 변수로 사용할 딕셔너리 준비
-
         template_context = {
-            **values,           # 거리, 계수 등
-            '레벨': level       # 스킬 레벨도 포함
+            **values,
+            '레벨': level,
+            '공격력': weapon_stats_data.get('공격력', 0),
+            '스킬_증폭': weapon_stats_data.get('스킬 증폭', 0),
+            '명중': weapon_stats_data.get('명중', 0),
+            '스피드': weapon_stats_data.get('스피드', 0),
+            '내구도': weapon_stats_data.get('내구도', 0),
+            '방어력': weapon_stats_data.get('방어력', 0),
+            '치명타_확률': weapon_stats_data.get('치명타 확률', 0),
+            '치명타_대미지': weapon_stats_data.get('치명타 대미지', 0),
         }
 
-        notes_template = skill_server_data.get('notes', '')
-        rendered_notes = Template(notes_template).render(template_context).replace("\n", "<br />")
+        tooltip_key = skill_server_data.get('tooltip', None)
+
         Skill.objects.create(
             weapon=weapon,
             skill_name=skill_name,
             level=level,
             cooldown=skill_info.get('전체 쿨타임', 0),
             current_cooldown=skill_info.get('현재 쿨타임', 0),
+            skill_range=skill_info.get('사거리',0),
             skill_description=skill_server_data.get('description', "스킬 설명이 없습니다"),
-            skill_notes=rendered_notes  # 💡 여기!
+            skill_notes_key=tooltip_key,
+            skill_notes_params=template_context  # 💡 이건 JSONField여야 함!
         )
 
     # 변환된 무기 정보를 반환
@@ -309,8 +321,10 @@ def get_weapon_data(request, discord_username):
                 'level': skill.level,
                 'cooldown': skill.cooldown,
                 'current_cooldown': skill.current_cooldown,
+                'skill_range' : skill.skill_range,
                 'skill_description': skill.skill_description,
-                'skill_notes': skill.skill_notes
+                'skill_notes_key': skill.skill_notes_key,
+                'skill_notes_params': skill.skill_notes_params
             } for skill in Skill.objects.filter(weapon=weapon)
         ]
     }, safe=False)
@@ -329,3 +343,153 @@ def user_info(request):
         "discord_username": request.user.discord_username,
         "avatar_url": request.user.avatar_url
     })
+
+def get_items(request, discord_username):
+    current_predict_season_ref = db.reference('승부예측/현재예측시즌')
+    current_predict_season = current_predict_season_ref.get() or {}
+
+    item_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{discord_username}/아이템')
+    data = item_ref.get()
+    return JsonResponse(data)
+
+@csrf_exempt
+def enhance_weapon(request):
+    if request.method == 'POST':
+        try:
+            # JSON 본문 파싱
+            body = json.loads(request.body)
+
+            # 각각의 값 가져오기
+            discord_username = body.get('discord_username')
+            enhance_type = body.get('enhanceType')
+            use_polish = body.get('usePolish')
+            use_high_polish = body.get('useHighPolish')
+
+            enhance_type = enhance_type[0]
+
+            enhancement_probabilities = {
+                0: 100,  # 0강 - 100% 성공
+                1: 90,   # 1강 - 90% 성공
+                2: 90,   # 2강 - 90% 성공
+                3: 80,   # 3강 - 80% 성공
+                4: 80,   # 4강 - 80% 성공
+                5: 80,   # 5강 - 80% 성공
+                6: 70,   # 6강 - 70% 성공
+                7: 60,   # 7강 - 60% 성공
+                8: 60,   # 8강 - 60% 성공
+                9: 40,   # 9강 - 40% 성공
+                10: 40,  # 10강 - 40% 성공
+                11: 30,  # 11강 - 30% 성공
+                12: 20,  # 12강 - 20% 성공
+                13: 20,  # 13강 - 20% 성공
+                14: 10,  # 14강 - 10% 성공
+                15: 10,  # 15강 - 10% 성공
+                16: 5,  # 16강 - 5% 성공
+                17: 5,  # 17강 - 5% 성공
+                18: 3,  # 18강 - 3% 성공
+                19: 1,   # 19강 - 1% 성공
+            }
+            nickname = discord_username
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+            current_predict_season = cur_predict_seasonref.get()
+
+            ref_weapon = db.reference(f"무기/유저/{nickname}")
+            weapon_data = ref_weapon.get() or {}
+            ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+            item_data = ref_item.get() or {}
+            weapon_enhanced = weapon_data.get("강화", 0)
+            weapon_parts = item_data.get("강화재료", 0)
+            
+            ref_item.update({"강화재료": weapon_parts - 1})
+
+            enhancement_rate = enhancement_probabilities[weapon_enhanced]
+            if use_polish:
+                enhancement_rate += 5
+                # 연마제 차감
+                item_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+                current_items = item_ref.get() or {}
+                polish_count = current_items.get("연마제", 0)
+                if polish_count > 0:
+                    item_ref.update({"연마제": polish_count - 1})
+            if use_high_polish:
+                enhancement_rate += 30
+                use_high_polish = False
+                # 특수연마제 차감
+                item_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+                current_items = item_ref.get() or {}
+                special_polish_count = current_items.get("특수 연마제", 0)
+                if special_polish_count > 0:
+                    item_ref.update({"특수연마제": special_polish_count - 1})
+
+            roll = random.randint(1, 100)
+            success = roll <= enhancement_rate
+            if success:  # 성공
+                ref_weapon.update({"강화" : weapon_enhanced + 1})
+                ref_weapon_log = db.reference(f"무기/유저/{nickname}/강화내역")
+                weapon_log_data = ref_weapon_log.get() or {}
+
+                original_enhancement = weapon_log_data.get(enhance_type,0)
+                ref_weapon_log.update({enhance_type : original_enhancement + 1}) # 선택한 강화 + 1
+
+                # 무기의 기존 스탯 가져오기
+                weapon_stats = {key: value for key, value in weapon_data.items() if key not in ["강화","이름", "강화확률", "강화내역"]}
+
+                # 강화 옵션 가져오기
+                ref_weapon_enhance = db.reference(f"무기/강화")
+                enhancement_options = ref_weapon_enhance.get() or {}
+                options = enhancement_options.get(enhance_type, enhancement_options["밸런스 강화"])
+                stats = options["stats"]  # 실제 강화 수치가 있는 부분
+
+                # 스탯 적용
+                for stat, base_increase in stats.items():
+                    # 선택한 스탯은 특화 배율 적용
+                    increase = round(base_increase, 3)  # 기본 배율 적용
+                    final_stat = round(weapon_stats.get(stat, 0) + increase, 3)
+                    
+                    if final_stat >= 1 and stat in ["치명타 확률"]:
+                        weapon_stats[stat] = 1
+                    else:
+                        weapon_stats[stat] = final_stat
+                
+                # 결과 반영
+                ref_weapon.update(weapon_stats)    
+
+            # 웹후크 전송
+            WEBHOOK_URL = DISCORD_ENHANCE_WEBHOOK_URL
+
+            embed_color = 0x00FF00 if success else 0xFF0000
+            status_text = "✅ **강화 성공!**" if success else "❌ **강화 실패**"
+            used_items = []
+            if use_polish:
+                used_items.append("연마제")
+            if use_high_polish:
+                used_items.append("특수 연마제")
+
+            embed_data = {
+                "embeds": [
+                    {
+                        "title": status_text,
+                        "color": embed_color,
+                        "fields": [
+                            {"name": "무기 이름", "value": f"`{weapon_data.get('이름',"무기")}`", "inline": True},
+                            {"name": "강화 종류", "value": enhance_type, "inline": True},
+                            {"name": "현재 강화 수치", "value": f"{weapon_enhanced}강 ➜ {'{}강'.format(weapon_enhanced+1) if success else '{}강'.format(weapon_enhanced+1)}", "inline": True},
+                            {"name": "사용한 아이템", "value": ', '.join(used_items) if used_items else "없음", "inline": False},
+                            {"name": "성공 확률", "value": f"{enhancement_rate}%", "inline": True},
+                        ],
+                        "footer": {"text": "무기 강화 시스템"},
+                    }
+                ]
+            }
+
+            # 실제 전송
+            try:
+                requests.post(WEBHOOK_URL, json=embed_data)
+            except Exception as webhook_error:
+                print("Webhook Error:", webhook_error)
+            return JsonResponse({'success': success})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+    

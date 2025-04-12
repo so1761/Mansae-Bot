@@ -144,8 +144,10 @@ class Skill(models.Model):
     level = models.IntegerField(default=0)  # 스킬 레벨
     cooldown = models.IntegerField(default=0)  # 전체 쿨타임
     current_cooldown = models.IntegerField(default=0)  # 현재 쿨타임
+    skill_range = models.IntegerField(default=0) # 사거리
     skill_description = models.TextField(default="설명이 없습니다")
-    skill_notes = models.TextField(blank=True, null=True)  # ✅ 이거 추가!
+    skill_notes_key = models.CharField(max_length=100, blank=True, null=True)
+    skill_notes_params = models.JSONField(default=dict)
 
     def __str__(self):
         return f"Skill: {self.skill_name} for {self.weapon.name}"

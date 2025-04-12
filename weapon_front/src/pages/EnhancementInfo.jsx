@@ -6,10 +6,26 @@ export default function EnhancementInfoPage() {
 
   useEffect(() => {
     const fetchEnhancements = async () => {
+      const cacheKey = "enhancementOptions";
+      const cacheTimeKey = "enhancementOptions_time";
+      const cacheTTL = 10 * 60 * 1000; // 10분
+
+      const cachedData = sessionStorage.getItem(cacheKey);
+      const cachedTime = sessionStorage.getItem(cacheTimeKey);
+
+      const now = Date.now();
+      if (cachedData && cachedTime && now - parseInt(cachedTime) < cacheTTL) {
+        setEnhancementOptions(JSON.parse(cachedData));
+        setLoading(false);
+        return;
+      }
+
       try {
         const response = await fetch("http://localhost:8000/api/enhancement-info/");
         const data = await response.json();
         setEnhancementOptions(data);
+        sessionStorage.setItem(cacheKey, JSON.stringify(data));
+        sessionStorage.setItem(cacheTimeKey, now.toString());
       } catch (error) {
         console.error("데이터 가져오기 실패:", error);
       } finally {
@@ -28,31 +44,31 @@ export default function EnhancementInfoPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {Object.entries(enhancementOptions).map(([enhanceType, data]) => (
           <div
-          key={enhanceType}
-          className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm min-h-[205px] flex flex-col justify-between"
-        >
-          <div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-1">{enhanceType}</h3>
-            <p className="text-sm text-gray-500 mb-3">주 능력치: {data.main_stat}</p>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm text-gray-700">
-            {Object.entries(data.stats)
-              .sort(([statA], [statB]) => {
-                if (statA === data.main_stat) return -1;
-                if (statB === data.main_stat) return 1;
-                return 0;
-              })
-              .map(([statName, value]) => {
-                const isPercentStat = ["치명타 대미지", "치명타 확률", "적중률"].includes(statName);
-                const displayValue = isPercentStat ? `+${value * 100}%` : `+${value}`;
-                return (
-                  <div key={statName}>
-                    <span className="font-medium">{statName}:</span> {displayValue}
-                  </div>
-                );
-              })}
+            key={enhanceType}
+            className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm min-h-[205px] flex flex-col justify-between"
+          >
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-1">{enhanceType}</h3>
+              <p className="text-sm text-gray-500 mb-3">주 능력치: {data.main_stat}</p>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm text-gray-700">
+                {Object.entries(data.stats)
+                  .sort(([statA], [statB]) => {
+                    if (statA === data.main_stat) return -1;
+                    if (statB === data.main_stat) return 1;
+                    return 0;
+                  })
+                  .map(([statName, value]) => {
+                    const isPercentStat = ["치명타 대미지", "치명타 확률"].includes(statName);
+                    const displayValue = isPercentStat ? `+${value * 100}%` : `+${value}`;
+                    return (
+                      <div key={statName}>
+                        <span className="font-medium">{statName}:</span> {displayValue}
+                      </div>
+                    );
+                  })}
+              </div>
             </div>
           </div>
-        </div>
         ))}
       </div>
     </div>

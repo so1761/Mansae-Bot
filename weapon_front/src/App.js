@@ -7,6 +7,7 @@ import Home from "./pages/Home";
 import RandomBox from "./pages/RandomBox";
 import Enhancement from "./pages/Enhancement";
 import EnhancementInfoPage from "./pages/EnhancementInfo";
+import EnhanceWeaponPage  from "./pages/EnhanceWeaponPage";
 import Inheritance from "./pages/Inheritance";
 import WeaponInfo from "./pages/WeaponInfo";
 
@@ -22,6 +23,7 @@ function App() {
           <Route path="probability/inheritance" element={<Inheritance />} />
           <Route path="weapon" element={<WeaponInfo />} />
           <Route path="weapon/enhancement_values" element={<EnhancementInfoPage />} />
+          <Route path="weapon/enhance" element={<EnhanceWeaponPage />} />
         </Route>
         {/* OAuth 리디렉션 전용 페이지는 Layout 밖에 둠 */}
         <Route path="/oauth/redirect" element={<OAuthRedirect />} />

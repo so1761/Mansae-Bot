@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Tooltip } from 'react-tooltip';
 import 'react-tooltip/dist/react-tooltip.css';
+import { tooltipTemplates } from "../lib/tooltipTemplates"; // 경로는 상황에 맞게 조정
+import { skillDescriptions } from "../lib/descriptions";
 import { useAuth } from "../context/AuthContext"; // AuthContext에서 로그인 상태와 사용자 정보를 가져옵니다.
 import {
   Sword,
@@ -14,7 +16,8 @@ import {
   Scale,
   DiamondPlus,
   Star,
-  CirclePlus
+  CirclePlus,
+  RotateCcw
 } from "lucide-react"; // 필요한 아이콘만 쓰기
 
 const enhancementIcons = {
@@ -45,21 +48,27 @@ function WeaponInfo() {
   const { isLoggedIn, user } = useAuth();
   const [weaponData, setWeaponData] = useState(null); // 무기 정보 상태
   const [activeTab, setActiveTab] = useState("weapon"); // 활성 탭 상태 (무기 정보, 스탯, 강화 등)
-
+  const [isRefreshing, setIsRefreshing] = useState(false); // 새로고침 중인지
   useEffect(() => {
     if (isLoggedIn && user) {
       const discordUsername = user.discord_username;
-      
-      fetch(`http://localhost:8000/api/weapon/${discordUsername}/`, {
-        credentials: "include", 
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          setWeaponData(data); // 무기 정보 상태에 저장
+      const cachedData = sessionStorage.getItem(`weaponData_${discordUsername}`);
+  
+      if (cachedData) {
+        setWeaponData(JSON.parse(cachedData));
+      } else {
+        fetch(`http://localhost:8000/api/weapon/${discordUsername}/`, {
+          credentials: "include",
         })
-        .catch((error) => {
-          console.error("Error fetching weapon data:", error);
-        });
+          .then((res) => res.json())
+          .then((data) => {
+            setWeaponData(data);
+            sessionStorage.setItem(`weaponData_${discordUsername}`, JSON.stringify(data));
+          })
+          .catch((error) => {
+            console.error("Error fetching weapon data:", error);
+          });
+      }
     }
   }, [isLoggedIn, user]);
 
@@ -78,6 +87,25 @@ function WeaponInfo() {
       </div>
     );
   }
+
+  const handleRefresh = async () => {
+    const discordUsername = user.discord_username;
+  
+    try {
+      setIsRefreshing(true);
+      const res = await fetch(`http://localhost:8000/api/weapon/${discordUsername}/`, {
+        credentials: "include",
+      });
+      const data = await res.json();
+      setWeaponData(data);
+      sessionStorage.setItem(`weaponData_${discordUsername}`, JSON.stringify(data));
+      sessionStorage.setItem(`weaponData_${discordUsername}_time`, Date.now());
+    } catch (error) {
+      console.error("Error refreshing weapon data:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // WeaponInfo 컴포넌트 정의 (밖에서 따로 분리)
   const statInfo = [
@@ -104,6 +132,7 @@ function WeaponInfo() {
     return Math.min(0.99, 1 - Math.exp(-speed / 70));
   }
   
+
   const renderStat = ({ key, label, isPercent }, w) => {
     const stat = w[key] || {};
     const base = stat.base ?? 0;
@@ -325,25 +354,45 @@ function WeaponInfo() {
                 {weaponData.skills.length === 0 ? (
                   <p className="text-gray-700">스킬이 없습니다.</p>
                 ) : (
-                  weaponData.skills.map((skill, index) => (
-                    <div key={index} className="mb-4 p-4 border border-gray-200 rounded-xl shadow-sm bg-white">
-                      <h4 className="text-lg font-semibold text-indigo-400">
-                        {skill.skill_name} Lv.{skill.level}
-                      </h4>
-                      <p className="text-gray-700">쿨타임: {skill.cooldown}턴</p>
-                      <p className="text-gray-700">초기 쿨타임: {skill.current_cooldown}턴</p>
-                      <p className="text-gray-800 mt-2 whitespace-pre-wrap">
-                        <span className="font-semibold text-gray-900">📘 설명:</span><br />
-                        {skill.skill_description}
-                      </p>
-                      {skill.skill_notes && (
-                        <p
-                          className="text-gray-800 mt-2 whitespace-pre-wrap"
-                          dangerouslySetInnerHTML={{ __html: `<span class="font-semibold text-gray-900">📌 노트:</span><br />${skill.skill_notes}` }}
-                        />
-                      )}
-                    </div>
-                  ))
+                  weaponData.skills.map((skill, index) => {
+
+                    const renderedNote =
+                    skill.skill_notes_key &&
+                    tooltipTemplates[skill.skill_notes_key] &&
+                    skill.skill_notes_params
+                      ? tooltipTemplates[skill.skill_notes_key](skill.skill_notes_params)
+                      : "";                
+          
+                    return (
+                      <div key={index} className="mb-4 p-4 border border-gray-200 rounded-xl shadow-sm bg-white">
+                        <h4 className="text-lg font-semibold text-indigo-400">
+                          {skill.skill_name} Lv.{skill.level}
+                        </h4>
+                        <div className="text-sm text-gray-600 mt-2">
+                          <p className="text-gray-700">쿨타임: {skill.cooldown}턴</p>
+                          <p className="text-gray-700">초기 쿨타임: {skill.current_cooldown}턴</p>
+                          {skill.skill_range > 0 && (
+                            <p className="text-gray-700">사거리: {skill.skill_range}</p>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-600 mt-2">
+                          <span className="font-semibold text-indigo-400 mb-1">📘 설명:</span>
+                          <div
+                            className="mt-1 text-gray-800"
+                            dangerouslySetInnerHTML={{
+                              __html: skillDescriptions[skill.skill_name] || "설명이 없습니다.",
+                            }}
+                          />
+                        </div>
+                        {renderedNote && (
+                          <div className="text-sm text-gray-600 mt-2">
+                            <h5 className="font-semibold text-indigo-400 mb-1">📌 상세 효과</h5>
+                            {renderedNote}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             );
@@ -354,38 +403,78 @@ function WeaponInfo() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto bg-white shadow-lg rounded-md">
-      <h1 className="text-3xl font-extrabold text-indigo-700 mb-6">⚔️ 나의 무기 정보</h1>
-
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-extrabold text-indigo-700">⚔️ 나의 무기 정보</h1>
+        <button
+          onClick={handleRefresh}
+          className="ml-2 p-1 rounded-full hover:bg-indigo-100 text-indigo-600 transition"
+          title="새로고침"
+        >
+          {isRefreshing ? (
+            <svg
+              className="animate-spin h-5 w-5 text-indigo-600"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v4l5-5-5-5v4a10 10 0 100 20v-2a8 8 0 01-8-8z"
+              ></path>
+            </svg>
+          ) : (
+            <RotateCcw className="h-5 w-5" />
+          )}
+        </button>
+      </div>
       {/* 탭 UI */}
       <div className="mb-6 flex space-x-4 border-b-2 pb-2">
         <button
-          className={`px-6 py-2 rounded-md text-lg font-medium ${activeTab === "weapon" ? "text-white bg-indigo-600" : "text-indigo-600 hover:bg-indigo-100"}`}
+          className={`flex-1 px-2 py-2 rounded-md text-center text-lg font-medium sm:px-4 sm:py-2 sm:text-base sm:leading-5 break-keep ${activeTab === "weapon" ? "text-white bg-indigo-600" : "text-indigo-600 hover:bg-indigo-100"}`}
           onClick={() => setActiveTab("weapon")}
         >
-          무기 정보
+          <span className="inline sm:hidden">무기</span>
+          <span className="hidden sm:inline">무기 정보</span>
         </button>
         <button
-          className={`px-6 py-2 rounded-md text-lg font-medium ${activeTab === "enhancements" ? "text-white bg-indigo-600" : "text-indigo-600 hover:bg-indigo-100"}`}
+          className={`flex-1 px-2 py-2 rounded-md text-center text-lg font-medium sm:px-4 sm:py-2 sm:text-base sm:leading-5 break-keep ${activeTab === "enhancements" ? "text-white bg-indigo-600" : "text-indigo-600 hover:bg-indigo-100"}`}
           onClick={() => setActiveTab("enhancements")}
         >
-          강화 정보
+          <span className="inline sm:hidden">강화</span>
+          <span className="hidden sm:inline">강화 정보</span>
         </button>
         <button
-          className={`px-6 py-2 rounded-md text-lg font-medium ${activeTab === "inheritance" ? "text-white bg-indigo-600" : "text-indigo-600 hover:bg-indigo-100"}`}
+          className={`flex-1 px-2 py-2 rounded-md text-center text-lg font-medium sm:px-4 sm:py-2 sm:text-base sm:leading-5 break-keep ${activeTab === "inheritance" ? "text-white bg-indigo-600" : "text-indigo-600 hover:bg-indigo-100"}`}
           onClick={() => setActiveTab("inheritance")}
         >
-          계승 정보
+          <span className="inline sm:hidden">계승</span>
+          <span className="hidden sm:inline">계승 정보</span>
         </button>
         <button
-          className={`px-6 py-2 rounded-md text-lg font-medium ${activeTab === "skills" ? "text-white bg-indigo-600" : "text-indigo-600 hover:bg-indigo-100"}`}
+          className={`flex-1 px-2 py-2 rounded-md text-center text-lg font-medium sm:px-4 sm:py-2 sm:text-base sm:leading-5 break-keep ${activeTab === "skills" ? "text-white bg-indigo-600" : "text-indigo-600 hover:bg-indigo-100"}`}
           onClick={() => setActiveTab("skills")}
         >
-          스킬 정보
+          <span className="inline sm:hidden">스킬</span>
+          <span className="hidden sm:inline">스킬 정보</span>
         </button>
       </div>
 
       {/* 탭에 맞는 내용 렌더링 */}
-      <div className="space-y-6">{renderTabContent()}</div>
+      <div className="space-y-6">
+        {renderTabContent()}
+      </div>
+
+      <Tooltip id="tooltip-hit" place="top" effect="solid"/>
+      <Tooltip id="tooltip-damage" place="top" effect="solid" />
     </div>
   );
 }
