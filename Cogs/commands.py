@@ -1126,6 +1126,21 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     await asyncio.sleep(2)  # 턴 간 딜레이
                 continue
                     
+
+            # 가속 확률 계산 (스피드 5당 1% 확률)
+            speed = attacker.get("Speed", 0)
+            acceleration_chance = speed // 5  # 예: 스피드 50이면 10% 확률
+
+            if acceleration_chance > 0 and random.randint(1, 100) <= acceleration_chance:
+                attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 추가 1 감소
+                if attacker["Skills"][skill]["현재 쿨타임"] < 0:
+                    attacker["Skills"][skill]["현재 쿨타임"] = 0
+                if skill == "헤드샷":
+                    if "장전" in attacker["Status"]:  # 장전이 있는지 확인
+                        attacker["Status"]["장전"]["duration"] -= 1
+                        if attacker["Status"]["장전"]["duration"] <= 0:
+                            del attacker["Status"]["장전"]
+                result_message += f"💨 {attacker['name']}의 가속! {skill}의 쿨타임이 추가로 감소했습니다!\n"
             skill_names = list(attacker["Skills"].keys())
             used_skill = []
             skill_attack_names = []
@@ -1446,21 +1461,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             for skill, cooldown_data in attacker["Skills"].items():
                 if cooldown_data["현재 쿨타임"] > 0 and skill not in used_skill:
                     attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 현재 쿨타임 감소
-
-                    # 가속 확률 계산 (스피드 5당 1% 확률)
-                    speed = attacker.get("Speed", 0)
-                    acceleration_chance = speed // 5  # 예: 스피드 50이면 10% 확률
-
-                    if acceleration_chance > 0 and random.randint(1, 100) <= acceleration_chance:
-                        attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 추가 1 감소
-                        if attacker["Skills"][skill]["현재 쿨타임"] < 0:
-                            attacker["Skills"][skill]["현재 쿨타임"] = 0
-                        if skill == "헤드샷":
-                            if "장전" in attacker["Status"]:  # 장전이 있는지 확인
-                                attacker["Status"]["장전"]["duration"] -= 1
-                                if attacker["Status"]["장전"]["duration"] <= 0:
-                                    del attacker["Status"]["장전"]
-                        result_message += f"💨 {attacker['name']}의 가속! {skill}의 쿨타임이 추가로 감소했습니다!\n"
 
             if skill_attack_names:
                 crit_text = "💥" if critical else ""
