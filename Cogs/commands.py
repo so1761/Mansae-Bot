@@ -1114,6 +1114,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 # 공격자와 방어자 변경
                 battle_embed = discord.Embed(title=f"{attacker['name']}의 턴!⚔️", color=discord.Color.blue())
                 battle_embed.add_field(name="행동 불가!", value = f"기절 상태이상으로 인해 행동할 수 없습니다!\n기절 상태 남은 턴 : {attacker['Status']['기절']['duration']}", inline = False)
+                if "장전" in attacker["Status"]:  # 장전이 있는지 확인
+                    attacker["Status"]["장전"]["duration"] += 1
                 remove_status_effects(attacker,defender)
                 update_status(attacker)  # 공격자의 상태 업데이트 (은신 등)
                 attacker, defender = defender, attacker
