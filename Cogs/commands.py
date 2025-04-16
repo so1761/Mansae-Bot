@@ -713,6 +713,16 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             message += f"속사로 {hit_count}연타 공격! 총 {total_damage} 피해!"
             return message,total_damage
         
+        def meditate(attacker):
+            # 다음 공격은 반드시 치명타로 적용, 치명타 대미지 증가
+            attacker['Skill_increase']
+            for skill, cooldown_data in attacker["Skills"].items():
+                if cooldown_data["현재 쿨타임"] > 0:
+                    attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 현재 쿨타임 감소
+            message = f"**명상** 사용!\n 모든 스킬의 현재 쿨타임이 1턴 감소!!\n"
+
+            skill_damage = 0
+            return message,skill_damage
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
@@ -1721,6 +1731,7 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
             "이름": new_weapon_name,
             "무기타입": self.selected_weapon_type,
             "공격력": round(base_weapon_stat["공격력"] * base_stat_increase + enhanced_stats.get("공격력", 0)),
+            "스킬 증폭": round(base_weapon_stat["스킬 증폭"] * base_stat_increase + enhanced_stats.get("스킬 증폭", 0)),
             "내구도": round(base_weapon_stat["내구도"] * base_stat_increase + enhanced_stats.get("내구도", 0)),
             "방어력": round(base_weapon_stat["방어력"] * base_stat_increase + enhanced_stats.get("방어력", 0)),
             "스피드": round(base_weapon_stat["스피드"] * base_stat_increase + enhanced_stats.get("스피드", 0)),
