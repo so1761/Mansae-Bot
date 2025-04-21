@@ -714,15 +714,27 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             return message,total_damage
         
         def meditate(attacker):
-            # 다음 공격은 반드시 치명타로 적용, 치명타 대미지 증가
+            # 명상 : 쿨타임 감소
             attacker['Skill_increase']
             for skill, cooldown_data in attacker["Skills"].items():
                 if cooldown_data["현재 쿨타임"] > 0:
                     attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 현재 쿨타임 감소
-            message = f"**명상** 사용!\n 모든 스킬의 현재 쿨타임이 1턴 감소!!\n"
+            message = f"**명상** 사용!\n 모든 스킬의 현재 쿨타임이 1턴 감소!\n"
 
             skill_damage = 0
             return message,skill_damage
+        
+        def ignis(attacker):
+            # 
+            pass
+        
+        def blizzard(attacker):
+            pass
+
+        def lightning(attacker):
+            # 빛의 세례
+            pass
+
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
 
@@ -1660,18 +1672,25 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
         # 🔹 15강 이상이면 계승할 강화 옵션 선택
         current_upgrade_level = self.weapon_data.get("강화", 0)
         if current_upgrade_level > 15:
-            num_inherit_upgrades = current_upgrade_level - 15  # 16강부터 1강당 1개씩 계승
-            available_options = list(enhancement_log.keys())  # 강화된 항목 리스트
-            selected_options = []
+            num_inherit_upgrades = current_upgrade_level - 15
+            weighted_options = []
 
-            while len(selected_options) < num_inherit_upgrades and available_options:
-                option = random.choice(available_options)
-                
-                # 해당 강화 옵션을 최대 강화 횟수까지만 계승 가능
+            for option, count in enhancement_log.items():
+                # 계승 가능 횟수만큼 옵션을 리스트에 추가 (가중치 방식)
+                weighted_options.extend([option] * count)
+
+            while len(selected_options) < num_inherit_upgrades and weighted_options:
+                option = random.choice(weighted_options)
+
+                # 해당 옵션의 계승 횟수가 제한보다 작으면 선택
                 if selected_options.count(option) < enhancement_log[option]:
                     selected_options.append(option)
+
+                    # 이미 선택한 만큼 weighted_options에서도 줄여줘야 중복 방지
+                    weighted_options.remove(option)
                 else:
-                    available_options.remove(option)  # 최대 계승 횟수 초과 시 제거
+                    # 만약 최대 횟수까지 이미 선택된 경우, 더는 뽑히지 않게
+                    weighted_options = [o for o in weighted_options if o != option]
 
             # 🔹 계승 내역에 추가
             for option in selected_options:
@@ -1723,7 +1742,7 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
         
         basic_skill_levelup = inherit_log.get("기본 스킬 레벨 증가", 0)
         
-        basic_skills = ["속사", "은신", "강타", "헤드샷", "창격"]
+        basic_skills = ["속사", "은신", "강타", "헤드샷", "창격", "수확"]
         skills = base_weapon_stat["스킬"]
         for skill_name in basic_skills:
             if skill_name in skills:
