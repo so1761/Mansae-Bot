@@ -293,7 +293,7 @@ export const tooltipTemplates = {
       <div className="space-y-2 text-sm text-gray-600">
         {/* 헤드샷 효과 */}
         <div>
-          대상에게
+          대상에게{" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
@@ -315,7 +315,7 @@ export const tooltipTemplates = {
   
         {/* 장전 효과 */}
         <div>
-          이후
+          이후{" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
