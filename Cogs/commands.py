@@ -164,7 +164,7 @@ def generate_tower_weapon(floor: int):
 
     return weapon_data
 
-async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = False, practice = False, tower = False, tower_floor = 1):
+async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = False, practice = False, tower = False, tower_floor = 1, raid_ended = False):
         # 전장 크기 (-8 ~ 8), 0은 없음
         MAX_DISTANCE = 8
         MIN_DISTANCE = -8
@@ -256,16 +256,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 attack_increase = skill_level * attack_increase_level
                 character["Attack"] += attack_increase
 
-            if "헤드샷" in character["Status"]:
-                skill_level = character["Skills"]["헤드샷"]["레벨"]
-                headShot_data = skill_data_firebase['헤드샷']['values']
-                base_attack_increase = headShot_data['기본_공격력_배율']
-                attack_increase_level = headShot_data['레벨당_공격력_배율_증가']
-                attack_increase = base_attack_increase + (skill_level * attack_increase_level)
-                character["Attack"] *= attack_increase
-                DefenseIgnore_increase_level = headShot_data['레벨당_방어관통_증가']
-                DefenseIgnore_increase = DefenseIgnore_increase_level * skill_level
-                character["DefenseIgnore"] += DefenseIgnore_increase
             if "창격" in character["Status"]:
                 skill_level = character["Skills"]["창격"]["레벨"]
                 spearShot_data = skill_data_firebase['창격']['values']
@@ -294,8 +284,16 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             if raid: #레이드 상황
                 if not practice:
-                    ref_raid = db.reference(f"레이드/{boss}/내역/{challenger_m.name}")
+                    ref_raid = db.reference(f"레이드/내역/{challenger_m.name}")
                     ref_raid.update({"레이드여부": True})
+                    ref_raid.update({"보스": boss})
+                    ref_raid.update({"모의전": False})
+
+                if practice and raid_ended: # 레이드 끝난 이후 도전한 경우
+                    ref_raid = db.reference(f"레이드/내역/{challenger_m.name}")
+                    ref_raid.update({"레이드여부": True})
+                    ref_raid.update({"보스": boss})
+                    ref_raid.update({"모의전": True})
 
                 ref_boss = db.reference(f"레이드/{boss}")
                 if winner == "attacker": # 일반적인 상황
@@ -332,7 +330,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             ref_raid.update({"막타": True})
                         await weapon_battle_thread.send(f"**토벌 완료!** 총 대미지 : {total_damage}")
                 
-                if not practice:      
+                if not practice or (practice and raid_ended): # 레이드 끝난 이후 도전한 경우    
                     ref_raid.update({"대미지": total_damage})
             elif tower:
                 ref_current_floor = db.reference(f"탑/유저/{challenger_m.name}")
@@ -480,18 +478,19 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             return message,skill_damage
             
         def headShot(attacker, cooldown,skill_level):
-            # 공격력, 명중 + 50, 장전 상태 돌입
-            headShot_data = skill_data_firebase['헤드샷']['values']
-            base_attack_increase = headShot_data['기본_공격력_배율']
-            attack_increase_level = headShot_data['레벨당_공격력_배율_증가']
-            attack_increase = base_attack_increase + (attack_increase_level * skill_level)
-            attacker["Attack"] *= attack_increase
-            DefenseIgnore_increase_level = headShot_data['레벨당_방어관통_증가']
-            DefenseIgnore_increase = DefenseIgnore_increase_level * skill_level
-            attacker["DefenseIgnore"] += DefenseIgnore_increase
-            apply_status_for_turn(attacker, "헤드샷", duration=1)
-            apply_status_for_turn(attacker, "장전", duration=cooldown + 1)
-            return f"**헤드샷** 사용!\n이번 공격에 공격력 x {attack_increase}, 방어력 관통 + {DefenseIgnore_increase} 부여!\n**장전**상태가 됩니다.\n"
+            """액티브 - 헤드샷: 치명타 확률에 따라 증가하는 스킬 피해"""
+            # 헤드샷: 공격력 100(+10)% + 스킬 증폭 100(+20)%, 치명타 확률 1%당 1% 추가 피해
+            if not evasion:
+                headShot_data = skill_data_firebase['헤드샷']['values']
+                skill_multiplier = (headShot_data['기본_스킬증폭_계수'] + headShot_data['레벨당_스킬증폭_계수_증가'] * skill_level)
+                attack_multiplier = (headShot_data['기본_공격력_계수'] + headShot_data['레벨당_공격력_계수_증가'] * skill_level)
+                skill_damage = (attacker["Spell"] * skill_multiplier + attacker["Attack"] * attack_multiplier) * (1 + attacker['CritChance'])
+                apply_status_for_turn(attacker, "장전", duration=cooldown + 1)
+                message = f"**헤드샷** 사용!\n(스킬 증폭 {int(skill_multiplier * 100)}%) + (공격력 {int(attack_multiplier * 100)}%) x {round(attacker['CritChance'] * 100)}%의 스킬 피해!\n**장전**상태가 됩니다.\n"
+            else:
+                skill_damage = 0
+                message = f"\n**헤드샷이 빗나갔습니다!**\n" 
+            return message, skill_damage
         
         def spearShot(attacker,evasion,skill_level):
             global battle_distance
@@ -844,6 +843,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         # 스킬 쿨타임 적용
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
                         return None, result_message, critical_bool
+                elif skill_name == "헤드샷":
+                    skill_message, damage = headShot(attacker,evasion,skill_level)
+                    result_message += skill_message
+                    if evasion:
+                        # 스킬 쿨타임 적용
+                        attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
+                        return None, result_message, critical_bool 
                 elif skill_name == "강타":
                     skill_message, damage = smash(attacker,evasion,skill_level)
                     critical_bool = True
@@ -1288,10 +1294,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
-                    attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
-                    if "헤드샷" in skill_names:
-                        result_message += headShot(attacker,skill_cooldown_total,skill_level)
+                    if skill_name in skill_names:
                         used_skill.append(skill_name)
+                        skill_attack_names.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1707,7 +1712,7 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
         ref_weapon_base = db.reference(f"무기/기본 스탯")
         base_weapon_stats = ref_weapon_base.get() or {}
 
-        base_stat_increase = inherit_log.get("기본 스탯 증가", 0) * 0.2 + 1
+        base_stat_increase = inherit_log.get("기본 스탯 증가", 0) * 0.3 + 1
         base_weapon_stat = base_weapon_stats[self.selected_weapon_type]
 
         # 계승 내역에 각 강화 유형을 추가
@@ -3035,7 +3040,12 @@ class FinalizeButton(discord.ui.Button):
         ref.update({"결과": self.custom_view.rolls})
         ref.update({"족보": hand})
 
-        self.custom_view.keep_alive_task.cancel() # 취소
+        if self.custom_view.keep_alive_task:
+            self.custom_view.keep_alive_task.cancel()
+            try:
+                await self.custom_view.keep_alive_task
+            except asyncio.CancelledError:
+                pass
 
         await interaction.response.edit_message(content="", view=None, embed = embed)
 
@@ -7576,29 +7586,96 @@ class hello(commands.Cog):
             warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
             await interaction.response.send_message(embed = warnembed)
             return
-        
-        if weapon_data_opponent.get("내구도", 0) <= 0:
-            warning_embed = discord.Embed(title="메세지", color=discord.Color.red())
-            warning_embed.add_field(name="", value="오늘의 레이드보스는 이미 처치되었습니다!", inline=False)
-            await interaction.response.send_message(embed = warning_embed, ephemeral= True)
-            return
 
-        ref_raid = db.reference(f"레이드/{boss_name}/내역/{nickname}")
+        ref_raid = db.reference(f"레이드/내역/{nickname}")
         raid_data = ref_raid.get() or {}
         raid_damage = raid_data.get("대미지", 0)
+        raid_boss_name = raid_data.get("보스","")
         raid_bool = raid_data.get("레이드여부", False)
         
+        result = False
+        if weapon_data_opponent.get("내구도", 0) <= 0:
+            if not raid_bool: # 레이드 참여 안했을 경우
+                retry_embed = discord.Embed(
+                    title="레이드 추가 도전",
+                    description="오늘의 레이드보스는 이미 처치되었습니다!",
+                    color=discord.Color.orange()
+                )
+                retry_embed.add_field(
+                    name="",
+                    value="**레이드를 추가 도전하시겠습니까?**",
+                    inline=False
+                )
+                retry_embed.set_footer(text="모의전 진행 후 넣은 대미지 비율만큼의 보상을 받습니다!")
+                
+                class AfterRaidView(discord.ui.View):
+                    def __init__(self, user_id):
+                        super().__init__(timeout=60)  # 60초 후 자동 종료
+                        self.user_id = user_id
+                        self.future = asyncio.Future()  # 버튼 결과 저장 (True/False)
+
+                    def disable_all_buttons(self):
+                        """모든 버튼을 비활성화 상태로 변경"""
+                        for child in self.children:
+                            if isinstance(child, discord.ui.Button):
+                                child.disabled = True
+
+                    @discord.ui.button(label="도전하기", style=discord.ButtonStyle.green)
+                    async def after_raid(self, interaction: discord.Interaction, button: discord.ui.Button):
+                        # 버튼 비활성화 처리
+                        interaction.response.defer()
+                        self.disable_all_buttons()
+                        self.future.set_result(True)
+                        
+                view = AfterRaidView(interaction.user.id)
+                await interaction.response.send_message(embed=retry_embed, view=view, ephemeral=True)
+
+                # ✅ 버튼 클릭 결과 대기 (True = 진행, False = 중단)
+                result = await view.future
+
+                if not result:
+                    return  # 안했으면 return
+                
+                battle_ref.set(True)
+
+                # 임베드 생성
+                embed = discord.Embed(
+                    title=f"{interaction.user.display_name}의 {weapon_data_opponent.get('이름', '')} 레이드 (추가 도전)",
+                    description="대결이 시작되었습니다!",
+                    color=discord.Color.blue()  # 원하는 색상 선택
+                )
+                if result:
+                    await interaction.channel.send(embed = embed)
+                else:
+                    await interaction.response.send_message(embed=embed)
+                await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = boss_name, raid = True, practice = True, raid_ended= True)
+
+                battle_ref = db.reference("승부예측/대결진행여부")
+                battle_ref.set(False)
+            else: # 레이드 참여했을 경우
+                warn_embed = discord.Embed(
+                    title="격파 완료",
+                    description="오늘의 레이드보스는 이미 처치되었습니다!",
+                    color=discord.Color.red()
+                )
+                await interaction.response.send_message(embed=warn_embed, ephemeral=True)
+                return
+
         result = False
         ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
         item_data = ref_item.get() or {}
         raid_refresh = item_data.get("레이드 재도전", 0)
         if raid_bool:
             if raid_refresh: # 레이드 재도전권 있다면?
-                retry_embed = discord.Embed(title="레이드 재도전", color=discord.Color.orange())
                 retry_embed = discord.Embed(
                     title="레이드 재도전🔄 ",
                     description="이미 레이드를 참여하셨습니다.",
                     color=discord.Color.orange()
+                )
+                retry_embed.add_field(
+                    name="도전한 보스",
+                    value=f"**{raid_boss_name} **",
+                    inline=False
                 )
                 retry_embed.add_field(
                     name="넣은 대미지",
@@ -7638,7 +7715,7 @@ class hello(commands.Cog):
                             ref_item.update({"레이드 재도전": raid_refresh - 1})  # 사용 후 갱신
                             await interaction.response.edit_message(content="레이드 재도전권을 사용했습니다!", view=None)
 
-                            refraid = db.reference(f"레이드/{boss_name}/내역/{interaction.user.name}")
+                            refraid = db.reference(f"레이드/내역/{interaction.user.name}")
                             refraid.delete() 
 
                             ref_boss = db.reference(f"레이드/{boss_name}")
@@ -7659,11 +7736,7 @@ class hello(commands.Cog):
 
                 if not result:
                     return  # 재도전 불가면 함수 종료
-            else:
-                warning_embed = discord.Embed(title="메세지", color=discord.Color.red())
-                warning_embed.add_field(name="", value="오늘은 이미 레이드를 참여했습니다!", inline=False)
-                await interaction.response.send_message(embed = warning_embed, ephemeral= True)
-                return
+
 
         
         battle_ref.set(True)
@@ -7692,9 +7765,10 @@ class hello(commands.Cog):
         ref_current_boss = db.reference(f"레이드/현재 레이드 보스")
         boss_name = ref_current_boss.get()
 
-        refraid = db.reference(f"레이드/{boss_name}/내역")
-        raid_data = refraid.get() or {}
+        refraid = db.reference(f"레이드/내역")
+        raid_all_data = refraid.get() or {}
 
+        raid_data = {key:value for key, value in raid_all_data.items() if value['보스'] == boss_name and not value['모의전']}
         # 전체 대미지 합산
         total_damage = sum(data['대미지'] for data in raid_data.values())
 
@@ -7724,12 +7798,25 @@ class hello(commands.Cog):
 
         remain_durability_ratio = round(cur_dur / total_dur * 100, 2)
 
+        raid_after_data = {key:value for key, value in raid_all_data.items() if value['보스'] == boss_name and value['모의전']} # 격파 이후
+        raid_after_data_sorted = sorted(raid_after_data.items(), key=lambda x: x[1]['대미지'], reverse=True)
+
+        # 순위별로 대미지 항목을 생성
+        after_rankings = []
+        for idx, (nickname, data) in enumerate(raid_after_data_sorted, start=1):
+            damage = data['대미지']
+            damage_ratio = round(damage/total_dur * 100)
+            reward_number = round((damage/total_dur) * 20)
+            after_rankings.append(f"{nickname} - {damage} 대미지 ({damage_ratio}%)\n(강화재료 {reward_number}개 지급 예정!)")
+
         # 디스코드 임베드 생성
         embed = discord.Embed(title="🎯 레이드 현황", color=0x00ff00)
         embed.add_field(name="현재 레이드 보스", value=f"[{boss_name}]", inline=False)
         embed.add_field(name="레이드 보스의 현재 체력", value=f"[{cur_dur}/{total_dur}] {remain_durability_ratio}%", inline=False)
         embed.add_field(name="현재 대미지", value="\n".join(rankings), inline=False)
         embed.add_field(name="보상 현황", value=f"강화재료 **{reward_count}개** 지급 예정!", inline=False)
+        if cur_dur <= 0:
+            embed.add_field(name="레이드 종료 이후 도전 인원", value="\n".join(after_rankings), inline=False)
         await interaction.followup.send(embed = embed)
 
 
@@ -7812,11 +7899,12 @@ class hello(commands.Cog):
             
             # 계승 내역 적용 (기본 스탯 증가)
             inherit_level = inherit_log_data.get("기본 스탯 증가", 0)  # 계승 레벨 가져오기
-            inherit_multiplier = 1 + (inherit_level * 0.2)  # 1마다 0.2배 증가
+            inherit_multiplier = 1 + (inherit_level * 0.3)  # 1마다 0.3배 증가
 
             # 기존 스탯 저장
             old_stats = {
                 "공격력": weapon_data.get("공격력", 10),
+                "스킬 증폭": weapon_data.get("스킬 증폭", 5),
                 "내구도": weapon_data.get("내구도", 500),
                 "방어력": weapon_data.get("방어력", 5),
                 "스피드": weapon_data.get("스피드", 5),
@@ -7828,7 +7916,7 @@ class hello(commands.Cog):
             weapon_type = weapon_data.get("무기타입", "")
 
             # 계승 배율을 적용할 스탯
-            inherit_stats = ["공격력", "내구도", "방어력", "스피드", "명중"]
+            inherit_stats = ["공격력", "스킬 증폭", "내구도", "방어력", "스피드", "명중"]
 
 
             ref_weapon_base = db.reference(f"무기/기본 스탯")
@@ -7851,7 +7939,7 @@ class hello(commands.Cog):
 
             # 변경 사항 비교
             stat_changes = []
-            selected_stats = ["공격력", "내구도", "방어력", "스피드", "명중", "치명타 대미지", "치명타 확률"]
+            selected_stats = ["공격력", "스킬 증폭", "내구도", "방어력", "스피드", "명중", "치명타 대미지", "치명타 확률"]
             for stat in selected_stats:
                 if stat in new_stats and stat in old_stats:  # 안전하게 키 체크
                     diff = new_stats[stat] - old_stats[stat]

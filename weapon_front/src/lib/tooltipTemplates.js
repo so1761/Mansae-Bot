@@ -280,39 +280,42 @@ export const tooltipTemplates = {
     );
   },
   skill_tooltip_v6: (params) => {
-    const 공격력배율 = params.기본_공격력_배율 + params.레벨 * params.레벨당_공격력_배율_증가;
-    const 방어관통 = params.레벨 * params.레벨당_방어관통_증가;
+    const 공격력계수 = params.기본_공격력_계수 + params.레벨 * params.레벨당_공격력_계수_증가;
+    const 스킬증폭계수 = params.기본_스킬증폭_계수 + params.레벨 * params.레벨당_스킬증폭_계수_증가;
+    const 치확 = Math.round(params.치명타_확률 * 100);
+    const 총배율 = (1 + params.치명타_확률);
+  
+    const 피해량_표시 = Math.round(
+      (params.공격력 * 공격력계수 + params.스킬_증폭 * 스킬증폭계수) * 총배율
+    );
   
     return (
       <div className="space-y-2 text-sm text-gray-600">
         {/* 헤드샷 효과 */}
         <div>
-          해당 턴{" "}
+          대상에게
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
             data-tooltip-html={`
               <div style="font-size: 13px; line-height: 1.5;">
-                <span style="color: #facc15;">💥 공격력 배율</span><br />
-                · 기본: ${params.기본_공격력_배율 * 100}%<br />
-                · 레벨당: +${params.레벨당_공격력_배율_증가 * 100}%<br />
-                → 총: ${(공격력배율 * 100).toFixed(0)}%
-                <hr />
-                <span style="color: #60a5fa;">🛡 방어력 관통</span><br />
-                · 레벨당: +${params.레벨당_방어관통_증가}<br />
-                → 총: +${방어관통}
+                <span style="color: #facc15;">💥 피해 계산</span><br />
+                · 공격력 계수: <span style="color: #f97316;">${(공격력계수 * 100).toFixed(1)}%</span><br />
+                · 스킬 증폭 계수: <span style="color: #34d399;">${(스킬증폭계수 * 100).toFixed(1)}%</span><br />
+                · 치명타 확률: <span style="color: #60a5fa;">${치확}%</span><br />
+                → 총 배율: <span style="color: #f87171;">${(총배율 * 100).toFixed(0)}%</span>
               </div>
             `}
             data-tooltip-place="top"
           >
-            공격력 및 방어력 관통 증가
-          </span>{" "}
-          효과를 받습니다.
+            {피해량_표시}의 스킬 피해
+          </span>
+          를 입힙니다.
         </div>
   
         {/* 장전 효과 */}
         <div>
-          이후{" "}
+          이후
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
@@ -320,7 +323,7 @@ export const tooltipTemplates = {
               <div style="font-size: 13px; line-height: 1.5;">
                 <span style="color: #ef4444;">🔫 장전 상태</span><br />
                 공격 및 스킬 사용이 불가능합니다.<br />
-                장전 지속 시간은 쿨다운에 비례합니다.
+                장전 지속 시간은 쿨다운에 따라 결정됩니다.
               </div>
             `}
             data-tooltip-place="top"
@@ -331,5 +334,5 @@ export const tooltipTemplates = {
         </div>
       </div>
     );
-  }
+  },
 };

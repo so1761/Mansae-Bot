@@ -139,9 +139,10 @@ yacht_data = {
 ref_current_boss = db.reference(f"레이드/현재 레이드 보스")
 boss_name = ref_current_boss.get()
 
-refraid = db.reference(f"레이드/{boss_name}/내역")
-raid_data = refraid.get() or {}
+refraid = db.reference(f"레이드/내역")
+raid_all_data = refraid.get() or {}
 
+raid_data = {key:value for key, value in raid_all_data.items() if value['보스'] == boss_name and value['모의전'] == False}
 # 전체 대미지 합산
 total_damage = sum(data['대미지'] for data in raid_data.values())
 
@@ -196,6 +197,27 @@ fields = [
 fields.append({
     "name": "보상",
     "value": f"강화 재료 **{reward_count}개** 지급!"
+})
+
+raid_after_data = {key:value for key, value in raid_all_data.items() if value['보스'] == boss_name and value['모의전'] == True}
+raid_after_data_sorted = sorted(raid_after_data.items(), key=lambda x: x[1]['대미지'], reverse=True)
+# 순위별로 대미지 항목을 생성
+after_rankings = []
+for idx, (nickname, data) in enumerate(raid_after_data_sorted, start=1):
+    damage = data['대미지']
+    damage_ratio = round(damage/total_dur * 100)
+    reward_number = round((damage/total_dur) * 20)
+    after_rankings.append(f"{nickname} - {damage} 대미지 ({damage_ratio}%)\n(강화재료 {reward_number}개 지급!)")
+
+    ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+    item_data = ref_item.get() or {}
+    weapon_parts = item_data.get("강화재료", 0)
+    ref_item.update({"강화재료" : weapon_parts + reward_number})
+    
+# 보상 필드 추가
+fields.append({
+    "name": "추가 도전자 보상",
+    "value": "\n".join(after_rankings)
 })
 
 # 임베드 메시지 생성

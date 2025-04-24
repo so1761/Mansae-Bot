@@ -307,7 +307,7 @@ function WeaponInfo() {
                     <span
                       className="font-semibold text-indigo-600"
                       data-tooltip-id="tooltip-base-stat"
-                      data-tooltip-content={`기본 스탯이 +${weaponData.inheritance.base_stat_increase * 20}% 증가합니다.`} // 툴팁 내용 추가
+                      data-tooltip-content={`기본 스탯이 +${weaponData.inheritance.base_stat_increase * 30}% 증가합니다.`} // 툴팁 내용 추가
                       data-tooltip-place="top"
                     >
                       +{weaponData.inheritance.base_stat_increase}
