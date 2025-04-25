@@ -185,7 +185,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         def calculate_move_chance(speed):
             return min(0.99, 1 - math.exp(-speed / 70))
 
-        def apply_status_for_turn(character, status_name, duration=1):
+        def apply_status_for_turn(character, status_name, duration=1, value = None):
             """
             상태를 적용하고 지속 시간을 관리합니다.
             """
@@ -194,6 +194,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             else:
                 character["Status"][status_name]["duration"] = duration
 
+            if value is not None:
+                character["Status"][status_name]["value"] = value
         def update_status(character):
             """
             각 턴마다 상태의 지속 시간을 감소시켜서, 0이 되면 상태를 제거합니다.
@@ -234,6 +236,24 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 if character["Evasion"] > evasion_max: 
                     character["Evasion"] = evasion_max
 
+            if "고속충전_은신" in character["Status"]:
+                skill_level = character["Skills"]["고속충전"]["레벨"]
+                supercharger_data = skill_data_firebase['고속충전']['values']
+                base_evasion = supercharger_data['기본_회피율']
+                evasion_level = supercharger_data['레벨당_회피율_증가']
+                max_evasion = supercharger_data['최대_회피율']
+                character["Evasion"] = round(base_evasion + skill_level * evasion_level,1) # 회피율 증가
+                if character["Evasion"] > max_evasion: 
+                    character["Evasion"] = max_evasion
+
+            if "고속충전_속도증가" in character["Status"]:
+                skill_level = character["Skills"]["고속충전"]["레벨"]
+                supercharger_data = skill_data_firebase['고속충전']['values']
+                base_speedup = supercharger_data['속도증가_기본수치']
+                speedup_level = supercharger_data['속도증가_레벨당']
+                speedup_value = base_speedup + speedup_level * skill_level
+                character["Speed"] += speedup_value
+
             if "차징샷" in character["Status"]:
                 skill_level = character["Skills"]["차징샷"]["레벨"]
                 charging_shot_data = skill_data_firebase['차징샷']['values']
@@ -272,6 +292,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 speed_decrease_level = mech_Arm_data['레벨당_속도감소_배율']
                 speed_decrease = speed_decrease_level * skill_level
                 character["Speed"] *= 1 - speed_decrease
+
             if "자력 발산" in character["Status"]:
                 skill_level = opponent["Skills"]["자력 발산"]["레벨"]
                 Magnetic_data = skill_data_firebase['자력 발산']['values']
@@ -477,16 +498,16 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             return message,skill_damage
             
-        def headShot(attacker, evasion, cooldown,skill_level):
+        def headShot(attacker, evasion,skill_level):
             """액티브 - 헤드샷: 치명타 확률에 따라 증가하는 스킬 피해"""
-            # 헤드샷: 공격력 100(+10)% + 스킬 증폭 100(+20)%, 치명타 확률 1%당 1% 추가 피해
+            # 헤드샷: 공격력 80(+10)% + 스킬 증폭 100(+20)%, 치명타 확률 1%당 1% 추가 피해
             if not evasion:
                 headShot_data = skill_data_firebase['헤드샷']['values']
                 skill_multiplier = (headShot_data['기본_스킬증폭_계수'] + headShot_data['레벨당_스킬증폭_계수_증가'] * skill_level)
                 attack_multiplier = (headShot_data['기본_공격력_계수'] + headShot_data['레벨당_공격력_계수_증가'] * skill_level)
                 skill_damage = (attacker["Spell"] * skill_multiplier + attacker["Attack"] * attack_multiplier) * (1 + attacker['CritChance'])
-                apply_status_for_turn(attacker, "장전", duration=cooldown)
-                message = f"**헤드샷** 사용!\n(스킬 증폭 {int(skill_multiplier * 100)}%) + (공격력 {int(attack_multiplier * 100)}%) x {round(attacker['CritChance'] * 100)}%의 스킬 피해!\n**장전**상태가 됩니다.\n"
+                apply_status_for_turn(attacker, "장전", duration=1)
+                message = f"**헤드샷** 사용!\n(스킬 증폭 {int(skill_multiplier * 100)}%) + (공격력 {int(attack_multiplier * 100)}%) x {round(attacker['CritChance'] * 100)}%의 스킬 피해!\n1턴간 **장전**상태가 됩니다.\n"
             else:
                 skill_damage = 0
                 message = f"\n**헤드샷이 빗나갔습니다!**\n" 
@@ -712,13 +733,15 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             message += f"속사로 {hit_count}연타 공격! 총 {total_damage} 피해!"
             return message,total_damage
         
-        def meditate(attacker):
+        def meditate(attacker, skill_level):
             # 명상 : 쿨타임 감소
-            attacker['Skill_increase']
+            meditate_data = skill_data_firebase['명상']['values']
+            shield_amount = int(round(attacker['Spell'] * (meditate_data['스킬증폭당_보호막_계수'] + meditate_data['레벨당_보호막_계수_증가'] * skill_level)))
             for skill, cooldown_data in attacker["Skills"].items():
                 if cooldown_data["현재 쿨타임"] > 0:
                     attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 현재 쿨타임 감소
-            message = f"**명상** 사용!\n 모든 스킬의 현재 쿨타임이 1턴 감소!\n"
+            apply_status_for_turn(attacker,"보호막",2,shield_amount)
+            message = f"**명상** 사용!\n 모든 스킬의 현재 쿨타임이 1턴 감소하고 1턴간 {shield_amount}의 보호막 생성!\n"
 
             skill_damage = 0
             return message,skill_damage
@@ -733,6 +756,125 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         def lightning(attacker):
             # 빛의 세례
             pass
+        
+        def second_skin(target, skill_level, value):
+            """패시브 - 두번째 피부: 공격 적중 시 플라즈마 중첩 부여, 5스택 시 현재 체력 비례 10% 대미지"""
+            target["플라즈마 중첩"] = target.get("플라즈마 중첩", 0) + value
+            message = f"**두번째 피부** 효과로 플라즈마 중첩 {target['플라즈마 중첩']}/5 부여!"
+
+            second_skin_data = skill_data_firebase['두번째 피부']['values']
+            skill_damage = 0
+            
+            if target["플라즈마 중첩"] >= 5:
+                target["플라즈마 중첩"] = 0
+                skill_damage = round(target['HP'] * (second_skin_data['기본_대미지'] + second_skin_data['레벨당_추가_대미지'] * skill_level))
+                damage_value = round((second_skin_data['기본_대미지'] + second_skin_data['레벨당_추가_대미지'] * skill_level) * 100)
+                message += f"\n**플라즈마 폭발!** 현재 내구도의 {damage_value}% 대미지!\n"
+            return message, skill_damage
+
+        def icathian_rain(attacker, defender, skill_level):
+            """스피드에 비례하여 연속 공격하는 속사 스킬"""
+            icathian_rain_data = skill_data_firebase['이케시아 폭우']['values']
+
+            speed = attacker["Speed"]
+            hit_count = max(2, speed // icathian_rain_data['타격횟수결정_스피드값'])  # 최소 2회, 스피드당 1회 추가
+            total_damage = 0
+
+            def calculate_damage(attacker,defender,multiplier):
+                accuracy = calculate_accuracy(attacker["Accuracy"]) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
+                base_damage = random.uniform(attacker["Attack"] * accuracy, attacker["Attack"])  # 최소 ~ 최대 피해
+                critical_bool = False
+                evasion_bool = False
+                distance_evasion = calculate_evasion(battle_distance) # 거리 2부터 1당 10%씩 빗나갈 확률 추가   
+                if random.random() < defender["Evasion"] + distance_evasion * (1 - accuracy): # 회피
+                    evasion_bool = True
+                    return 0, False, evasion_bool
+
+                if random.random() < attacker["CritChance"]:
+                    base_damage *= attacker["CritDamage"]
+                    critical_bool = True
+                
+                defense = max(0, defender["Defense"] - attacker["DefenseIgnore"])
+                damage_reduction = calculate_damage_reduction(defense)
+                defend_damage = base_damage * (1 - damage_reduction) * (multiplier + skill_level * icathian_rain_data['레벨당_피해배율'])
+                final_damage = defend_damage * (1 - defender['DamageReduction']) # 대미지 감소 적용
+                return max(1, round(final_damage)), critical_bool, evasion_bool
+                
+            message = ""
+            for _ in range(hit_count):
+                multiplier = icathian_rain_data['일반타격_기본_피해배율']
+                damage, critical, evade = calculate_damage(attacker, defender, multiplier=multiplier)
+
+                crit_text = "💥" if critical else ""
+                evade_text = "회피!⚡️" if evade else ""
+                message += f"**{evade_text}{damage} 대미지!{crit_text}**\n"
+                
+                total_damage += damage
+            
+            passive_skill_data = attacker["Skills"].get("두번째 피부", None)   
+            passive_skill_level = passive_skill_data["레벨"]
+            passive_message, explosion_damage = second_skin(defender, passive_skill_level, 1)
+            defense = max(0, defender["Defense"] - attacker["DefenseIgnore"])
+            damage_reduction = calculate_damage_reduction(defense)
+            defend_damage = explosion_damage * (1 - damage_reduction)
+            final_damage = defend_damage * (1 - defender['DamageReduction'])
+            message += f"이케시아 폭우로 {hit_count}연타 공격! 총 {total_damage} 피해!\n"
+            message += passive_message
+            total_damage += final_damage
+            return message,total_damage
+        
+        def voidseeker(attacker, defender, evasion, skill_level):
+            # 공허추적자: 스킬 증폭 70% + 레벨당 10%의 스킬 대미지
+            if not evasion:
+                voidseeker_data = skill_data_firebase['공허추적자']['values']       
+                skill_multiplier = (voidseeker_data['기본_스킬증폭_계수'] + voidseeker_data['레벨당_스킬증폭_계수_증가'] * skill_level)
+                skill_damage = attacker["Spell"] * skill_multiplier
+                apply_status_for_turn(defender,"속박",1)
+
+                message = f"\n**공허추적자 사용!**\n스킬 증폭 {int(round(skill_multiplier * 100))}%의 스킬 피해를 입히고 1턴간 속박!\n"
+                passive_skill_data = attacker["Skills"].get("두번째 피부", None)   
+                passive_skill_level = passive_skill_data["레벨"]
+                passive_message, explosion_damage = second_skin(defender, passive_skill_level, 2)
+                message += passive_message
+                skill_damage += explosion_damage
+            else:
+                skill_damage = 0
+                message = f"\n**공허추적자가 빗나갔습니다!**\n"
+            return message, skill_damage
+
+        def supercharger(attacker, skill_level):
+            # 고속충전: 1턴간 회피율 증가, 3턴간 스피드 증가
+            supercharger_data = skill_data_firebase['고속충전']['values']
+            base_evasion = supercharger_data['기본_회피율']
+            evasion_level = supercharger_data['레벨당_회피율_증가']
+            max_evasion = supercharger_data['최대_회피율']
+            attacker["Evasion"] = round(base_evasion + skill_level * evasion_level,1) # 회피율 증가
+            if attacker["Evasion"] > max_evasion: 
+                attacker["Evasion"] = max_evasion
+            invisibility_turns = supercharger_data['은신_지속시간']
+            apply_status_for_turn(attacker, "고속충전_은신", duration=invisibility_turns)  # 은신 상태 지속시간만큼 지속
+            speedup_turns = supercharger_data['속도증가_지속시간']
+            base_speedup = supercharger_data['속도증가_기본수치']
+            speedup_level = supercharger_data['속도증가_레벨당']
+            speedup_value = base_speedup + speedup_level * skill_level
+            attacker["Speed"] += speedup_value
+            apply_status_for_turn(attacker, "고속충전_속도증가", duration=speedup_turns)
+            return f"**고속충전** 사용! {invisibility_turns}턴간 회피율이 {round(attacker['Evasion'] * 100)}% 증가합니다!\n{speedup_turns}턴간 스피드가 {speedup_value} 증가합니다!\n"
+        
+        def killer_instinct(attacker, defender, skill_level):
+            # 사냥본능: 상대의 뒤로 파고들며 2턴간 보호막을 얻음.
+            killer_instinct_data = skill_data_firebase['사냥본능']['values']
+            retreat_direction = 1 if attacker['name'] == challenger['name'] else -1  
+
+            target_position = defender['Position'] - (retreat_direction * 1)
+            attacker['Position'] = target_position * -1
+            defender['Position'] = defender['Position'] * -1
+            global battle_distance
+            battle_distance = 1
+
+            shield_amount = killer_instinct_data['기본_보호막량'] + killer_instinct_data['레벨당_보호막량'] * skill_level
+            apply_status_for_turn(attacker,"보호막",3,shield_amount)
+            return f"**사냥본능** 사용! 상대 뒤로 즉시 이동하며, 2턴간 {shield_amount}의 보호막을 얻습니다!\n"
 
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
@@ -765,6 +907,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             remove_status_effects(attacker,defender)
             update_status(attacker)  # 공격자의 상태 업데이트 (은신 등)
 
+            skill_message = ""
             if reloading:
                 return 0, False, False, False, ""
             
@@ -784,6 +927,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             distance_bool = False
             critical_bool = False
 
+            if "두번째 피부" in attacker['Status']:
+                passive_skill_data = attacker["Skills"].get("두번째 피부", None)   
+                passive_skill_level = passive_skill_data["레벨"]
+                message, damage = second_skin(defender,passive_skill_level, 1)
+                skill_message += message
+                base_damage += damage
 
             if attacker["Weapon"] == "창" and battle_distance == 3: #창 적정거리 추가 대미지
                 skill_level = attacker["Skills"]["창격"]["레벨"]
@@ -807,7 +956,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             defend_damage = base_damage * (1 - damage_reduction)
             final_damage = defend_damage * (1 - defender['DamageReduction']) # 대미지 감소 적용
             
-            return max(1, round(final_damage)), critical_bool, distance_bool, False, "" # 최소 피해량 보장
+            return max(1, round(final_damage)), critical_bool, distance_bool, False, skill_message # 최소 피해량 보장
         
         def use_skill(attacker, defender, skills, evasion, reloading):
             """스킬을 사용하여 피해를 입히고 효과를 적용"""
@@ -835,7 +984,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
                     return None, result_message, critical_bool  # 사거리가 안닿는 경우 쿨타임을 돌림
                 
-                
                 if skill_name == "빙하 균열":
                     skill_message, damage= glacial_fissure(attacker,defender,evasion,skill_level)
                     result_message += skill_message
@@ -844,13 +992,16 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
                         return None, result_message, critical_bool
                 elif skill_name == "헤드샷":
-                    skill_message, damage = headShot(attacker,evasion,skill_cooldown,skill_level)
+                    skill_message, damage = headShot(attacker,evasion,skill_level)
                     result_message += skill_message
                     if evasion:
                         # 스킬 쿨타임 적용
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
-                        apply_status_for_turn(attacker, "장전", duration=skill_cooldown)
-                        return None, result_message, critical_bool 
+                        apply_status_for_turn(attacker, "장전", duration=1)
+                        return None, result_message, critical_bool
+                elif skill_name == "명상":
+                    skill_message, damage= meditate(attacker,skill_level)
+                    result_message += skill_message
                 elif skill_name == "강타":
                     skill_message, damage = smash(attacker,evasion,skill_level)
                     critical_bool = True
@@ -871,6 +1022,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     skill_message, damage = rapid_fire(attacker,defender,skill_level)
                     result_message += skill_message
                     total_damage += damage
+                elif skill_name == '이케시아 폭우':
+                    skill_message, damage = icathian_rain(attacker,defender,skill_level)
+                    result_message += skill_message
+                    total_damage += damage
+                elif skill_name == '공허추적자':
+                    skill_message, damage = voidseeker(attacker,defender,evasion,skill_level)
+                    result_message += skill_message
                 elif skill_name == "수확":
                     skill_message, damage = Reap(attacker,evasion,skill_level)
                     result_message += skill_message
@@ -900,7 +1058,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
                         return None, result_message, critical_bool
 
-                if skill_name != "속사":
+                if skill_name != "속사" and skill_name != "이케시아 폭우":
                     # 방어력 계산 적용
                     defense = max(0, defender["Defense"] - attacker["DefenseIgnore"])
                     damage_reduction = calculate_damage_reduction(defense)
@@ -917,7 +1075,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 # 스킬 쿨타임 적용
                 attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
 
-            return max(1, round(total_damage)), result_message, critical_bool  # 최소 1 피해 보장
+            return max(0, round(total_damage)), result_message, critical_bool  # 최소 0 피해
         challenger = {
             "Weapon": weapon_data_challenger.get("무기타입",""),
             "name": weapon_data_challenger.get("이름", ""),
@@ -1095,6 +1253,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             elif boss == "브라움":
                 apply_status_for_turn(opponent, "불굴", 2669)
                 apply_status_for_turn(opponent, "뇌진탕 펀치", 2669)
+            elif boss == "카이사":
+                apply_status_for_turn(opponent, "두번째 피부",2669)
+                
         while challenger["HP"] > 0 and opponent["HP"] > 0:
             turn += 1
 
@@ -1104,27 +1265,44 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             attack_range = attacker["WeaponRange"]
 
             if "출혈" in attacker["Status"]:
-                skill_level = defender['Skills']['은신']['레벨']
-                invisibility_data = skill_data_firebase['은신']['values']
-                bleed_damage = invisibility_data['은신공격_출혈_기본_지속피해'] + skill_level * invisibility_data['은신공격_출혈_레벨당_지속피해']
+                bleed_damage = attacker["Status"]["출혈"]["value"]
+                shield_message = ""
+                remain_shield = ""
                 if attacker['name'] == challenger['name']: # 도전자 공격
                     battle_embed = discord.Embed(title=f"{attacker['name']}의 출혈!🩸", color=discord.Color.red())
-                    battle_embed.add_field(name="", value = f"출혈 상태로 인하여 {bleed_damage} 대미지를 받았습니다!", inline = False)
-                    battle_embed.add_field(name="남은 턴", value = f"출혈 상태 남은 턴 : {attacker['Status']['출혈']['duration']}", inline = False)
-                    attacker["HP"] -= bleed_damage
-                    battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {weapon_data_challenger.get('내구도', '')}]**")
                 elif attacker['name'] == opponent['name']: # 상대 공격
                     battle_embed = discord.Embed(title=f"{attacker['name']}의 출혈!🩸", color=discord.Color.blue())
-                    battle_embed.add_field(name="", value = f"출혈 상태로 인하여 {bleed_damage} 대미지를 받았습니다!", inline = False)
-                    battle_embed.add_field(name="남은 턴", value = f"출혈 상태 남은 턴 : {attacker['Status']['출혈']['duration']}", inline = False)
-                    attacker["HP"] -= bleed_damage
-                    if raid:
-                        battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['FullHP']}]**")
+                if "보호막" in attacker['Status']:
+                    shield_amount = attacker["Status"]["보호막"]["value"]
+                    if shield_amount >= bleed_damage:
+                        attacker["Status"]["보호막"]["value"] -= bleed_damage
+                        shield_message = f" 🛡️피해 {bleed_damage} 흡수!"
+                        bleed_damage = 0
                     else:
-                        battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {weapon_data_opponent.get('내구도', '')}]**")
+                        bleed_damage -= shield_amount
+                        shield_message = f" 🛡️피해 {shield_amount} 흡수!"
+                        attacker["Status"]["보호막"]["value"] = 0
+                    if "보호막" in attacker["Status"] and attacker["Status"]["보호막"]["value"] <= 0: # 보호막이 0이 되면 삭제
+                        del attacker["Status"]["보호막"]
+
+                if "보호막" in attacker['Status']:
+                    shield_amount = attacker["Status"]["보호막"]["value"]
+                    remain_shield = f"(🛡️보호막 {shield_amount})"
+                    
+                attacker["HP"] -= bleed_damage
+                battle_embed.add_field(name="", value = f"출혈 상태로 인하여 {bleed_damage} 대미지를 받았습니다!{shield_message}", inline = False)
+                battle_embed.add_field(name="남은 턴", value = f"출혈 상태 남은 턴 : {attacker['Status']['출혈']['duration']}", inline = False)
+
+                if attacker['name'] == challenger['name']: # 도전자 공격
+                    battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
+
+                elif attacker['name'] == opponent['name']: # 상대 공격
+                    if raid:
+                        battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['FullHP']}]{remain_shield}**")
+                    else:
+                        battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
 
                 if attacker["HP"] <= 0:
-                    await weapon_battle_thread.send(embed = battle_embed)
                     await end(attacker,defender,"defender",raid)
                     break
                 else:
@@ -1157,7 +1335,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             result_message = ""
             cooldown_message = ""
             for skill, cooldown_data in attacker["Skills"].items():
-                if acceleration_chance > 0 and random.randint(1, 100) <= acceleration_chance:
+                if acceleration_chance > 0 and random.randint(1, 100) <= acceleration_chance and attacker["Skills"][skill]["현재 쿨타임"] != 0:
                     attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 추가 1 감소
                     if attacker["Skills"][skill]["현재 쿨타임"] < 0:
                         attacker["Skills"][skill]["현재 쿨타임"] = 0
@@ -1276,6 +1454,20 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
+            if "고속충전" in skill_names:
+                skill_name = "고속충전"
+                skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
+                skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
+                skill_level = attacker["Skills"][skill_name]["레벨"]
+
+                if skill_cooldown_current == 0:
+                    attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
+                    if "고속충전" in skill_names:
+                        result_message += supercharger(attacker,skill_level)
+                        used_skill.append(skill_name)
+                else:
+                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+
             if "수확" in skill_names:
                 skill_name = "수확"
                 skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
@@ -1286,6 +1478,46 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     if skill_name in skill_names:
                         used_skill.append(skill_name)
                         skill_attack_names.append(skill_name)
+                else:
+                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+
+            if "공허추적자" in skill_names:
+                skill_name = "공허추적자"
+                skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
+                skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
+                skill_level = attacker["Skills"][skill_name]["레벨"]
+
+                if skill_cooldown_current == 0:
+                    if skill_name in skill_names:
+                        used_skill.append(skill_name)
+                        skill_attack_names.append(skill_name)
+                else:
+                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+
+            if "이케시아 폭우" in skill_names:
+                skill_name = "이케시아 폭우"
+                skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
+                skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
+                skill_level = attacker["Skills"][skill_name]["레벨"]
+
+                if skill_cooldown_current == 0:
+                    if skill_name in skill_names:
+                        used_skill.append(skill_name)
+                        skill_attack_names.append(skill_name)
+                else:
+                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+
+            if "사냥본능" in skill_names:
+                skill_name = "사냥본능"
+                skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
+                skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
+                skill_level = attacker["Skills"][skill_name]["레벨"]
+
+                if skill_cooldown_current == 0:
+                    attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
+                    if "사냥본능" in skill_names:
+                        result_message += killer_instinct(attacker,defender,skill_level)
+                        used_skill.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1366,19 +1598,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         if not evasion:
                             result_message += concussion_punch(defender)
 
-            # if "기계팔 방출" in skill_names:
-            #     skill_name = "기계팔 방출"
-            #     skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
-            #     skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
-            #     skill_level = attacker["Skills"][skill_name]["레벨"]
-
-            #     if skill_cooldown_current == 0:
-            #         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
-            #         if "기계팔 방출" in skill_names:
-            #             result_message += mech_Arm(defender,evasion, skill_level)
-            #             used_skill.append(skill_name)
-            #     else:
-            #         cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                if "두번째 피부" in attacker["Status"]:
+                    skill_name = "두번째 피부"
+                    if not skill_attack_names:
+                        if not evasion:
+                            used_skill.append(skill_name)
                             
             if "기계팔 방출" in skill_names:
                 skill_name = "기계팔 방출"
@@ -1411,9 +1635,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 invisibility_data = skill_data_firebase['은신']['values']
                 DefenseIgnore_increase = skill_level * invisibility_data['은신공격_레벨당_방관_증가']
                 bleed_chance = invisibility_data['은신공격_레벨당_출혈_확률'] * skill_level
+                bleed_damage = invisibility_data['은신공격_출혈_기본_지속피해'] + skill_level * invisibility_data['은신공격_출혈_레벨당_지속피해']
                 if random.random() < bleed_chance and not evasion and attacked: # 출혈 부여
                     bleed_turns = invisibility_data['은신공격_출혈_지속시간']
-                    apply_status_for_turn(defender, "출혈", duration=bleed_turns)
+                    apply_status_for_turn(defender, "출혈", duration=bleed_turns, value = bleed_damage)
                     result_message +=f"\n**🩸{attacker['name']}의 은신 공격**!\n{bleed_turns}턴간 출혈 상태 부여!\n"   
                 result_message +=f"\n**{attacker['name']}의 은신 공격**!\n방어력 관통 + {DefenseIgnore_increase}!\n{round(invisibility_data['은신공격_레벨당_피해_배율'] * skill_level * 100)}% 추가 대미지!\n"
 
@@ -1432,7 +1657,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     battle_embed.add_field(name="후퇴!", value = f"{attacker['name']}의 후퇴! 거리가 {move_distance}만큼 늘어납니다!", inline = False)
                 damage, critical, dist, evade, skill_message = await attack(attacker, defender, evasion, reloading, skill_attack_names)
                 result_message += skill_message
-                defender["HP"] -= damage
             elif attacked: # 공격 시
                 battle_embed.title = f"{attacker['name']}의 공격!⚔️"
                 if attacker['name'] == challenger['name']: # 도전자 공격
@@ -1447,7 +1671,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     battle_embed.add_field(name="후퇴!", value = f"{attacker['name']}의 후퇴! 거리가 {move_distance}만큼 늘어납니다!", inline = False)
                 damage, critical, dist, evade, skill_message = await attack(attacker, defender, evasion, reloading, skill_attack_names)
                 result_message += skill_message
-                defender["HP"] -= damage
             else: # 공격 불가 시
                 if dash:
                     if attacker['name'] == challenger['name']: # 도전자 공격
@@ -1487,33 +1710,71 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 crit_text = "💥" if critical else ""
                 evade_text = "회피!⚡️" if evade else ""
                 distance_text = "🎯" if dist else ""
+
+                shield_message = ""
+                remain_shield = ""
+                battle_embed.add_field(name="스킬", value = result_message.rstrip("\n"), inline = False)
+                if "보호막" in defender['Status']:
+                    shield_amount = defender["Status"]["보호막"]["value"]
+                    if shield_amount >= damage:
+                        defender["Status"]["보호막"]["value"] -= damage
+                        shield_message = f" 🛡️피해 {damage} 흡수!"
+                        damage = 0
+                    else:
+                        damage -= shield_amount
+                        shield_message = f" 🛡️피해 {shield_amount} 흡수!"
+                        defender["Status"]["보호막"]["value"] = 0
+                    if "보호막" in defender["Status"] and defender["Status"]["보호막"]["value"] <= 0: # 보호막이 0이 되면 삭제
+                        del defender["Status"]["보호막"]
+
+                if "보호막" in defender['Status']:
+                    shield_amount = defender["Status"]["보호막"]["value"]
+                    remain_shield = f"(🛡️보호막 {shield_amount})"
+
+                battle_embed.add_field(name ="", value = f"**{evade_text}{distance_text} {damage} 대미지!{crit_text}{shield_message}**",inline = False)
+                defender["HP"] -= damage
                 if attacker['name'] == challenger['name']: # 도전자 공격
-                    battle_embed.add_field(name="스킬", value = result_message.rstrip("\n"), inline = False)
-                    battle_embed.add_field(name ="", value = f"**{evade_text}{distance_text} {damage} 대미지!{crit_text}**",inline = False)
                     if raid:
                         battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {defender['FullHP']}]**")
                     else:
-                        battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_opponent.get('내구도', '')}]**")
+                        battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {defender['BaseHP']}]**")
                 elif attacker['name'] == opponent['name']: # 상대 공격
-                    battle_embed.add_field(name="스킬", value = result_message.rstrip("\n"), inline = False)
-                    battle_embed.add_field(name ="", value = f"**{evade_text}{distance_text} {damage} 대미지!{crit_text}**",inline = False)
-                    battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_challenger.get('내구도', '')}]**")
+                    battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_challenger.get('내구도', '')}]{remain_shield}**")
             elif attacked:
-                # 크리티컬 또는 방어 여부에 따라 메시지 추가
+                # 크리티컬 또는 회피 여부에 따라 메시지 추가
                 crit_text = "💥" if critical else ""
                 evade_text = "회피!⚡️" if evade else ""
                 distance_text = "🎯" if dist else ""
-                if attacker['name'] == challenger['name']: # 도전자 공격
-                    battle_embed.add_field(name="스킬", value = result_message.rstrip("\n"), inline = False)
-                    battle_embed.add_field(name ="", value = f"**{evade_text}{distance_text} {damage} 대미지!{crit_text}**",inline = False)
-                    if raid:
-                        battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {defender['FullHP']}]**")
+
+                shield_message = ""
+                remain_shield = ""
+                battle_embed.add_field(name="스킬", value = result_message.rstrip("\n"), inline = False)
+                if "보호막" in defender['Status']:
+                    shield_amount = defender["Status"]["보호막"]["value"]
+                    if shield_amount >= damage:
+                        defender["Status"]["보호막"]["value"] -= damage
+                        shield_message = f" 🛡️피해 {damage} 흡수!"
+                        damage = 0
                     else:
-                        battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_opponent.get('내구도', '')}]**")
+                        damage -= shield_amount
+                        shield_message = f" 🛡️피해 {shield_amount} 흡수!"
+                        defender["Status"]["보호막"]["value"] = 0
+                    if "보호막" in defender["Status"] and defender["Status"]["보호막"]["value"] <= 0: # 보호막이 0이 되면 삭제
+                        del defender["Status"]["보호막"]
+
+                if "보호막" in defender['Status']:
+                    shield_amount = defender["Status"]["보호막"]["value"]
+                    remain_shield = f"(🛡️보호막 {shield_amount})"
+
+                battle_embed.add_field(name ="", value = f"**{evade_text}{distance_text} {damage} 대미지!{crit_text}{shield_message}**",inline = False)
+                defender["HP"] -= damage
+                if attacker['name'] == challenger['name']: # 도전자 공격
+                    if raid:
+                        battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {defender['FullHP']}]{remain_shield}**")
+                    else:
+                        battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_opponent.get('내구도', '')}]{remain_shield}**")
                 elif attacker['name'] == opponent['name']: # 상대 공격
-                    battle_embed.add_field(name="스킬", value = result_message.rstrip("\n"), inline = False)
-                    battle_embed.add_field(name ="", value = f"**{evade_text}{distance_text} {damage} 대미지!{crit_text}**",inline = False)
-                    battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_challenger.get('내구도', '')}]**")
+                    battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_challenger.get('내구도', '')}]{remain_shield}**")
             else:
                 if attacker['name'] == challenger['name']: # 도전자 이동
                     battle_embed.add_field(name="스킬", value = result_message.rstrip("\n"), inline = False)
@@ -7625,7 +7886,7 @@ class hello(commands.Cog):
                     @discord.ui.button(label="도전하기", style=discord.ButtonStyle.green)
                     async def after_raid(self, interaction: discord.Interaction, button: discord.ui.Button):
                         # 버튼 비활성화 처리
-                        interaction.response.defer()
+                        await interaction.response.defer()
                         self.disable_all_buttons()
                         self.future.set_result(True)
                         
@@ -7654,6 +7915,7 @@ class hello(commands.Cog):
 
                 battle_ref = db.reference("승부예측/대결진행여부")
                 battle_ref.set(False)
+                return
             else: # 레이드 참여했을 경우
                 warn_embed = discord.Embed(
                     title="격파 완료",
@@ -7738,8 +8000,6 @@ class hello(commands.Cog):
 
                 if not result:
                     return  # 재도전 불가면 함수 종료
-
-
         
         battle_ref.set(True)
 
@@ -7761,8 +8021,8 @@ class hello(commands.Cog):
     @app_commands.command(name="레이드현황",description="현재 레이드 현황을 보여줍니다.")
     async def raid_status(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
+        
+        max_reward = 20
 
         ref_current_boss = db.reference(f"레이드/현재 레이드 보스")
         boss_name = ref_current_boss.get()
@@ -7793,7 +8053,7 @@ class hello(commands.Cog):
         # 내구도 비율 계산
         if total_dur > 0:
             durability_ratio = (total_dur - cur_dur) / total_dur  # 0과 1 사이의 값
-            reward_count = math.floor(20 * durability_ratio)  # 총 20개의 재료 중, 내구도에 비례한 개수만큼 지급
+            reward_count = math.floor(max_reward * durability_ratio)  # 총 20개의 재료 중, 내구도에 비례한 개수만큼 지급
         else:
             reward_count = 0  # 보스가 이미 처치된 경우
 
@@ -7808,7 +8068,7 @@ class hello(commands.Cog):
         for idx, (nickname, data) in enumerate(raid_after_data_sorted, start=1):
             damage = data['대미지']
             damage_ratio = round(damage/total_dur * 100)
-            reward_number = round((damage/total_dur) * 20)
+            reward_number = int(round(max_reward * 0.75))
             after_rankings.append(f"{nickname} - {damage} 대미지 ({damage_ratio}%)\n(강화재료 {reward_number}개 지급 예정!)")
 
         # 디스코드 임베드 생성
@@ -7826,6 +8086,7 @@ class hello(commands.Cog):
     @app_commands.choices(보스=[
     Choice(name='스우', value='스우'),
     Choice(name='브라움', value='브라움'),
+    Choice(name='카이사', value='카이사')
     ])
     async def raid_practice(self, interaction: discord.Interaction, 보스: str):
         nickname = interaction.user.name
