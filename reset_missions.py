@@ -136,6 +136,8 @@ yacht_data = {
         }
     ]
 }
+max_reward = 20
+
 ref_current_boss = db.reference(f"레이드/현재 레이드 보스")
 boss_name = ref_current_boss.get()
 
@@ -166,7 +168,7 @@ total_dur = raid_boss_data.get("총 내구도",0)
 # 내구도 비율 계산
 if total_dur > 0:
     durability_ratio = (total_dur - cur_dur) / total_dur  # 0과 1 사이의 값
-    reward_count = math.floor(20 * durability_ratio)  # 총 20개의 재료 중, 내구도에 비례한 개수만큼 지급
+    reward_count = math.floor(max_reward * durability_ratio)  # 총 20개의 재료 중, 내구도에 비례한 개수만큼 지급
 else:
     reward_count = 0  # 보스가 이미 처치된 경우
 
@@ -206,7 +208,7 @@ after_rankings = []
 for idx, (nickname, data) in enumerate(raid_after_data_sorted, start=1):
     damage = data['대미지']
     damage_ratio = round(damage/total_dur * 100)
-    reward_number = round((damage/total_dur) * 20)
+    reward_number = int(round(max_reward * 0.75))
     after_rankings.append(f"{nickname} - {damage} 대미지 ({damage_ratio}%)\n(강화재료 {reward_number}개 지급!)")
 
     ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
