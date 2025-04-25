@@ -849,6 +849,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     if evasion:
                         # 스킬 쿨타임 적용
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
+                        apply_status_for_turn(attacker, "장전", duration=skill_cooldown + 1)
                         return None, result_message, critical_bool 
                 elif skill_name == "강타":
                     skill_message, damage = smash(attacker,evasion,skill_level)
