@@ -477,7 +477,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             return message,skill_damage
             
-        def headShot(attacker, cooldown,skill_level):
+        def headShot(attacker, evasion, cooldown,skill_level):
             """액티브 - 헤드샷: 치명타 확률에 따라 증가하는 스킬 피해"""
             # 헤드샷: 공격력 100(+10)% + 스킬 증폭 100(+20)%, 치명타 확률 1%당 1% 추가 피해
             if not evasion:
@@ -844,7 +844,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
                         return None, result_message, critical_bool
                 elif skill_name == "헤드샷":
-                    skill_message, damage = headShot(attacker,evasion,skill_level)
+                    skill_message, damage = headShot(attacker,evasion,skill_cooldown,skill_level)
                     result_message += skill_message
                     if evasion:
                         # 스킬 쿨타임 적용
@@ -856,6 +856,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     result_message += skill_message
                     if evasion:
                         # 스킬 쿨타임 적용
+                        critical_bool = False
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
                         return None, result_message, critical_bool 
                 elif skill_name == "동상":
