@@ -485,7 +485,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_multiplier = (headShot_data['기본_스킬증폭_계수'] + headShot_data['레벨당_스킬증폭_계수_증가'] * skill_level)
                 attack_multiplier = (headShot_data['기본_공격력_계수'] + headShot_data['레벨당_공격력_계수_증가'] * skill_level)
                 skill_damage = (attacker["Spell"] * skill_multiplier + attacker["Attack"] * attack_multiplier) * (1 + attacker['CritChance'])
-                apply_status_for_turn(attacker, "장전", duration=cooldown + 1)
+                apply_status_for_turn(attacker, "장전", duration=cooldown)
                 message = f"**헤드샷** 사용!\n(스킬 증폭 {int(skill_multiplier * 100)}%) + (공격력 {int(attack_multiplier * 100)}%) x {round(attacker['CritChance'] * 100)}%의 스킬 피해!\n**장전**상태가 됩니다.\n"
             else:
                 skill_damage = 0
@@ -849,7 +849,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     if evasion:
                         # 스킬 쿨타임 적용
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
-                        apply_status_for_turn(attacker, "장전", duration=skill_cooldown + 1)
+                        apply_status_for_turn(attacker, "장전", duration=skill_cooldown)
                         return None, result_message, critical_bool 
                 elif skill_name == "강타":
                     skill_message, damage = smash(attacker,evasion,skill_level)
