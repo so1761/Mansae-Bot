@@ -121,6 +121,7 @@ class MissionView(View):
         super().__init__(timeout=None)
         self.add_item(CheckDailyMissionButton())
         self.add_item(CheckSeasonMissionButton())
+        self.add_item(CheckEnhanceSiteButton())
 
 class CheckDailyMissionButton(Button):
     def __init__(self):
@@ -140,6 +141,11 @@ class CheckDailyMissionButton(Button):
         view = MissionRewardView(completed_missions,"일일미션")
 
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+class CheckEnhanceSiteButton(Button):
+    def __init__(self):
+        super().__init__(label="무기⚒️", style=discord.ButtonStyle.url, url="http://35.203.142.179:3000/")
+        
 
 class CheckSeasonMissionButton(Button):
     def __init__(self):
