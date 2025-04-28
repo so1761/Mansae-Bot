@@ -358,172 +358,248 @@ export const tooltipTemplates = {
           >
             명상
           </span>
-          을 사용하여 모든 스킬 쿨타임이 감소하고, 1턴간 보호막을 얻으며 명상 스택이 증가합니다.
+          을 사용하여 모든 스킬 쿨타임이 감소하고,<br />
+          1턴간 보호막을 얻으며 명상 스택이 증가합니다.
         </div>
       </div>
     );
   },
   skill_tooltip_v8: (params) => {
-    const 플레어_피해 = Math.round(params.기본_피해량 + params.레벨 * params.레벨당_기본_피해량_증가);
-    const 플레어_증폭 = (params.기본_스킬증폭_계수 + params.레벨 * params.레벨당_스킬증폭_계수_증가) * 100;
-  
-    const 메테오_피해 = Math.round(params.강화_기본_피해량 + params.레벨 * params.레벨당_강화_기본_피해량_증가);
-    const 메테오_증폭 = (params.강화_기본_스킬증폭_계수 + params.레벨 * params.레벨당_강화_스킬증폭_계수_증가) * 100;
-  
+  // 플레어 스킬 피해 계산
+  const 플레어_기본피해 = Math.round(params.기본_피해량 + params.레벨 * params.레벨당_기본_피해량_증가);
+  const 플레어_증폭 = (params.기본_스킬증폭_계수 + params.레벨 * params.레벨당_스킬증폭_계수_증가) * 100; // 100 곱함
+  const 플레어_피해 = Math.round(플레어_기본피해 + (플레어_증폭 / 100) * params.스킬_증폭); // 다시 100으로 나누어 계산
+
+  // 메테오 스킬 피해 계산
+  const 메테오_기본피해 = Math.round(params.강화_기본_피해량 + params.레벨 * params.레벨당_강화_기본_피해량_증가);
+  const 메테오_증폭 = (params.강화_기본_스킬증폭_계수 + params.레벨 * params.레벨당_강화_스킬증폭_계수_증가) * 100; // 100 곱함
+  const 메테오_피해 = Math.round(메테오_기본피해 + (메테오_증폭 / 100) * params.스킬_증폭); // 다시 100으로 나누어 계산
+
+  // 화상 피해 계산
+  const 화상_피해 = Math.round(params.화상_대미지 * params.레벨)
     return (
       <div className="space-y-2 text-sm text-gray-600">
         <div>
-          명상 스택이 5 미만일 경우{" "}
+          플레어 : 대상에게 {" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
             data-tooltip-html={`
               <div style="font-size: 13px; line-height: 1.5;">
                 <span style="color: #f87171;">🔥 플레어</span><br />
-                · 기본 피해: ${플레어_피해}<br />
+                · 기본 피해: ${플레어_기본피해}<br />
                 · 스킬증폭 계수: ${플레어_증폭.toFixed(0)}%<br />
-                → 1턴간 화상 부여
               </div>
             `}
             data-tooltip-place="top"
           >
-            플레어
+            {플레어_피해}
           </span>
-          를 사용합니다.
+          의 스킬 피해를 입히고<br />1턴간{" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <div style="font-size: 13px; line-height: 1.5;">
+                <span style="color: #f87171;">🔥 화상</span><br />
+                턴마다 상대에게 고정 피해를 입힙니다.<br />
+                · 화상 피해량: ${화상_피해}<br />
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+            화상
+          </span>{" "}
+          상태이상을 부여합니다.
         </div>
         <div>
-          명상 스택이 5 이상일 경우{" "}
+          메테오 : 대상에게 {" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
             data-tooltip-html={`
               <div style="font-size: 13px; line-height: 1.5;">
                 <span style="color: #fb923c;">☄️ 메테오</span><br />
-                · 강화 피해: ${메테오_피해}<br />
+                · 기본 피해: ${메테오_기본피해}<br />
                 · 스킬증폭 계수: ${메테오_증폭.toFixed(0)}%<br />
-                → 1턴 기절 + 3턴 화상 부여
               </div>
             `}
             data-tooltip-place="top"
           >
-            메테오
+            {메테오_피해}
           </span>
-          를 사용합니다.
+          의 스킬 피해를 입히고<br />1턴간 기절, 3턴간{" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <div style="font-size: 13px; line-height: 1.5;">
+                <span style="color: #f87171;">🔥 화상</span><br />
+                턴마다 상대에게 고정 피해를 입힙니다.<br />
+                · 화상 피해량: ${화상_피해}<br />
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+            화상
+          </span> {" "}
+          상태이상을 부여합니다.
         </div>
       </div>
     );
   },
   skill_tooltip_v9: (params) => {
-    const 프로스트_피해 = Math.round(params.기본_피해량 + params.레벨 * params.레벨당_기본_피해량_증가);
+    const 프로스트_기본피해 = Math.round(params.기본_피해량 + params.레벨 * params.레벨당_기본_피해량_증가);
     const 프로스트_증폭 = (params.기본_스킬증폭_계수 + params.레벨 * params.레벨당_스킬증폭_계수_증가) * 100;
-  
-    const 블리자드_피해 = Math.round(params.강화_기본_피해량 + params.레벨 * params.레벨당_강화_기본_피해량_증가);
+    const 프로스트_피해 = Math.round(프로스트_기본피해 + (프로스트_증폭 / 100) * params.스킬_증폭); // 다시 100으로 나누어 계산
+
+    const 블리자드_기본피해 = Math.round(params.강화_기본_피해량 + params.레벨 * params.레벨당_강화_기본_피해량_증가);
     const 블리자드_증폭 = (params.강화_기본_스킬증폭_계수 + params.레벨 * params.레벨당_강화_스킬증폭_계수_증가) * 100;
-  
+    const 블리자드_피해 = Math.round(블리자드_기본피해 + (블리자드_증폭 / 100) * params.스킬_증폭); // 다시 100으로 나누어 계산
     return (
       <div className="space-y-2 text-sm text-gray-600">
         <div>
-          명상 스택이 5 미만일 경우{" "}
+          프로스트 : 대상에게 {" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
             data-tooltip-html={`
               <div style="font-size: 13px; line-height: 1.5;">
                 <span style="color: #60a5fa;">❄️ 프로스트</span><br />
-                · 기본 피해: ${프로스트_피해}<br />
+                · 기본 피해: ${프로스트_기본피해}<br />
                 · 스킬증폭 계수: ${프로스트_증폭.toFixed(0)}%<br />
-                → 1턴간 속박 부여
               </div>
             `}
             data-tooltip-place="top"
           >
-            프로스트
+            {프로스트_피해}
           </span>
-          를 사용합니다.
+          의 스킬 피해를 입히고<br />1턴간 속박 상태이상을 부여합니다.
         </div>
         <div>
-          명상 스택이 5 이상일 경우{" "}
+          블리자드 : 대상에게 {" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
             data-tooltip-html={`
               <div style="font-size: 13px; line-height: 1.5;">
                 <span style="color: #3b82f6;">🌨 블리자드</span><br />
-                · 강화 피해: ${블리자드_피해}<br />
+                · 기본 피해: ${블리자드_기본피해}<br />
                 · 스킬증폭 계수: ${블리자드_증폭.toFixed(0)}%<br />
-                → 3턴간 빙결 부여
               </div>
             `}
             data-tooltip-place="top"
           >
-            블리자드
+            {블리자드_피해}
           </span>
-          를 사용합니다.
+          의 스킬 피해를 입히고<br />3턴간{" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <div style="font-size: 13px; line-height: 1.5;">
+                <span style="color: #60a5fa;">❄️ 빙결</span><br />
+                · 공격받기 전까지 아무런 행동도 할 수 없습니다.
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+          빙결
+          </span>{" "} 
+          상태이상을 부여합니다.
         </div>
       </div>
     );
   },
   skill_tooltip_v10: (params) => {
-    const 블레스_피해 = Math.round(
+    const 블레스_기본피해 = Math.round(
       params.기본_피해량 + params.레벨 * params.레벨당_기본_피해량_증가
     );
     const 블레스_증폭 = (
       params.기본_스킬증폭_계수 +
       params.레벨 * params.레벨당_스킬증폭_계수_증가
     ) * 100;
+    const 블레스_피해 = Math.round(블레스_기본피해 + (블레스_증폭 / 100) * params.스킬_증폭); // 다시 100으로 나누어 계산
     const 회복량 = params.레벨당_치유량 * params.레벨;
   
-    const 저지먼트_피해 = Math.round(
+    const 저지먼트_기본피해 = Math.round(
       params.강화_기본_피해량 + params.레벨 * params.레벨당_강화_기본_피해량_증가
     );
     const 저지먼트_증폭 = (
       params.강화_기본_스킬증폭_계수 +
       params.레벨 * params.레벨당_강화_스킬증폭_계수_증가
     ) * 100;
+    const 저지먼트_피해 = Math.round(저지먼트_기본피해 + (저지먼트_증폭 / 100) * params.스킬_증폭); // 다시 100으로 나누어 계산
   
     return (
       <div className="space-y-2 text-sm text-gray-600">
         {/* 기본: 블레스 */}
         <div>
-          명상 스택이 5 미만일 경우{" "}
+          블레스 : 대상에게 {" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
             data-tooltip-html={`  
               <div style="font-size: 13px; line-height: 1.5;">
                 <span style="color: #f9fafb;">✨ 블레스</span><br />
-                · 기본 피해: ${블레스_피해}<br />
+                · 기본 피해: ${블레스_기본피해}<br />
                 · 스킬증폭 계수: ${블레스_증폭.toFixed(0)}%<br />
-                · 회복량: ${회복량}<br />
-                → 내구도 회복 &nbsp;❤️
               </div>
             `}
             data-tooltip-place="top"
           >
-            블레스
+            {블레스_피해}
           </span>
-          를 사용합니다.
+          의 스킬 피해를 입히고<br />
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`  
+              <div style="font-size: 13px; line-height: 1.5;">
+                <span style="color: #f9fafb;">✨ 블레스</span><br />
+                · 레벨 당 회복량: ${params.레벨당_치유량}<br />
+                · 총 회복량: ${회복량}<br />
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+            {회복량}
+          </span>
+          만큼 내구도를 회복합니다.
         </div>
   
         {/* 강화: 저지먼트 */}
         <div>
-          명상 스택이 5 이상일 경우{" "}
+          저지먼트 : 대상에게 {" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
             data-tooltip-html={`  
               <div style="font-size: 13px; line-height: 1.5;">
                 <span style="color: #fde68a;">🌟 저지먼트</span><br />
-                · 강화 피해: ${저지먼트_피해}<br />
+                · 기본 피해: ${저지먼트_기본피해}<br />
                 · 스킬증폭 계수: ${저지먼트_증폭.toFixed(0)}%<br />
-                → 3턴간 &nbsp;<span style="color: #f87171;">침묵</span> 부여
               </div>
             `}
             data-tooltip-place="top"
           >
-            저지먼트
+            {저지먼트_피해}
           </span>
-          를 사용합니다.
+          의 스킬 피해를 입히고<br />3턴간{" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <div style="font-size: 13px; line-height: 1.5;">
+                <span style="color: #60a5fa;">🌟 침묵</span><br />
+                · 스킬을 사용할 수 없습니다.
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+          침묵
+          </span>{" "} 
+          상태이상을 부여합니다.
         </div>
       </div>
     );

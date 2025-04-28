@@ -755,7 +755,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             # 기본 : Flare(플레어) 강화 : Meteor(메테오)
             # 플레어 : 기본 피해 + 스킬증폭 비례의 스킬 피해. 1턴간 '화상' 상태이상 부여
             # 메테오 : 강화 기본 피해 + 스킬증폭 비례의 스킬 피해. 1턴간 기절 부여, 3턴간 '화상' 상태이상 부여
-            fire_data = skill_data_firebase['화염']['values']
+            fire_data = skill_data_firebase['화염 마법']['values']
             meditation = attacker.get("명상",0) # 현재 명상 스택 확인
             if meditation >= 5: # 명상 스택이 5 이상일 경우 스택 5 제거 후 강화된 스킬 시전
                 # 메테오
@@ -790,7 +790,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             # 기본 : Frost(프로스트) 강화 : Blizzard(블리자드)
             # 프로스트 : 기본 피해 + 스킬증폭 비례의 스킬 피해. 1턴간 '속박' 상태이상 부여
             # 블리자드 : 강화 기본 피해 + 스킬증폭 비례의 스킬 피해. 3턴간 '빙결' 상태이상 부여 (빙결 : 공격받기 전까지 계속 스턴 상태)
-            ice_data = skill_data_firebase['냉기']['values']
+            ice_data = skill_data_firebase['냉기 마법']['values']
             meditation = attacker.get("명상",0) # 현재 명상 스택 확인
             if meditation >= 5: # 명상 스택이 5 이상일 경우 스택 5 제거 후 강화된 스킬 시전
                 # 블리자드
@@ -822,7 +822,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             # 기본 : Bless(블레스) 강화 : Judgment(저지먼트)
             # 블레스 : 기본 피해 + 스킬증폭 비례의 스킬 피해. 정해진 수치만큼 회복
             # 저지먼트 : 강화 기본 피해 + 스킬증폭 비례의 스킬 피해. 3턴간 '침묵' 상태이상 부여 (침묵 : 스킬 사용 불가능)
-            holy_data = skill_data_firebase['신성']['values']
+            holy_data = skill_data_firebase['신성 마법']['values']
             meditation = attacker.get("명상",0) # 현재 명상 스택 확인
             if meditation >= 5: # 명상 스택이 5 이상일 경우 스택 5 제거 후 강화된 스킬 시전
                 # 저지먼트
