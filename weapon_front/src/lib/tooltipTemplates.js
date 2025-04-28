@@ -335,4 +335,197 @@ export const tooltipTemplates = {
       </div>
     );
   },
+  skill_tooltip_v7: (params) => {
+    const 보호막량 = Math.round(
+      params.스킬_증폭 * (params.스킬증폭당_보호막_계수 + params.레벨 * params.레벨당_보호막_계수_증가)
+    );
+  
+    return (
+      <div className="space-y-2 text-sm text-gray-600">
+        <div>
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <div style="font-size: 13px; line-height: 1.5;">
+                <span style="color: #34d399;">🧘 명상 효과</span><br />
+                · 모든 스킬 쿨타임 1턴 감소<br />
+                · 스킬 증폭 기반 보호막 생성<br />
+                → 보호막: ${보호막량}
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+            명상
+          </span>
+          을 사용하여 모든 스킬 쿨타임이 감소하고, 1턴간 보호막을 얻으며 명상 스택이 증가합니다.
+        </div>
+      </div>
+    );
+  },
+  skill_tooltip_v8: (params) => {
+    const 플레어_피해 = Math.round(params.기본_피해량 + params.레벨 * params.레벨당_기본_피해량_증가);
+    const 플레어_증폭 = (params.기본_스킬증폭_계수 + params.레벨 * params.레벨당_스킬증폭_계수_증가) * 100;
+  
+    const 메테오_피해 = Math.round(params.강화_기본_피해량 + params.레벨 * params.레벨당_강화_기본_피해량_증가);
+    const 메테오_증폭 = (params.강화_기본_스킬증폭_계수 + params.레벨 * params.레벨당_강화_스킬증폭_계수_증가) * 100;
+  
+    return (
+      <div className="space-y-2 text-sm text-gray-600">
+        <div>
+          명상 스택이 5 미만일 경우{" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <div style="font-size: 13px; line-height: 1.5;">
+                <span style="color: #f87171;">🔥 플레어</span><br />
+                · 기본 피해: ${플레어_피해}<br />
+                · 스킬증폭 계수: ${플레어_증폭.toFixed(0)}%<br />
+                → 1턴간 화상 부여
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+            플레어
+          </span>
+          를 사용합니다.
+        </div>
+        <div>
+          명상 스택이 5 이상일 경우{" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <div style="font-size: 13px; line-height: 1.5;">
+                <span style="color: #fb923c;">☄️ 메테오</span><br />
+                · 강화 피해: ${메테오_피해}<br />
+                · 스킬증폭 계수: ${메테오_증폭.toFixed(0)}%<br />
+                → 1턴 기절 + 3턴 화상 부여
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+            메테오
+          </span>
+          를 사용합니다.
+        </div>
+      </div>
+    );
+  },
+  skill_tooltip_v9: (params) => {
+    const 프로스트_피해 = Math.round(params.기본_피해량 + params.레벨 * params.레벨당_기본_피해량_증가);
+    const 프로스트_증폭 = (params.기본_스킬증폭_계수 + params.레벨 * params.레벨당_스킬증폭_계수_증가) * 100;
+  
+    const 블리자드_피해 = Math.round(params.강화_기본_피해량 + params.레벨 * params.레벨당_강화_기본_피해량_증가);
+    const 블리자드_증폭 = (params.강화_기본_스킬증폭_계수 + params.레벨 * params.레벨당_강화_스킬증폭_계수_증가) * 100;
+  
+    return (
+      <div className="space-y-2 text-sm text-gray-600">
+        <div>
+          명상 스택이 5 미만일 경우{" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <div style="font-size: 13px; line-height: 1.5;">
+                <span style="color: #60a5fa;">❄️ 프로스트</span><br />
+                · 기본 피해: ${프로스트_피해}<br />
+                · 스킬증폭 계수: ${프로스트_증폭.toFixed(0)}%<br />
+                → 1턴간 속박 부여
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+            프로스트
+          </span>
+          를 사용합니다.
+        </div>
+        <div>
+          명상 스택이 5 이상일 경우{" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <div style="font-size: 13px; line-height: 1.5;">
+                <span style="color: #3b82f6;">🌨 블리자드</span><br />
+                · 강화 피해: ${블리자드_피해}<br />
+                · 스킬증폭 계수: ${블리자드_증폭.toFixed(0)}%<br />
+                → 3턴간 빙결 부여
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+            블리자드
+          </span>
+          를 사용합니다.
+        </div>
+      </div>
+    );
+  },
+  skill_tooltip_v10: (params) => {
+    const 블레스_피해 = Math.round(
+      params.기본_피해량 + params.레벨 * params.레벨당_기본_피해량_증가
+    );
+    const 블레스_증폭 = (
+      params.기본_스킬증폭_계수 +
+      params.레벨 * params.레벨당_스킬증폭_계수_증가
+    ) * 100;
+    const 회복량 = params.레벨당_치유량 * params.레벨;
+  
+    const 저지먼트_피해 = Math.round(
+      params.강화_기본_피해량 + params.레벨 * params.레벨당_강화_기본_피해량_증가
+    );
+    const 저지먼트_증폭 = (
+      params.강화_기본_스킬증폭_계수 +
+      params.레벨 * params.레벨당_강화_스킬증폭_계수_증가
+    ) * 100;
+  
+    return (
+      <div className="space-y-2 text-sm text-gray-600">
+        {/* 기본: 블레스 */}
+        <div>
+          명상 스택이 5 미만일 경우{" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`  
+              <div style="font-size: 13px; line-height: 1.5;">
+                <span style="color: #f9fafb;">✨ 블레스</span><br />
+                · 기본 피해: ${블레스_피해}<br />
+                · 스킬증폭 계수: ${블레스_증폭.toFixed(0)}%<br />
+                · 회복량: ${회복량}<br />
+                → 내구도 회복 &nbsp;❤️
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+            블레스
+          </span>
+          를 사용합니다.
+        </div>
+  
+        {/* 강화: 저지먼트 */}
+        <div>
+          명상 스택이 5 이상일 경우{" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`  
+              <div style="font-size: 13px; line-height: 1.5;">
+                <span style="color: #fde68a;">🌟 저지먼트</span><br />
+                · 강화 피해: ${저지먼트_피해}<br />
+                · 스킬증폭 계수: ${저지먼트_증폭.toFixed(0)}%<br />
+                → 3턴간 &nbsp;<span style="color: #f87171;">침묵</span> 부여
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+            저지먼트
+          </span>
+          를 사용합니다.
+        </div>
+      </div>
+    );
+  },
 };

@@ -236,6 +236,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 if character["Evasion"] > evasion_max: 
                     character["Evasion"] = evasion_max
 
+            if "둔화" in character["Status"]:
+                slow_amount = character['Status']['둔화']['value']
+                character["Speed"] *= (1 - slow_amount)
+
             if "고속충전_은신" in character["Status"]:
                 skill_level = character["Skills"]["고속충전"]["레벨"]
                 supercharger_data = skill_data_firebase['고속충전']['values']
@@ -734,28 +738,117 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             return message,total_damage
         
         def meditate(attacker, skill_level):
-            # 명상 : 쿨타임 감소
+            # 명상 : 모든 스킬 쿨타임 감소 + 스킬 증폭 비례 보호막 획득, 명상 스택 획득
             meditate_data = skill_data_firebase['명상']['values']
             shield_amount = int(round(attacker['Spell'] * (meditate_data['스킬증폭당_보호막_계수'] + meditate_data['레벨당_보호막_계수_증가'] * skill_level)))
             for skill, cooldown_data in attacker["Skills"].items():
                 if cooldown_data["현재 쿨타임"] > 0:
                     attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 현재 쿨타임 감소
-            apply_status_for_turn(attacker,"보호막",2,shield_amount)
-            message = f"**명상** 사용!\n 모든 스킬의 현재 쿨타임이 1턴 감소하고 1턴간 {shield_amount}의 보호막 생성!\n"
+            attacker['명상'] = attacker.get("명상", 0) + 1 # 명상 스택 + 1 추가
+            apply_status_for_turn(attacker,"보호막",1,shield_amount)
+            message = f"**명상** 사용!(현재 명상 스택 : {attacker['명상']})\n 모든 스킬의 현재 쿨타임이 1턴 감소하고 1턴간 {shield_amount}의 보호막 생성!\n"
 
             skill_damage = 0
             return message,skill_damage
         
-        def ignis(attacker):
-            # 
-            pass
+        def fire(attacker, defender, evasion, skill_level):
+            # 기본 : Flare(플레어) 강화 : Meteor(메테오)
+            # 플레어 : 기본 피해 + 스킬증폭 비례의 스킬 피해. 1턴간 '화상' 상태이상 부여
+            # 메테오 : 강화 기본 피해 + 스킬증폭 비례의 스킬 피해. 1턴간 기절 부여, 3턴간 '화상' 상태이상 부여
+            fire_data = skill_data_firebase['화염']['values']
+            meditation = attacker.get("명상",0) # 현재 명상 스택 확인
+            if meditation >= 5: # 명상 스택이 5 이상일 경우 스택 5 제거 후 강화된 스킬 시전
+                # 메테오
+                meditation -= 5 # 명상 스택 5 제거
+                attacker['명상'] = meditation
+                if not evasion:
+                    base_damage = fire_data['강화_기본_피해량'] + fire_data['레벨당_강화_기본_피해량_증가'] * skill_level
+                    skill_multiplier = fire_data['강화_기본_스킬증폭_계수'] + fire_data['레벨당_강화_스킬증폭_계수_증가'] * skill_level
+                    skill_damage = base_damage + attacker['Spell'] * skill_multiplier
+                    burn_damage = fire_data['화상_대미지'] * skill_level
+                    apply_status_for_turn(defender, "기절", 1)
+                    apply_status_for_turn(defender, "화상", 3, burn_damage)
+                    message = f"**메테오** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 기절 부여 및 3턴간 화상 부여!"
+                else:
+                    skill_damage = 0
+                    message = f"**메테오가 빗나갔습니다!**\n"
+            else:
+                # 플레어
+                if not evasion:
+                    base_damage = fire_data['기본_피해량'] + fire_data['레벨당_기본_피해량_증가'] * skill_level
+                    skill_multiplier = fire_data['기본_스킬증폭_계수'] + fire_data['레벨당_스킬증폭_계수_증가'] * skill_level
+                    skill_damage = base_damage + attacker['Spell'] * skill_multiplier
+                    burn_damage = fire_data['화상_대미지'] * skill_level
+                    apply_status_for_turn(defender, "화상", 1, burn_damage)
+                    message = f"**플레어** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 화상 부여!"
+                else:
+                    skill_damage = 0
+                    message = f"**플레어가 빗나갔습니다!**\n"
+            return message,skill_damage
         
-        def blizzard(attacker):
-            pass
+        def ice(attacker,defender, evasion, skill_level):
+            # 기본 : Frost(프로스트) 강화 : Blizzard(블리자드)
+            # 프로스트 : 기본 피해 + 스킬증폭 비례의 스킬 피해. 1턴간 '속박' 상태이상 부여
+            # 블리자드 : 강화 기본 피해 + 스킬증폭 비례의 스킬 피해. 3턴간 '빙결' 상태이상 부여 (빙결 : 공격받기 전까지 계속 스턴 상태)
+            ice_data = skill_data_firebase['냉기']['values']
+            meditation = attacker.get("명상",0) # 현재 명상 스택 확인
+            if meditation >= 5: # 명상 스택이 5 이상일 경우 스택 5 제거 후 강화된 스킬 시전
+                # 블리자드
+                meditation -= 5 # 명상 스택 5 제거
+                attacker['명상'] = meditation
+                if not evasion:
+                    base_damage = ice_data['강화_기본_피해량'] + ice_data['레벨당_강화_기본_피해량_증가'] * skill_level
+                    skill_multiplier = ice_data['강화_기본_스킬증폭_계수'] + ice_data['레벨당_강화_스킬증폭_계수_증가'] * skill_level
+                    skill_damage = base_damage + attacker['Spell'] * skill_multiplier
+                    apply_status_for_turn(defender, "빙결", 3)
+                    message = f"**블리자드** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n3턴간 빙결 부여!"
+                else:
+                    skill_damage = 0
+                    message = f"**블리자드가 빗나갔습니다!**\n"
+            else:
+                # 프로스트
+                if not evasion:
+                    base_damage = ice_data['기본_피해량'] + ice_data['레벨당_기본_피해량_증가'] * skill_level
+                    skill_multiplier = ice_data['기본_스킬증폭_계수'] + ice_data['레벨당_스킬증폭_계수_증가'] * skill_level
+                    skill_damage = base_damage + attacker['Spell'] * skill_multiplier
+                    apply_status_for_turn(defender, "속박", 1)
+                    message = f"**프로스트** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 속박 부여!"
+                else:
+                    skill_damage = 0
+                    message = f"**프로스트가 빗나갔습니다!**\n"
+            return message,skill_damage
 
-        def lightning(attacker):
-            # 빛의 세례
-            pass
+        def holy(attacker,defender, evasion, skill_level):
+            # 기본 : Bless(블레스) 강화 : Judgment(저지먼트)
+            # 블레스 : 기본 피해 + 스킬증폭 비례의 스킬 피해. 정해진 수치만큼 회복
+            # 저지먼트 : 강화 기본 피해 + 스킬증폭 비례의 스킬 피해. 3턴간 '침묵' 상태이상 부여 (침묵 : 스킬 사용 불가능)
+            holy_data = skill_data_firebase['신성']['values']
+            meditation = attacker.get("명상",0) # 현재 명상 스택 확인
+            if meditation >= 5: # 명상 스택이 5 이상일 경우 스택 5 제거 후 강화된 스킬 시전
+                # 저지먼트
+                meditation -= 5 # 명상 스택 5 제거
+                attacker['명상'] = meditation
+                if not evasion:
+                    base_damage = holy_data['강화_기본_피해량'] + holy_data['레벨당_강화_기본_피해량_증가'] * skill_level
+                    skill_multiplier = holy_data['강화_기본_스킬증폭_계수'] + holy_data['레벨당_강화_스킬증폭_계수_증가'] * skill_level
+                    skill_damage = base_damage + attacker['Spell'] * skill_multiplier
+                    apply_status_for_turn(defender, "침묵", 3)
+                    message = f"**저지먼트** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n3턴간 침묵 부여!"
+                else:
+                    skill_damage = 0
+                    message = f"**저지먼트가 빗나갔습니다!**\n"
+            else:
+                # 블레스
+                if not evasion:
+                    base_damage = holy_data['기본_피해량'] + holy_data['레벨당_기본_피해량_증가'] * skill_level
+                    skill_multiplier = holy_data['기본_스킬증폭_계수'] + holy_data['레벨당_스킬증폭_계수_증가'] * skill_level
+                    skill_damage = base_damage + attacker['Spell'] * skill_multiplier
+                    heal_amount = holy_data['레벨당_치유량'] * skill_level
+                    message = f"**블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}만큼 내구도 회복!\n내구도: [{attacker['HP']}] → [{attacker['HP'] + heal_amount}] ❤️ (+{heal_amount})"
+                else:
+                    skill_damage = 0
+                    message = f"**블레스가 빗나갔습니다!**\n"
+            return message,skill_damage
         
         def second_skin(target, skill_level, value):
             """패시브 - 두번째 피부: 공격 적중 시 플라즈마 중첩 부여, 5스택 시 현재 체력 비례 10% 대미지"""
@@ -917,7 +1010,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     return damage, critical_bool, False, False, skill_message  # 스킬 피해 적용
                 else:
                     return 0, critical_bool, False, evasion, skill_message
-            
+
             if evasion: # 회피
                 return 0, False, False, True, ""
 
@@ -1001,6 +1094,15 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         return None, result_message, critical_bool
                 elif skill_name == "명상":
                     skill_message, damage= meditate(attacker,skill_level)
+                    result_message += skill_message
+                elif skill_name == "화염 마법":
+                    skill_message, damage= fire(attacker,defender, evasion,skill_level)
+                    result_message += skill_message
+                elif skill_name == "냉기 마법":
+                    skill_message, damage= ice(attacker,defender, evasion,skill_level)
+                    result_message += skill_message
+                elif skill_name == "신성 마법":
+                    skill_message, damage= holy(attacker,defender, evasion,skill_level)
                     result_message += skill_message
                 elif skill_name == "강타":
                     skill_message, damage = smash(attacker,evasion,skill_level)
@@ -1308,6 +1410,50 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 else:
                     await weapon_battle_thread.send(embed = battle_embed)
 
+            if "화상" in attacker["Status"]:
+                burn_damage = attacker["Status"]["화상"]["value"]
+                shield_message = ""
+                remain_shield = ""
+                if attacker['name'] == challenger['name']: # 도전자 공격
+                    battle_embed = discord.Embed(title=f"{attacker['name']}의 화상!🔥", color=discord.Color.red())
+                elif attacker['name'] == opponent['name']: # 상대 공격
+                    battle_embed = discord.Embed(title=f"{attacker['name']}의 화상!🔥", color=discord.Color.blue())
+                if "보호막" in attacker['Status']:
+                    shield_amount = attacker["Status"]["보호막"]["value"]
+                    if shield_amount >= burn_damage:
+                        attacker["Status"]["보호막"]["value"] -= burn_damage
+                        shield_message = f" 🛡️피해 {burn_damage} 흡수!"
+                        burn_damage = 0
+                    else:
+                        burn_damage -= shield_amount
+                        shield_message = f" 🛡️피해 {burn_damage} 흡수!"
+                        attacker["Status"]["보호막"]["value"] = 0
+                    if "보호막" in attacker["Status"] and attacker["Status"]["보호막"]["value"] <= 0: # 보호막이 0이 되면 삭제
+                        del attacker["Status"]["보호막"]
+
+                if "보호막" in attacker['Status']:
+                    shield_amount = attacker["Status"]["보호막"]["value"]
+                    remain_shield = f"(🛡️보호막 {shield_amount})"
+                    
+                attacker["HP"] -= burn_damage
+                battle_embed.add_field(name="", value = f"화상 상태로 인하여 {burn_damage} 대미지를 받았습니다!{shield_message}", inline = False)
+                battle_embed.add_field(name="남은 턴", value = f"화상 상태 남은 턴 : {attacker['Status']['화상']['duration']}", inline = False)
+
+                if attacker['name'] == challenger['name']: # 도전자 공격
+                    battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
+
+                elif attacker['name'] == opponent['name']: # 상대 공격
+                    if raid:
+                        battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['FullHP']}]{remain_shield}**")
+                    else:
+                        battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
+
+                if attacker["HP"] <= 0:
+                    await end(attacker,defender,"defender",raid)
+                    break
+                else:
+                    await weapon_battle_thread.send(embed = battle_embed)
+
             if "기절" in attacker["Status"]: # 기절 상태일 경우 바로 턴을 넘김
                 # 공격자와 방어자 변경
                 battle_embed = discord.Embed(title=f"{attacker['name']}의 턴!⚔️", color=discord.Color.blue())
@@ -1324,6 +1470,21 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     await asyncio.sleep(2)  # 턴 간 딜레이
                 continue
                     
+            if "빙결" in attacker["Status"]: # 빙결 상태일 경우 바로 턴을 넘김
+                # 공격자와 방어자 변경
+                battle_embed = discord.Embed(title=f"{attacker['name']}의 턴!⚔️", color=discord.Color.blue())
+                battle_embed.add_field(name="행동 불가!", value = f"빙결 상태이상으로 인해 행동할 수 없습니다!❄️\n빙결 상태 남은 턴 : {attacker['Status']['빙결']['duration']}", inline = False)
+                if "장전" in attacker["Status"]:  # 장전이 있는지 확인
+                    attacker["Status"]["장전"]["duration"] += 1
+                remove_status_effects(attacker,defender)
+                update_status(attacker)  # 공격자의 상태 업데이트 (은신 등)
+                attacker, defender = defender, attacker
+                await weapon_battle_thread.send(embed = battle_embed)
+                if turn >= 30:
+                    await asyncio.sleep(1)
+                else:
+                    await asyncio.sleep(2)  # 턴 간 딜레이
+                continue
 
             # 가속 확률 계산 (스피드 5당 1% 확률)
             speed = attacker.get("Speed", 0)
@@ -1345,6 +1506,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             if attacker["Status"]["장전"]["duration"] <= 0:
                                 del attacker["Status"]["장전"]
                     result_message += f"💨 {attacker['name']}의 가속! {skill}의 쿨타임이 추가로 감소했습니다!\n"
+            
+            slienced = False
+            if '침묵' in attacker['Status']:
+                slienced = True
 
             if "자력 발산" in skill_names:
                 skill_name = "자력 발산"
@@ -1405,9 +1570,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
-                    attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
-                    result_message += invisibility(attacker,skill_level)
-                    used_skill.append(skill_name)
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
+                        result_message += invisibility(attacker,skill_level)
+                        used_skill.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1434,10 +1602,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
-                    attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
-                    if "차징샷" in skill_names:
-                        result_message += charging_shot(attacker,defender,evasion,skill_level)
-                        used_skill.append(skill_name)
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
+                        if "차징샷" in skill_names:
+                            result_message += charging_shot(attacker,defender,evasion,skill_level)
+                            used_skill.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1448,9 +1619,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
-                    if skill_name in skill_names:
-                        used_skill.append(skill_name)
-                        skill_attack_names.append(skill_name)
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        if skill_name in skill_names:
+                            used_skill.append(skill_name)
+                            skill_attack_names.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1461,10 +1635,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
-                    attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
-                    if "고속충전" in skill_names:
-                        result_message += supercharger(attacker,skill_level)
-                        used_skill.append(skill_name)
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
+                        if "고속충전" in skill_names:
+                            result_message += supercharger(attacker,skill_level)
+                            used_skill.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1475,9 +1652,76 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
-                    if skill_name in skill_names:
-                        used_skill.append(skill_name)
-                        skill_attack_names.append(skill_name)
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        if skill_name in skill_names:
+                            used_skill.append(skill_name)
+                            skill_attack_names.append(skill_name)
+                else:
+                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+
+            if "명상" in skill_names:
+                skill_name = "명상"
+                skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
+                skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
+                skill_level = attacker["Skills"][skill_name]["레벨"]
+
+                if skill_cooldown_current == 0:
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        if skill_name in skill_names:
+                            used_skill.append(skill_name)
+                            skill_attack_names.append(skill_name)
+                else:
+                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+
+            if "화염 마법" in skill_names:
+                skill_name = "화염 마법"
+                skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
+                skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
+                skill_level = attacker["Skills"][skill_name]["레벨"]
+
+                if skill_cooldown_current == 0:
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        if skill_name in skill_names:
+                            used_skill.append(skill_name)
+                            skill_attack_names.append(skill_name)
+                else:
+                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+
+            if "냉기 마법" in skill_names:
+                skill_name = "냉기 마법"
+                skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
+                skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
+                skill_level = attacker["Skills"][skill_name]["레벨"]
+
+                if skill_cooldown_current == 0:
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        if skill_name in skill_names:
+                            used_skill.append(skill_name)
+                            skill_attack_names.append(skill_name)
+                else:
+                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+            
+            if "신성 마법" in skill_names:
+                skill_name = "신성 마법"
+                skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
+                skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
+                skill_level = attacker["Skills"][skill_name]["레벨"]
+
+                if skill_cooldown_current == 0:
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        if skill_name in skill_names:
+                            used_skill.append(skill_name)
+                            skill_attack_names.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1488,9 +1732,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
-                    if skill_name in skill_names:
-                        used_skill.append(skill_name)
-                        skill_attack_names.append(skill_name)
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        if skill_name in skill_names:
+                            used_skill.append(skill_name)
+                            skill_attack_names.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1501,9 +1748,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
-                    if skill_name in skill_names:
-                        used_skill.append(skill_name)
-                        skill_attack_names.append(skill_name)
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        if skill_name in skill_names:
+                            used_skill.append(skill_name)
+                            skill_attack_names.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1514,10 +1764,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
-                    attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
-                    if "사냥본능" in skill_names:
-                        result_message += killer_instinct(attacker,defender,skill_level)
-                        used_skill.append(skill_name)
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
+                        if "사냥본능" in skill_names:
+                            result_message += killer_instinct(attacker,defender,skill_level)
+                            used_skill.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1528,9 +1781,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
-                    if skill_name in skill_names:
-                        used_skill.append(skill_name)
-                        skill_attack_names.append(skill_name)
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        if skill_name in skill_names:
+                            used_skill.append(skill_name)
+                            skill_attack_names.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1541,10 +1797,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
-                    attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
-                    if "창격" in skill_names:
-                        result_message += spearShot(attacker,evasion,skill_level)
-                        used_skill.append(skill_name)
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
+                        if "창격" in skill_names:
+                            result_message += spearShot(attacker,evasion,skill_level)
+                            used_skill.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
      
@@ -1555,9 +1814,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
-                    if skill_name in skill_names:
-                        used_skill.append(skill_name)
-                        skill_attack_names.append(skill_name)
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        if skill_name in skill_names:
+                            used_skill.append(skill_name)
+                            skill_attack_names.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1568,9 +1830,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
-                    if skill_name in skill_names:
-                        used_skill.append(skill_name)
-                        skill_attack_names.append(skill_name)
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        if skill_name in skill_names:
+                            used_skill.append(skill_name)
+                            skill_attack_names.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1581,9 +1846,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
-                    if skill_name in skill_names:
-                        used_skill.append(skill_name)
-                        skill_attack_names.append(skill_name)
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        if skill_name in skill_names:
+                            used_skill.append(skill_name)
+                            skill_attack_names.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1611,9 +1879,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
-                    if skill_name in skill_names:
-                        used_skill.append(skill_name)
-                        skill_attack_names.append(skill_name)
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        if skill_name in skill_names:
+                            used_skill.append(skill_name)
+                            skill_attack_names.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1624,9 +1895,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
-                    if skill_name in skill_names:
-                        used_skill.append(skill_name)
-                        skill_attack_names.append(skill_name)
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                    else:
+                        if skill_name in skill_names:
+                            used_skill.append(skill_name)
+                            skill_attack_names.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1641,6 +1915,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     apply_status_for_turn(defender, "출혈", duration=bleed_turns, value = bleed_damage)
                     result_message +=f"\n**🩸{attacker['name']}의 은신 공격**!\n{bleed_turns}턴간 출혈 상태 부여!\n"   
                 result_message +=f"\n**{attacker['name']}의 은신 공격**!\n방어력 관통 + {DefenseIgnore_increase}!\n{round(invisibility_data['은신공격_레벨당_피해_배율'] * skill_level * 100)}% 추가 대미지!\n"
+
+            if skill_attack_names or attacked: # 공격시 상대의 빙결 상태 해제
+                if skill_attack_names != ['명상']:
+                    if '빙결' in defender['Status']:
+                        del defender['Status']['빙결']
+                        battle_embed.add_field(name="❄️빙결 상태 해제!", value = f"공격을 받아 빙결 상태가 해제되었습니다!\n")
 
             # 공격 처리 (돌진 후 또는 후퇴 후)
             if skill_attack_names: # 공격 스킬 사용 시
@@ -2010,7 +2290,7 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
         
         basic_skill_levelup = inherit_log.get("기본 스킬 레벨 증가", 0)
         
-        basic_skills = ["속사", "은신", "강타", "헤드샷", "창격", "수확"]
+        basic_skills = ["속사", "은신", "강타", "헤드샷", "창격", "수확", "명상", "화염 마법", "냉기 마법", "신성 마법"]
         skills = base_weapon_stat["스킬"]
         for skill_name in basic_skills:
             if skill_name in skills:
@@ -7657,6 +7937,9 @@ class hello(commands.Cog):
     Choice(name='조총', value='조총'),
     Choice(name='창', value='창'),
     Choice(name='낫', value='낫'),
+    Choice(name='스태프-화염', value='스태프-화염'),
+    Choice(name='스태프-냉기', value='스태프-냉기'),
+    Choice(name='스태프-신성', value='스태프-신성'),
     ])
     @app_commands.describe(이름 = "무기의 이름을 입력하세요", 무기타입 = "무기의 타입을 선택하세요")
     async def create_weapon(self,interaction: discord.Interaction, 이름: str, 무기타입: str):
@@ -7687,13 +7970,13 @@ class hello(commands.Cog):
             weapon_embed.add_field(name="무기 타입", value=f"{무기타입}", inline=False)
             weapon_embed.add_field(name="내구도", value=f"{weapon_data.get('내구도', 0)}", inline=False)
             weapon_embed.add_field(name="공격력", value=f"{weapon_data.get('공격력', 0)}", inline=True)
+            weapon_embed.add_field(name="스킬 증폭", value=f"{weapon_data.get('스킬 증폭', 0)}", inline=True)
             weapon_embed.add_field(name="방어력", value=f"{weapon_data.get('방어력', 0)}", inline=True)
             weapon_embed.add_field(name="스피드", value=f"{weapon_data.get('스피드', 0)}", inline=True)
             weapon_embed.add_field(name="명중", value=f"{weapon_data.get('명중', 0)}", inline=True)
             weapon_embed.add_field(name="사거리", value=f"{weapon_data.get('사거리', 0)}", inline=True)
             weapon_embed.add_field(name="치명타 확률", value=f"{weapon_data.get('치명타 확률', 0) * 100:.1f}%", inline=True)
             weapon_embed.add_field(name="치명타 대미지", value=f"{weapon_data.get('치명타 대미지', 0) * 100:.1f}%", inline=True)
-
             
         else:
             weapon_enhanced = weapon_data.get("강화",0)
@@ -7785,6 +8068,9 @@ class hello(commands.Cog):
                 discord.SelectOption(label="조총", description="긴 사거리에서 강한 한 방"),
                 discord.SelectOption(label="창", description="준수한 사거리와 거리 조절 능력"),
                 discord.SelectOption(label="낫", description="흡혈을 통한 유지력"),
+                discord.SelectOption(label="스태프-화염", description="강력한 화력과 지속적 화상 피해"),
+                discord.SelectOption(label="스태프-냉기", description="얼음과 관련된 군중제어기 보유"),
+                discord.SelectOption(label="스태프-신성", description="치유 능력과 침묵 부여"),
             ]
         )
 
