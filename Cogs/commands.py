@@ -218,6 +218,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             character["Attack"] = character["BaseAttack"]
             character["Accuracy"] = character["BaseAccuracy"]
             character["Speed"] = character["BaseSpeed"]
+            character["DamageEnhance"] = 0
             character["DefenseIgnore"] = 0
 
             # 현재 적용 중인 상태 효과를 확인하고 반영
@@ -233,12 +234,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 evasion_max = invisibility_data['최대_회피율']
                 character["Evasion"] = round(base_evasion + skill_level * evasion_increase, 1) # 회피율 증가
 
+                # 피해 증가
+                character["DamageEnhance"] += invisibility_data['은신공격_레벨당_피해_배율'] * skill_level
                 if character["Evasion"] > evasion_max: 
                     character["Evasion"] = evasion_max
-
-            if "둔화" in character["Status"]:
-                slow_amount = character['Status']['둔화']['value']
-                character["Speed"] *= (1 - slow_amount)
 
             if "고속충전_은신" in character["Status"]:
                 skill_level = character["Skills"]["고속충전"]["레벨"]
@@ -257,6 +256,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 speedup_level = supercharger_data['속도증가_레벨당']
                 speedup_value = base_speedup + speedup_level * skill_level
                 character["Speed"] += speedup_value
+
+            if "둔화" in character["Status"]:
+                slow_amount = character['Status']['둔화']['value']
+                if slow_amount > 1:
+                    slow_amount = 1
+                character["Speed"] *= (1 - slow_amount)
+                character["Speed"] = int(character["Speed"])
 
             if "차징샷" in character["Status"]:
                 skill_level = character["Skills"]["차징샷"]["레벨"]
@@ -290,19 +296,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     accuracy_increase_level = spearShot_data['중거리_레벨당_명중_증가']
                     Accuacy_increase = base_accuracy_increase + (skill_level * accuracy_increase_level)
                     character["Accuracy"] += Accuacy_increase
-            if "기계팔 방출" in character["Status"]:
-                skill_level = opponent["Skills"]["기계팔 방출"]["레벨"]
-                mech_Arm_data = skill_data_firebase['기계팔 방출']['values']
-                speed_decrease_level = mech_Arm_data['레벨당_속도감소_배율']
-                speed_decrease = speed_decrease_level * skill_level
-                character["Speed"] *= 1 - speed_decrease
-
-            if "자력 발산" in character["Status"]:
-                skill_level = opponent["Skills"]["자력 발산"]["레벨"]
-                Magnetic_data = skill_data_firebase['자력 발산']['values']
-                speed_decrease_level = Magnetic_data['레벨당_속도감소_배율']
-                speed_decrease = speed_decrease_level * skill_level
-                character["Speed"] *= 1 - speed_decrease
 
         async def end(attacker, defender, winner, raid):
             await weapon_battle_thread.send(embed = battle_embed)
@@ -545,10 +538,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 return f"**창격** 사용 불가!\n적이 멀리 있어 스킬 사용을 실패했습니다!\n"
             
         def mech_Arm(attacker,defender, evasion, skill_level):
-            # 기계팔 방출: (20 + 레벨 당 5) + 스킬 증폭 20% + 레벨당 10% 추가 피해
+            # 전선더미 방출: (20 + 레벨 당 5) + 스킬 증폭 20% + 레벨당 10% 추가 피해
             global battle_distance
             if not evasion:
-                mech_Arm_data = skill_data_firebase['기계팔 방출']['values']
+                mech_Arm_data = skill_data_firebase['전선더미 방출']['values']
                 base_damage = mech_Arm_data['기본_피해량'] + mech_Arm_data['레벨당_피해량_증가'] * skill_level
                 skill_multiplier = (mech_Arm_data['기본_스킬증폭_계수'] + mech_Arm_data['레벨당_스킬증폭_계수_증가'] * skill_level)
                 skill_damage = base_damage + attacker["Spell"] * skill_multiplier
@@ -564,11 +557,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 if defender["Speed"] < 0:
                     defender["Speed"] = 0
                 debuff_turns = mech_Arm_data['디버프_지속시간']
-                apply_status_for_turn(defender, "기계팔 방출", duration=2)
-                message = f"\n**기계팔 방출** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해를 입힌 후 상대를 {move_distance}만큼 날려버립니다!\n상대의 속도가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소합니다!\n현재 거리: {battle_distance}\n"
+                apply_status_for_turn(defender, "둔화", duration=debuff_turns, value = speed_decrease)
+                message = f"\n**전선더미 방출** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해를 입힌 후 상대를 {move_distance}만큼 날려버립니다!\n상대의 속도가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소합니다!\n현재 거리: {battle_distance}\n"
             else:
                 skill_damage = 0
-                message = f"\n**기계팔 방출이 빗나갔습니다!**\n"
+                message = f"\n**전선더미 방출이 빗나갔습니다!**\n"
 
             return message,skill_damage
         
@@ -595,7 +588,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 if defender["Speed"] < 0:
                     defender["Speed"] = 0
                 debuff_turns = Magnetic_data['디버프_지속시간']
-                apply_status_for_turn(defender, "자력 발산", duration=debuff_turns)
+                apply_status_for_turn(defender, "둔화", duration=debuff_turns, value = speed_decrease)
                 message =  f"\n**자력 발산** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해를 입힌 후 상대를 {move_distance}만큼 끌어옵니다!\n상대의 속도가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소합니다!\n현재 거리: {battle_distance}\n"
             else:
                 skill_damage = 0
@@ -603,19 +596,30 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             return message,skill_damage
         
-        def electronic_line(attacker,evasion,skill_level):
+        def Shield(attacker, skill_level):
+            # 보호막: 스킬 증폭의 100% + 레벨당 10%만큼의 보호막을 얻음
+            Shield_data = skill_data_firebase['보호막']['values']
+            skill_multiplier = int(round((Shield_data['기본_스킬증폭_계수'] + Shield_data['레벨당_스킬증폭_계수'] * skill_level) * 100))
+            shield_amount = int(round((skill_multiplier / 100) * attacker['Spell']))
+            apply_status_for_turn(attacker,"보호막",3,shield_amount)
+            message = f"\n**보호막** 사용!\n{shield_amount}만큼의 보호막을 2턴간 얻습니다!\n"
+
+            return message
+        
+        def electronic_line(attacker,defender,skill_level):
             # 전깃줄: (40 + 레벨 당 10) + 스킬 증폭 50% + 레벨당 20% 추가 피해
             global battle_distance
             
-            if not evasion:
+            if battle_distance >= 2:
                 electronic_line_data = skill_data_firebase['전깃줄']['values']
                 base_damage = electronic_line_data['기본_피해량'] + electronic_line_data['레벨당_피해량_증가'] * skill_level
                 skill_multiplier = (electronic_line_data['기본_스킬증폭_계수'] + electronic_line_data['레벨당_스킬증폭_계수_증가'] * skill_level)
                 skill_damage = base_damage + attacker["Spell"] * skill_multiplier
-                message = f"\n**전깃줄** 사용!\n거리가 3 이내인 상대에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n"
+                apply_status_for_turn(defender,"기절",1)
+                message = f"\n**전깃줄** 사용!\n거리가 2 이상인 상대에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n1턴간 기절 부여!"
             else:
                 skill_damage = 0
-                message = f"\n**전깃줄이 빗나갔습니다!**\n" 
+                message = f"\n**거리가 너무 가까워 전깃줄 사용 불가!**\n" 
             
             return message,skill_damage
         
@@ -713,10 +717,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     evasion_bool = True
                     return 0, False, evasion_bool
 
+                # 피해 증폭
+                base_damage *= 1 + attacker["DamageEnhance"]
+
                 if random.random() < attacker["CritChance"]:
                     base_damage *= attacker["CritDamage"]
                     critical_bool = True
-                
+
                 defense = max(0, defender["Defense"] - attacker["DefenseIgnore"])
                 damage_reduction = calculate_damage_reduction(defense)
                 defend_damage = base_damage * (1 - damage_reduction) * (multiplier + skill_level * rapid_fire_data['레벨당_피해배율'])
@@ -788,7 +795,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         
         def ice(attacker,defender, evasion, skill_level):
             # 기본 : Frost(프로스트) 강화 : Blizzard(블리자드)
-            # 프로스트 : 기본 피해 + 스킬증폭 비례의 스킬 피해. 1턴간 '속박' 상태이상 부여
+            # 프로스트 : 기본 피해 + 스킬증폭 비례의 스킬 피해. 1턴간 '빙결' 상태이상 부여
             # 블리자드 : 강화 기본 피해 + 스킬증폭 비례의 스킬 피해. 3턴간 '빙결' 상태이상 부여 (빙결 : 공격받기 전까지 계속 스턴 상태)
             ice_data = skill_data_firebase['냉기 마법']['values']
             meditation = attacker.get("명상",0) # 현재 명상 스택 확인
@@ -800,8 +807,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     base_damage = ice_data['강화_기본_피해량'] + ice_data['레벨당_강화_기본_피해량_증가'] * skill_level
                     skill_multiplier = ice_data['강화_기본_스킬증폭_계수'] + ice_data['레벨당_강화_스킬증폭_계수_증가'] * skill_level
                     skill_damage = base_damage + attacker['Spell'] * skill_multiplier
+                    slow_amount = int(round((ice_data['강화_둔화율'] + ice_data['강화_레벨당_둔화율'] * skill_level) * 100))
                     apply_status_for_turn(defender, "빙결", 3)
-                    message = f"**블리자드** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n3턴간 빙결 부여!"
+                    apply_status_for_turn(defender, "둔화", 5, slow_amount / 100)
+                    message = f"**블리자드** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n3턴간 빙결 부여!, 5턴간 {slow_amount}% 둔화 부여!"
                 else:
                     skill_damage = 0
                     message = f"**블리자드가 빗나갔습니다!**\n"
@@ -811,8 +820,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     base_damage = ice_data['기본_피해량'] + ice_data['레벨당_기본_피해량_증가'] * skill_level
                     skill_multiplier = ice_data['기본_스킬증폭_계수'] + ice_data['레벨당_스킬증폭_계수_증가'] * skill_level
                     skill_damage = base_damage + attacker['Spell'] * skill_multiplier
-                    apply_status_for_turn(defender, "속박", 1)
-                    message = f"**프로스트** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 속박 부여!"
+                    apply_status_for_turn(defender, "빙결", 1)
+                    message = f"**프로스트** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 빙결 부여!"
                 else:
                     skill_damage = 0
                     message = f"**프로스트가 빗나갔습니다!**\n"
@@ -845,6 +854,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     skill_damage = base_damage + attacker['Spell'] * skill_multiplier
                     heal_amount = holy_data['레벨당_치유량'] * skill_level
                     message = f"**블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}만큼 내구도 회복!\n내구도: [{attacker['HP']}] → [{attacker['HP'] + heal_amount}] ❤️ (+{heal_amount})"
+                    attacker['HP'] += heal_amount
                 else:
                     skill_damage = 0
                     message = f"**블레스가 빗나갔습니다!**\n"
@@ -882,6 +892,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 if random.random() < defender["Evasion"] + distance_evasion * (1 - accuracy): # 회피
                     evasion_bool = True
                     return 0, False, evasion_bool
+
+                # 피해 증폭
+                base_damage *= 1 + attacker["DamageEnhance"]
 
                 if random.random() < attacker["CritChance"]:
                     base_damage *= attacker["CritDamage"]
@@ -1033,10 +1046,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 base_damage *= 1 + (spearShot_data['중거리_기본공격_추가피해_레벨당'] * skill_level)
                 distance_bool = True
 
-            if "은신" in attacker["Status"]: # 은신 상태일 경우, 추가 대미지 + 일정 확률로 '출혈' 상태 부여
-                skill_level = attacker["Skills"]["은신"]["레벨"]
-                invisibility_data = skill_data_firebase['은신']['values']
-                base_damage *= 1 + (invisibility_data['은신공격_레벨당_피해_배율'] * skill_level)
+            # 피해 증폭
+            base_damage *= 1 + attacker["DamageEnhance"]
 
             if random.random() < attacker["CritChance"]:
                 base_damage *= attacker["CritDamage"]
@@ -1145,7 +1156,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         # 스킬 쿨타임 적용
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
                         return None, result_message, critical_bool
-                elif skill_name == "기계팔 방출":
+                elif skill_name == "전선더미 방출":
                     skill_message, damage= mech_Arm(attacker,defender,evasion,skill_level)
                     result_message += skill_message
                     if evasion:
@@ -1153,7 +1164,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
                         return None, result_message, critical_bool
                 elif skill_name == "전깃줄":
-                    skill_message, damage= electronic_line(attacker,evasion,skill_level)
+                    skill_message, damage= electronic_line(attacker,defender,skill_level)
                     result_message += skill_message
                     if evasion:
                         # 스킬 쿨타임 적용
@@ -1161,6 +1172,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         return None, result_message, critical_bool
 
                 if skill_name != "속사" and skill_name != "이케시아 폭우":
+                    # 피해 증폭
+                    damage *= 1 + attacker["DamageEnhance"]
                     # 방어력 계산 적용
                     defense = max(0, defender["Defense"] - attacker["DefenseIgnore"])
                     damage_reduction = calculate_damage_reduction(defense)
@@ -1195,7 +1208,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             "WeaponRange": weapon_data_challenger.get("사거리",""),
             "DefenseIgnore": 0,
             "Evasion" : 0,
-            "DamageReduction" : 0,
+            "DamageEnhance" : 0, # 피해 증폭
+            "DamageReduction" : 0, # 피해 감소
             "Position" : 1,
             "Accuracy": weapon_data_challenger.get("명중", 0),
             "BaseAccuracy": weapon_data_challenger.get("명중", 0),
@@ -1222,6 +1236,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             "WeaponRange": weapon_data_opponent.get("사거리",""),
             "DefenseIgnore": 0,
             "Evasion" : 0,
+            "DamageEnhance" : 0,
             "DamageReduction" : 0,
             "Position" : -1,
             "Accuracy": weapon_data_opponent.get("명중", 0),
@@ -1350,9 +1365,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         turn = 0
         if raid: # 레이드 시 처음 내구도를 저장
             first_HP = opponent['HP']
-            if boss == "스우":
-                apply_status_for_turn(opponent, "속박", 2669)
-            elif boss == "브라움":
+            if boss == "브라움":
                 apply_status_for_turn(opponent, "불굴", 2669)
                 apply_status_for_turn(opponent, "뇌진탕 펀치", 2669)
             elif boss == "카이사":
@@ -1571,7 +1584,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
                         result_message += invisibility(attacker,skill_level)
@@ -1603,7 +1616,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
                         if "차징샷" in skill_names:
@@ -1620,11 +1633,28 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         if skill_name in skill_names:
                             used_skill.append(skill_name)
                             skill_attack_names.append(skill_name)
+                else:
+                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+
+            if "보호막" in skill_names:
+                skill_name = "보호막"
+                skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
+                skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
+                skill_level = attacker["Skills"][skill_name]["레벨"]
+
+                if skill_cooldown_current == 0:
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
+                    else:
+                        attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
+                        if "보호막" in skill_names:
+                            result_message += Shield(attacker,skill_level)
+                            used_skill.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -1636,7 +1666,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
                         if "고속충전" in skill_names:
@@ -1653,7 +1683,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         if skill_name in skill_names:
                             used_skill.append(skill_name)
@@ -1669,7 +1699,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         if skill_name in skill_names:
                             used_skill.append(skill_name)
@@ -1685,7 +1715,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         if skill_name in skill_names:
                             used_skill.append(skill_name)
@@ -1701,7 +1731,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         if skill_name in skill_names:
                             used_skill.append(skill_name)
@@ -1717,7 +1747,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         if skill_name in skill_names:
                             used_skill.append(skill_name)
@@ -1733,7 +1763,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         if skill_name in skill_names:
                             used_skill.append(skill_name)
@@ -1749,7 +1779,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         if skill_name in skill_names:
                             used_skill.append(skill_name)
@@ -1765,7 +1795,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
                         if "사냥본능" in skill_names:
@@ -1782,7 +1812,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         if skill_name in skill_names:
                             used_skill.append(skill_name)
@@ -1798,7 +1828,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
                         if "창격" in skill_names:
@@ -1815,7 +1845,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         if skill_name in skill_names:
                             used_skill.append(skill_name)
@@ -1831,7 +1861,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         if skill_name in skill_names:
                             used_skill.append(skill_name)
@@ -1847,7 +1877,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         if skill_name in skill_names:
                             used_skill.append(skill_name)
@@ -1872,15 +1902,15 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         if not evasion:
                             used_skill.append(skill_name)
                             
-            if "기계팔 방출" in skill_names:
-                skill_name = "기계팔 방출"
+            if "전선더미 방출" in skill_names:
+                skill_name = "전선더미 방출"
                 skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
                 skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
                 skill_level = attacker["Skills"][skill_name]["레벨"]
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         if skill_name in skill_names:
                             used_skill.append(skill_name)
@@ -1896,7 +1926,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if skill_cooldown_current == 0:
                     if slienced: # 침묵 상태일 경우
-                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!"
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                     else:
                         if skill_name in skill_names:
                             used_skill.append(skill_name)
@@ -1917,7 +1947,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 result_message +=f"\n**{attacker['name']}의 은신 공격**!\n방어력 관통 + {DefenseIgnore_increase}!\n{round(invisibility_data['은신공격_레벨당_피해_배율'] * skill_level * 100)}% 추가 대미지!\n"
 
             if skill_attack_names or attacked: # 공격시 상대의 빙결 상태 해제
-                if skill_attack_names != ['명상']:
+                if skill_attack_names != ['명상'] and not evasion: # 명상만 썼을 경우, 회피했을 경우 제외!
                     if '빙결' in defender['Status']:
                         del defender['Status']['빙결']
                         battle_embed.add_field(name="❄️빙결 상태 해제!", value = f"공격을 받아 빙결 상태가 해제되었습니다!\n")
@@ -7989,16 +8019,16 @@ class hello(commands.Cog):
     @app_commands.command(name="무기배틀",description="각자의 무기로 대결합니다")
     @app_commands.describe(상대 = "상대를 고르세요")
     async def weapon_battle(self, interaction: discord.Interaction, 상대 : discord.Member):
+        await interaction.response.defer()
+
         nickname = interaction.user.name
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
 
         ref_weapon_challenger = db.reference(f"무기/유저/{nickname}")
         weapon_data_challenger = ref_weapon_challenger.get() or {}
 
         weapon_name_challenger = weapon_data_challenger.get("이름", "")
         if weapon_name_challenger == "":
-            await interaction.response.send_message("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+            await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
             return
         
         ref_weapon_opponent = db.reference(f"무기/유저/{상대.name}")
@@ -8006,7 +8036,7 @@ class hello(commands.Cog):
 
         weapon_name_opponent = weapon_data_opponent.get("이름", "")
         if weapon_name_opponent == "":
-            await interaction.response.send_message("상대가 무기를 가지고 있지 않습니다!",ephemeral=True)
+            await interaction.followup.send("상대가 무기를 가지고 있지 않습니다!",ephemeral=True)
             return
         
         battle_ref = db.reference("승부예측/대결진행여부")
@@ -8014,7 +8044,7 @@ class hello(commands.Cog):
         if is_battle:
                 warnembed = discord.Embed(title="실패",color = discord.Color.red())
                 warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-                await interaction.response.send_message(embed = warnembed)
+                await interaction.followup.send(embed = warnembed)
                 return
         battle_ref.set(True)
 
@@ -8024,7 +8054,7 @@ class hello(commands.Cog):
             description="대결이 시작되었습니다!",
             color=discord.Color.blue()  # 원하는 색상 선택
         )
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
         await Battle(channel = interaction.channel,challenger_m= interaction.user, opponent_m = 상대, raid = False, practice = False)
 
         battle_ref = db.reference("승부예측/대결진행여부")
@@ -8104,6 +8134,8 @@ class hello(commands.Cog):
 
     @app_commands.command(name="레이드",description="레이드 보스와의 전투를 실행합니다.")
     async def raid(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+
         nickname = interaction.user.name
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
@@ -8113,7 +8145,7 @@ class hello(commands.Cog):
 
         weapon_name_challenger = weapon_data_challenger.get("이름", "")
         if weapon_name_challenger == "":
-            await interaction.response.send_message("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+            await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
             return
         
         ref_current_boss = db.reference(f"레이드/현재 레이드 보스")
@@ -8124,7 +8156,7 @@ class hello(commands.Cog):
 
         weapon_name_opponent = weapon_data_opponent.get("이름", "")
         if weapon_name_opponent == "":
-            await interaction.response.send_message("상대가 없습니다!",ephemeral=True)
+            await interaction.followup.send("상대가 없습니다!",ephemeral=True)
             return
         
         
@@ -8133,7 +8165,7 @@ class hello(commands.Cog):
         if is_battle:
             warnembed = discord.Embed(title="실패",color = discord.Color.red())
             warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-            await interaction.response.send_message(embed = warnembed)
+            await interaction.followup.send(embed = warnembed)
             return
 
         ref_raid = db.reference(f"레이드/내역/{nickname}")
@@ -8177,7 +8209,7 @@ class hello(commands.Cog):
                         self.future.set_result(True)
                         
                 view = AfterRaidView(interaction.user.id)
-                await interaction.response.send_message(embed=retry_embed, view=view, ephemeral=True)
+                await interaction.followup.send(embed=retry_embed, view=view, ephemeral=True)
 
                 # ✅ 버튼 클릭 결과 대기 (True = 진행, False = 중단)
                 result = await view.future
@@ -8196,7 +8228,7 @@ class hello(commands.Cog):
                 if result:
                     await interaction.channel.send(embed = embed)
                 else:
-                    await interaction.response.send_message(embed=embed)
+                    await interaction.followup.send(embed=embed)
                 await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = boss_name, raid = True, practice = True, raid_ended= True)
 
                 battle_ref = db.reference("승부예측/대결진행여부")
@@ -8208,7 +8240,7 @@ class hello(commands.Cog):
                     description="오늘의 레이드보스는 이미 처치되었습니다!",
                     color=discord.Color.red()
                 )
-                await interaction.response.send_message(embed=warn_embed, ephemeral=True)
+                await interaction.followup.send(embed=warn_embed, ephemeral=True)
                 return
 
         result = False
@@ -8279,14 +8311,21 @@ class hello(commands.Cog):
                             self.future.set_result(False)  # ✅ False 반환 (재도전 불가)
                 
                 view = RaidRetryView(interaction.user.id)
-                await interaction.response.send_message(embed=retry_embed, view=view, ephemeral=True)
+                await interaction.followup.send(embed=retry_embed, view=view, ephemeral=True)
 
                 # ✅ 버튼 클릭 결과 대기 (True = 진행, False = 중단)
                 result = await view.future
 
                 if not result:
                     return  # 재도전 불가면 함수 종료
-        
+            else: # 재도전권 없다면
+                warn_embed = discord.Embed(
+                    title="도전 완료",
+                    description="오늘의 레이드보스에 이미 도전했습니다!",
+                    color=discord.Color.red()
+                )
+                await interaction.followup.send(embed=warn_embed, ephemeral=True)
+                return
         battle_ref.set(True)
 
         # 임베드 생성
@@ -8298,7 +8337,7 @@ class hello(commands.Cog):
         if result:
             await interaction.channel.send(embed = embed)
         else:
-            await interaction.response.send_message(embed=embed)
+            await interaction.followup.send(embed=embed)
         await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = boss_name, raid = True, practice = False)
 
         battle_ref = db.reference("승부예측/대결진행여부")
@@ -8375,16 +8414,15 @@ class hello(commands.Cog):
     Choice(name='카이사', value='카이사')
     ])
     async def raid_practice(self, interaction: discord.Interaction, 보스: str):
+        await interaction.response.defer()
         nickname = interaction.user.name
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
 
         ref_weapon_challenger = db.reference(f"무기/유저/{nickname}")
         weapon_data_challenger = ref_weapon_challenger.get() or {}
 
         weapon_name_challenger = weapon_data_challenger.get("이름", "")
         if weapon_name_challenger == "":
-            await interaction.response.send_message("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+            await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
             return
         
         boss_name = 보스
@@ -8394,7 +8432,7 @@ class hello(commands.Cog):
 
         weapon_name_opponent = weapon_data_opponent.get("이름", "")
         if weapon_name_opponent == "":
-            await interaction.response.send_message("상대가 없습니다!",ephemeral=True)
+            await interaction.followup.send("상대가 없습니다!",ephemeral=True)
             return
         
         
@@ -8403,7 +8441,7 @@ class hello(commands.Cog):
         if is_battle:
             warnembed = discord.Embed(title="실패",color = discord.Color.red())
             warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-            await interaction.response.send_message(embed = warnembed)
+            await interaction.followup.send(embed = warnembed)
             return
         
         battle_ref.set(True)
@@ -8414,7 +8452,7 @@ class hello(commands.Cog):
             description="모의전이 시작되었습니다!",
             color=discord.Color.blue()  # 원하는 색상 선택
         )
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
         await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = boss_name, raid = True, practice = True)
 
         battle_ref = db.reference("승부예측/대결진행여부")
@@ -8503,9 +8541,9 @@ class hello(commands.Cog):
                 embed.add_field(name=f"🛠️ {weapon_name}의 변경된 스탯", value="\n".join(stat_changes) if stat_changes else "변경 사항 없음", inline=False)
         await interaction.followup.send(embed=embed)  
 
-
     @app_commands.command(name="탑",description="탑을 등반하여 탑 코인을 획득합니다.")
     async def infinity_tower(self, interaction: discord.Interaction, 빠른도전: bool = False):
+        await interaction.response.defer()
         nickname = interaction.user.name
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
@@ -8515,7 +8553,7 @@ class hello(commands.Cog):
 
         weapon_name_challenger = weapon_data_challenger.get("이름", "")
         if weapon_name_challenger == "":
-            await interaction.response.send_message("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+            await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
             return
         
         ref_current_floor = db.reference(f"탑/유저/{nickname}")
@@ -8535,14 +8573,14 @@ class hello(commands.Cog):
 
         weapon_name_opponent = weapon_data_opponent.get("이름", "")
         if weapon_name_opponent == "":
-            await interaction.response.send_message("상대가 없습니다!",ephemeral=True)
+            await interaction.followup.send("상대가 없습니다!",ephemeral=True)
             return
         
         tower_bool = tower_data.get("등반여부", False)
         if tower_bool:
             warnembed = discord.Embed(title="실패",color = discord.Color.red())
             warnembed.add_field(name="",value="오늘의 도전 기회를 다 사용했습니다! ❌")
-            await interaction.response.send_message(embed = warnembed)
+            await interaction.followup.send(embed = warnembed)
             return
 
         battle_ref = db.reference("승부예측/대결진행여부")
@@ -8550,7 +8588,7 @@ class hello(commands.Cog):
         if is_battle:
             warnembed = discord.Embed(title="실패",color = discord.Color.red())
             warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-            await interaction.response.send_message(embed = warnembed)
+            await interaction.followup.send(embed = warnembed)
             return
         
         battle_ref.set(True)
@@ -8574,7 +8612,7 @@ class hello(commands.Cog):
             description="전투가 시작되었습니다!",
             color=discord.Color.blue()  # 원하는 색상 선택
         )
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
         await Battle(channel = interaction.channel,challenger_m = interaction.user, tower = True, tower_floor=target_floor)
 
         battle_ref = db.reference("승부예측/대결진행여부")
@@ -8741,6 +8779,99 @@ class hello(commands.Cog):
                 embed.add_field(name=f"", value=f"{rank_emoji} {i}위 - {name} : **{floor - 1}층 {top}** ", inline=False)
 
         await interaction.followup.send(embed=embed)
+
+
+    @app_commands.command(name="배틀테스트",description="두 명을 싸움 붙힙니다.")
+    @app_commands.describe(상대1 = "상대를 고르세요", 상대2 = "상대를 고르세요")
+    async def battleTest(self,interaction: discord.Interaction, 상대1 : discord.Member, 상대2 : discord.Member):
+        await interaction.response.defer()
+
+        ref_weapon_challenger = db.reference(f"무기/유저/{상대1.name}")
+        weapon_data_challenger = ref_weapon_challenger.get() or {}
+
+        weapon_name_challenger = weapon_data_challenger.get("이름", "")
+        if weapon_name_challenger == "":
+            await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+            return
+        
+        ref_weapon_opponent = db.reference(f"무기/유저/{상대2.name}")
+        weapon_data_opponent = ref_weapon_opponent.get() or {}
+
+        weapon_name_opponent = weapon_data_opponent.get("이름", "")
+        if weapon_name_opponent == "":
+            await interaction.followup.send("상대가 무기를 가지고 있지 않습니다!",ephemeral=True)
+            return
+        
+        battle_ref = db.reference("승부예측/대결진행여부")
+        is_battle = battle_ref.get() or {}
+        if is_battle:
+                warnembed = discord.Embed(title="실패",color = discord.Color.red())
+                warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+                await interaction.followup.send(embed = warnembed)
+                return
+        battle_ref.set(True)
+
+        # 임베드 생성
+        embed = discord.Embed(
+            title=f"{상대1.display_name} vs {상대2.display_name} 무기 대결",
+            description="대결이 시작되었습니다!",
+            color=discord.Color.blue()  # 원하는 색상 선택
+        )
+        await interaction.followup.send(embed=embed)
+        await Battle(channel = interaction.channel,challenger_m= 상대1, opponent_m = 상대2, raid = False, practice = False)
+
+        battle_ref = db.reference("승부예측/대결진행여부")
+        battle_ref.set(False)
+
+    @app_commands.command(name="테스트모의전",description="유저를 골라 레이드 보스를 상대로 모의전투를 시킵니다")
+    @app_commands.choices(보스=[
+    Choice(name='스우', value='스우'),
+    Choice(name='브라움', value='브라움'),
+    Choice(name='카이사', value='카이사')
+    ])
+    async def raid_practice_test(self, interaction: discord.Interaction, 상대1 : discord.Member, 보스: str):
+        await interaction.response.defer()
+
+        ref_weapon_challenger = db.reference(f"무기/유저/{상대1.name}")
+        weapon_data_challenger = ref_weapon_challenger.get() or {}
+
+        weapon_name_challenger = weapon_data_challenger.get("이름", "")
+        if weapon_name_challenger == "":
+            await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+            return
+        
+        boss_name = 보스
+        
+        ref_weapon_opponent = db.reference(f"레이드/{boss_name}")
+        weapon_data_opponent = ref_weapon_opponent.get() or {}
+
+        weapon_name_opponent = weapon_data_opponent.get("이름", "")
+        if weapon_name_opponent == "":
+            await interaction.followup.send("상대가 없습니다!",ephemeral=True)
+            return
+        
+        
+        battle_ref = db.reference("승부예측/대결진행여부")
+        is_battle = battle_ref.get() or {}
+        if is_battle:
+            warnembed = discord.Embed(title="실패",color = discord.Color.red())
+            warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+            await interaction.followup.send(embed = warnembed)
+            return
+        
+        battle_ref.set(True)
+
+        # 임베드 생성
+        embed = discord.Embed(
+            title=f"{상대1.display_name}의 {weapon_data_opponent.get('이름', '')} 레이드 모의전",
+            description="모의전이 시작되었습니다!",
+            color=discord.Color.blue()  # 원하는 색상 선택
+        )
+        await interaction.followup.send(embed=embed)
+        await Battle(channel = interaction.channel,challenger_m = 상대1, boss = boss_name, raid = True, practice = True)
+
+        battle_ref = db.reference("승부예측/대결진행여부")
+        battle_ref.set(False)
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(
         hello(bot),

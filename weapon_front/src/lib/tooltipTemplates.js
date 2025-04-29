@@ -43,6 +43,7 @@ export const tooltipTemplates = {
     const 추가흡혈 = Math.round(params.스킬증폭당_추가흡혈_비율 * 10000) / 100; // 예: 0.004 => 0.4%
     const 스킬피해 = Math.round(피해량 + params.공격력 * 공격력계수 + params.스킬_증폭 * 스증계수)
     const 흡혈비율 = Math.round(최소흡혈 + params.스킬_증폭 * 추가흡혈)
+    console.log('Value before toFixed:', params); // <--- 값 확인 로그 추가
     return (
       <div className="space-y-1 text-sm text-gray-600">
         <div>

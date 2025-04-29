@@ -120,6 +120,17 @@ function Layout() {
                                     강화하기
                                 </Link>
                             </li>
+                            <li>
+                                <Link
+                                    to="/weapon/skills"
+                                    className={`block px-3 py-2 rounded ${
+                                    isActive("/weapon/skills") ? "bg-indigo-100 text-indigo-700" : "hover:bg-indigo-50"
+                                    }`}
+                                    onClick={() => setIsSidebarOpen(false)}
+                                >
+                                    스킬 정보
+                                </Link>
+                            </li>
                         </ul>
                     </li>
                 </ul>

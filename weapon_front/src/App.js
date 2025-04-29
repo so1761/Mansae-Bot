@@ -10,6 +10,7 @@ import EnhancementInfoPage from "./pages/EnhancementInfo";
 import EnhanceWeaponPage  from "./pages/EnhanceWeaponPage";
 import Inheritance from "./pages/Inheritance";
 import WeaponInfo from "./pages/WeaponInfo";
+import TooltipList from "./pages/TooltipList"; // 경로는 실제 위치에 맞게 수정
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
           <Route path="weapon" element={<WeaponInfo />} />
           <Route path="weapon/enhancement_values" element={<EnhancementInfoPage />} />
           <Route path="weapon/enhance" element={<EnhanceWeaponPage />} />
+          <Route path="weapon/skills" element={<TooltipList />} />
         </Route>
         {/* OAuth 리디렉션 전용 페이지는 Layout 밖에 둠 */}
         <Route path="/oauth/redirect" element={<OAuthRedirect />} />
