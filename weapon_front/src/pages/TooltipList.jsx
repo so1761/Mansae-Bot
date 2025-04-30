@@ -10,7 +10,7 @@ const baseUrl = process.env.REACT_APP_API_BASE_URL;
 export default function AllTooltips() {
   const [skills, setSkills] = useState([]);
   const [level, setLevel] = useState(1); // ✅ 레벨 상태 추가
-  const { isLoggedIn, user } = useAuth();
+  const { user } = useAuth();
 
   // 툴팁을 위한 API 호출
   useEffect(() => {
