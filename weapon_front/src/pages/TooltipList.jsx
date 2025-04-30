@@ -22,9 +22,6 @@ export default function AllTooltips() {
       try {
         const res = await fetch(`${baseUrl}/api/get_skills_with_tooltips`);
         const skillList = await res.json();
-        
-        // skillList 로그 출력
-        console.log("Fetched skillList:", skillList);
 
         const sortedSkillList = skillList.sort((a, b) => {
           const aNum = parseInt(a.tooltip_key.replace(/\D/g, ""), 10); // 숫자만 추출
@@ -38,9 +35,6 @@ export default function AllTooltips() {
               `${baseUrl}/api/get_skill_params/${discordUsername}/?key=${skill.skill_name}`
             );
             const params = await res.json();
-            // 각 skill에 대한 params 로그 출력
-            console.log(`Fetched params for skill ${skill.tooltip_key}:`, params);
-
             return { ...skill, params };
           })
         );

@@ -124,7 +124,7 @@ def get_weapon_data(request, discord_username):
     
     # 계승 내역 적용 (기본 스탯 증가)
     inherit_level = inherit_log_data.get("기본 스탯 증가", 0)  # 계승 레벨 가져오기
-    inherit_multiplier = inherit_level * 0.2  # 1마다 0.2배 증가
+    inherit_multiplier = inherit_level * 0.3  # 1마다 0.3배 증가
 
     base_attack_power = weapon_base_data.get("공격력", 0)
     base_durability = weapon_base_data.get("내구도", 0)
