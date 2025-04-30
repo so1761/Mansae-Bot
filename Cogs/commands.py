@@ -2285,7 +2285,7 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
         ref_weapon_base = db.reference(f"무기/기본 스탯")
         base_weapon_stats = ref_weapon_base.get() or {}
 
-        base_stat_increase = inherit_log.get("기본 스탯 증가", 0) * 0.3 + 1
+        base_stat_increase = inherit_log.get("기본 스탯 증가", 0) * 0.3
         base_weapon_stat = base_weapon_stats[self.selected_weapon_type]
 
         # 계승 내역에 각 강화 유형을 추가
@@ -2331,12 +2331,12 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
             "계승": inherit + 1,
             "이름": new_weapon_name,
             "무기타입": self.selected_weapon_type,
-            "공격력": round(base_weapon_stat["공격력"] * base_stat_increase + enhanced_stats.get("공격력", 0)),
-            "스킬 증폭": round(base_weapon_stat["스킬 증폭"] * base_stat_increase + enhanced_stats.get("스킬 증폭", 0)),
-            "내구도": round(base_weapon_stat["내구도"] * base_stat_increase + enhanced_stats.get("내구도", 0)),
-            "방어력": round(base_weapon_stat["방어력"] * base_stat_increase + enhanced_stats.get("방어력", 0)),
-            "스피드": round(base_weapon_stat["스피드"] * base_stat_increase + enhanced_stats.get("스피드", 0)),
-            "명중": round(base_weapon_stat["명중"] * base_stat_increase + enhanced_stats.get("명중", 0)),
+            "공격력": base_weapon_stat["공격력"] + round(base_weapon_stat["공격력"] * base_stat_increase + enhanced_stats.get("공격력", 0)),
+            "스킬 증폭": base_weapon_stat["스킬 증폭"] + round(base_weapon_stat["스킬 증폭"] * base_stat_increase + enhanced_stats.get("스킬 증폭", 0)),
+            "내구도": base_weapon_stat["내구도"] + round(base_weapon_stat["내구도"] * base_stat_increase + enhanced_stats.get("내구도", 0)),
+            "방어력": base_weapon_stat["방어력"] + round(base_weapon_stat["방어력"] * base_stat_increase + enhanced_stats.get("방어력", 0)),
+            "스피드": base_weapon_stat["스피드"] + round(base_weapon_stat["스피드"] * base_stat_increase + enhanced_stats.get("스피드", 0)),
+            "명중": base_weapon_stat["명중"] + round(base_weapon_stat["명중"] * base_stat_increase + enhanced_stats.get("명중", 0)),
             "사거리": base_weapon_stat["사거리"],  # 사거리는 변경되지 않음
             "치명타 대미지": base_weapon_stat["치명타 대미지"] + enhanced_stats.get("치명타 대미지", 0),
             "치명타 확률": base_weapon_stat["치명타 확률"] + enhanced_stats.get("치명타 확률", 0),
@@ -8486,7 +8486,7 @@ class hello(commands.Cog):
             
             # 계승 내역 적용 (기본 스탯 증가)
             inherit_level = inherit_log_data.get("기본 스탯 증가", 0)  # 계승 레벨 가져오기
-            inherit_multiplier = 1 + (inherit_level * 0.3)  # 1마다 0.3배 증가
+            inherit_multiplier = inherit_level * 0.3  # 1마다 0.3배 증가
 
             # 기존 스탯 저장
             old_stats = {
@@ -8511,7 +8511,7 @@ class hello(commands.Cog):
             
             # 강화 항목을 제외한 새로운 스탯 딕셔너리 생성
             new_stats = {
-                stat: round(value * inherit_multiplier) if stat in inherit_stats else value
+                stat: value + round(value * inherit_multiplier) if stat in inherit_stats else value
                 for stat, value in base_weapon_stats[weapon_type].items()
                 if stat not in ["강화","스킬"]  # 강화 항목 제외
             }

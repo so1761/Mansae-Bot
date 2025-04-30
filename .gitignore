@@ -16,3 +16,4 @@ musicbot.py
 
 !weapon_front/**
 
+weapon_system/db.sqlite3
