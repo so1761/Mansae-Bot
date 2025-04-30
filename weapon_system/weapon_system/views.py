@@ -509,3 +509,55 @@ def enhance_weapon(request):
     
     return JsonResponse({'error': 'Invalid request method'}, status=405)
     
+
+def get_skill_params(request, discord_username):
+    skill_name = request.GET.get('key')  # 프론트엔드에서 보내는 skill_tooltip_xxx
+
+    if not skill_name:
+        return JsonResponse({'error': 'No key provided'}, status=400)
+
+    ref_weapon_stats = db.reference(f"무기/유저/{discord_username}")
+    weapon_stats_data = ref_weapon_stats.get() or {}
+
+    response_context = {}
+
+    ref_skill_data = db.reference(f"무기/스킬/{skill_name}")
+    skill_server_data = ref_skill_data.get() or {}
+    values = skill_server_data.get('values', {})
+    cooldown = skill_server_data.get('cooldown', {})
+    level = 1
+
+    template_context = {
+        **values,
+        **cooldown,
+        '레벨': level,
+        '공격력': weapon_stats_data.get('공격력', 0),
+        '스킬_증폭': weapon_stats_data.get('스킬 증폭', 0),
+        '명중': weapon_stats_data.get('명중', 0),
+        '스피드': weapon_stats_data.get('스피드', 0),
+        '내구도': weapon_stats_data.get('내구도', 0),
+        '방어력': weapon_stats_data.get('방어력', 0),
+        '치명타_확률': weapon_stats_data.get('치명타 확률', 0),
+        '치명타_대미지': weapon_stats_data.get('치명타 대미지', 0),
+    }
+
+    response_context = template_context
+
+    return JsonResponse(response_context)
+
+def get_skills_with_tooltips(request):
+    ref = db.reference("무기/스킬")
+    all_skills = ref.get() or {}
+
+    result = []
+
+    for skill_name, skill_info in all_skills.items():
+        tooltip_key = skill_info.get('tooltip')
+        if tooltip_key and tooltip_key.startswith("skill_tooltip_"):
+            result.append({
+                'skill_name': skill_name,
+                'tooltip_key': tooltip_key,
+                'display_name': tooltip_key.replace('skill_tooltip_', '')  # 보기 좋게
+            })
+
+    return JsonResponse(result, safe=False)

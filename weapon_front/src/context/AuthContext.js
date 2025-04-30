@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 const baseUrl = process.env.REACT_APP_API_BASE_URL;
+
+console.log(baseUrl)
 // Context 생성
 const AuthContext = createContext();
 

@@ -5,33 +5,51 @@ export const tooltipTemplates = {
   skill_tooltip_v1: (params) => {
     const 명중 = params.중거리_기본_명중_증가 + params.레벨 * params.중거리_레벨당_명중_증가;
     const 추가피해 = Math.round(params.중거리_기본공격_추가피해_레벨당 * params.레벨 * 100);
-
+  
     return (
-      <div className="space-y-1">
-        <div>거리 {params.근접_밀쳐내기_거리} 이하일 경우, 적을 {params.밀쳐내기_조건_거리}칸 밀쳐냅니다.</div>
+      <div className="space-y-1 text-sm text-gray-600">
         <div>
-          거리 {params.중거리_조건_거리}에서의 공격은 반드시 치명타로 적용되고,<br/>
+          거리{" "}
+          <span className="text-indigo-500">{params.근접_밀쳐내기_거리}</span> 이하일 경우,{" "}
+          적을 <span className="text-indigo-500">{params.밀쳐내기_조건_거리}</span>칸 밀쳐냅니다.
+        </div>
+  
+        <div>
+          거리 <span className="text-indigo-500">{params.중거리_조건_거리}</span>에서의 공격은{" "}
+          반드시 치명타로 적용되고,
+          <br />
           명중이{" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
-            data-tooltip-content={`기본: ${params.중거리_기본_명중_증가}, 레벨당 + ${params.중거리_레벨당_명중_증가}`}
+            data-tooltip-html={`
+              <span style="color: #facc15;">🎯 레벨당 명중 증가량</span><br />
+              <span style="color:#fff;">${params.중거리_기본_명중_증가}</span> +
+              (${(params.중거리_레벨당_명중_증가)} × 레벨 <span style="color: #34d399;">${params.레벨}</span>)
+            `}
             data-tooltip-place="top"
           >
             {명중}
           </span>{" "}
-          증가하며, 기본 공격 시&nbsp;
+          증가하며, 기본 공격 시{" "}
           <span
             className="text-indigo-500"
-            data-tooltip-id="tooltip-damage"
-            data-tooltip-content={`레벨당 +${params.중거리_기본공격_추가피해_레벨당 * 100}%`}
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <span style="color: #facc15;">🗡️ 레벨당 피해량</span><br />
+              (${(params.중거리_기본공격_추가피해_레벨당.toFixed(1) * 100)}% × 레벨 <span style="color: #34d399;">${params.레벨}</span>)
+            `}
             data-tooltip-place="top"
           >
             {추가피해}%
           </span>{" "}
           추가 피해를 입힙니다.
         </div>
-        <div>거리 {params.최대_사용_사거리 + 1} 이상에서는 스킬을 사용할 수 없습니다.</div>
+  
+        <div>
+          거리{" "}
+          <span className="text-indigo-500">{params.최대_사용_사거리 + 1}</span> 이상에서는 스킬을 사용할 수 없습니다.
+        </div>
       </div>
     );
   },
@@ -68,8 +86,8 @@ export const tooltipTemplates = {
             data-tooltip-html={`
             <div style="font-size: 13px; line-height: 1.5;">
               <span style="color: #60a5fa;">📊 피해 계산 상세</span><br />
-              <span style="color: #f97316;">· 기본 피해량:</span> <span style="color: #fff;">${params.기본_피해량} + (${params.레벨당_피해량_증가} × 레벨)</span><br />
-              <span style="color: #facc15;">· 공격력 계수:</span> <span style="color: #fff;">${params.기본_공격력_계수.toFixed(2)} + (${params.레벨당_공격력_계수_증가.toFixed(2)} × 레벨)</span><br />
+              <span style="color: #facc15;">· 기본 피해량:</span> <span style="color: #fff;">${params.기본_피해량} + (${params.레벨당_피해량_증가} × 레벨)</span><br />
+              <span style="color: #f97316;">· 공격력 계수:</span> <span style="color: #fff;">${params.기본_공격력_계수.toFixed(2)} + (${params.레벨당_공격력_계수_증가.toFixed(2)} × 레벨)</span><br />
               <span style="color: #34d399;">· 스킬 증폭 계수:</span> <span style="color: #fff;">${params.기본_스킬증폭_계수.toFixed(2)} + (${params.레벨당_스킬증폭_계수_증가.toFixed(2)} × 레벨)</span>
             </div>
           `}
@@ -84,6 +102,7 @@ export const tooltipTemplates = {
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
             data-tooltip-html={`
+              <span style="color: #facc15;">❤️‍🩹 회복량</span><br />
               <span style="color: #f87171;">${최소흡혈}%</span> + 
               (스킬 증폭 <span style="color: #34d399;">${params.스킬_증폭}</span> × 
               <span style="color: #34d399;">${추가흡혈}%</span>)
@@ -299,24 +318,36 @@ export const tooltipTemplates = {
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
             data-tooltip-html={`
-              <div style="font-size: 13px; line-height: 1.5;">
-                <span style="color: #facc15;">💥 피해 계산</span><br />
-                · 공격력 계수: <span style="color: #f97316;">${(공격력계수 * 100).toFixed(1)}%</span><br />
-                · 스킬 증폭 계수: <span style="color: #34d399;">${(스킬증폭계수 * 100).toFixed(1)}%</span><br />
-                · 치명타 확률: <span style="color: #60a5fa;">${치확}%</span><br />
-                → 총 배율: <span style="color: #f87171;">${(총배율 * 100).toFixed(0)}%</span>
-              </div>
+              스킬 피해 = 
+              ((공격력 <span style="color: #f97316;">${params.공격력}</span> × <span style="color: #f97316;">${공격력계수.toFixed(1)}</span>) + 
+              (스킬 증폭 <span style="color: #34d399;">${params.스킬_증폭}</span> × <span style="color: #34d399;">${스킬증폭계수.toFixed(1)}</span>)) * <span style="color: #f87171;">${총배율}</span>
             `}
             data-tooltip-place="top"
           >
-            {피해량_표시}의 스킬 피해
+            {피해량_표시}
+          </span>{" "}
+          의 스킬피해를 입힙니다.
+          <span
+            className="text-gray-400 cursor-help"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+            <div style="font-size: 13px; line-height: 1.5;">
+              <span style="color: #60a5fa;">📊 피해 계산 상세</span><br />
+              <span style="color: #f97316;">· 공격력 계수:</span> <span style="color: #fff;">${(params.기본_공격력_계수.toFixed(1) * 100)} + (${(params.레벨당_공격력_계수_증가.toFixed(1) * 100)} × 레벨)</span><br />
+              <span style="color: #34d399;">· 스킬 증폭 계수:</span> <span style="color: #fff;">${(params.기본_스킬증폭_계수.toFixed(1) * 100)} + (${(params.레벨당_스킬증폭_계수_증가.toFixed(1) * 100)} × 레벨)</span><br />
+              <span style="color: #f87171;">· 치명타 확률 계수: <span style="color: #fff;">100 + ${치확}</span><br />            
+              </div>
+          `}
+            data-tooltip-place="top"
+          >
+            ℹ️
           </span>
-          를 입힙니다.
         </div>
+        
   
         {/* 장전 효과 */}
         <div>
-          이후{" "}
+          이후 1턴간 {" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
@@ -324,43 +355,59 @@ export const tooltipTemplates = {
               <div style="font-size: 13px; line-height: 1.5;">
                 <span style="color: #ef4444;">🔫 장전 상태</span><br />
                 공격 및 스킬 사용이 불가능합니다.<br />
-                장전 지속 시간은 쿨다운에 따라 결정됩니다.
               </div>
             `}
             data-tooltip-place="top"
           >
-            '장전' 상태
-          </span>
-          가 되어 다음 행동이 제한됩니다.
+            장전
+          </span>{" "}
+          상태가 되어 다음 행동이 제한됩니다.
         </div>
       </div>
     );
   },
   skill_tooltip_v7: (params) => {
+    const 스킬증폭계수 = params.스킬증폭당_보호막_계수 + params.레벨 * params.레벨당_보호막_계수_증가;
     const 보호막량 = Math.round(
-      params.스킬_증폭 * (params.스킬증폭당_보호막_계수 + params.레벨 * params.레벨당_보호막_계수_증가)
+      params.스킬_증폭 * 스킬증폭계수
     );
   
     return (
       <div className="space-y-2 text-sm text-gray-600">
-        <div>
+          <div>
+          모든 스킬의 쿨타임이 1 감소합니다.
+          </div>
+          <div>
+          1턴간{" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
             data-tooltip-html={`
-              <div style="font-size: 13px; line-height: 1.5;">
-                <span style="color: #34d399;">🧘 명상 효과</span><br />
-                · 모든 스킬 쿨타임 1턴 감소<br />
-                · 스킬 증폭 기반 보호막 생성<br />
-                → 보호막: ${보호막량}
-              </div>
+            보호막 = 
+            스킬 증폭 <span style="color: #34d399;">${params.스킬_증폭}</span> × <span style="color: #34d399;">${스킬증폭계수.toFixed(1)}</span>
             `}
             data-tooltip-place="top"
           >
-            명상
+            {보호막량}
           </span>
-          을 사용하여 모든 스킬 쿨타임이 감소하고,<br />
-          1턴간 보호막을 얻으며 명상 스택이 증가합니다.
+          의 보호막을 얻습니다.
+          <span
+            className="text-gray-400 cursor-help"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+            <div style="font-size: 13px; line-height: 1.5;">
+              <span style="color: #60a5fa;">📊 보호막 상세</span><br />
+              <span style="color: #34d399;">· 스킬 증폭 계수:</span> <span style="color: #fff;">${(params.스킬증폭당_보호막_계수.toFixed(1) * 100)}% + (${(params.레벨당_보호막_계수_증가.toFixed(1) * 100)} × 레벨)%</span><br />          
+              </div>
+          `}
+            data-tooltip-place="top"
+          >
+            ℹ️
+          </span>
+          </div>
+          <div>
+          명상 스택이 1 증가합니다.
+          
         </div>
       </div>
     );
@@ -457,6 +504,8 @@ export const tooltipTemplates = {
     const 블리자드_기본피해 = Math.round(params.강화_기본_피해량 + params.레벨 * params.레벨당_강화_기본_피해량_증가);
     const 블리자드_증폭 = (params.강화_기본_스킬증폭_계수 + params.레벨 * params.레벨당_강화_스킬증폭_계수_증가) * 100;
     const 블리자드_피해 = Math.round(블리자드_기본피해 + (블리자드_증폭 / 100) * params.스킬_증폭); // 다시 100으로 나누어 계산
+
+    const 둔화율 = Math.round((params.강화_둔화율 + params.레벨 * params.강화_레벨당_둔화율) * 100);
     return (
       <div className="space-y-2 text-sm text-gray-600">
         <div>
@@ -475,7 +524,21 @@ export const tooltipTemplates = {
           >
             {프로스트_피해}
           </span>
-          의 스킬 피해를 입히고<br />1턴간 속박 상태이상을 부여합니다.
+          의 스킬 피해를 입히고<br />1턴간{" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <div style="font-size: 13px; line-height: 1.5;">
+                <span style="color: #60a5fa;">❄️ 빙결</span><br />
+                · 공격받기 전까지 아무런 행동도 할 수 없습니다.
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+          빙결
+          </span>{" "} 
+          상태이상을 부여합니다.
         </div>
         <div>
           블리자드 : 대상에게 {" "}
@@ -506,7 +569,20 @@ export const tooltipTemplates = {
             data-tooltip-place="top"
           >
           빙결
-          </span>{" "} 
+          </span>,{" "}5턴간{" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <div style="font-size: 13px; line-height: 1.5;">
+                <span style="color: #60a5fa;">❄️ 둔화</span><br />
+                · 속도가 ${둔화율}% 감소합니다.
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+          둔화
+          </span>{" "}
           상태이상을 부여합니다.
         </div>
       </div>

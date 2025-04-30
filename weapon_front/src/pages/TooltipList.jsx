@@ -1,112 +1,121 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { tooltipTemplates } from "../lib/tooltipTemplates"; // named import 방식으로 수정
+import { useAuth } from "../context/AuthContext"; // AuthContext에서 로그인 상태와 사용자 정보를 가져옵니다.
+import { Tooltip } from "react-tooltip"; // Tooltip으로 변경
+import 'react-tooltip/dist/react-tooltip.css';
 
-const defaultParams = {
-    '레벨': 5,
-    '공격력': 100,
-    '스킬_증폭': 100,
-    '명중': 100,
-    '스피드': 100,
-    '내구도': 400,
-    '방어력': 100,
-    '치명타_확률': 0.05,
-    '치명타_대미지': 1.5,
-    "레벨당_공격력_증가": 8,
-    "레벨당_치명타피해_증가": 0.5,
-    "기본_회피율": 0.4,
-    "레벨당_회피율_증가": 0.1,
-    "속도증가_기본수치": 25,
-    "속도증가_레벨당": 15,
-    "속도증가_지속시간": 3,
-    "은신_지속시간": 1,
-    "최대_회피율": 0.8,
-    "기본_스킬증폭_계수": 0.7,
-    "레벨당_스킬증폭_계수_증가": 0.1,
-    "기본_피해량": 20,
-    "디버프_지속시간": 2,
-    "레벨당_속도감소_배율": 0.1,
-    "레벨당_피해량_증가": 5,
-    "밀쳐내기_거리": 1,
-    "강화_기본_스킬증폭_계수": 0.6,
-    "강화_기본_피해량": 15,
-    "강화_둔화율": 0.2,
-    "강화_레벨당_둔화율": 0.1,
-    "레벨당_강화_기본_피해량_증가": 5,
-    "레벨당_강화_스킬증폭_계수_증가": 0.15,
-    "레벨당_기본_피해량_증가": 4,
-    "속도감소_기본수치": 0.1,
-    "뇌진탕_스택_부여량": 1,
-    "기본_대미지": 0.08,
-    "레벨당_추가_대미지": 0.02,
-    "레벨당_보호막_계수_증가": 0.05,
-    "스킬증폭당_보호막_계수": 0.15,
-    "최대_피해감소율": 0.9,
-    "거리당_기본_피해감소": 0.04,
-    "거리당_레벨당_피해감소": 0.01,
-    "거리당_레벨당_피해배율_증가": 0.05,
-    "기절_지속시간": 1,
-    "최대_거리_피해배율_보너스": 0.3,
-    "레벨당_피해배율": 0.04,
-    "일반타격_기본_피해배율": 0.26,
-    "타격횟수결정_스피드값": 20,
-    "넉백거리": 1,
-    "속박_지속시간": 1,
-    "적정거리": 4,
-    "적정거리_공격력증가": 20,
-    "적정거리_명중증가": 30,
-    '기본_흡혈_비율': 0.1, // 예시 값 (실제 게임 디자인에 맞는 값으로 설정)
-    '스킬증폭당_추가흡혈_비율': 0.004, // 예시 값
-    '마지막타격_기본_피해배율': 0.8, // 예시 값
-    '지속시간': 1, // 예시 값 (은신 지속시간과 이름이 겹치므로 확인 필요, 은신_지속시간을 써야할 수도 있음)
-    '은신공격_레벨당_방관_증가': 2, // 예시 값
-    '은신공격_기본_피해_배율': 0.3, // 예시 값
-    '은신공격_레벨당_피해_배율': 0.1, // 예시 값
-    '은신공격_레벨당_출혈_확률': 0.05, // 예시 값
-    '은신공격_출혈_기본_지속피해': 5, // 예시 값
-    '은신공격_출혈_레벨당_지속피해': 1, // 예시 값
-    '은신공격_출혈_지속시간': 2, // 예시 값
-    '레벨당_치유량': 10, // 예시 값
-    "근접_밀쳐내기_거리": 2,
-    "밀쳐내기_조건_거리": 2,
-    "중거리_기본_명중_증가": 30,
-    "중거리_기본공격_추가피해_레벨당": 0.1,
-    "중거리_레벨당_명중_증가": 20,
-    "중거리_조건_거리": 3,
-    "최대_사용_사거리": 3,
-    "기본_공격력_계수": 0.8,
-    "레벨당_공격력_계수_증가": 0.1,
-    "레벨당_공격력_배율_증가": 0.5,
-    "화상_대미지": 8
-};
-
-const tooltipKeys = Object.keys(tooltipTemplates).filter(key => key.startsWith("skill_tooltip_"));
+const baseUrl = process.env.REACT_APP_API_BASE_URL;
 
 export default function AllTooltips() {
-    return (
-      <div className="p-6 max-w-6xl mx-auto space-y-8">
-        <h1 className="text-3xl font-bold text-center text-indigo-700">🎓 모든 스킬 툴팁 보기</h1>
-  
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {tooltipKeys.map((key, idx) => {
-            const Component = tooltipTemplates[key];
-            
-            return (
-              <motion.div
-                key={key}
-                className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200 space-y-4"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.1, duration: 0.4 }}
-              >
-                <h2 className="text-xl font-semibold text-indigo-600">{key}</h2>
-                <div className="prose max-w-none text-sm">
-                    <Component {...defaultParams} />
-                </div>
-              </motion.div>
+  const [skills, setSkills] = useState([]);
+  const [level, setLevel] = useState(1); // ✅ 레벨 상태 추가
+  const { isLoggedIn, user } = useAuth();
+
+  // 툴팁을 위한 API 호출
+  useEffect(() => {
+    const fetchSkillsAndParams = async () => {
+      if (!user?.discord_username) return;
+
+      const discordUsername = user.discord_username;
+
+      try {
+        const res = await fetch(`${baseUrl}/api/get_skills_with_tooltips`);
+        const skillList = await res.json();
+        
+        // skillList 로그 출력
+        console.log("Fetched skillList:", skillList);
+
+        const sortedSkillList = skillList.sort((a, b) => {
+          const aNum = parseInt(a.tooltip_key.replace(/\D/g, ""), 10); // 숫자만 추출
+          const bNum = parseInt(b.tooltip_key.replace(/\D/g, ""), 10);
+          return aNum - bNum;
+        });
+
+        const enriched = await Promise.all(
+          sortedSkillList.map(async (skill) => {
+            const res = await fetch(
+              `${baseUrl}/api/get_skill_params/${discordUsername}/?key=${skill.skill_name}`
             );
-          })}
-        </div>
+            const params = await res.json();
+            // 각 skill에 대한 params 로그 출력
+            console.log(`Fetched params for skill ${skill.tooltip_key}:`, params);
+
+            return { ...skill, params };
+          })
+        );
+
+        setSkills(enriched);
+      } catch (err) {
+        console.error("스킬/파라미터 로딩 실패:", err);
+      }
+    };
+
+    fetchSkillsAndParams();
+  }, [user]);
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto space-y-8">
+      <h1 className="text-3xl font-bold text-center text-indigo-700">🎓 모든 스킬 툴팁 보기</h1>
+
+      {/* ✅ 레벨 선택 UI */}
+      <div className="flex justify-center items-center gap-4 mb-6">
+        <label htmlFor="level" className="font-medium text-indigo-600">레벨: {level}</label>
+        <input
+          type="range"
+          id="level"
+          min={1}
+          max={20}
+          value={level}
+          onChange={(e) => setLevel(parseInt(e.target.value))}
+          className="w-64 accent-indigo-500"
+        />
       </div>
-    );
-  }
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {skills.map((skill, idx) => {
+        const Component = tooltipTemplates[skill.tooltip_key];
+        if (!Component) return null;
+
+        const cooldown = skill.params;
+        const initialCooldown = cooldown["현재 쿨타임"];
+        const totalCooldown = cooldown["전체 쿨타임"];
+        
+        console.log(cooldown)
+        return (
+          <motion.div
+            key={skill.tooltip_key}
+            className="bg-white p-6 rounded-2xl shadow-xl border border-gray-200 space-y-4"
+            initial={{ opacity: 0, y: 0 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.1, duration: 0.4 }}
+          >
+            <h2 className="text-xl font-semibold text-indigo-600">{skill.skill_name}</h2>
+
+            {/* ✅ 쿨타임 정보 출력 */}
+            {(initialCooldown !== undefined || totalCooldown !== undefined) && (
+              <div className="text-gray-600 text-sm space-y-1">
+                {initialCooldown !== undefined && (
+                  <p>🕒 초기 쿨타임: <strong>{initialCooldown}</strong>턴</p>
+                )}
+                {totalCooldown !== undefined && (
+                  <p>♻️ 전체 쿨타임: <strong>{totalCooldown}</strong>턴</p>
+                )}
+              </div>
+            )}
+
+            <div className="prose max-w-none text-sm">
+              <Component {...skill.params} 레벨={level} />
+            </div>
+          </motion.div>
+        );
+      })}
+        {/* 툴팁을 전역적으로 추가 */}
+      <Tooltip id="tooltip-hit" place="right" effect="solid"/>
+      </div>
+
+      
+    </div>
+    
+  );
+}

@@ -24,6 +24,8 @@ urlpatterns = [
     path('logout/', views.discord_logout, name='discord_logout'),  # 디스코드 로그아웃 페이지로 이동
     path("api/discord/callback/", views.discord_callback),  # 디스코드 인증 후 리디렉션
     path("api/user/", views.user_info),
+    path("api/get_skills_with_tooltips/", views.get_skills_with_tooltips), # 툴팁이 있는 스킬들을 가져옴
+    path('api/get_skill_params/<str:discord_username>/', views.get_skill_params),
     path('api/weapon/<str:discord_username>/', views.get_weapon_data, name='get_weapon_data'),
     path('api/item/<str:discord_username>/', views.get_items, name = 'get_items'),
     path("api/enhancement-info/", views.enhancement_info),

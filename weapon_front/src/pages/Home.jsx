@@ -18,10 +18,10 @@ export default function Home() {
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-4">
         <Link
-          to="/probability/randombox"
+          to="/weapon/enhance"
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg transition"
         >
-          랜덤박스 보기
+          강화하기
         </Link>
         <Link
           to="/weapon"

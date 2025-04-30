@@ -475,7 +475,6 @@ function WeaponInfo() {
       </div>
 
       <Tooltip id="tooltip-hit" place="top" effect="solid"/>
-      <Tooltip id="tooltip-damage" place="top" effect="solid" />
     </div>
   );
 }
