@@ -1,19 +1,27 @@
+# 일반 파일/로그 무시
 *.png
 *.log
 *.json
 *.out
-.ssh/
-.env
+
+# 환경설정 및 환경파일 무시
+.env*
+*.env
+
+# 캐시, 설정 관련 디렉터리 무시
 __pycache__/
 .cache/
 .conda/
 anaconda3/
+.ssh/
 .bash*
 .gitconfig
 .profile
 .selected_editor
+
+# 프로젝트 파일 무시
 musicbot.py
-
-!weapon_front/**
-
 weapon_system/db.sqlite3
+
+# 예외: 특정 폴더만 추적 (무시 안 함)
+!weapon_front/**
