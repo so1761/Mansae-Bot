@@ -510,11 +510,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 message = f"\n**헤드샷이 빗나갔습니다!**\n" 
             return message, skill_damage
         
-        def spearShot(attacker,evasion,skill_level):
+        def spearShot(attacker,defender,evasion,skill_level):
             global battle_distance
             spearShot_data = skill_data_firebase['창격']['values']
-            near_distance = spearShot_data['밀쳐내기_조건_거리']
-            condition_distance = spearShot_data['중거리_조건_거리']
+            near_distance = spearShot_data['근접_거리']
+            condition_distance = spearShot_data['적정_거리']
+            slow_amount = spearShot_data['기본_둔화량'] + spearShot_data['레벨당_둔화량'] * skill_level
+
             if evasion:
                 return f"\n**창격** 사용 불가!\n공격이 빗나갔습니다!\n"
             if battle_distance <= near_distance: # 붙었을 땐 밀치기
@@ -526,16 +528,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 else:
                     battle_distance = abs(attacker["Position"] - defender["Position"])  # 같은 방향이면 그대로 계산
                 return f"**창격(근접)** 사용!\n상대를 {move_distance}만큼 날려버립니다!\n"
-            elif battle_distance == condition_distance: # 적정거리면 추가 대미지
-                attacker["CritChance"] = 1
-                base_accuracy_increase = spearShot_data['중거리_기본_명중_증가']
-                accuracy_increase_level = spearShot_data['중거리_레벨당_명중_증가']
-                Accuacy_increase = base_accuracy_increase + (skill_level * accuracy_increase_level)
-                attacker["Accuracy"] += Accuacy_increase
-                apply_status_for_turn(attacker, "창격", duration=1)
-                return f"**창격(적정 거리)** 사용!\n이번 공격은 반드시 치명타로 적용되고, 명중이 {Accuacy_increase} 증가합니다!\n"
-            elif battle_distance >= condition_distance + 1:
-                return f"**창격** 사용 불가!\n적이 멀리 있어 스킬 사용을 실패했습니다!\n"
+            elif battle_distance == condition_distance: # 적정거리면 기절
+                apply_status_for_turn(defender, "기절", duration=1)
+                return f"**창격(적정 거리)** 사용!\n1턴간 기절 상태이상 부여!\n"
+            elif battle_distance >= condition_distance + 1: # 원거리면 둔화
+                apply_status_for_turn(defender, "둔화", duration=2,value = slow_amount)
+                return f"**창격(원거리)** 사용!\n창을 던져 2턴간 {round(slow_amount * 100)}% 둔화 효과를 부여합니다\n"
             
         def mech_Arm(attacker,defender, evasion, skill_level):
             # 전선더미 방출: (20 + 레벨 당 5) + 스킬 증폭 20% + 레벨당 10% 추가 피해

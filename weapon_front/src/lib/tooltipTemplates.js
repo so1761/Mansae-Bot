@@ -3,35 +3,13 @@ import React from "react";
 
 export const tooltipTemplates = {
   skill_tooltip_v1: (params) => {
-    const 명중 = params.중거리_기본_명중_증가 + params.레벨 * params.중거리_레벨당_명중_증가;
+    const 둔화율 = Math.round((params.기본_둔화량 + params.레벨 * params.레벨당_둔화량) * 100);
     const 추가피해 = Math.round(params.중거리_기본공격_추가피해_레벨당 * params.레벨 * 100);
   
     return (
       <div className="space-y-1 text-sm text-gray-600">
         <div>
-          거리{" "}
-          <span className="text-indigo-500">{params.근접_밀쳐내기_거리}</span> 이하일 경우,{" "}
-          적을 <span className="text-indigo-500">{params.밀쳐내기_조건_거리}</span>칸 밀쳐냅니다.
-        </div>
-  
-        <div>
-          거리 <span className="text-indigo-500">{params.중거리_조건_거리}</span>에서의 공격은{" "}
-          반드시 치명타로 적용되고,
-          <br />
-          명중이{" "}
-          <span
-            className="text-indigo-500"
-            data-tooltip-id="tooltip-hit"
-            data-tooltip-html={`
-              <span style="color: #facc15;">🎯 레벨당 명중 증가량</span><br />
-              <span style="color:#fff;">${params.중거리_기본_명중_증가}</span> +
-              (${(params.중거리_레벨당_명중_증가)} × 레벨 <span style="color: #34d399;">${params.레벨}</span>)
-            `}
-            data-tooltip-place="top"
-          >
-            {명중}
-          </span>{" "}
-          증가하며, 기본 공격 시{" "}
+          패시브 : 거리 {params.적정_거리}에서의 공격은 {" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
@@ -45,10 +23,37 @@ export const tooltipTemplates = {
           </span>{" "}
           추가 피해를 입힙니다.
         </div>
+
+        <div>
+          거리{" "}
+          <span className="text-indigo-500">{params.근접_거리}</span> 이하에서 스킬 사용 시,{" "}
+          적을 <span className="text-indigo-500">{params.근접_밀쳐내기_거리}</span>만큼 밀쳐냅니다.
+        </div>
+  
+        <div>
+          거리{" "}<span className="text-indigo-500">{params.적정_거리}{" "}</span>에서 스킬 사용 시,{" "}
+          적에게 기절 상태이상을 1턴간 부여합니다.
+        </div>
   
         <div>
           거리{" "}
-          <span className="text-indigo-500">{params.최대_사용_사거리 + 1}</span> 이상에서는 스킬을 사용할 수 없습니다.
+          <span className="text-indigo-500">{params.적정_거리 + 1}</span> 이상에서 스킬 사용 시,
+          적을 2턴간 {" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <div style="font-size: 13px; line-height: 1.5; text-align: left;">
+                <span style="color: #60a5fa;">📊 둔화율</span><br />
+                · 기본 둔화율: <span style="color: #f97316;">${Math.round(params.기본_둔화량 * 100)}%</span><br />
+                · 레벨당 증가량: <span style="color: #34d399;">+${Math.round(params.레벨당_둔화량 * 100)}%</span>
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+            {둔화율}%
+          </span>{" "}
+          둔화 시킵니다.
         </div>
       </div>
     );
@@ -574,16 +579,17 @@ export const tooltipTemplates = {
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
             data-tooltip-html={`
-              <div style="font-size: 13px; line-height: 1.5;">
-                <span style="color: #60a5fa;">❄️ 둔화</span><br />
-                · 속도가 ${둔화율}% 감소합니다.
+              <div style="font-size: 13px; line-height: 1.5; text-align: left;">
+                <span style="color: #60a5fa;">📊 둔화율</span><br />
+                · 기본 둔화율: <span style="color: #f97316;">${Math.round(params.강화_둔화율 * 100)}%</span><br />
+                · 레벨당 증가량: <span style="color: #34d399;">+${Math.round(params.강화_레벨당_둔화율 * 100)}%</span>
               </div>
             `}
             data-tooltip-place="top"
           >
-          둔화
+            {둔화율}%
           </span>{" "}
-          상태이상을 부여합니다.
+          둔화 상태이상을 부여합니다.
         </div>
       </div>
     );
