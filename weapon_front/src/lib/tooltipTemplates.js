@@ -179,7 +179,8 @@ export const tooltipTemplates = {
   skill_tooltip_v4: (params) => {
     const 증가_공격력 = params.레벨 * params.레벨당_공격력_증가;
     const 증가_치명타피해 = params.레벨 * params.레벨당_치명타피해_증가;
-  
+    const 둔화율 = Math.round((params.기본_둔화량 + params.레벨 * params.레벨당_둔화량) * 100);
+
     return (
       <div className="space-y-1 text-sm text-gray-600">
         <div>
@@ -216,14 +217,26 @@ export const tooltipTemplates = {
           </span>{" "}
           증가합니다.
         </div>
+        적을 3턴간 {" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <div style="font-size: 13px; line-height: 1.5; text-align: left;">
+                <span style="color: #60a5fa;">📊 둔화율</span><br />
+                · 기본 둔화율: <span style="color: #f97316;">${Math.round(params.기본_둔화량 * 100)}%</span><br />
+                · 레벨당 증가량: <span style="color: #34d399;">+${Math.round(params.레벨당_둔화량 * 100)}%</span>
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+            {둔화율}%
+          </span>{" "}
+          둔화 시킵니다.
       </div>
     );
   },
   skill_tooltip_v5: (params) => {
-    const 회피율 = Math.min(
-      params.기본_회피율 + params.레벨 * params.레벨당_회피율_증가,
-      params.최대_회피율
-    );
     const 방관증가 = params.레벨 * params.은신공격_레벨당_방관_증가;
     const 추가피해배율 = params.은신공격_기본_피해_배율 + params.레벨 * params.은신공격_레벨당_피해_배율;
     const 출혈확률 = params.레벨 * params.은신공격_레벨당_출혈_확률;
@@ -239,17 +252,15 @@ export const tooltipTemplates = {
             data-tooltip-id="tooltip-hit"
             data-tooltip-html={`
               <div style="font-size: 13px; line-height: 1.5;">
-                <span style="color: #60a5fa;">🎯 회피율 증가</span><br />
-                · 기본: ${(params.기본_회피율 * 100).toFixed(0)}%<br />
-                · 레벨당: +${(params.레벨당_회피율_증가 * 100).toFixed(0)}%<br />
-                → 최종: ${(회피율 * 100).toFixed(0)}% (최대 ${params.최대_회피율 * 100}%)
+                <span style="color: #60a5fa;">🎯 은신 상태</span><br />
+                · 회피율이 100% 증가합니다<br />
               </div>
             `}
             data-tooltip-place="top"
           >
-            은신 상태
-          </span>
-          가 되어 회피율이 증가합니다.
+            은신
+          </span>{" "}
+          상태가 되어 회피율이 증가합니다.
         </div>
   
         {/* 은신 중 공격 효과 */}

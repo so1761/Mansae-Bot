@@ -222,32 +222,18 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             character["DefenseIgnore"] = 0
 
             # 현재 적용 중인 상태 효과를 확인하고 반영
-            if "은신" in character["Status"]:
-                skill_level = character["Skills"]["은신"]["레벨"]
-                invisibility_data = skill_data_firebase['은신']['values']
+            if "기습" in character["Status"]:
+                skill_level = character["Skills"]["기습"]["레벨"]
+                invisibility_data = skill_data_firebase['기습']['values']
                 DefenseIgnore_increase = invisibility_data['은신공격_레벨당_방관_증가'] * skill_level
                 character["DefenseIgnore"] += DefenseIgnore_increase
-                skill_level = character["Skills"]["은신"]["레벨"]
-
-                base_evasion = invisibility_data['기본_회피율']
-                evasion_increase = invisibility_data['레벨당_회피율_증가']
-                evasion_max = invisibility_data['최대_회피율']
-                character["Evasion"] = round(base_evasion + skill_level * evasion_increase, 1) # 회피율 증가
+                skill_level = character["Skills"]["기습"]["레벨"]
 
                 # 피해 증가
                 character["DamageEnhance"] += invisibility_data['은신공격_레벨당_피해_배율'] * skill_level
-                if character["Evasion"] > evasion_max: 
-                    character["Evasion"] = evasion_max
 
-            if "고속충전_은신" in character["Status"]:
-                skill_level = character["Skills"]["고속충전"]["레벨"]
-                supercharger_data = skill_data_firebase['고속충전']['values']
-                base_evasion = supercharger_data['기본_회피율']
-                evasion_level = supercharger_data['레벨당_회피율_증가']
-                max_evasion = supercharger_data['최대_회피율']
-                character["Evasion"] = round(base_evasion + skill_level * evasion_level,1) # 회피율 증가
-                if character["Evasion"] > max_evasion: 
-                    character["Evasion"] = max_evasion
+            if "은신" in character["Status"]:
+                character["Evasion"] = 1 # 회피율 증가
 
             if "고속충전_속도증가" in character["Status"]:
                 skill_level = character["Skills"]["고속충전"]["레벨"]
@@ -285,17 +271,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 attack_increase_level = smash_data['레벨당_공격력_증가']
                 attack_increase = skill_level * attack_increase_level
                 character["Attack"] += attack_increase
-
-            if "창격" in character["Status"]:
-                skill_level = character["Skills"]["창격"]["레벨"]
-                spearShot_data = skill_data_firebase['창격']['values']
-                distance_condition = spearShot_data['중거리_조건_거리']
-                if battle_distance == distance_condition: # 적정거리면 추가 대미지
-                    character["CritChance"] = 1
-                    base_accuracy_increase = spearShot_data['중거리_기본_명중_증가']
-                    accuracy_increase_level = spearShot_data['중거리_레벨당_명중_증가']
-                    Accuacy_increase = base_accuracy_increase + (skill_level * accuracy_increase_level)
-                    character["Accuracy"] += Accuacy_increase
 
         async def end(attacker, defender, winner, raid):
             await weapon_battle_thread.send(embed = battle_embed)
@@ -463,7 +438,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
         def invisibility(attacker,skill_level):
             # 은신 상태에서 회피율 증가
-            invisibility_data = skill_data_firebase['은신']['values']
+            invisibility_data = skill_data_firebase['기습']['values']
             DefenseIgnore_increase_level =  invisibility_data['은신공격_레벨당_방관_증가']
             DefenseIgnore_increase = DefenseIgnore_increase_level * skill_level
             attacker["DefenseIgnore"] += DefenseIgnore_increase
@@ -475,12 +450,15 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 attacker["Evasion"] = max_evasion
             invisibility_turns = invisibility_data['지속시간']
             apply_status_for_turn(attacker, "은신", duration=invisibility_turns)  # 은신 상태 지속시간만큼 지속
-            return f"**은신** 사용! {invisibility_turns}턴간 회피율이 {round(attacker['Evasion'] * 100)}% 증가합니다!\n"
+            apply_status_for_turn(attacker, "기습", duration=invisibility_turns)  # 은신 상태 지속시간만큼 지속
+            return f"**기습** 사용! {invisibility_turns}턴간 은신 상태에 돌입하고 추가 피해를 입힙니다!\n"
 
-        def smash(attacker, evasion, skill_level):
+        def smash(attacker, defender, evasion, skill_level):
             # 다음 공격은 반드시 치명타로 적용, 치명타 대미지 증가
+            # 3턴간 둔화 부여
             if not evasion:
                 smash_data = skill_data_firebase['강타']['values']
+                slow_amount = smash_data['기본_둔화량'] + smash_data['레벨당_둔화량'] * skill_level
                 CritDamageIncrease_level = smash_data['레벨당_치명타피해_증가']
                 CritDamageIncrease = skill_level * CritDamageIncrease_level
                 attack_increase_level = smash_data['레벨당_공격력_증가']
@@ -488,7 +466,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 accuracy = calculate_accuracy(attacker["Accuracy"]) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
                 base_damage = random.uniform((attacker["Attack"] + attack_increase) * accuracy, (attacker["Attack"] + attack_increase))  # 최소 ~ 최대 피해
                 skill_damage = base_damage * (attacker["CritDamage"] + CritDamageIncrease)
-                message = f"**강타** 사용!\n치명타 대미지 + {round(CritDamageIncrease * 100)}%, 공격력 + {attack_increase} 부여한 공격!\n"
+                apply_status_for_turn(defender, "둔화", duration=3,value = slow_amount)
+                message = f"**강타** 사용!\n치명타 대미지 + {round(CritDamageIncrease * 100)}%, 공격력 + {attack_increase} 부여한 공격!\n3턴간 {round(slow_amount * 100)}% 둔화 효과를 부여합니다!"
             else:
                 skill_damage = 0
                 message = f"\n**강타가 빗나갔습니다!**\n"
@@ -956,14 +935,14 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             if attacker["Evasion"] > max_evasion: 
                 attacker["Evasion"] = max_evasion
             invisibility_turns = supercharger_data['은신_지속시간']
-            apply_status_for_turn(attacker, "고속충전_은신", duration=invisibility_turns)  # 은신 상태 지속시간만큼 지속
+            apply_status_for_turn(attacker, "은신", duration=invisibility_turns)  # 은신 상태 지속시간만큼 지속
             speedup_turns = supercharger_data['속도증가_지속시간']
             base_speedup = supercharger_data['속도증가_기본수치']
             speedup_level = supercharger_data['속도증가_레벨당']
             speedup_value = base_speedup + speedup_level * skill_level
             attacker["Speed"] += speedup_value
             apply_status_for_turn(attacker, "고속충전_속도증가", duration=speedup_turns)
-            return f"**고속충전** 사용! {invisibility_turns}턴간 회피율이 {round(attacker['Evasion'] * 100)}% 증가합니다!\n{speedup_turns}턴간 스피드가 {speedup_value} 증가합니다!\n"
+            return f"**고속충전** 사용! {invisibility_turns}턴간 은신 상태에 돌입합니다!\n{speedup_turns}턴간 스피드가 {speedup_value} 증가합니다!\n"
         
         def killer_instinct(attacker, defender, skill_level):
             # 사냥본능: 상대의 뒤로 파고들며 2턴간 보호막을 얻음.
@@ -1114,7 +1093,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     skill_message, damage= holy(attacker,defender, evasion,skill_level)
                     result_message += skill_message
                 elif skill_name == "강타":
-                    skill_message, damage = smash(attacker,evasion,skill_level)
+                    skill_message, damage = smash(attacker,defender,evasion,skill_level)
                     critical_bool = True
                     result_message += skill_message
                     if evasion:
@@ -1544,7 +1523,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             if battle_distance > attack_range:  # 돌진
                 if random.random() < move_chance and "속박" not in attacker["Status"]:  
                     move_distance = 2 if (attacker["Weapon"] == "단검" and 
-                                        random.random() < (0.4 + attacker["Skills"]["은신"]["레벨"] * 0.1)) else 1
+                                        random.random() < 0.5) else 1
                     if battle_distance == 2:
                         move_distance = 1
                     attacker["Position"] = adjust_position(attacker["Position"], move_distance, dash_direction)
@@ -1595,7 +1574,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             distance_evasion = calculate_evasion(battle_distance) # 거리 2부터 1당 10%씩 빗나갈 확률 추가
             accuracy = calculate_accuracy(attacker["Accuracy"]) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
-            if random.random() < defender["Evasion"] + distance_evasion * (1 - accuracy): # 회피
+            if random.random() < (defender["Evasion"] + distance_evasion) * (1 - accuracy): # 회피
                 evasion = True
 
             reloading = False
@@ -1830,7 +1809,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     else:
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
                         if "창격" in skill_names:
-                            result_message += spearShot(attacker,evasion,skill_level)
+                            result_message += spearShot(attacker,defender,evasion,skill_level)
                             used_skill.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
@@ -1932,17 +1911,17 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
-            if "은신" in attacker["Status"]: # 은신 상태일 경우, 추가 대미지 + 일정 확률로 '출혈' 상태 부여
-                skill_level = attacker["Skills"]["은신"]["레벨"]
-                invisibility_data = skill_data_firebase['은신']['values']
+            if "기습" in attacker["Status"]: # 은신 상태일 경우, 추가 대미지 + 일정 확률로 '출혈' 상태 부여
+                skill_level = attacker["Skills"]["기습"]["레벨"]
+                invisibility_data = skill_data_firebase['기습']['values']
                 DefenseIgnore_increase = skill_level * invisibility_data['은신공격_레벨당_방관_증가']
                 bleed_chance = invisibility_data['은신공격_레벨당_출혈_확률'] * skill_level
                 bleed_damage = invisibility_data['은신공격_출혈_기본_지속피해'] + skill_level * invisibility_data['은신공격_출혈_레벨당_지속피해']
                 if random.random() < bleed_chance and not evasion and attacked: # 출혈 부여
                     bleed_turns = invisibility_data['은신공격_출혈_지속시간']
                     apply_status_for_turn(defender, "출혈", duration=bleed_turns, value = bleed_damage)
-                    result_message +=f"\n**🩸{attacker['name']}의 은신 공격**!\n{bleed_turns}턴간 출혈 상태 부여!\n"   
-                result_message +=f"\n**{attacker['name']}의 은신 공격**!\n방어력 관통 + {DefenseIgnore_increase}!\n{round(invisibility_data['은신공격_레벨당_피해_배율'] * skill_level * 100)}% 추가 대미지!\n"
+                    result_message +=f"\n**🩸{attacker['name']}의 기습**!\n{bleed_turns}턴간 출혈 상태 부여!\n"   
+                result_message +=f"\n**{attacker['name']}의 기습**!\n방어력 관통 + {DefenseIgnore_increase}!\n{round(invisibility_data['은신공격_레벨당_피해_배율'] * skill_level * 100)}% 추가 대미지!\n"
 
             if skill_attack_names or attacked: # 공격시 상대의 빙결 상태 해제
                 if skill_attack_names != ['명상'] and not evasion: # 명상만 썼을 경우, 회피했을 경우 제외!
@@ -2318,7 +2297,7 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
         
         basic_skill_levelup = inherit_log.get("기본 스킬 레벨 증가", 0)
         
-        basic_skills = ["속사", "은신", "강타", "헤드샷", "창격", "수확", "명상", "화염 마법", "냉기 마법", "신성 마법"]
+        basic_skills = ["속사", "기습", "강타", "헤드샷", "창격", "수확", "명상", "화염 마법", "냉기 마법", "신성 마법"]
         skills = base_weapon_stat["스킬"]
         for skill_name in basic_skills:
             if skill_name in skills:
