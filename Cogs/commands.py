@@ -192,7 +192,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             if status_name not in character["Status"]:
                 character["Status"][status_name] = {"duration": duration}
             else:
-                character["Status"][status_name]["duration"] = duration
+                character["Status"][status_name]["duration"] += duration
 
             if value is not None:
                 character["Status"][status_name]["value"] = value
