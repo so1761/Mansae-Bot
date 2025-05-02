@@ -826,12 +826,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     base_damage = holy_data['기본_피해량'] + holy_data['레벨당_기본_피해량_증가'] * skill_level
                     skill_multiplier = holy_data['기본_스킬증폭_계수'] + holy_data['레벨당_스킬증폭_계수_증가'] * skill_level
                     skill_damage = base_damage + attacker['Spell'] * skill_multiplier
-                    lost_HP_rate = (attacker['FullHP'] - attacker['HP']) / attacker['FullHP']
+                    lost_HP_rate = (attacker['BaseHP'] - attacker['HP']) / attacker['BaseHP']
                     heal_amount = holy_data['레벨당_치유량'] * skill_level
                     # 기본 힐량과 스킬 관련 계산
                     initial_HP = attacker['HP']  # 회복 전 내구도 저장
                     attacker['HP'] += heal_amount  # 힐 적용
-                    attacker['HP'] = min(attacker['HP'], attacker['FullHP'])  # 최대 내구도 이상 회복되지 않도록 제한
+                    attacker['HP'] = min(attacker['HP'], attacker['BaseHP'])  # 최대 내구도 이상 회복되지 않도록 제한
 
                     # 최종 회복된 내구도
                     final_HP = attacker['HP']
