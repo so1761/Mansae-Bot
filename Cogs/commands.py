@@ -138,7 +138,7 @@ def restart_script(): # 봇 재시작 명령어
 
 
 def generate_tower_weapon(floor: int):
-    weapon_types = ["대검", "조총", "창", "활", "단검", "낫"]
+    weapon_types = ["대검","스태프-화염", "조총", "스태프-냉기", "창", "활", "스태프-신성", "단검", "낫"]
     weapon_type = weapon_types[(floor - 1) % len(weapon_types)]  # 1층부터 시작
     enhancement_level = floor
 
@@ -148,16 +148,25 @@ def generate_tower_weapon(floor: int):
     # 기본 스탯
     base_stats = base_weapon_stats[weapon_type]
 
+    skill_weapons = ["스태프-화염", "스태프-냉기", "스태프-신성"]
+    attack_weapons = ["대검", "창", "활", "단검"]
+    hybrid_weapons = ["낫", "조총"]
+
     # 강화 단계만큼 일괄 증가
     weapon_data = base_stats.copy()
     weapon_data["이름"] = f"{weapon_type} +{enhancement_level}"
     weapon_data["무기타입"] = weapon_type
-    weapon_data["공격력"] += enhancement_level * 2
+    if weapon_type in skill_weapons:
+        weapon_data["스킬 증폭"] += enhancement_level * 5
+    elif weapon_type in attack_weapons:
+        weapon_data["공격력"] += enhancement_level * 2
+    elif weapon_type in hybrid_weapons:
+        weapon_data["스킬 증폭"] += enhancement_level * 3
+        weapon_data["공격력"] += enhancement_level * 1
     weapon_data["내구도"] += enhancement_level * 15
     weapon_data["방어력"] += enhancement_level * 2
     weapon_data["스피드"] += enhancement_level * 2
     weapon_data["명중"] += enhancement_level * 3
-    weapon_data["스킬 증폭"] += enhancement_level * 5
     weapon_data["강화"] = enhancement_level
     for skill_data in  weapon_data["스킬"].values():
         skill_data["레벨"] = enhancement_level // 10 + 1    
@@ -507,7 +516,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 return f"**창격(적정 거리)** 사용!\n1턴간 기절 상태이상 부여!\n"
             elif battle_distance >= condition_distance + 1: # 원거리면 둔화
                 apply_status_for_turn(defender, "둔화", duration=2,value = slow_amount)
-                return f"**창격(원거리)** 사용!\n창을 던져 2턴간 {round(slow_amount * 100)}% 둔화 효과를 부여합니다\n"
+                dash_direction = -1 if attacker['name'] == challenger['name'] else 1
+                attacker["Position"] = adjust_position(attacker["Position"], 1, dash_direction)
+                if (attacker["Position"] < 0 and defender["Position"] > 0) or (attacker["Position"] > 0 and defender["Position"] < 0):
+                    battle_distance = abs(attacker["Position"] - defender["Position"]) - 1  # 0을 건너뛰므로 -1
+                else:
+                    battle_distance = abs(attacker["Position"] - defender["Position"])  # 같은 방향이면 그대로 계산
+                return f"**창격(원거리)** 사용!\n적을 향해 1칸 돌진합니다\n창을 던져 2턴간 {round(slow_amount * 100)}% 둔화 효과를 부여합니다\n"
             
         def mech_Arm(attacker,defender, evasion, skill_level):
             # 전선더미 방출: (20 + 레벨 당 5) + 스킬 증폭 20% + 레벨당 10% 추가 피해
@@ -826,8 +841,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     base_damage = holy_data['기본_피해량'] + holy_data['레벨당_기본_피해량_증가'] * skill_level
                     skill_multiplier = holy_data['기본_스킬증폭_계수'] + holy_data['레벨당_스킬증폭_계수_증가'] * skill_level
                     skill_damage = base_damage + attacker['Spell'] * skill_multiplier
-                    lost_HP_rate = (attacker['BaseHP'] - attacker['HP']) / attacker['BaseHP']
-                    heal_amount = holy_data['레벨당_치유량'] * skill_level
+                    heal_skill_multiplier = (holy_data['치유_기본_스킬증폭_계수'] + holy_data['치유_레벨당_스킬증폭_계수_증가'] * skill_level)
+                    heal_amount = round(holy_data['레벨당_치유량'] * skill_level + attacker['Spell'] * heal_skill_multiplier)
                     # 기본 힐량과 스킬 관련 계산
                     initial_HP = attacker['HP']  # 회복 전 내구도 저장
                     attacker['HP'] += heal_amount  # 힐 적용
@@ -1162,13 +1177,47 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     if skill_name == "수확" and not evasion:
                         Reap_data = skill_data_firebase['수확']['values']
                         heal_multiplier = min(1, (Reap_data['기본_흡혈_비율'] + Reap_data['스킬증폭당_추가흡혈_비율'] * attacker["Spell"]))
-                        heal_amount = round(final_damage * heal_multiplier)
-                        result_message += f"가한 대미지의 {int(heal_multiplier * 100)}% 흡혈! (+{heal_amount} 회복)\n내구도: [{attacker['HP']}] → [{attacker['HP'] + heal_amount}] ❤️ (+{heal_amount})"
-                        attacker['HP'] += heal_amount
+                        real_damage = final_damage
+
+                        if "보호막" in defender['Status']:
+                            shield_amount = defender["Status"]["보호막"]["value"]
+                            if shield_amount >= final_damage:
+                                real_damage = 0
+                            else:
+                                real_damage = final_damage - shield_amount
+
+                        heal_amount = round(real_damage * heal_multiplier)
+                        # 기본 힐량과 스킬 관련 계산
+                        initial_HP = attacker['HP']  # 회복 전 내구도 저장
+                        attacker['HP'] += heal_amount  # 힐 적용
+                        attacker['HP'] = min(attacker['HP'], attacker['BaseHP'])  # 최대 내구도 이상 회복되지 않도록 제한
+
+                        # 최종 회복된 내구도
+                        final_HP = attacker['HP']
+                        result_message += f"가한 대미지의 {int(heal_multiplier * 100)}% 흡혈! (+{heal_amount} 회복)\n내구도: [{initial_HP}] → [{final_HP}] ❤️ (+{final_HP - initial_HP})"
                 # 스킬 쿨타임 적용
                 attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
 
             return max(0, round(total_damage)), result_message, critical_bool  # 최소 0 피해
+
+        skills_data = weapon_data_challenger.get("스킬", {})
+        challenger_merged_skills = {}
+
+        for skill_name, skill_info in skills_data.items():
+            # 공통 스킬 정보에서 쿨타임 가져오기
+            ref_skill = db.reference(f"무기/스킬/{skill_name}")
+            skill_common_data = ref_skill.get() or {}
+            # cooldown 전체 가져오기
+            cooldown_data = skill_common_data.get("cooldown", {})
+            total_cd = cooldown_data.get("전체 쿨타임", 0)
+            current_cd = cooldown_data.get("현재 쿨타임", 0)
+
+            # 사용자 데이터에 쿨타임 추가
+            merged_skill_info = skill_info.copy()
+            merged_skill_info["전체 쿨타임"] = total_cd
+            merged_skill_info["현재 쿨타임"] = current_cd
+
+            challenger_merged_skills[skill_name] = merged_skill_info
         challenger = {
             "Weapon": weapon_data_challenger.get("무기타입",""),
             "name": weapon_data_challenger.get("이름", ""),
@@ -1192,10 +1241,29 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             "Accuracy": weapon_data_challenger.get("명중", 0),
             "BaseAccuracy": weapon_data_challenger.get("명중", 0),
             "Defense": weapon_data_challenger.get("방어력", 0),
-            "Skills": weapon_data_challenger.get("스킬", {}),
+            "Skills": challenger_merged_skills,
             "Status" : {}
         }
         
+        skills_data = weapon_data_opponent.get("스킬", {})
+        opponent_merged_skills = {}
+
+        for skill_name, skill_info in skills_data.items():
+            # 공통 스킬 정보에서 쿨타임 가져오기
+            ref_skill = db.reference(f"무기/스킬/{skill_name}")
+            skill_common_data = ref_skill.get() or {}
+            # cooldown 전체 가져오기
+            cooldown_data = skill_common_data.get("cooldown", {})
+            total_cd = cooldown_data.get("전체 쿨타임", 0)
+            current_cd = cooldown_data.get("현재 쿨타임", 0)
+
+            # 사용자 데이터에 쿨타임 추가
+            merged_skill_info = skill_info.copy()
+            merged_skill_info["전체 쿨타임"] = total_cd
+            merged_skill_info["현재 쿨타임"] = current_cd
+
+            opponent_merged_skills[skill_name] = merged_skill_info
+
         opponent = {
             "Weapon": weapon_data_opponent.get("무기타입",""),
             "name": weapon_data_opponent.get("이름", ""),
@@ -1220,7 +1288,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             "Accuracy": weapon_data_opponent.get("명중", 0),
             "BaseAccuracy": weapon_data_opponent.get("명중", 0),
             "Defense": weapon_data_opponent.get("방어력", 0),
-            "Skills": weapon_data_opponent.get("스킬", {}),
+            "Skills": opponent_merged_skills,
             "Status" : {}
         }
 
@@ -1862,23 +1930,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             skill_attack_names.append(skill_name)
                 else:
                     cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
-
-            if attacked: #공격 시 방어자가 '불굴' 상태라면 대미지 감소
-                if "불굴" in defender["Status"]:
-                    if not evasion:
-                        skill_level = defender["Skills"]["불굴"]["레벨"]
-                        result_message += unyielding(defender, skill_level)
-                
-                if "뇌진탕 펀치" in attacker["Status"]:
-                    if not skill_attack_names:
-                        if not evasion:
-                            result_message += concussion_punch(defender)
-
-                if "두번째 피부" in attacker["Status"]:
-                    skill_name = "두번째 피부"
-                    if not skill_attack_names:
-                        if not evasion:
-                            used_skill.append(skill_name)
                             
             if "전선더미 방출" in skill_names:
                 skill_name = "전선더미 방출"
@@ -1924,6 +1975,22 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     result_message +=f"\n**🩸{attacker['name']}의 기습**!\n{bleed_turns}턴간 출혈 상태 부여!\n"   
                 result_message +=f"\n**{attacker['name']}의 기습**!\n방어력 관통 + {DefenseIgnore_increase}!\n{round(invisibility_data['은신공격_레벨당_피해_배율'] * skill_level * 100)}% 추가 대미지!\n"
 
+            if attacked: #공격 시 방어자가 '불굴' 상태라면 대미지 감소
+                if "불굴" in defender["Status"]:
+                    if not evasion:
+                        skill_level = defender["Skills"]["불굴"]["레벨"]
+                        result_message += unyielding(defender, skill_level)
+                
+                if "뇌진탕 펀치" in attacker["Status"]:
+                    if not skill_attack_names:
+                        if not evasion:
+                            result_message += concussion_punch(defender)
+
+                if "두번째 피부" in attacker["Status"]:
+                    skill_name = "두번째 피부"
+                    if not skill_attack_names:
+                        if not evasion:
+                            used_skill.append(skill_name)
             if skill_attack_names or attacked: # 공격시 상대의 빙결 상태 해제
                 if skill_attack_names != ['명상'] and not evasion: # 명상만 썼을 경우, 회피했을 경우 제외!
                     if '빙결' in defender['Status']:
@@ -8618,13 +8685,15 @@ class hello(commands.Cog):
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
 
-    
+
+
     @app_commands.command(name="탑모의전",description="탑의 상대와 모의전투를 진행합니다.")
     @app_commands.describe(층수 = "도전할 층수를 선택하세요.")
-    async def infinity_tower_practice(self, interaction: discord.Interaction,층수 : app_commands.Range[int, 1]):
-        nickname = interaction.user.name
-
-        ref_weapon_challenger = db.reference(f"무기/유저/{nickname}")
+    async def infinity_tower_practice(self, interaction: discord.Interaction,층수 : app_commands.Range[int, 1], 상대 : discord.Member = None):
+        if 상대 is None:
+            상대 = interaction.user  # 자기 자신을 대상으로 설정
+        
+        ref_weapon_challenger = db.reference(f"무기/유저/{상대.name}")
         weapon_data_challenger = ref_weapon_challenger.get() or {}
 
         weapon_name_challenger = weapon_data_challenger.get("이름", "")
@@ -8653,12 +8722,12 @@ class hello(commands.Cog):
                     
         # 임베드 생성
         embed = discord.Embed(
-            title=f"{interaction.user.display_name}의 탑 등반({current_floor}층)(모의전)",
+            title=f"{상대.display_name}의 탑 등반({current_floor}층)(모의전)",
             description="전투가 시작되었습니다!",
             color=discord.Color.blue()  # 원하는 색상 선택
         )
         await interaction.response.send_message(embed=embed)
-        await Battle(channel = interaction.channel,challenger_m = interaction.user, tower = True, practice= True, tower_floor= 층수)
+        await Battle(channel = interaction.channel,challenger_m = 상대, tower = True, practice= True, tower_floor= 층수)
 
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)

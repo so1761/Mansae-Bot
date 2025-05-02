@@ -214,15 +214,21 @@ def get_weapon_data(request, discord_username):
     skill_data = weapon_data.get('스킬', {})
     ref_weapon_stats = db.reference(f"무기/유저/{discord_username}")
     weapon_stats_data = ref_weapon_stats.get() or {}
-    
+
     for skill_name, skill_info in skill_data.items():
         ref_skill_data = db.reference(f"무기/스킬/{skill_name}")
         skill_server_data = ref_skill_data.get() or {}
 
+        # 공통 values
         values = skill_server_data.get('values', {})
         level = skill_info.get('레벨', 1)  # 없으면 1로 가정
-        
-        # 템플릿 변수로 사용할 딕셔너리 준비
+
+        # 공통 cooldown
+        cooldown_data = skill_server_data.get("cooldown", {})
+        total_cd = cooldown_data.get("전체 쿨타임", 0)
+        current_cd = cooldown_data.get("현재 쿨타임", 0)
+
+        # 템플릿 변수로 사용할 딕셔너리
         template_context = {
             **values,
             '레벨': level,
@@ -242,12 +248,12 @@ def get_weapon_data(request, discord_username):
             weapon=weapon,
             skill_name=skill_name,
             level=level,
-            cooldown=skill_info.get('전체 쿨타임', 0),
-            current_cooldown=skill_info.get('현재 쿨타임', 0),
-            skill_range=skill_info.get('사거리',0),
+            cooldown=total_cd,
+            current_cooldown=current_cd,
+            skill_range=skill_info.get('사거리', 0),
             skill_description=skill_server_data.get('description', "스킬 설명이 없습니다"),
             skill_notes_key=tooltip_key,
-            skill_notes_params=template_context  # 💡 이건 JSONField여야 함!
+            skill_notes_params=template_context  # 💡 JSONField여야 함
         )
 
     # 변환된 무기 정보를 반환
