@@ -3009,7 +3009,7 @@ class ItemBuyButton(discord.ui.Button):
             "완전 익명화": {"cost": 300, "currency": "P"},
             "레이드 재도전": {"cost": 500, "currency": "P"},
             "강화재료": {"cost": 1, "currency": "TC"},
-            "연마제": {"cost": 5, "currency": "TC"},
+            "연마제": {"cost": 3, "currency": "TC"},
             "랜덤박스": {"cost": 5, "currency": "TC"},
         }
 
@@ -3112,7 +3112,7 @@ class ItemSelect(discord.ui.Select):
             discord.SelectOption(label = "완전 익명화", value = "완전 익명화", description = "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 300p로 구매 가능합니다."),
             discord.SelectOption(label = "레이드 재도전", value = "레이드 재도전", description = "레이드에 참여했던 기록을 없애고 다시 도전합니다. 500p로 구매 가능합니다."),
             discord.SelectOption(label = "강화재료", value = "강화재료", description = "강화에 필요한 재료입니다. 1TC로 구매 가능합니다."),
-            discord.SelectOption(label = "연마제", value = "연마제", description = "강화 확률을 5% 올립니다. 5TC로 구매 가능합니다."),
+            discord.SelectOption(label = "연마제", value = "연마제", description = "강화 확률을 5% 올립니다. 3TC로 구매 가능합니다."),
             discord.SelectOption(label = "랜덤박스", value = "랜덤박스", description = "강화재료, 연마제, 레이드 재도전권, 고급연마제가 들어있는 랜덤박스입니다. 5TC로 구매 가능합니다."),
         ]
         super().__init__(
@@ -3147,7 +3147,7 @@ class ItemSelect(discord.ui.Select):
             "완전 익명화": {"cost": 300, "currency": "P"},
             "레이드 재도전": {"cost": 500, "currency": "P"},
             "강화재료": {"cost": 1, "currency": "TC"},
-            "연마제": {"cost": 5, "currency": "TC"},
+            "연마제": {"cost": 3, "currency": "TC"},
             "랜덤박스": {"cost": 5, "currency": "TC"},
         }
 
@@ -3165,7 +3165,7 @@ class ItemSelect(discord.ui.Select):
             "완전 익명화": "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 300p로 구매 가능합니다",
             "레이드 재도전": "레이드에 참여했던 기록을 없애고 다시 도전합니다. 500p로 구매 가능합니다.",
             "강화재료" : "강화에 필요한 재료입니다. 1TC로 구매 가능합니다.",
-            "연마제" : "다음 강화 확률을 5% 올립니다. 5TC로 구매 가능합니다.",
+            "연마제" : "다음 강화 확률을 5% 올립니다. 3TC로 구매 가능합니다.",
             "랜덤박스" : "강화재료, 연마제, 레이드 재도전권, 고급연마제가 들어있는 랜덤박스입니다. 5TC로 구매 가능합니다."
         }
         
@@ -7624,6 +7624,7 @@ class hello(commands.Cog):
         weapon_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
         weapon_embed.add_field(name="내구도", value=f"{weapon_data.get('내구도', 0)}", inline=False)
         weapon_embed.add_field(name="공격력", value=f"{weapon_data.get('공격력', 0)}", inline=True)
+        weapon_embed.add_field(name="스킬 증폭", value=f"{weapon_data.get('스킬 증폭', 0)}", inline=True)
         weapon_embed.add_field(name="방어력", value=f"{weapon_data.get('방어력', 0)}", inline=True)
         weapon_embed.add_field(name="스피드", value=f"{weapon_data.get('스피드', 0)}", inline=True)
         weapon_embed.add_field(name="명중", value=f"{weapon_data.get('명중', 0)}", inline=True)
