@@ -442,12 +442,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             DefenseIgnore_increase_level =  invisibility_data['은신공격_레벨당_방관_증가']
             DefenseIgnore_increase = DefenseIgnore_increase_level * skill_level
             attacker["DefenseIgnore"] += DefenseIgnore_increase
-            base_evasion = invisibility_data['기본_회피율']
-            evasion_level = invisibility_data['레벨당_회피율_증가']
-            max_evasion = invisibility_data['최대_회피율']
-            attacker["Evasion"] = round(base_evasion + skill_level * evasion_level,1) # 회피율 증가
-            if attacker["Evasion"] > max_evasion: 
-                attacker["Evasion"] = max_evasion
+            attacker["Evasion"] = 1
             invisibility_turns = invisibility_data['지속시간']
             apply_status_for_turn(attacker, "은신", duration=invisibility_turns)  # 은신 상태 지속시간만큼 지속
             apply_status_for_turn(attacker, "기습", duration=invisibility_turns)  # 은신 상태 지속시간만큼 지속
@@ -690,7 +685,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 critical_bool = False
                 evasion_bool = False
                 distance_evasion = calculate_evasion(battle_distance) # 거리 2부터 1당 10%씩 빗나갈 확률 추가   
-                if random.random() < defender["Evasion"] + distance_evasion * (1 - accuracy): # 회피
+                if random.random() < (defender["Evasion"] + distance_evasion) * (1 - accuracy): # 회피
                     evasion_bool = True
                     return 0, False, evasion_bool
 
@@ -866,7 +861,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 critical_bool = False
                 evasion_bool = False
                 distance_evasion = calculate_evasion(battle_distance) # 거리 2부터 1당 10%씩 빗나갈 확률 추가   
-                if random.random() < defender["Evasion"] + distance_evasion * (1 - accuracy): # 회피
+                if random.random() < (defender["Evasion"] + distance_evasion)* (1 - accuracy): # 회피
                     evasion_bool = True
                     return 0, False, evasion_bool
 
@@ -928,12 +923,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         def supercharger(attacker, skill_level):
             # 고속충전: 1턴간 회피율 증가, 3턴간 스피드 증가
             supercharger_data = skill_data_firebase['고속충전']['values']
-            base_evasion = supercharger_data['기본_회피율']
-            evasion_level = supercharger_data['레벨당_회피율_증가']
-            max_evasion = supercharger_data['최대_회피율']
-            attacker["Evasion"] = round(base_evasion + skill_level * evasion_level,1) # 회피율 증가
-            if attacker["Evasion"] > max_evasion: 
-                attacker["Evasion"] = max_evasion
+            attacker["Evasion"] = 1
             invisibility_turns = supercharger_data['은신_지속시간']
             apply_status_for_turn(attacker, "은신", duration=invisibility_turns)  # 은신 상태 지속시간만큼 지속
             speedup_turns = supercharger_data['속도증가_지속시간']
@@ -1553,8 +1543,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 attacked = True
            
 
-            if "은신" in skill_names:
-                skill_name = "은신"
+            if "기습" in skill_names:
+                skill_name = "기습"
                 skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
                 skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
                 skill_level = attacker["Skills"][skill_name]["레벨"]
@@ -5302,6 +5292,26 @@ class hello(commands.Cog):
 
             embed = discord.Embed(title=f'변경 완료', color = discord.Color.blue())
             embed.add_field(name=f"변경", value=f"투표 기능이 Off 되었습니다." if onoffbool else "투표 기능이 On 되었습니다.", inline=False)
+            await interaction.response.send_message(embed=embed)
+        else:
+            await interaction.response.send_message("권한이 없습니다", ephemeral=True)
+
+    @app_commands.command(name="이벤트온오프",description="승부예측 이벤트 온오프(개발자 전용)")
+    @app_commands.choices(값=[
+    Choice(name='On', value="True"),
+    Choice(name='Off', value="False"),
+    ])
+    async def 이벤트온오프(self, interaction: discord.Interaction, 값:str):
+        if interaction.user.name == "toe_kyung":
+            onoffref = db.reference("승부예측")
+            if 값 == "True":
+                onoffbool = True
+            else:
+                onoffbool = False
+            onoffref.update({"이벤트온오프" : onoffbool})
+
+            embed = discord.Embed(title=f'변경 완료', color = discord.Color.blue())
+            embed.add_field(name=f"변경", value=f"승부예측 이벤트가 종료되었습니다." if onoffbool else "승부예측 이벤트가 시작되었습니다.", inline=False)
             await interaction.response.send_message(embed=embed)
         else:
             await interaction.response.send_message("권한이 없습니다", ephemeral=True)

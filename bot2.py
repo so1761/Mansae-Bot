@@ -116,6 +116,16 @@ async def mission_notice(name, mission, rarity):
     # 메시지 보내기
     await channel.send(f"\n", embed=userembed)
 
+def give_item(nickname, item_name, amount):
+    cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
+    current_predict_season = cur_predict_seasonref.get()
+
+    # 사용자 아이템 데이터 위치
+    refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템')
+    item_data = refitem.get()
+
+    refitem.update({item_name: item_data.get(item_name, 0) + amount})
+
 class MissionView(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -1254,6 +1264,47 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                     "사유": "펜타킬 달성"
                                 })
                             await channel.send(embed=pentaembed)
+                        
+                        onoffref = db.reference("승부예측/이벤트온오프")
+                        predict_event = onoffref.get()
+
+                        if predict_event:
+                            # 승부 결과에 따라 예측 성공자 결정
+                            result_winners = prediction_votes['win'] if result else prediction_votes['lose']
+
+                            # KDA 기준에 따라 성공자 결정
+                            if kda == 999:
+                                kda_winners = kda_votes['perfect'] + kda_votes['up']
+                            elif kda > 3:
+                                kda_winners = kda_votes['up']
+                            elif kda < 3:
+                                kda_winners = kda_votes['down']
+                            else:  # kda == 3
+                                kda_winners = kda_votes['up'] + kda_votes['down']
+
+                            # 각 리스트의 Member ID만 추출
+                            result_ids = set(winner['name'].id for winner in result_winners)
+                            kda_ids = set(winner['name'].id for winner in kda_winners)
+
+                            # 교집합 ID 계산
+                            common_ids = result_ids & kda_ids
+
+                            # result_winners에서 공통된 ID를 가진 사람만 추출
+                            final_winners = [winner for winner in result_winners if winner['name'].id in common_ids]
+
+                            # 결과 임베드 생성 및 아이템 지급
+                            eventembed = discord.Embed(title="이벤트 결과", color=discord.Color.gold())
+
+                            for winner in final_winners:
+                                member = winner['name']
+                                give_item(member.name, "강화재료", 1)
+                                eventembed.add_field(
+                                    name="",
+                                    value=f"{member.display_name}님이 완전 적중으로 강화재료를 획득하셨습니다!",
+                                    inline=False
+                                )
+
+                            await channel.send(embed=eventembed)
 
                         refperfect.update({name: perfect_point + 5 if kda != 999 else 500})
                         kda_votes['up'].clear()
