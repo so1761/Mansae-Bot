@@ -757,7 +757,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     base_damage = fire_data['기본_피해량'] + fire_data['레벨당_기본_피해량_증가'] * skill_level
                     skill_multiplier = fire_data['기본_스킬증폭_계수'] + fire_data['레벨당_스킬증폭_계수_증가'] * skill_level
                     skill_damage = base_damage + attacker['Spell'] * skill_multiplier
-                    burn_damage = fire_data['화상_대미지'] * skill_level
+                    burn_skill_multiplier = fire_data['화상_기본_스킬증폭_계수'] + fire_data['화상_레벨당_스킬증폭_계수_증가'] * skill_level
+                    burn_damage = fire_data['화상_대미지'] * skill_level + attacker['Spell'] * burn_skill_multiplier
                     apply_status_for_turn(defender, "화상", 1, burn_damage)
                     message = f"**플레어** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 화상 부여!"
                 else:
@@ -824,9 +825,18 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     base_damage = holy_data['기본_피해량'] + holy_data['레벨당_기본_피해량_증가'] * skill_level
                     skill_multiplier = holy_data['기본_스킬증폭_계수'] + holy_data['레벨당_스킬증폭_계수_증가'] * skill_level
                     skill_damage = base_damage + attacker['Spell'] * skill_multiplier
+                    lost_HP_rate = (attacker['FullHP'] - attacker['HP']) / attacker['FullHP']
                     heal_amount = holy_data['레벨당_치유량'] * skill_level
-                    message = f"**블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}만큼 내구도 회복!\n내구도: [{attacker['HP']}] → [{attacker['HP'] + heal_amount}] ❤️ (+{heal_amount})"
-                    attacker['HP'] += heal_amount
+                    # 기본 힐량과 스킬 관련 계산
+                    initial_HP = attacker['HP']  # 회복 전 내구도 저장
+                    attacker['HP'] += heal_amount  # 힐 적용
+                    attacker['HP'] = min(attacker['HP'], attacker['FullHP'])  # 최대 내구도 이상 회복되지 않도록 제한
+
+                    # 최종 회복된 내구도
+                    final_HP = attacker['HP']
+
+                    # 메시지 출력
+                    message = f"**블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}만큼 내구도 회복!\n내구도: [{initial_HP}] → [{final_HP}] ❤️ (+{final_HP - initial_HP})"
                 else:
                     skill_damage = 0
                     message = f"**블레스가 빗나갔습니다!**\n"
