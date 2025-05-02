@@ -744,7 +744,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     base_damage = fire_data['강화_기본_피해량'] + fire_data['레벨당_강화_기본_피해량_증가'] * skill_level
                     skill_multiplier = fire_data['강화_기본_스킬증폭_계수'] + fire_data['레벨당_강화_스킬증폭_계수_증가'] * skill_level
                     skill_damage = base_damage + attacker['Spell'] * skill_multiplier
-                    burn_damage = fire_data['화상_대미지'] * skill_level
+                    burn_skill_multiplier = fire_data['화상_기본_스킬증폭_계수'] + fire_data['화상_레벨당_스킬증폭_계수_증가'] * skill_level
+                    burn_damage = fire_data['화상_대미지'] * skill_level + attacker['Spell'] * burn_skill_multiplier
                     apply_status_for_turn(defender, "기절", 1)
                     apply_status_for_turn(defender, "화상", 3, burn_damage)
                     message = f"**메테오** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 기절 부여 및 3턴간 화상 부여!"
