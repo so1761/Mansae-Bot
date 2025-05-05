@@ -3758,7 +3758,7 @@ class WarnCommandModal(discord.ui.Modal, title="경고 기록"):
             await interaction.response.send_message("⚠️ 경고 채널을 찾을 수 없습니다.", ephemeral=True)
             return
         
-        channel = interaction.client.get_channel(self.message.channel.id)
+        channel = self.bot.get_channel(int(CHANNEL_ID)) #tts 채널 
 
         embed = discord.Embed(title="🚨 경고 기록", color=discord.Color.red())
         embed.add_field(name="경고 대상", value=self.member.mention, inline=False)
