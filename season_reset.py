@@ -70,7 +70,7 @@ current_items = current_items_ref.get() or {}
 # 새로운 시즌의 아이템 레퍼런스
 next_items_ref = db.reference(f'승부예측/예측시즌/{next_season}/예측포인트')
 
-remain_items = ["강화재료","연마제","탑코인","랜덤박스","특수연마제"]
+remain_items = ["강화재료","연마제","탑코인","랜덤박스","특수 연마제"]
 # 기존 시즌의 각 사용자에 대해 강화 재료 추가
 for user, user_items in current_items.items():  # 사용자 닉네임 순회
     for item, num in user_items.get('아이템', {}).items():  # 해당 사용자의 아이템 순회

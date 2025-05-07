@@ -433,12 +433,12 @@ def enhance_weapon(request):
             if use_high_polish:
                 enhancement_rate += 50
                 use_high_polish = False
-                # 특수연마제 차감
+                # 특수 연마제 차감
                 item_ref = db.reference(f"무기/아이템/{nickname}")
                 current_items = item_ref.get() or {}
                 special_polish_count = current_items.get("특수 연마제", 0)
                 if special_polish_count > 0:
-                    item_ref.update({"특수연마제": special_polish_count - 1})
+                    item_ref.update({"특수 연마제": special_polish_count - 1})
 
             roll = random.randint(1, 100)
             success = roll <= enhancement_rate

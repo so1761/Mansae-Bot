@@ -34,6 +34,7 @@ JIMO_TAG = 'KR1'
 
 # 경고 채널의 ID (실제 채널 ID로 변경)
 WARNING_CHANNEL_ID = 1314643507490590731
+ENHANCEMENT_CHANNEL = 1350434647149908070
 
 SEASON_CHANGE_DATE = datetime(2024, 5, 15, 0, 0, 0)
 SEASON_CHANGE_DATE2 = datetime(2024, 9, 11, 0, 0, 0)
@@ -205,11 +206,18 @@ def apply_stat_change(nickname: str):
     stat_changes = []
     for stat in old_stats:
         if stat in new_stats:
-            diff = new_stats[stat] - old_stats[stat]
-            if diff > 0:
-                stat_changes.append(f"🟢 **{stat}**: +{diff}")
-            elif diff < 0:
-                stat_changes.append(f"🔴 **{stat}**: {diff}")
+            if stat in ["치명타 확률", "치명타 대미지"]:
+                diff = round((new_stats[stat] - old_stats[stat]) * 100)
+                if diff > 0:
+                    stat_changes.append(f"🟢 **{stat}**: +{diff}%")
+                elif diff < 0:
+                    stat_changes.append(f"🔴 **{stat}**: {diff}%")
+            else:
+                diff = new_stats[stat] - old_stats[stat]
+                if diff > 0:
+                    stat_changes.append(f"🟢 **{stat}**: +{diff}")
+                elif diff < 0:
+                    stat_changes.append(f"🔴 **{stat}**: {diff}")
 
     # 실제 업데이트 적용
     ref_weapon.update(new_stats)
@@ -270,6 +278,10 @@ class RuneUseButton(discord.ui.View):
             await interaction.response.send_message("해당 룬을 더 이상 보유하고 있지 않습니다.", ephemeral=True)
             return
 
+        for child in self.children:
+            child.disabled = True
+        await interaction.response.defer()
+        
         embed = discord.Embed(color=discord.Color.green())
 
         if self.rune_name == "스킬 각성의 룬":
@@ -293,20 +305,88 @@ class RuneUseButton(discord.ui.View):
                 )
                 embed.add_field(
                     name=f"🛠️ 스킬 레벨",
-                    value=f"**Lv.{base_skill_level_increase + 1} -> Lv.{base_skill_level_increase + 2}**",
+                    value=f"**Lv.{base_skill_level_increase + 1} → Lv.{base_skill_level_increase + 2}**",
                     inline=False
                 )
 
         elif self.rune_name == "운명 왜곡의 룬":
             embed.title = "운명 왜곡의 룬 발동!"
-            embed.description = f"{self.nickname}님의 **계승 스탯이 무작위하게 재배치**되었습니다!"
             # 여기에 계승 스탯 무작위 재배치 로직 구현
+            # 기존의 추가강화 수치
+            ref_inherit_log = db.reference(f"무기/유저/{self.nickname}/계승 내역")
+            inherit_log = ref_inherit_log.get() or {}
+            additional_enhance = inherit_log.get("추가강화", {})
+
+            ref_additional_enhance = db.reference(f"무기/유저/{self.nickname}/계승 내역/추가강화")
+
+            ref_enhance_list = db.reference(f"무기/강화")
+            enhance_list = ref_enhance_list.get() or {}
+
+            # 새로 재배치할 수치
+            enhance_keys = list(enhance_list.keys())  # 강화 키들
+            enhance_count = sum(additional_enhance.values())  # 추가강화 총합
+
+            # 새로 재배치된 수치
+            new_enhance = {key: 0 for key in enhance_keys}
+            for _ in range(enhance_count):
+                selected = random.choice(enhance_keys)
+                new_enhance[selected] += 1
+
+            # 기존 강화 내역에서 수치 제외
+            ref_weapon_enhance = db.reference(f"무기/유저/{self.nickname}/강화내역")
+            enhance_data = ref_weapon_enhance.get() or {}
+
+            # 기존 수치에서 새로 배정된 수치만큼 빼기
+            for key, old_value in additional_enhance.items():
+                if key in enhance_data:
+                    enhance_data[key] -= old_value  # 기존 강화 내역에서 해당 수치 빼기
+
+            # 새로운 추가강화 수치를 적용
+            for key, new_value in new_enhance.items():
+                if key in enhance_data:
+                    enhance_data[key] += new_value  # 새로 재배치된 수치만큼 증가
+                else:
+                    enhance_data[key] = new_value
+
+            additional_keys = list(additional_enhance.keys())
+
+            for key in additional_keys:
+                if enhance_data[key] == 0:  # 수치가 0이면 해당 키 삭제
+                    del enhance_data[key]
+
+            # 새롭게 수정된 강화 내역 저장
+            ref_weapon_enhance.set(enhance_data)
+            ref_additional_enhance.set(new_enhance)
+            # 결과 비교 및 임베드 생성
+            embed = discord.Embed(
+                title="🔄 계승 스탯 무작위 재배치 결과",
+                description=f"{interaction.user.display_name}님의 추가 강화 수치가 무작위로 재배치되었습니다.",
+                color=discord.Color.gold()
+            )
+
+            for key in enhance_keys:
+                old_val = additional_enhance.get(key, 0)
+                new_val = new_enhance.get(key, 0)
+                emoji = "⬆️" if new_val > old_val else "⬇️" if new_val < old_val else "➡️"
+                embed.add_field(
+                    name=key,
+                    value=f"{emoji} {old_val} → {new_val}",
+                    inline=True
+                )
+
+            weapon_name, stat_changes = apply_stat_change(self.nickname)
+            if weapon_name and stat_changes:
+                embed.add_field(
+                    name=f"🛠️ {weapon_name}의 변경된 스탯",
+                    value="\n".join(stat_changes),
+                    inline=False
+                )
 
         # 룬 1개 소모 처리
         self.item_data[self.rune_name] -= 1
         self.item_ref.set(self.item_data)
 
-        await interaction.response.edit_message(embed=embed, view=None)
+        await interaction.edit_original_response(embed=embed, view=None)
 
 async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = False, practice = False, tower = False, tower_floor = 1, raid_ended = False):
         # 전장 크기 (-8 ~ 8), 0은 없음
@@ -2320,12 +2400,13 @@ def give_item(nickname, item_name, amount):
     cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
     current_predict_season = cur_predict_seasonref.get()
 
-    weapon_items = ['강화재료','랜덤박스','레이드 재도전','연마제','특수 연마제','탑코인','스킬 각성의 룬','운명 왜곡의 룬']
+    weapon_items = ['강화재료','랜덤박스','레이드 재도전','탑 재도전','연마제','특수 연마제','탑코인','스킬 각성의 룬','운명 왜곡의 룬']
     if item_name in weapon_items:
         refitem = db.reference(f'무기/아이템/{nickname}')
-    # 사용자 아이템 데이터 위치
-    refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템')
-    item_data = refitem.get()
+    else:
+        # 사용자 아이템 데이터 위치
+        refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템')
+    item_data = refitem.get() or {}
 
     refitem.update({item_name: item_data.get(item_name, 0) + amount})
 
@@ -3212,9 +3293,12 @@ class ItemBuyButton(discord.ui.Button):
             "숫자야구대결기회 추가": {"cost": 100, "currency": "P"},
             "야추 초기화": {"cost": 100, "currency": "P"},
             "완전 익명화": {"cost": 300, "currency": "P"},
-            "레이드 재도전": {"cost": 500, "currency": "P"},
+            "레이드 재도전": {"cost": 1, "currency": "TC"},
+            "탑 재도전": {"cost": 1, "currency": "TC"},
             "강화재료": {"cost": 1, "currency": "TC"},
             "연마제": {"cost": 3, "currency": "TC"},
+            "특수 연마제": {"cost": 100, "currency": "TC"},
+            "운명 왜곡의 룬": {"cost": 2, "currency": "TC"},
             "랜덤박스": {"cost": 5, "currency": "TC"},
         }
 
@@ -3315,10 +3399,13 @@ class ItemSelect(discord.ui.Select):
             discord.SelectOption(label = "숫자야구대결기회 추가", value = "숫자야구대결기회 추가", description = "숫자야구 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다."),
             discord.SelectOption(label = "야추 초기화", value = "야추 초기화", description = "현재 야추 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다."),
             discord.SelectOption(label = "완전 익명화", value = "완전 익명화", description = "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 300p로 구매 가능합니다."),
-            discord.SelectOption(label = "레이드 재도전", value = "레이드 재도전", description = "레이드에 참여했던 기록을 없애고 다시 도전합니다. 500p로 구매 가능합니다."),
+            discord.SelectOption(label = "레이드 재도전", value = "레이드 재도전", description = "레이드에 참여했던 기록을 없애고 다시 도전합니다. 1TC로 구매 가능합니다."),
+            discord.SelectOption(label = "탑 재도전", value = "탑 재도전", description = "탑에 다시 도전합니다. 1TC로 구매 가능합니다."),
             discord.SelectOption(label = "강화재료", value = "강화재료", description = "강화에 필요한 재료입니다. 1TC로 구매 가능합니다."),
             discord.SelectOption(label = "연마제", value = "연마제", description = "강화 확률을 5% 올립니다. 3TC로 구매 가능합니다."),
-            discord.SelectOption(label = "랜덤박스", value = "랜덤박스", description = "강화재료, 연마제, 레이드 재도전권, 고급연마제가 들어있는 랜덤박스입니다. 5TC로 구매 가능합니다."),
+            discord.SelectOption(label = "특수 연마제", value = "특수 연마제", description = "강화 확률을 50% 올립니다. 100TC로 구매 가능합니다."),
+            discord.SelectOption(label = "운명 왜곡의 룬", value = "운명 왜곡의 룬", description = "사용 시 추가 강화 수치를 랜덤으로 재구성합니다. 2TC로 구매 가능합니다."),
+            discord.SelectOption(label = "랜덤박스", value = "랜덤박스", description = "강화재료, 연마제, 레이드 재도전권, 특수 연마제 등이 들어있는 랜덤박스입니다. 5TC로 구매 가능합니다."),
         ]
         super().__init__(
             placeholder = '구매할 아이템을 선택하세요.',
@@ -3350,9 +3437,12 @@ class ItemSelect(discord.ui.Select):
             "숫자야구대결기회 추가": {"cost": 100, "currency": "P"},
             "야추 초기화": {"cost": 100, "currency": "P"},
             "완전 익명화": {"cost": 300, "currency": "P"},
-            "레이드 재도전": {"cost": 500, "currency": "P"},
+            "레이드 재도전": {"cost": 1, "currency": "TC"},
+            "탑 재도전": {"cost": 1, "currency": "TC"},
             "강화재료": {"cost": 1, "currency": "TC"},
             "연마제": {"cost": 3, "currency": "TC"},
+            "특수 연마제": {"cost": 100, "currency": "TC"},
+            "운명 왜곡의 룬": {"cost": 2, "currency": "TC"},
             "랜덤박스": {"cost": 5, "currency": "TC"},
         }
 
@@ -3368,10 +3458,13 @@ class ItemSelect(discord.ui.Select):
             "숫자야구대결기회 추가": "숫자야구 대결을 한 뒤에도 다시 한번 대결을 신청할 수 있습니다. 100p로 구매 가능합니다.",
             "야추 초기화": "현재 야추 값을 초기화하고 한번 더 던질 수 있게 합니다. 100p로 구매 가능합니다.",
             "완전 익명화": "다음 승부예측에 투표인원, 포인트, 메세지가 전부 나오지 않는 완전한 익명화를 적용합니다. 300p로 구매 가능합니다",
-            "레이드 재도전": "레이드에 참여했던 기록을 없애고 다시 도전합니다. 500p로 구매 가능합니다.",
+            "레이드 재도전": "레이드에 참여했던 기록을 없애고 다시 도전합니다. 1IC로 구매 가능합니다.",
+            "탑 재도전": "탑에 다시 도전합니다. 1IC로 구매 가능합니다.",
             "강화재료" : "강화에 필요한 재료입니다. 1TC로 구매 가능합니다.",
             "연마제" : "다음 강화 확률을 5% 올립니다. 3TC로 구매 가능합니다.",
-            "랜덤박스" : "강화재료, 연마제, 레이드 재도전권, 고급연마제가 들어있는 랜덤박스입니다. 5TC로 구매 가능합니다."
+            "특수 연마제" : "다음 강화 확률을 50% 올립니다. 100TC로 구매 가능합니다.",
+            "운명 왜곡의 룬" : "사용 시 추가 강화 수치를 랜덤으로 재구성합니다. 2TC로 구매 가능합니다.",
+            "랜덤박스" : "강화재료, 연마제, 레이드 재도전권, 특수 연마제 등이 들어있는 랜덤박스입니다. 5TC로 구매 가능합니다."
         }
         
         ref_tc = db.reference(f'무기/아이템/{interaction.user.name}')
@@ -6890,7 +6983,7 @@ class hello(commands.Cog):
         else:
             await interaction.response.send_message("경고는 1등만 부여할 수 있습니다.")
     
-    @app_commands.command(name="구매_아이템", description="다양한 아이템을 구매합니다.")
+    @app_commands.command(name="상점", description="다양한 아이템을 구매합니다.")
     async def item_shop(self, interaction: discord.Interaction):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
@@ -7882,8 +7975,8 @@ class hello(commands.Cog):
             # 초기 연마 상태 (False: 미사용, True: 사용)
             polish_state = False
             speacial_polish_state = False
-            # 세부 강화 버튼
-            enhance_button = discord.ui.Button(label="세부 강화", style=discord.ButtonStyle.green)
+            # 강화 버튼
+            enhance_button = discord.ui.Button(label="강화", style=discord.ButtonStyle.green)
 
             # 연마제 토글 버튼 (초기에는 미사용 상태)
             polish_button = discord.ui.Button(label="🛠️연마: 미사용", style=discord.ButtonStyle.secondary)
@@ -7910,12 +8003,12 @@ class hello(commands.Cog):
                 if polish_state:
                     enhancement_rate += 5
                 if speacial_polish_state:
-                    enhancement_rate += 30
+                    enhancement_rate += 50
 
                 enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
                 enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
                 enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
-                enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} -> +{weapon_enhanced + 1})**", inline=False)
+                enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} → +{weapon_enhanced + 1})**", inline=False)
                 enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
                 await interaction.response.edit_message(embed=enhance_embed, view=weapon_view)
 
@@ -7943,12 +8036,12 @@ class hello(commands.Cog):
                 if polish_state:
                     enhancement_rate += 5
                 if speacial_polish_state:
-                    enhancement_rate += 30
+                    enhancement_rate += 50
 
                 enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
                 enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
                 enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
-                enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} -> +{weapon_enhanced + 1})**", inline=False)
+                enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} → +{weapon_enhanced + 1})**", inline=False)
                 enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
                 await interaction.response.edit_message(embed=enhance_embed, view=weapon_view)
 
@@ -7959,8 +8052,6 @@ class hello(commands.Cog):
                 nonlocal polish_state
                 nonlocal speacial_polish_state
                 nickname = interaction.user.name
-                cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-                current_predict_season = cur_predict_seasonref.get()
 
                 ref_weapon = db.reference(f"무기/유저/{nickname}")
                 weapon_data = ref_weapon.get() or {}
@@ -7977,7 +8068,7 @@ class hello(commands.Cog):
                     await interaction.response.send_message("이미 최고 강화입니다!",ephemeral=True)
                     return
                 
-                #await interaction.response.defer()
+                await interaction.response.defer()
                 ref_item.update({"강화재료": weapon_parts - 1})
 
                 enhancement_rate = enhancement_probabilities[weapon_enhanced]
@@ -7997,12 +8088,12 @@ class hello(commands.Cog):
                     speacial_polish_state = False
                     speacial_polish_button.label = "💎특수 연마: 미사용"
                     speacial_polish_button.style = discord.ButtonStyle.secondary
-                    # 특수연마제 차감
+                    # 특수 연마제 차감
                     item_ref = db.reference(f"무기/아이템/{nickname}")
                     current_items = item_ref.get() or {}
                     special_polish_count = current_items.get("특수 연마제", 0)
                     if special_polish_count > 0:
-                        item_ref.update({"특수연마제": special_polish_count - 1})
+                        item_ref.update({"특수 연마제": special_polish_count - 1})
 
 
                 ref_weapon = db.reference(f"무기/유저/{nickname}")
@@ -8016,21 +8107,20 @@ class hello(commands.Cog):
                 if polish_state:
                     enhancement_rate += 5
                 if speacial_polish_state:
-                    enhancement_rate += 30
+                    enhancement_rate += 50
                     
                 enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
                 enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
                 enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
-                enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} -> +{weapon_enhanced + 1})**", inline=False)
+                enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} → +{weapon_enhanced + 1})**", inline=False)
                 enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
-                await interaction.response.edit_message(embed=enhance_embed, view=weapon_view)
+                await interaction.edit_original_response(embed=enhance_embed, view=weapon_view)
 
-                ENHANCEMENT_CHANNEL = 1350434647149908070
                 channel = self.bot.get_channel(int(ENHANCEMENT_CHANNEL))
 
                 userembed = discord.Embed(title="메세지", color=discord.Color.blue())
                 userembed.add_field(name="", value=f"{interaction.user.display_name}님이 **[{weapon_name}]**의 강화를 시작했습니다!⚔️", inline=False)
-                userembed.add_field(name="", value=f"**[{weapon_name}](+{weapon_enhanced}) -> [{weapon_name}](+{weapon_enhanced + 1})**", inline=False)
+                userembed.add_field(name="", value=f"**[{weapon_name}](+{weapon_enhanced}) → [{weapon_name}](+{weapon_enhanced + 1})**", inline=False)
                 userembed.add_field(
                     name="현재 강화 확률",
                     value=f"{enhancement_rate}%",
@@ -8083,49 +8173,66 @@ class hello(commands.Cog):
                         # 결과 반영
                         ref_weapon.update(weapon_stats)
 
-                        # 결과 메시지
-                        result_embed = discord.Embed(title="✅ 강화 성공!", color=discord.Color.blue())
-                        result_embed.add_field(name="", value=f"**{weapon_name}**에 힘이 깃들었습니다!", inline=False)
-                        result_embed.add_field(name="", value=f"**[{weapon_name}](+{weapon_enhanced - 1}) -> [{weapon_name}](+{weapon_enhanced})**", inline=False)
-                        result_embed.add_field(name="강화 종류", value=f"{selected_enhance_type}", inline=False)
+                        # 강화 성공
+                        embed_color = 0x00FF00  # 녹색
+                        status_text = "✅ **강화 성공!**"
 
-                        
-                        ref_weapon = db.reference(f"무기/유저/{nickname}")
-                        weapon_data = ref_weapon.get() or {}
-                        
-                        await asyncio.sleep(5)
-                        # 주 강화 옵션이 올스탯일 경우
-                        if main_stat == "올스탯":
-                            for stat, increase in stats.items():
-                                value = round(increase, 3)  # 올스탯은 동일한 배율 적용
-                                if stat in ["치명타 확률", "치명타 대미지"]:
-                                    result_embed.add_field(name=stat, value=f"**{weapon_data.get(stat,0) * 100:.1f}%(+{value * 100:.1f}%)**", inline=True)
-                                else:
-                                    result_embed.add_field(name=stat, value=f"**{weapon_data.get(stat,0)}(+{value})**", inline=True)
-                        else:
-                            # 주 강화 옵션을 맨 위에 배치
-                            main_value = round(enhancement_options[enhancement_type]['stats'][main_stat], 3)
-                            if main_stat in ["치명타 확률", "치명타 대미지"]:
-                                result_embed.add_field(name=main_stat, value=f"**{weapon_data.get(main_stat,0) * 100:.1f}%(+{main_value * 100:.1f}%)**", inline=False)
-                            else:
-                                result_embed.add_field(name=main_stat, value=f"**{weapon_data.get(main_stat,0)}(+{main_value})**", inline=False)
-                            # 나머지 스탯은 inline=True로 추가
-                            for stat, increase in stats.items():
-                                if stat != main_stat and stat in ['공격력','방어력','내구도']:
-                                    value = round(increase, 3)
-                                    result_embed.add_field(name=stat, value=f"{weapon_data.get(stat,0)}(+{value})", inline=True)
+                        used_items = []
+                        if polish_state:
+                            used_items.append("연마제")
+                        if speacial_polish_state:
+                            used_items.append("특수 연마제")
 
-                        await enhance_message.edit(embed=result_embed)
+                        embed_data = {
+                            "embeds": [
+                                {
+                                    "title": status_text,
+                                    "color": embed_color,
+                                    "fields": [
+                                        {"name": "무기 이름", "value": f"`{weapon_name}`", "inline": True},
+                                        {"name": "강화 종류", "value": selected_enhance_type, "inline": True},
+                                        {"name": "현재 강화 수치", "value": f"{weapon_enhanced - 1}강 ➜ {weapon_enhanced}강", "inline": True},
+                                        {"name": "사용한 아이템", "value": ', '.join(used_items) if used_items else "없음", "inline": False},
+                                        {"name": "성공 확률", "value": f"{enhancement_rate}%", "inline": True},
+                                    ],
+                                    "footer": {"text": "무기 강화 시스템"},
+                                }
+                            ]
+                        }
+                        await enhance_message.edit(embed=discord.Embed.from_dict(embed_data["embeds"][0]))
                         
                     await enhance_weapon(selected_enhance_type)
 
                 else:  # 실패
                     await asyncio.sleep(5)
-                    result_embed = discord.Embed(title="❌ 강화 실패!", color=discord.Color.red())
-                    result_embed.add_field(name="", value=f"{weapon_name}의 모습이 한 순간 빛났지만 무기에는 아무런 변화도 일어나지 않았습니다.", inline=False)
-                    result_embed.add_field(name="", value=f"**[{weapon_name}](+{weapon_enhanced}) -> [{weapon_name}](+{weapon_enhanced})**", inline=False)
-                    await enhance_message.edit(embed=result_embed)
-                
+                    # 강화 실패
+                    embed_color = 0xFF0000  # 빨간색
+                    status_text = "❌ **강화 실패**"
+
+                    used_items = []
+                    if polish_state:
+                        used_items.append("연마제")
+                    if speacial_polish_state:
+                        used_items.append("특수 연마제")
+
+                    embed_data = {
+                        "embeds": [
+                            {
+                                "title": status_text,
+                                "color": embed_color,
+                                "fields": [
+                                    {"name": "무기 이름", "value": f"`{weapon_name}`", "inline": True},
+                                    {"name": "강화 종류", "value": selected_enhance_type, "inline": True},
+                                    {"name": "현재 강화 수치", "value": f"{weapon_enhanced}강 ➜ {weapon_enhanced + 1}강", "inline": True},
+                                    {"name": "사용한 아이템", "value": ', '.join(used_items) if used_items else "없음", "inline": False},
+                                    {"name": "성공 확률", "value": f"{enhancement_rate}%", "inline": True},
+                                ],
+                                "footer": {"text": "무기 강화 시스템"},
+                            }
+                        ]
+                    }
+                    await enhance_message.edit(embed=discord.Embed.from_dict(embed_data["embeds"][0]))
+                                    
             
             enhance_button.callback = enhance_callback
             weapon_view = discord.ui.View()
@@ -8151,11 +8258,11 @@ class hello(commands.Cog):
             if polish_state:
                 enhancement_rate += 5
             if speacial_polish_state:
-                enhancement_rate += 30
+                enhancement_rate += 50
             enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
             enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
             enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
-            enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} -> +{weapon_enhanced + 1})**", inline=False)
+            enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} → +{weapon_enhanced + 1})**", inline=False)
             enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
             await interaction.response.edit_message(embed=enhance_embed, view=weapon_view)
 
@@ -8722,12 +8829,9 @@ class hello(commands.Cog):
             await interaction.followup.send("상대가 없습니다!",ephemeral=True)
             return
         
-        tower_bool = tower_data.get("등반여부", False)
-        if tower_bool:
-            warnembed = discord.Embed(title="실패",color = discord.Color.red())
-            warnembed.add_field(name="",value="오늘의 도전 기회를 다 사용했습니다! ❌")
-            await interaction.followup.send(embed = warnembed)
-            return
+        ref_item = db.reference(f"무기/아이템/{nickname}")
+        item_data = ref_item.get() or {}
+        tower_refesh = item_data.get("탑 재도전", 0)
 
         battle_ref = db.reference("승부예측/대결진행여부")
         is_battle = battle_ref.get() or {}
@@ -8736,6 +8840,20 @@ class hello(commands.Cog):
             warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
             await interaction.followup.send(embed = warnembed)
             return
+        
+        tower_bool = tower_data.get("등반여부", False)
+        if tower_bool:
+            if tower_refesh:
+                userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
+                userembed.add_field(name="",value=f"{interaction.user.display_name}님이 아이템을 사용하여 탑에 재도전했습니다!", inline=False)
+                ref_item.update({"탑 재도전": tower_refesh - 1})
+                channel = interaction.client.get_channel(int(CHANNEL_ID))
+                await channel.send(embed=userembed)
+            else:
+                warnembed = discord.Embed(title="실패",color = discord.Color.red())
+                warnembed.add_field(name="",value="오늘의 도전 기회를 다 사용했습니다! ❌")
+                await interaction.followup.send(embed = warnembed)
+                return
         
         battle_ref.set(True)
 
@@ -8816,17 +8934,18 @@ class hello(commands.Cog):
     async def 랜덤박스(self, interaction: discord.Interaction, 개수: int = 1):
         nickname = interaction.user.name
         reward_pool = [
-            ("강화재료", 3, 20),       # 20% 확률로 강화재료 3개
-            ("레이드 재도전", 1, 20),  # 20% 확률로 레이드 재도전권 1개
-            ("강화재료", 5, 30),       # 30% 확률로 강화재료 5개
-            ("연마제", 1, 15),         # 15% 확률로 연마제 1개
-            ("특수 연마제", 1, 1),     # 1% 확률로 특수 연마제 1개
-            ("강화재료", 10, 10),     # 10% 확률로 강화재료 10개
-            ("꽝", 0, 4),              # 4% 확률로 꽝
+            ("강화재료", 3, 15),         # 15% 확률로 강화재료 3개
+            ("강화재료", 5, 15),         # 15% 확률로 강화재료 5개
+            ("강화재료", 10, 5),         # 5% 확률로 강화재료 10개
+            ("레이드 재도전", 1, 15),    # 15% 확률로 레이드 재도전권 1개
+            ("탑 재도전", 1, 15),        # 15% 확률로 탑 재도전권 1개
+            ("연마제", 1, 15),           # 15% 확률로 연마제 1개
+            ("연마제", 3, 5),            # 5% 확률로 연마제 3개
+            ("특수 연마제", 1, 1),       # 1% 확률로 특수 연마제 1개
+            ("스킬 각성의 룬", 1, 2),     # 2% 확률로 스킬 각성의 룬 1개
+            ("운명 왜곡의 룬", 3, 10),   # 10% 확률로 운명 왜곡의 룬 3개
+            ("꽝", 0, 2),                # 2% 확률로 꽝 (아이템 없음)
         ]
-        
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
         
         ref = db.reference(f"무기/아이템/{nickname}")
         current_data = ref.get() or {}
@@ -9062,7 +9181,22 @@ class hello(commands.Cog):
                 f"**기본 스킬 레벨 증가 1**로 재구성합니다."
             )
         elif 룬 == "운명 왜곡의 룬":
-            rune_embed.description = f"{interaction.user.display_name}님이 **운명 왜곡의 룬**을 사용하려고 합니다.\n버튼을 누르면 **계승 스탯이 무작위로 변경**됩니다."
+            ref_inherit_log = db.reference(f"무기/유저/{nickname}/계승 내역")
+            inherit_log = ref_inherit_log.get() or {}
+            additional_enhance = inherit_log.get("추가강화", {})
+            enhance_count = sum(additional_enhance.values())
+            if enhance_count <= 0: # 추가강화 수치가 0이라면 사용 불가 
+                warning_embed = discord.Embed(title=f"{룬} 사용 실패!", color=discord.Color.red())
+                warning_embed.description = (
+                    f"{interaction.user.display_name}님의 **추가 강화**수치가 부족하여 발동이 **실패**하였습니다!\n"
+                )
+                await interaction.followup.send(embed=warning_embed)
+                return
+            rune_embed.description = (
+                f"🔮 {interaction.user.display_name}님의 손에 **운명 왜곡의 룬**이 반응합니다...\n\n"
+                f"사용 시, 알수 없는 힘이 발현하여\n"
+                f"추가 강화 수치를 랜덤으로 **재구성**합니다."
+            )
 
         # 버튼 뷰 구성
         view = RuneUseButton(user=interaction.user, rune_name=룬, nickname=nickname, item_ref=ref_item, item_data=item_data)

@@ -133,6 +133,16 @@ function Layout() {
                             </li>
                         </ul>
                     </li>
+                    <li>
+                        <Link
+                            to="https://www.notion.so/1dff1cca1de280c69c1fc82bd171d5bb"
+                            target="_blank"   // 새 탭에서 열기
+                            rel="noopener noreferrer"   // 보안 강화
+                            className={`block px-3 py-2 rounded hover:bg-indigo-50`}
+                        >
+                            패치 노트
+                        </Link>
+                    </li>
                 </ul>
             </aside>
 
