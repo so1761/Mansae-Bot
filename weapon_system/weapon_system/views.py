@@ -350,10 +350,8 @@ def user_info(request):
     })
 
 def get_items(request, discord_username):
-    current_predict_season_ref = db.reference('승부예측/현재예측시즌')
-    current_predict_season = current_predict_season_ref.get() or {}
 
-    item_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{discord_username}/아이템')
+    item_ref = db.reference(f'무기/아이템/{discord_username}')
     data = item_ref.get()
     return JsonResponse(data)
 
@@ -400,7 +398,7 @@ def enhance_weapon(request):
 
             ref_weapon = db.reference(f"무기/유저/{nickname}")
             weapon_data = ref_weapon.get() or {}
-            ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+            ref_item = db.reference(f"무기/아이템/{nickname}")
             item_data = ref_item.get() or {}
             weapon_enhanced = weapon_data.get("강화", 0)
             weapon_parts = item_data.get("강화재료", 0)
@@ -427,16 +425,16 @@ def enhance_weapon(request):
             if use_polish:
                 enhancement_rate += 5
                 # 연마제 차감
-                item_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+                item_ref = db.reference(f"무기/아이템/{nickname}")
                 current_items = item_ref.get() or {}
                 polish_count = current_items.get("연마제", 0)
                 if polish_count > 0:
                     item_ref.update({"연마제": polish_count - 1})
             if use_high_polish:
-                enhancement_rate += 30
+                enhancement_rate += 50
                 use_high_polish = False
                 # 특수연마제 차감
-                item_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+                item_ref = db.reference(f"무기/아이템/{nickname}")
                 current_items = item_ref.get() or {}
                 special_polish_count = current_items.get("특수 연마제", 0)
                 if special_polish_count > 0:

@@ -121,7 +121,11 @@ def give_item(nickname, item_name, amount):
     current_predict_season = cur_predict_seasonref.get()
 
     # 사용자 아이템 데이터 위치
-    refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템')
+    weapon_items = ['강화재료','랜덤박스','레이드 재도전','연마제','특수 연마제','탑코인','스킬 각성의 룬','운명 왜곡의 룬']
+    if item_name in weapon_items:
+        refitem = db.reference(f'무기/아이템/{nickname}')
+    else:
+        refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템')
     item_data = refitem.get()
 
     refitem.update({item_name: item_data.get(item_name, 0) + amount})
@@ -1912,7 +1916,7 @@ async def update_mission_message():
         hours, remainder = divmod(remaining_time.seconds, 3600)
         minutes = remainder // 60
 
-        season_end_date = datetime(2025, 5, 1, 0, 0, 0)
+        season_end_date = datetime(2025, 6, 1, 0, 0, 0)
         time_difference = season_end_date - now
         
         # 시간 차이를 한글로 변환하여 출력

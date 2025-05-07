@@ -261,7 +261,7 @@ export default function EnhanceWeaponPage() {
 
   const enhancementLevel = weaponData.enhancements.enhancement_level || 0;
   const polishBonus = usePolish ? 5 : 0;
-  const highPolishBonus = useHighPolish ? 30 : 0;
+  const highPolishBonus = useHighPolish ? 50 : 0;
   const currentChance = enhancementChances[enhancementLevel] ?? 0;
   const statLabels = {
     attack_power: "공격력",
@@ -464,18 +464,18 @@ export default function EnhanceWeaponPage() {
             <ToggleSwitch
               enabled={usePolish}
               setEnabled={setUsePolish}
-              disabled={enhancementLevel === 20 || !itemData || itemData.연마제 <= 0}
+              disabled={enhancementLevel === 20 || !itemData || !itemData.연마제 || itemData.연마제 <= 0}
             />
           </div>
 
           <div className="flex flex-col items-start sm:flex-row sm:items-center sm:justify-start gap-1 sm:gap-2">
             <span className="text-[13px] sm:text-sm text-gray-700 whitespace-nowrap">
-              특수 연마제 사용 <span className="text-gray-500 text-xs">(+30%)</span>
+              특수 연마제 사용 <span className="text-gray-500 text-xs">(+50%)</span>
             </span>
             <ToggleSwitch
               enabled={useHighPolish}
               setEnabled={setUseHighPolish}
-              disabled={enhancementLevel === 20 || !itemData || itemData["특수 연마제"] <= 0}
+              disabled={enhancementLevel === 20 || !itemData || !itemData["특수 연마제"] || itemData["특수 연마제"] <= 0}
             />
           </div>
         </div>
@@ -489,7 +489,8 @@ export default function EnhanceWeaponPage() {
                 enhancementLevel === 20 ||
                 !selectedStats ||
                 selectedStats.length === 0 ||
-                itemData.강화재료 === 0  // ⬅️ 여기가 추가된 부분
+                !itemData.강화재료 ||
+                itemData.강화재료 === 0 
                   ? 'bg-gray-400 cursor-not-allowed' 
                   : 'hover:bg-blue-700'
               }`}
@@ -499,7 +500,8 @@ export default function EnhanceWeaponPage() {
               enhancementLevel === 20 ||
               !selectedStats ||
               selectedStats.length === 0 ||
-              itemData.강화재료 === 0  // ⬅️ 여기도 추가
+              !itemData.강화재료 ||
+              itemData.강화재료 === 0 
             }
           >
             {enhancementLevel === 20
@@ -508,8 +510,8 @@ export default function EnhanceWeaponPage() {
               ? '강화 중...'
               : !selectedStats || selectedStats.length === 0
               ? '강화 항목을 선택하세요'
-              : itemData.강화재료 === 0
-              ? '재료가 부족합니다' // ⬅️ 메시지도 추가
+              : itemData.강화재료 === 0 || !itemData.강화재료
+              ? '재료가 부족합니다'
               : '강화하기'}
           </button>
         </div>

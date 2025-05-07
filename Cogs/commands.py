@@ -136,6 +136,84 @@ def restart_script(): # 봇 재시작 명령어
     except Exception as e:
         print(f"Unexpected error: {e}")
 
+def apply_stat_change(nickname: str):
+    ref_weapon = db.reference(f"무기/유저/{nickname}")
+    weapon_data = ref_weapon.get() or {}
+    if not weapon_data:
+        return None, None
+
+    weapon_name = weapon_data.get("이름", "")
+    weapon_type = weapon_data.get("무기타입", "")
+
+    ref_enhance_log = db.reference(f"무기/유저/{nickname}/강화내역")
+    enhance_log_data = ref_enhance_log.get() or {}
+
+    ref_inherit_log = db.reference(f"무기/유저/{nickname}/계승 내역")
+    inherit_log_data = ref_inherit_log.get() or {}
+
+    # 계승 내역 적용 (기본 스탯 증가)
+    inherit_level = inherit_log_data.get("기본 스탯 증가", 0)
+    inherit_multiplier = inherit_level * 0.3
+
+    # 기존 스탯
+    old_stats = {
+        "공격력": weapon_data.get("공격력", 10),
+        "스킬 증폭": weapon_data.get("스킬 증폭", 5),
+        "내구도": weapon_data.get("내구도", 500),
+        "방어력": weapon_data.get("방어력", 5),
+        "스피드": weapon_data.get("스피드", 5),
+        "명중": weapon_data.get("명중", 0),
+        "치명타 대미지": weapon_data.get("치명타 대미지", 1.5),
+        "치명타 확률": weapon_data.get("치명타 확률", 0.05)
+    }
+
+    ref_weapon_base = db.reference(f"무기/기본 스탯")
+    base_weapon_stats = ref_weapon_base.get() or {}
+
+    if weapon_type not in base_weapon_stats:
+        return weapon_name, []  # 무기 타입이 등록되지 않은 경우
+
+    inherit_stats = ["공격력", "스킬 증폭", "내구도", "방어력", "스피드", "명중"]
+
+    # 기본 스탯 + 계승 보정 적용
+    new_stats = {
+        stat: value + round(value * inherit_multiplier) if stat in inherit_stats else value
+        for stat, value in base_weapon_stats[weapon_type].items()
+        if stat not in ["강화", "스킬"]
+    }
+
+    # 강화 보정 적용
+    ref_weapon_enhance = db.reference(f"무기/강화")
+    enhancement_options = ref_weapon_enhance.get() or {}
+    for enhance_type, enhance_count in enhance_log_data.items():
+        if enhance_type in enhancement_options:
+            for stat, value in enhancement_options[enhance_type]["stats"].items():
+                new_stats[stat] += value * enhance_count
+                new_stats[stat] = round(new_stats[stat], 3)
+
+    basic_skill_levelup = inherit_log_data.get("기본 스킬 레벨 증가", 0)
+        
+    basic_skills = ["속사", "기습", "강타", "헤드샷", "창격", "수확", "명상", "화염 마법", "냉기 마법", "신성 마법"]
+    base_weapon_stat = base_weapon_stats[weapon_type]
+    skills = base_weapon_stat["스킬"]
+    for skill_name in basic_skills:
+        if skill_name in skills:
+            skills[skill_name]["레벨"] = basic_skill_levelup + 1
+
+    new_stats["스킬"] = skills
+    # 변경사항 비교
+    stat_changes = []
+    for stat in old_stats:
+        if stat in new_stats:
+            diff = new_stats[stat] - old_stats[stat]
+            if diff > 0:
+                stat_changes.append(f"🟢 **{stat}**: +{diff}")
+            elif diff < 0:
+                stat_changes.append(f"🔴 **{stat}**: {diff}")
+
+    # 실제 업데이트 적용
+    ref_weapon.update(new_stats)
+    return weapon_name, stat_changes
 
 def generate_tower_weapon(floor: int):
     weapon_types = ["대검","스태프-화염", "조총", "스태프-냉기", "창", "활", "스태프-신성", "단검", "낫"]
@@ -172,6 +250,63 @@ def generate_tower_weapon(floor: int):
         skill_data["레벨"] = enhancement_level // 10 + 1    
 
     return weapon_data
+
+class RuneUseButton(discord.ui.View):
+    def __init__(self, user: discord.User, rune_name: str, nickname: str, item_ref, item_data):
+        super().__init__(timeout=60)
+        self.user = user
+        self.rune_name = rune_name
+        self.nickname = nickname
+        self.item_ref = item_ref
+        self.item_data = item_data
+
+    @discord.ui.button(label="룬 발동", style=discord.ButtonStyle.primary)
+    async def activate_rune(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user.id:
+            await interaction.response.send_message("이 버튼은 당신의 것이 아닙니다.", ephemeral=True)
+            return
+
+        if self.item_data.get(self.rune_name, 0) <= 0:
+            await interaction.response.send_message("해당 룬을 더 이상 보유하고 있지 않습니다.", ephemeral=True)
+            return
+
+        embed = discord.Embed(color=discord.Color.green())
+
+        if self.rune_name == "스킬 각성의 룬":
+            embed.title = "스킬 각성의 룬 발동!"
+            # 여기에 실제 능력치 전환 로직 구현
+            ref_inherit_log = db.reference(f"무기/유저/{self.nickname}/계승 내역")
+            inherit_log = ref_inherit_log.get() or {}
+            base_stat_increase = inherit_log.get("기본 스탯 증가", 0)
+            base_skill_level_increase = inherit_log.get("기본 스킬 레벨 증가", 0)
+
+            ref_inherit_log.update({"기본 스탯 증가": base_stat_increase - 2})
+            ref_inherit_log.update({"기본 스킬 레벨 증가": base_skill_level_increase + 1})
+            
+            embed.description = f"{weapon_name}의 **기본 스탯 증가 2**가 **기본 스킬 레벨 증가 1**로 전환되었습니다!"
+            weapon_name, stat_changes = apply_stat_change(self.nickname)
+            if weapon_name and stat_changes:
+                embed.add_field(
+                    name=f"🛠️ {weapon_name}의 변경된 스탯",
+                    value="\n".join(stat_changes),
+                    inline=False
+                )
+                embed.add_field(
+                    name=f"🛠️ 스킬 레벨",
+                    value=f"**Lv.{base_skill_level_increase + 1} -> Lv.{base_skill_level_increase + 2}**",
+                    inline=False
+                )
+
+        elif self.rune_name == "운명 왜곡의 룬":
+            embed.title = "운명 왜곡의 룬 발동!"
+            embed.description = f"{self.nickname}님의 **계승 스탯이 무작위하게 재배치**되었습니다!"
+            # 여기에 계승 스탯 무작위 재배치 로직 구현
+
+        # 룬 1개 소모 처리
+        self.item_data[self.rune_name] -= 1
+        self.item_ref.set(self.item_data)
+
+        await interaction.response.edit_message(embed=embed, view=None)
 
 async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = False, practice = False, tower = False, tower_floor = 1, raid_ended = False):
         # 전장 크기 (-8 ~ 8), 0은 없음
@@ -215,7 +350,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 if data["duration"] <= 0:
                     del character["Status"][status]
 
-        def remove_status_effects(character, opponent):
+        def remove_status_effects(character):
             """
             상태가 사라졌을 때 효과를 되돌리는 함수
             """
@@ -269,17 +404,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 accuracy_increase = (accuracy_increase_level * skill_level)
                 character["Attack"] += attack_increase
                 character["Accuracy"] += accuracy_increase
-            if "강타" in character["Status"]:
-                skill_level = character["Skills"]["강타"]["레벨"]
-                smash_data = skill_data_firebase['강타']['values']
-                character["CritChance"] = 1
-                
-                CritDamageIncrease_level = smash_data['레벨당_치명타피해_증가']
-                CritDamageIncrease = (skill_level) * CritDamageIncrease_level
-                character["CritDamage"] += CritDamageIncrease
-                attack_increase_level = smash_data['레벨당_공격력_증가']
-                attack_increase = skill_level * attack_increase_level
-                character["Attack"] += attack_increase
 
         async def end(attacker, defender, winner, raid):
             await weapon_battle_thread.send(embed = battle_embed)
@@ -369,7 +493,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         if tower_floor != 1: #tower_floor 설정했다면? -> 빠른 전투
                             current_floor = tower_data.get("층수", 1)
                             ref_current_floor.update({"층수" : tower_floor + 1}) # 층수 1 올리기
-                            ref_tc = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger_m.name}/아이템')
+                            ref_tc = db.reference(f'무기/아이템/{challenger_m.name}')
                             tc_data = ref_tc.get()
                             TC = tc_data.get('탑코인', 0)
                             
@@ -383,7 +507,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             await weapon_battle_thread.send(f"탑코인 {reward}개 지급!")
                         else:
                             ref_current_floor.update({"층수" : current_floor + 1}) # 층수 1 올리기
-                            ref_tc = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{challenger_m.name}/아이템')
+                            ref_tc = db.reference(f'무기/아이템/{challenger_m.name}')
                             tc_data = ref_tc.get()
                             TC = tc_data.get('탑코인', 0)
                             if current_floor % 5 == 0:
@@ -1003,7 +1127,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         # 공격 함수
         async def attack(attacker, defender, evasion, reloading, skills = None):
 
-            remove_status_effects(attacker,defender)
+            remove_status_effects(attacker)
             update_status(attacker)  # 공격자의 상태 업데이트 (은신 등)
 
             skill_message = ""
@@ -1519,7 +1643,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 battle_embed.add_field(name="행동 불가!", value = f"기절 상태이상으로 인해 행동할 수 없습니다!\n기절 상태 남은 턴 : {attacker['Status']['기절']['duration']}", inline = False)
                 if "장전" in attacker["Status"]:  # 장전이 있는지 확인
                     attacker["Status"]["장전"]["duration"] += 1
-                remove_status_effects(attacker,defender)
+                remove_status_effects(attacker)
                 update_status(attacker)  # 공격자의 상태 업데이트 (은신 등)
                 attacker, defender = defender, attacker
                 await weapon_battle_thread.send(embed = battle_embed)
@@ -1535,7 +1659,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 battle_embed.add_field(name="행동 불가!", value = f"빙결 상태이상으로 인해 행동할 수 없습니다!❄️\n빙결 상태 남은 턴 : {attacker['Status']['빙결']['duration']}", inline = False)
                 if "장전" in attacker["Status"]:  # 장전이 있는지 확인
                     attacker["Status"]["장전"]["duration"] += 1
-                remove_status_effects(attacker,defender)
+                remove_status_effects(attacker)
                 update_status(attacker)  # 공격자의 상태 업데이트 (은신 등)
                 attacker, defender = defender, attacker
                 await weapon_battle_thread.send(embed = battle_embed)
@@ -2196,6 +2320,9 @@ def give_item(nickname, item_name, amount):
     cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
     current_predict_season = cur_predict_seasonref.get()
 
+    weapon_items = ['강화재료','랜덤박스','레이드 재도전','연마제','특수 연마제','탑코인','스킬 각성의 룬','운명 왜곡의 룬']
+    if item_name in weapon_items:
+        refitem = db.reference(f'무기/아이템/{nickname}')
     # 사용자 아이템 데이터 위치
     refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템')
     item_data = refitem.get()
@@ -3103,7 +3230,7 @@ class ItemBuyButton(discord.ui.Button):
                     )
                     return
             elif currency == "TC":
-                tc_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/아이템/탑코인")
+                tc_ref = db.reference(f"무기/아이템/{interaction.user.name}/탑코인")
                 topcoin = tc_ref.get() or 0
                 if topcoin < cost:
                     await interaction.response.send_message(
@@ -3152,7 +3279,7 @@ class ItemBuyButton(discord.ui.Button):
                     
                     elif currency == "TC":
                         total_cost = cost * num
-                        tc_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/아이템/탑코인")
+                        tc_ref = db.reference(f"무기/아이템/{interaction.user.name}/탑코인")
                         topcoin = tc_ref.get() or 0
                         if topcoin < total_cost:
                             await interaction.response.send_message(f"탑코인이 부족합니다!\n현재 탑코인 : {topcoin}TC | 필요 탑코인 : {total_cost}TC",ephemeral=True)
@@ -3247,7 +3374,7 @@ class ItemSelect(discord.ui.Select):
             "랜덤박스" : "강화재료, 연마제, 레이드 재도전권, 고급연마제가 들어있는 랜덤박스입니다. 5TC로 구매 가능합니다."
         }
         
-        ref_tc = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/아이템')
+        ref_tc = db.reference(f'무기/아이템/{interaction.user.name}')
         tc_data = ref_tc.get()
         TC = tc_data.get('탑코인', 0)
 
@@ -5326,7 +5453,7 @@ class hello(commands.Cog):
         ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{username}')
         point_data = ref.get()
 
-        ref_tc = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{username}/아이템')
+        ref_tc = db.reference(f'무기/아이템/{username}')
         tc_data = ref_tc.get()
         TC = tc_data.get('탑코인', 0)
 
@@ -5389,7 +5516,7 @@ class hello(commands.Cog):
             onoffref.update({"이벤트온오프" : onoffbool})
 
             embed = discord.Embed(title=f'변경 완료', color = discord.Color.blue())
-            embed.add_field(name=f"변경", value=f"승부예측 이벤트가 종료되었습니다." if onoffbool else "승부예측 이벤트가 시작되었습니다.", inline=False)
+            embed.add_field(name=f"변경", value=f"승부예측 이벤트가 시작되었습니다." if onoffbool else "승부예측 이벤트가 종료되었습니다.", inline=False)
             await interaction.response.send_message(embed=embed)
         else:
             await interaction.response.send_message("권한이 없습니다", ephemeral=True)
@@ -5938,7 +6065,7 @@ class hello(commands.Cog):
         elif 이름 == "Melon":
             await bet_open(p.melon_winbutton)
         
-    @app_commands.command(name="아이템지급",description="아이템을 지급합니다(관리자 전용)")
+    @app_commands.command(name="지급_아이템",description="아이템을 지급합니다(관리자 전용)")
     @app_commands.describe(이름 = "아이템을 지급할 사람을 입력하세요")
     @app_commands.describe(아이템 = "지급할 아이템을 입력하세요")
     @app_commands.choices(아이템=[
@@ -5963,7 +6090,7 @@ class hello(commands.Cog):
         else:
             await interaction.response.send_message("권한이 없습니다",ephemeral=True)
 
-    @app_commands.command(name="아이템전체지급",description="아이템을 모두에게 지급합니다(관리자 전용)")
+    @app_commands.command(name="전체지급_아이템",description="아이템을 모두에게 지급합니다(관리자 전용)")
     @app_commands.describe(아이템 = "지급할 아이템을 입력하세요")
     @app_commands.choices(아이템=[
     Choice(name='배율증가 0.1', value='배율증가1'),
@@ -5995,25 +6122,38 @@ class hello(commands.Cog):
             await interaction.response.send_message("권한이 없습니다",ephemeral=True)
 
     @app_commands.command(name="아이템",description="자신의 아이템을 확인합니다")
-    async def 아이템(self, interaction: discord.Interaction):
+    @app_commands.choices(타입=[
+    Choice(name="일반 아이템", value="일반"),
+    Choice(name="무기 관련 아이템", value="무기")
+    ])
+    async def 아이템(self, interaction: discord.Interaction, 타입:str):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
         current_predict_season = cur_predict_seasonref.get()
 
         nickname = interaction.user
-        refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname.name}/아이템')
+        if 타입 == "일반":
+            refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname.name}/아이템')
+        else:
+            refitem = db.reference(f'무기/아이템/{nickname.name}')
         itemr = refitem.get()
         embed = discord.Embed(title="📦 보유 아이템 목록", color=discord.Color.purple())
 
         if not itemr:
             embed.description = "현재 보유 중인 아이템이 없습니다. 🫥"
         else:
+            item_lines = []
             for item_name, count in itemr.items():
                 if isinstance(count, bool):
                     display_value = "활성" if count else "비활성"
                 else:
-                    display_value = f"개수: {count}"
-                
-                embed.add_field(name=f"🎁 {item_name}", value=display_value, inline=False)
+                    display_value = f"{count}개"
+                item_lines.append(f"• **{item_name}** — {display_value}")
+            
+            embed.add_field(
+                name="보유 중인 아이템",
+                value="\n".join(item_lines),
+                inline=False
+            )
 
         await interaction.response.send_message(embed=embed,ephemeral=True)
 
@@ -6750,7 +6890,7 @@ class hello(commands.Cog):
         else:
             await interaction.response.send_message("경고는 1등만 부여할 수 있습니다.")
     
-    @app_commands.command(name="아이템구매", description="다양한 아이템을 구매합니다.")
+    @app_commands.command(name="구매_아이템", description="다양한 아이템을 구매합니다.")
     async def item_shop(self, interaction: discord.Interaction):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
         current_predict_season = cur_predict_seasonref.get()
@@ -6759,7 +6899,7 @@ class hello(commands.Cog):
         point = predict_data["포인트"]
         bettingPoint = predict_data["베팅포인트"]
 
-        ref_tc = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/아이템')
+        ref_tc = db.reference(f'무기/아이템/{interaction.user.name}')
         tc_data = ref_tc.get()
         TC = tc_data.get('탑코인', 0)
 
@@ -7687,7 +7827,7 @@ class hello(commands.Cog):
 
         ref_weapon = db.reference(f"무기/유저/{nickname}")
         weapon_data = ref_weapon.get() or {}
-        ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+        ref_item = db.reference(f"무기/아이템/{nickname}")
         item_data = ref_item.get() or {}
         weapon_name = weapon_data.get("이름", "")
 
@@ -7731,7 +7871,7 @@ class hello(commands.Cog):
 
             ref_weapon = db.reference(f"무기/유저/{nickname}")
             weapon_data = ref_weapon.get() or {}
-            ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+            ref_item = db.reference(f"무기/아이템/{nickname}")
             item_data = ref_item.get() or {}
             weapon_name = weapon_data.get("이름", "")
             weapon_enhanced = weapon_data.get("강화", 0)
@@ -7761,7 +7901,7 @@ class hello(commands.Cog):
                 # 변경된 버튼 상태를 반영한 뷰로 메시지 업데이트
                 ref_weapon = db.reference(f"무기/유저/{nickname}")
                 weapon_data = ref_weapon.get() or {}
-                ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+                ref_item = db.reference(f"무기/아이템/{nickname}")
                 item_data = ref_item.get() or {}
                 weapon_name = weapon_data.get("이름", "")
                 weapon_enhanced = weapon_data.get("강화", 0)
@@ -7794,7 +7934,7 @@ class hello(commands.Cog):
                 # 변경된 버튼 상태를 반영한 뷰로 메시지 업데이트
                 ref_weapon = db.reference(f"무기/유저/{nickname}")
                 weapon_data = ref_weapon.get() or {}
-                ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+                ref_item = db.reference(f"무기/아이템/{nickname}")
                 item_data = ref_item.get() or {}
                 weapon_name = weapon_data.get("이름", "")
                 weapon_enhanced = weapon_data.get("강화", 0)
@@ -7824,7 +7964,7 @@ class hello(commands.Cog):
 
                 ref_weapon = db.reference(f"무기/유저/{nickname}")
                 weapon_data = ref_weapon.get() or {}
-                ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+                ref_item = db.reference(f"무기/아이템/{nickname}")
                 item_data = ref_item.get() or {}
                 weapon_enhanced = weapon_data.get("강화", 0)
                 weapon_parts = item_data.get("강화재료", 0)
@@ -7847,18 +7987,18 @@ class hello(commands.Cog):
                     polish_button.label = "🛠️연마: 미사용"
                     polish_button.style = discord.ButtonStyle.secondary
                     # 연마제 차감
-                    item_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+                    item_ref = db.reference(f"무기/아이템/{nickname}")
                     current_items = item_ref.get() or {}
                     polish_count = current_items.get("연마제", 0)
                     if polish_count > 0:
                         item_ref.update({"연마제": polish_count - 1})
                 if speacial_polish_state:
-                    enhancement_rate += 30
+                    enhancement_rate += 50
                     speacial_polish_state = False
                     speacial_polish_button.label = "💎특수 연마: 미사용"
                     speacial_polish_button.style = discord.ButtonStyle.secondary
                     # 특수연마제 차감
-                    item_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+                    item_ref = db.reference(f"무기/아이템/{nickname}")
                     current_items = item_ref.get() or {}
                     special_polish_count = current_items.get("특수 연마제", 0)
                     if special_polish_count > 0:
@@ -7867,7 +8007,7 @@ class hello(commands.Cog):
 
                 ref_weapon = db.reference(f"무기/유저/{nickname}")
                 weapon_data = ref_weapon.get() or {}
-                ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+                ref_item = db.reference(f"무기/아이템/{nickname}")
                 item_data = ref_item.get() or {}
                 weapon_name = weapon_data.get("이름", "")
                 weapon_enhanced = weapon_data.get("강화", 0)
@@ -8311,7 +8451,7 @@ class hello(commands.Cog):
                 return
 
         result = False
-        ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+        ref_item = db.reference(f"무기/아이템/{nickname}")
         item_data = ref_item.get() or {}
         raid_refresh = item_data.get("레이드 재도전", 0)
         if raid_bool:
@@ -8353,7 +8493,7 @@ class hello(commands.Cog):
                     @discord.ui.button(label="사용하기", style=discord.ButtonStyle.green)
                     async def use_retry(self, interaction: discord.Interaction, button: discord.ui.Button):
                         # 레이드 재도전권 사용 로직
-                        ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/아이템")
+                        ref_item = db.reference(f"무기/아이템/{interaction.user.name}")
                         item_data = ref_item.get() or {}
                         raid_refresh = item_data.get("레이드 재도전", 0)
 
@@ -8527,86 +8667,25 @@ class hello(commands.Cog):
 
     @app_commands.command(name="수치조정", description="무기에 밸런스 패치로 인해 변경된 스탯을 적용합니다")
     async def stat_change(self, interaction: discord.Interaction):
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-        current_predict_season = cur_predict_seasonref.get()
-        
         await interaction.response.defer()
-        
+
         ref_users = db.reference(f"무기/유저").get()
-        
         if not ref_users:
             await interaction.response.send_message("업데이트할 유저 데이터가 없습니다.", ephemeral=True)
             return
-        
-        # 결과 메시지 Embed
+
         embed = discord.Embed(title=f"⚔️ 스탯 조정 완료!", color=discord.Color.green())
-        for nickname, _ in ref_users.items():
-            ref_weapon = db.reference(f"무기/유저/{nickname}")
-            weapon_data = ref_weapon.get() or {}
-            weapon_name = weapon_data.get("이름", "")
 
-            ref_enhance_log = db.reference(f"무기/유저/{nickname}/강화내역")
-            enhance_log_data = ref_enhance_log.get() or {}
+        for nickname in ref_users.keys():
+            weapon_name, stat_changes = apply_stat_change(nickname)
+            if weapon_name and stat_changes:
+                embed.add_field(
+                    name=f"🛠️ {weapon_name}의 변경된 스탯",
+                    value="\n".join(stat_changes),
+                    inline=False
+                )
 
-            ref_inherit_log = db.reference(f"무기/유저/{nickname}/계승 내역")
-            inherit_log_data = ref_inherit_log.get() or {}
-            
-            # 계승 내역 적용 (기본 스탯 증가)
-            inherit_level = inherit_log_data.get("기본 스탯 증가", 0)  # 계승 레벨 가져오기
-            inherit_multiplier = inherit_level * 0.3  # 1마다 0.3배 증가
-
-            # 기존 스탯 저장
-            old_stats = {
-                "공격력": weapon_data.get("공격력", 10),
-                "스킬 증폭": weapon_data.get("스킬 증폭", 5),
-                "내구도": weapon_data.get("내구도", 500),
-                "방어력": weapon_data.get("방어력", 5),
-                "스피드": weapon_data.get("스피드", 5),
-                "명중": weapon_data.get("명중", 0),
-                "치명타 대미지": weapon_data.get("치명타 대미지", 1.5),
-                "치명타 확률": weapon_data.get("치명타 확률", 0.05)
-            }
-
-            weapon_type = weapon_data.get("무기타입", "")
-
-            # 계승 배율을 적용할 스탯
-            inherit_stats = ["공격력", "스킬 증폭", "내구도", "방어력", "스피드", "명중"]
-
-
-            ref_weapon_base = db.reference(f"무기/기본 스탯")
-            base_weapon_stats = ref_weapon_base.get() or {}
-            
-            # 강화 항목을 제외한 새로운 스탯 딕셔너리 생성
-            new_stats = {
-                stat: value + round(value * inherit_multiplier) if stat in inherit_stats else value
-                for stat, value in base_weapon_stats[weapon_type].items()
-                if stat not in ["강화","스킬"]  # 강화 항목 제외
-            }
-
-            ref_weapon_enhance = db.reference(f"무기/강화")
-            enhancement_options = ref_weapon_enhance.get() or {}
-            for enhance_type, enhance_count in enhance_log_data.items():
-                if enhance_type in enhancement_options:
-                    for stat, value in enhancement_options[enhance_type]["stats"].items():
-                        new_stats[stat] += value * enhance_count
-                        new_stats[stat] = round(new_stats[stat],3)
-
-            # 변경 사항 비교
-            stat_changes = []
-            selected_stats = ["공격력", "스킬 증폭", "내구도", "방어력", "스피드", "명중", "치명타 대미지", "치명타 확률"]
-            for stat in selected_stats:
-                if stat in new_stats and stat in old_stats:  # 안전하게 키 체크
-                    diff = new_stats[stat] - old_stats[stat]
-                    if diff > 0:
-                        stat_changes.append(f"🟢 **{stat}**: +{diff}")
-                    elif diff < 0:
-                        stat_changes.append(f"🔴 **{stat}**: {diff}")
-            # 무기 정보 업데이트
-            ref_weapon.update(new_stats)
-
-            if stat_changes:
-                embed.add_field(name=f"🛠️ {weapon_name}의 변경된 스탯", value="\n".join(stat_changes) if stat_changes else "변경 사항 없음", inline=False)
-        await interaction.followup.send(embed=embed)  
+        await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="탑",description="탑을 등반하여 탑 코인을 획득합니다.")
     async def infinity_tower(self, interaction: discord.Interaction, 빠른도전: bool = False):
@@ -8741,7 +8820,7 @@ class hello(commands.Cog):
             ("레이드 재도전", 1, 20),  # 20% 확률로 레이드 재도전권 1개
             ("강화재료", 5, 30),       # 30% 확률로 강화재료 5개
             ("연마제", 1, 15),         # 15% 확률로 연마제 1개
-            ("특수연마제", 1, 1),     # 1% 확률로 특수연마제 1개
+            ("특수 연마제", 1, 1),     # 1% 확률로 특수 연마제 1개
             ("강화재료", 10, 10),     # 10% 확률로 강화재료 10개
             ("꽝", 0, 4),              # 4% 확률로 꽝
         ]
@@ -8749,7 +8828,7 @@ class hello(commands.Cog):
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
         current_predict_season = cur_predict_seasonref.get()
         
-        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+        ref = db.reference(f"무기/아이템/{nickname}")
         current_data = ref.get() or {}
         random_box = current_data.get("랜덤박스", 0)
 
@@ -8941,6 +9020,54 @@ class hello(commands.Cog):
 
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
+
+    # 명령어 정의
+    @app_commands.command(name="룬사용", description="룬을 사용합니다.")
+    @app_commands.choices(룬=[
+        Choice(name='스킬 각성의 룬', value='스킬 각성의 룬'),
+        Choice(name='운명 왜곡의 룬', value='운명 왜곡의 룬')
+    ])
+    async def rune(self, interaction: discord.Interaction, 룬: str):
+        await interaction.response.defer()
+
+        nickname = interaction.user.name
+        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+        current_predict_season = cur_predict_seasonref.get()
+
+        ref_item = db.reference(f"무기/아이템/{nickname}")
+        item_data = ref_item.get() or {}
+        rune_count = item_data.get(룬, 0)
+
+        if rune_count <= 0:
+            await interaction.followup.send("보유한 해당 룬이 없습니다.", ephemeral=True)
+            return
+
+        
+        # 임베드 생성
+        rune_embed = discord.Embed(title=f"{룬} 사용 준비", color=discord.Color.orange())
+        if 룬 == "스킬 각성의 룬":
+            ref_inherit_log = db.reference(f"무기/유저/{nickname}/계승 내역")
+            inherit_log = ref_inherit_log.get() or {}
+            base_stat_increase = inherit_log.get("기본 스탯 증가", 0)
+            if base_stat_increase <= 1: # 기본 스탯 증가가 1이라면 사용 불가
+                warning_embed = discord.Embed(title=f"{룬} 사용 실패!", color=discord.Color.red())
+                warning_embed.description = (
+                    f"{interaction.user.display_name}님의 **기본 스탯 증가**가 2 미만이기 때문에 발동이 **실패**하였습니다!\n"
+                )
+                await interaction.followup.send(embed=warning_embed)
+                return
+            rune_embed.description = (
+                f"🔮 {interaction.user.display_name}님의 손에 **스킬 각성의 룬**이 반응합니다...\n\n"
+                f"사용 시, 고유한 힘이 **기본 스탯 증가 2**만큼을 태워\n"
+                f"**기본 스킬 레벨 증가 1**로 재구성합니다."
+            )
+        elif 룬 == "운명 왜곡의 룬":
+            rune_embed.description = f"{interaction.user.display_name}님이 **운명 왜곡의 룬**을 사용하려고 합니다.\n버튼을 누르면 **계승 스탯이 무작위로 변경**됩니다."
+
+        # 버튼 뷰 구성
+        view = RuneUseButton(user=interaction.user, rune_name=룬, nickname=nickname, item_ref=ref_item, item_data=item_data)
+        await interaction.followup.send(embed=rune_embed, view=view)
+                    
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(
         hello(bot),
