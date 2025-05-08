@@ -8963,7 +8963,7 @@ class hello(commands.Cog):
 
             result_embed = discord.Embed(title="시뮬레이션 결과",color = discord.Color.blue())
             win_probability = round((win_count / 1000) * 100, 2)
-            result_embed.add_field(name=f"{weapon_data_challenger.get('이름',"")}의 {층수}층 기대 승률",value=f"{win_probability}%")
+            result_embed.add_field(name=f"{weapon_data_challenger.get('이름','')}의 {층수}층 기대 승률",value=f"{win_probability}%")
             await interaction.followup.send(embed = result_embed)
             return
         
