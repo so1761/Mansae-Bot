@@ -16,7 +16,7 @@ from discord.ui import View, Button, Select
 from discord import Game
 from discord import Status
 from discord import Object
-from datetime import datetime,timedelta
+from datetime import datetime,timedelta, timezone
 from dotenv import load_dotenv
 
 TARGET_TEXT_CHANNEL_ID = 1289184218135396483
@@ -72,10 +72,10 @@ class NotFoundError(Exception):
 
 #익명 이름
 ANONYM_NAME_WIN = [
- '바바리원숭이','회색랑구르','알렌원숭이','코주부원숭이','황금들창코원숭이','안경원숭이','동부콜로부스','붉은잎원숭이','남부돼지꼬리원숭이'
+    '원숭이', '랑구르', '들창코', '콜로부스', '돼지꼬리', '하플', '유인원', '사랑봉'
 ]
 ANONYM_NAME_LOSE = [
- '카카포','케아','카카리키','아프리카회색앵무','유황앵무','뉴기니아앵무', '빗창앵무','유리앵무'
+    '앵무', '제비', '독수리', '황조롱이', '펠리컨', '황새', '갈매기', '백로'
 ]
 
 CHANNEL_ID = '938728993329397781'
@@ -137,6 +137,42 @@ async def fetch_champion_data(force_download=False):
                 print(f"[ERROR] 챔피언 데이터 불러오기 실패: {response.status}")
                 return {}
 
+async def fetch_spell_id_to_key_map(force_download=False):
+    cache_path = "spell_id_to_key_cache.json"
+    if not force_download and os.path.exists(cache_path):
+        print("[INFO] 스펠 데이터 로컬 캐시에서 불러옵니다.")
+        with open(cache_path, "r", encoding="utf-8") as f:
+            spell_id_to_key = json.load(f)
+        return spell_id_to_key
+
+    # 최신 버전 가져오기
+    version = await get_latest_ddragon_version()
+    if not version:
+        return {}
+
+    # 스펠 데이터 가져오기
+    url = f'https://ddragon.leagueoflegends.com/cdn/{version}/data/ko_KR/summoner.json'
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status == 200:
+                data = await response.json()
+
+                spell_id_to_key = {
+                    str(value["key"]): key  # 예: "11": "SummonerSmite"
+                    for key, value in data["data"].items()
+                }
+
+                print(f"[INFO] {len(spell_id_to_key)}개의 스펠을 불러왔습니다. (버전: {version})")
+
+                # 로컬 캐시 저장
+                with open(cache_path, "w", encoding="utf-8") as f:
+                    json.dump(spell_id_to_key, f, ensure_ascii=False, indent=2)
+
+                return spell_id_to_key
+            else:
+                print(f"[ERROR] 스펠 데이터 불러오기 실패: {response.status}")
+                return {}
+
 async def fake_get_current_game_info(puuid):
     import json
     with open("mock_active_game.json", "r", encoding="utf-8") as f:
@@ -168,11 +204,35 @@ async def get_team_champion_embed(puuid, get_info_func=get_current_game_info):
     team1 = []
     team2 = []
 
+    SPELL_EMOJI_MAP = {
+        "SummonerSmite": "<:smite:1369988249417678948>",
+        "SummonerFlash": "<:flash:1369988373631991858>",
+        "SummonerTeleport": "<:teleport:1369988420276977675>",
+        "SummonerHeal": "<:heal:1369988449460944896>",
+        "SummonerDot": "<:ignite:1369988477915107378>",
+        "SummonerBarrier": "<:barrier:1369988312076390471>",
+        "SummonerExhaust": "<:exhaust:1369988518692261888>",
+        "SummonerHaste": "<:ghost:1369988552200552528>",
+        "SummonerBoost": "<:cleanse:1369988596362379274>"
+    }
+    CHAMPION_ID_NAME_MAP = await fetch_champion_data(force_download = False)
+    SPELL_ID_TO_KEY = await fetch_spell_id_to_key_map()
+
     for p in participants:
         champ_id = p.get("championId")
-        champ_name = CHAMPION_ID_NAME_MAP.get(champ_id, f"챔피언ID:{champ_id}")
-        summoner_name = p.get("summonerName", "Unknown")
-        entry = f"**{summoner_name}** - {champ_name}"
+        champ_name = CHAMPION_ID_NAME_MAP.get(str(champ_id), f"챔피언ID:{champ_id}")
+        summoner_name = p.get("riotId", "Unknown")
+        
+        spell1_id = str(p.get("spell1Id"))
+        spell2_id = str(p.get("spell2Id"))
+
+        spell1_key = SPELL_ID_TO_KEY.get(spell1_id, "")  # 예: 'SummonerSmite'
+        spell2_key = SPELL_ID_TO_KEY.get(spell2_id, "")
+
+        spell1_emoji = SPELL_EMOJI_MAP.get(spell1_key, "❓")
+        spell2_emoji = SPELL_EMOJI_MAP.get(spell2_key, "❓")
+
+        entry = f"{spell1_emoji}{spell2_emoji} **{champ_name}** - {summoner_name}"
 
         if p.get("teamId") == 100:
             team1.append(entry)
@@ -183,7 +243,7 @@ async def get_team_champion_embed(puuid, get_info_func=get_current_game_info):
         title="🔍 현재 게임 참가자",
         description="실시간 소환사 챔피언 정보입니다.",
         color=discord.Color.green(),
-        timestamp=datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
     )
     embed.add_field(name="🔵 블루팀", value="\n".join(team1), inline=False)
     embed.add_field(name="🔴 레드팀", value="\n".join(team2), inline=False)
@@ -1089,6 +1149,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     inline=False
                 )
 
+                
+
                 for winner in winners:
                     point_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name'].name}")
                     predict_data = point_ref.get()
@@ -1408,7 +1470,17 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 give_item(member.name, "강화재료", 1)
                                 eventembed.add_field(
                                     name="",
-                                    value=f"{member.display_name}님이 완전 적중으로 강화재료를 획득하셨습니다!",
+                                    value=f"{member.display_name}님이 완전 적중으로 **[강화재료]**를 획득하셨습니다!",
+                                    inline=False
+                                )
+
+
+                            for winner in result_winners:
+                                member = winner['name']
+                                give_item(member.name, "운명 왜곡의 룬", 1)
+                                eventembed.add_field(
+                                    name="",
+                                    value=f"{member.display_name}님이 예측 적중으로 **[운명 왜곡의 룬]**를 획득하셨습니다!",
                                     inline=False
                                 )
 
@@ -1884,24 +1956,31 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 latest_data = points[latest_date][latest_time]
                 game_win_streak = latest_data["연승"]
                 game_lose_streak = latest_data["연패"]
-        
+            
+
+            onoffref = db.reference("승부예측/이벤트온오프")
+            predict_event = onoffref.get()
+
+            event_string = ""
+            if predict_event:
+                event_string = "\n**승부 예측 이벤트 진행중!**"
             if game_win_streak >= 1:
                 streak_bonusRate = calculate_bonus(game_win_streak)
                 if name == "지모":
-                    p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
+                    p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 **{streak_bonusRate}** 추가!{event_string}", view=prediction_view, embed=prediction_embed)
                 elif name == "Melon":
-                    p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
+                    p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 **{streak_bonusRate}** 추가!{event_string}", view=prediction_view, embed=prediction_embed)
             elif game_lose_streak >= 1:
                 streak_bonusRate = calculate_bonus(game_lose_streak)
                 if name == "지모":
-                    p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
+                    p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 **{streak_bonusRate}** 추가!{event_string}", view=prediction_view, embed=prediction_embed)
                 elif name == "Melon":
-                    p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
+                    p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 **{streak_bonusRate}** 추가!{event_string}", view=prediction_view, embed=prediction_embed)
             else:
                 if name == "지모":
-                    p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n", view=prediction_view, embed=prediction_embed)
+                    p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!{event_string}", view=prediction_view, embed=prediction_embed)
                 elif name == "Melon":
-                    p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n", view=prediction_view, embed=prediction_embed)
+                    p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!{event_string}", view=prediction_view, embed=prediction_embed)
 
             if name == "지모":
                 p.current_message_kda_jimo = await channel.send("\n", view=kda_view, embed=kda_embed)
@@ -2095,8 +2174,6 @@ class MyBot(commands.Bot):
             'databaseURL' : 'https://mansaebot-default-rtdb.firebaseio.com/'
         })
         await self.tree.sync(guild=Object(id=298064707460268032))
-
-        await fetch_champion_data(force_download=False)
 
         bot.loop.create_task(update_mission_message())
         
