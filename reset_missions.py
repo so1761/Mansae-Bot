@@ -178,7 +178,7 @@ refraid.set("")
 
 participants = list(raid_data.keys())
 for participant, data in raid_data.items():
-    ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{participant}/아이템")
+    ref_item = db.reference(f"무기/아이템/{participant}")
     item_data = ref_item.get() or {}
     weapon_parts = item_data.get("강화재료", 0)
     ref_item.update({"강화재료" : weapon_parts + reward_count})
@@ -189,7 +189,7 @@ for participant, data in raid_data.items():
 
 # 기본 필드 리스트
 fields = [
-    {   
+    {
         "name": "결과",
         "value": "\n".join(rankings)  # 순위표 추가
     }

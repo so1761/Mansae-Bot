@@ -6,6 +6,7 @@ import random
 import prediction_vote as p
 import os
 import math
+import json
 from firebase_admin import credentials
 from firebase_admin import db
 from discord import Intents
@@ -83,6 +84,111 @@ MISSION_CHANNEL_ID = '1339058849247793255'
 
 used_items_for_user_jimo = {}
 used_items_for_user_melon = {}
+
+CHAMPION_ID_NAME_MAP = {}
+
+async def get_latest_ddragon_version():
+    url = 'https://ddragon.leagueoflegends.com/api/versions.json'
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status == 200:
+                versions = await response.json()
+                return versions[0]  # 가장 최신 버전
+            else:
+                print(f"[ERROR] 버전 정보 불러오기 실패: {response.status}")
+                return None
+
+# 챔피언 데이터 다운로드 함수 (캐시 추가)
+async def fetch_champion_data(force_download=False):
+    global CHAMPION_ID_NAME_MAP
+
+    cache_path = "champion_cache.json"
+    if not force_download and os.path.exists(cache_path):
+        print("[INFO] 챔피언 데이터를 로컬 캐시에서 불러옵니다.")
+        with open(cache_path, "r", encoding="utf-8") as f:
+            CHAMPION_ID_NAME_MAP = json.load(f)
+        return CHAMPION_ID_NAME_MAP
+
+    # 최신 버전 가져오기
+    version = await get_latest_ddragon_version()
+    if not version:
+        return {}
+
+    # 챔피언 데이터 가져오기
+    url = f'https://ddragon.leagueoflegends.com/cdn/{version}/data/ko_KR/champion.json'
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status == 200:
+                data = await response.json()
+                data_by_id = {}
+                for champ in data["data"].values():
+                    champ_id = int(champ["key"])  # 문자열을 정수로
+                    champ_name = champ["name"]
+                    data_by_id[champ_id] = champ_name
+                print(f"[INFO] {len(data_by_id)}개의 챔피언을 불러왔습니다. (버전: {version})")
+
+                # 로컬 캐시 저장
+                with open(cache_path, "w", encoding="utf-8") as f:
+                    json.dump(data_by_id, f, ensure_ascii=False, indent=2)
+
+                CHAMPION_ID_NAME_MAP = data_by_id
+                return data_by_id
+            else:
+                print(f"[ERROR] 챔피언 데이터 불러오기 실패: {response.status}")
+                return {}
+
+async def fake_get_current_game_info(puuid):
+    import json
+    with open("mock_active_game.json", "r", encoding="utf-8") as f:
+        return json.load(f)
+    
+async def get_current_game_info(puuid):
+    url = f'https://kr.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/{puuid}'
+    headers = {'X-Riot-Token': API_KEY}
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers) as response:
+            if response.status == 200:
+                return await response.json()
+            elif response.status == 404:
+                return None  # 게임 안 하는 중
+            else:
+                print(f"[ERROR] Riot API 오류: {response.status}")
+                return None
+
+async def get_team_champion_embed(puuid, get_info_func=get_current_game_info):
+    data = await get_info_func(puuid)
+    if not data:
+        return None
+
+    participants = data.get("participants", [])
+    if not participants:
+        return None
+
+    team1 = []
+    team2 = []
+
+    for p in participants:
+        champ_id = p.get("championId")
+        champ_name = CHAMPION_ID_NAME_MAP.get(champ_id, f"챔피언ID:{champ_id}")
+        summoner_name = p.get("summonerName", "Unknown")
+        entry = f"**{summoner_name}** - {champ_name}"
+
+        if p.get("teamId") == 100:
+            team1.append(entry)
+        elif p.get("teamId") == 200:
+            team2.append(entry)
+
+    embed = discord.Embed(
+        title="🔍 현재 게임 참가자",
+        description="실시간 소환사 챔피언 정보입니다.",
+        color=discord.Color.green(),
+        timestamp=datetime.utcnow()
+    )
+    embed.add_field(name="🔵 블루팀", value="\n".join(team1), inline=False)
+    embed.add_field(name="🔴 레드팀", value="\n".join(team2), inline=False)
+
+    return embed
 
 async def mission_notice(name, mission, rarity):
     channel = bot.get_channel(int(CHANNEL_ID))
@@ -378,6 +484,10 @@ def claim_all_reward(user_name, mission_type):
         return True
     else:
         return False
+
+async def fake_nowgame(puuid):
+    print("🧪 fake_nowgame 호출됨!")
+    return True, "솔로랭크"
 
 async def nowgame(puuid, retries=5, delay=5):
     url = f'https://kr.api.riotgames.com/lol/spectator/v5/active-games/by-summoner/{puuid}'
@@ -1315,7 +1425,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
         await asyncio.sleep(20)
 
-async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, event, current_game_state, winbutton):
+async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, event, current_game_state, winbutton, nowgame_func = nowgame):
     await bot.wait_until_ready()
     channel = bot.get_channel(int(channel_id))
     notice_channel = bot.get_channel(int(notice_channel_id))
@@ -1324,7 +1434,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
     current_predict_season = cur_predict_seasonref.get()
 
     while not bot.is_closed():
-        current_game_state, current_game_type = await nowgame(puuid)
+        current_game_state, current_game_type = await nowgame_func(puuid)
         #current_game_state = True
         #current_game_type = "솔로랭크"
         if current_game_state:
@@ -1375,6 +1485,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             perfect_point = perfectr[name]
                 
             async def disable_buttons():
+                if onoffbool: #투표 꺼져있다면 안함
+                    return
                 await asyncio.sleep(150)  # 2분 30초 대기
                 alarm_embed = discord.Embed(title="알림", description="예측 종료까지 30초 남았습니다! ⏰", color=discord.Color.red())
                 await channel.send(embed=alarm_embed)
@@ -1402,6 +1514,8 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                 
 
             async def auto_prediction():
+                if onoffbool: # 투표가 꺼져있다면 안함
+                    return
                 # 예측포인트의 모든 사용자 데이터 가져오기
                 predict_points_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트')
                 users_data = predict_points_ref.get() or {}
@@ -1797,6 +1911,14 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             if not onoffbool:
                 await notice_channel.send(f"{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
 
+
+            info_embed = await get_team_champion_embed(puuid, get_info_func=get_current_game_info)
+            if name == "지모":
+                info_embed.color = 0x000000
+            elif name == "Melon":
+                info_embed.color = discord.Color.brand_green()
+            await channel.send("",embed=info_embed) # 그 판의 조합을 나타내는 embed를 보냄
+
             event.clear()
             await asyncio.gather(
                 disable_buttons(),
@@ -1974,18 +2096,7 @@ class MyBot(commands.Bot):
         })
         await self.tree.sync(guild=Object(id=298064707460268032))
 
-        admin = await bot.fetch_user("298068763335589899")  # toe_kyung의 디스코드 사용자 ID 입력
-        '''
-        if admin:
-            try:
-                #DM 보내기
-                await admin.send("ㅎㅇ")
-                print(f"{user.name}에게 DM 전송 완료")
-            except Exception as e:
-                print(f"DM 전송 실패: {e}")
-        else:
-            print("관리자가 발견되지 않았습니다")
-        '''
+        await fetch_champion_data(force_download=False)
 
         bot.loop.create_task(update_mission_message())
         

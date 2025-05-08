@@ -388,13 +388,16 @@ class RuneUseButton(discord.ui.View):
 
         await interaction.edit_original_response(embed=embed, view=None)
 
-async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = False, practice = False, tower = False, tower_floor = 1, raid_ended = False):
+async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = False, practice = False, tower = False, tower_floor = 1, raid_ended = False, simulate = False, skill_data = None, wdc = None, wdo = None, scd = None):
         # 전장 크기 (-8 ~ 8), 0은 없음
         MAX_DISTANCE = 8
         MIN_DISTANCE = -8
 
-        ref_skill_data = db.reference("무기/스킬")
-        skill_data_firebase = ref_skill_data.get() or {}
+        if simulate:
+            skill_data_firebase = skill_data
+        else:
+            ref_skill_data = db.reference("무기/스킬")
+            skill_data_firebase = ref_skill_data.get() or {}
 
         # 방어력 기반 피해 감소율 계산 함수
         def calculate_damage_reduction(defense):
@@ -485,7 +488,17 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 character["Attack"] += attack_increase
                 character["Accuracy"] += accuracy_increase
 
-        async def end(attacker, defender, winner, raid):
+        async def end(attacker, defender, winner, raid, simulate = False, winner_name = None):
+            if simulate:
+                if raid:
+                    if winner == "attacker" and defender['name'] == challenger['name']:
+                        return first_HP - attacker['HP']
+                    elif winner == "defender" and attacker['name'] == challenger['name']:
+                        return first_HP - defender['HP']
+                    else:
+                        return first_HP  # 보스가 0이 되면 끝났다는 뜻
+                else:
+                    return winner_name == challenger['name']  # 일반전투일 경우 승리 여부만 반환
             await weapon_battle_thread.send(embed = battle_embed)
 
             if raid: #레이드 상황
@@ -604,6 +617,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     await weapon_battle_thread.send(f"**{attacker['name']}** 승리!")
                 elif winner == "defender": # 출혈 등 특수한 상황
                     await weapon_battle_thread.send(f"**{defender['name']}** 승리!")
+            return None
         global battle_distance
         battle_distance = 1
         
@@ -1179,29 +1193,30 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             apply_status_for_turn(attacker,"보호막",3,shield_amount)
             return f"**사냥본능** 사용! 상대 뒤로 즉시 이동하며, 2턴간 {shield_amount}의 보호막을 얻습니다!\n"
 
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
+        if simulate:
+            weapon_data_challenger = wdc
+            weapon_data_opponent = wdo
+        else:
+            ref_weapon_challenger = db.reference(f"무기/유저/{challenger_m.name}")
+            weapon_data_challenger = ref_weapon_challenger.get() or {}
 
-        ref_weapon_challenger = db.reference(f"무기/유저/{challenger_m.name}")
-        weapon_data_challenger = ref_weapon_challenger.get() or {}
-
-        if raid:
-            ref_weapon_opponent = db.reference(f"레이드/{boss}")
-            weapon_data_opponent = ref_weapon_opponent.get() or {}
-        elif tower:
-            if practice:
-                current_floor = tower_floor
-            else:
-                if tower_floor != 1: #tower_floor 설정했다면? -> 빠른 전투
+            if raid:
+                ref_weapon_opponent = db.reference(f"레이드/{boss}")
+                weapon_data_opponent = ref_weapon_opponent.get() or {}
+            elif tower:
+                if practice:
                     current_floor = tower_floor
                 else:
-                    ref_current_floor = db.reference(f"탑/유저/{challenger_m.name}")
-                    tower_data = ref_current_floor.get() or {}
-                    current_floor = tower_data.get("층수", 1)
-            weapon_data_opponent = generate_tower_weapon(current_floor)
-        else:
-            ref_weapon_opponent = db.reference(f"무기/유저/{opponent_m.name}")
-            weapon_data_opponent = ref_weapon_opponent.get() or {}
+                    if tower_floor != 1: #tower_floor 설정했다면? -> 빠른 전투
+                        current_floor = tower_floor
+                    else:
+                        ref_current_floor = db.reference(f"탑/유저/{challenger_m.name}")
+                        tower_data = ref_current_floor.get() or {}
+                        current_floor = tower_data.get("층수", 1)
+                weapon_data_opponent = generate_tower_weapon(current_floor)
+            else:
+                ref_weapon_opponent = db.reference(f"무기/유저/{opponent_m.name}")
+                weapon_data_opponent = ref_weapon_opponent.get() or {}
         
 
         # 공격 함수
@@ -1409,8 +1424,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
         for skill_name, skill_info in skills_data.items():
             # 공통 스킬 정보에서 쿨타임 가져오기
-            ref_skill = db.reference(f"무기/스킬/{skill_name}")
-            skill_common_data = ref_skill.get() or {}
+            if simulate:
+                skill_common_data = scd.get(skill_name, "")
+            else:
+                ref_skill = db.reference(f"무기/스킬/{skill_name}")
+                skill_common_data = ref_skill.get() or {}
             # cooldown 전체 가져오기
             cooldown_data = skill_common_data.get("cooldown", {})
             total_cd = cooldown_data.get("전체 쿨타임", 0)
@@ -1454,8 +1472,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
         for skill_name, skill_info in skills_data.items():
             # 공통 스킬 정보에서 쿨타임 가져오기
-            ref_skill = db.reference(f"무기/스킬/{skill_name}")
-            skill_common_data = ref_skill.get() or {}
+            if simulate:
+                skill_common_data = scd.get(skill_name)
+            else:
+                ref_skill = db.reference(f"무기/스킬/{skill_name}")
+                skill_common_data = ref_skill.get() or {}
             # cooldown 전체 가져오기
             cooldown_data = skill_common_data.get("cooldown", {})
             total_cd = cooldown_data.get("전체 쿨타임", 0)
@@ -1501,33 +1522,34 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         
         global weapon_battle_thread
         
-        if raid:
-            if practice:
-                weapon_battle_thread = await channel.create_thread(
-                    name=f"{challenger_m.display_name}의 {boss} 레이드 모의전",
-                    type=discord.ChannelType.public_thread
-                )
+        if not simulate:
+            if raid:
+                if practice:
+                    weapon_battle_thread = await channel.create_thread(
+                        name=f"{challenger_m.display_name}의 {boss} 레이드 모의전",
+                        type=discord.ChannelType.public_thread
+                    )
+                else:
+                    weapon_battle_thread = await channel.create_thread(
+                        name=f"{challenger_m.display_name}의 {boss} 레이드",
+                        type=discord.ChannelType.public_thread
+                    )
+            elif tower:
+                if practice:
+                    weapon_battle_thread = await channel.create_thread(
+                        name=f"{challenger_m.display_name}의 타워 등반 모의전",
+                        type=discord.ChannelType.public_thread
+                    )
+                else:
+                    weapon_battle_thread = await channel.create_thread(
+                        name=f"{challenger_m.display_name}의 타워 등반",
+                        type=discord.ChannelType.public_thread
+                    )
             else:
                 weapon_battle_thread = await channel.create_thread(
-                    name=f"{challenger_m.display_name}의 {boss} 레이드",
+                    name=f"{challenger_m.display_name} vs {opponent_m.display_name} 무기 대결",
                     type=discord.ChannelType.public_thread
                 )
-        elif tower:
-            if practice:
-                weapon_battle_thread = await channel.create_thread(
-                    name=f"{challenger_m.display_name}의 타워 등반 모의전",
-                    type=discord.ChannelType.public_thread
-                )
-            else:
-                weapon_battle_thread = await channel.create_thread(
-                    name=f"{challenger_m.display_name}의 타워 등반",
-                    type=discord.ChannelType.public_thread
-                )
-        else:
-            weapon_battle_thread = await channel.create_thread(
-                name=f"{challenger_m.display_name} vs {opponent_m.display_name} 무기 대결",
-                type=discord.ChannelType.public_thread
-            )
                 
         # 비동기 전투 시뮬레이션 전에 스탯을 임베드로 전송
         embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green())
@@ -1588,7 +1610,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         {skills_message_opponent}
         """, inline=False)
 
-        await weapon_battle_thread.send(embed=embed)
+        if not simulate:
+            await weapon_battle_thread.send(embed=embed)
 
         embed = discord.Embed(title="⚔️ 무기 강화 내역", color=discord.Color.green())
         
@@ -1610,7 +1633,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         {opponent_weapon_enhancement if opponent_weapon_enhancement else "강화 내역 없음"}
         """, inline=False)
 
-        await weapon_battle_thread.send(embed=embed)
+        if not simulate:
+            await weapon_battle_thread.send(embed=embed)
         
         turn = 0
         if raid: # 레이드 시 처음 내구도를 저장
@@ -1668,10 +1692,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
 
                 if attacker["HP"] <= 0:
-                    await end(attacker,defender,"defender",raid)
+                    result = await end(attacker,defender,"defender",raid,simulate,winner_name = defender['name'])
+                    if simulate:
+                        return result
                     break
                 else:
-                    await weapon_battle_thread.send(embed = battle_embed)
+                    if not simulate:
+                        await weapon_battle_thread.send(embed = battle_embed)
 
             if "화상" in attacker["Status"]:
                 burn_damage = attacker["Status"]["화상"]["value"]
@@ -1712,10 +1739,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
 
                 if attacker["HP"] <= 0:
-                    await end(attacker,defender,"defender",raid)
+                    result = await end(attacker,defender,"defender",raid,simulate,winner_name = defender['name'])
+                    if simulate:
+                        return result
                     break
                 else:
-                    await weapon_battle_thread.send(embed = battle_embed)
+                    if not simulate:
+                        await weapon_battle_thread.send(embed = battle_embed)
 
             if "기절" in attacker["Status"]: # 기절 상태일 경우 바로 턴을 넘김
                 # 공격자와 방어자 변경
@@ -1726,11 +1756,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 remove_status_effects(attacker)
                 update_status(attacker)  # 공격자의 상태 업데이트 (은신 등)
                 attacker, defender = defender, attacker
-                await weapon_battle_thread.send(embed = battle_embed)
-                if turn >= 30:
-                    await asyncio.sleep(1)
-                else:
-                    await asyncio.sleep(2)  # 턴 간 딜레이
+                if not simulate:
+                    await weapon_battle_thread.send(embed = battle_embed)
+                    if turn >= 30:
+                        await asyncio.sleep(1)
+                    else:
+                        await asyncio.sleep(2)  # 턴 간 딜레이
                 continue
                     
             if "빙결" in attacker["Status"]: # 빙결 상태일 경우 바로 턴을 넘김
@@ -1742,11 +1773,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 remove_status_effects(attacker)
                 update_status(attacker)  # 공격자의 상태 업데이트 (은신 등)
                 attacker, defender = defender, attacker
-                await weapon_battle_thread.send(embed = battle_embed)
-                if turn >= 30:
-                    await asyncio.sleep(1)
-                else:
-                    await asyncio.sleep(2)  # 턴 간 딜레이
+                if not simulate:
+                    await weapon_battle_thread.send(embed = battle_embed)
+                    if turn >= 30:
+                        await asyncio.sleep(1)
+                    else:
+                        await asyncio.sleep(2)  # 턴 간 딜레이
                 continue
 
             # 가속 확률 계산 (스피드 5당 1% 확률)
@@ -2341,18 +2373,23 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     battle_embed.add_field(name="스킬", value = result_message.rstrip("\n"), inline = False)
 
             if defender["HP"] <= 0:
-                await end(attacker,defender,"attacker",raid)
+                result = await end(attacker,defender,"attacker",raid,simulate,winner_name = attacker['name'])
+                if simulate:
+                    return result
                 break
             
             # 공격자와 방어자 변경
             attacker, defender = defender, attacker
-            await weapon_battle_thread.send(embed = battle_embed)
-            if turn >= 30:
-                await asyncio.sleep(1)
-            else:
-                await asyncio.sleep(2)  # 턴 간 딜레이
-        battle_ref = db.reference("승부예측/대결진행여부")
-        battle_ref.set(False)
+            if not simulate:
+                await weapon_battle_thread.send(embed = battle_embed)
+                if turn >= 30:
+                    await asyncio.sleep(1)
+                else:
+                    await asyncio.sleep(2)  # 턴 간 딜레이
+
+        if not simulate:
+            battle_ref = db.reference("승부예측/대결진행여부")
+            battle_ref.set(False)
 
 
 def seconds_to_minutes_and_seconds(seconds): # 초로 주어진 데이터를 분:초 형태로 변환
@@ -8352,7 +8389,7 @@ class hello(commands.Cog):
         if weapon_name_opponent == "":
             await interaction.followup.send("상대가 무기를 가지고 있지 않습니다!",ephemeral=True)
             return
-        
+
         battle_ref = db.reference("승부예측/대결진행여부")
         is_battle = battle_ref.get() or {}
         if is_battle:
@@ -8886,7 +8923,7 @@ class hello(commands.Cog):
 
     @app_commands.command(name="탑모의전",description="탑의 상대와 모의전투를 진행합니다.")
     @app_commands.describe(층수 = "도전할 층수를 선택하세요.")
-    async def infinity_tower_practice(self, interaction: discord.Interaction,층수 : app_commands.Range[int, 1], 상대 : discord.Member = None):
+    async def infinity_tower_practice(self, interaction: discord.Interaction,층수 : app_commands.Range[int, 1], 상대 : discord.Member = None, 시뮬레이션 : bool = False):
         if 상대 is None:
             상대 = interaction.user  # 자기 자신을 대상으로 설정
         
@@ -8907,6 +8944,29 @@ class hello(commands.Cog):
             await interaction.response.send_message("상대가 없습니다!",ephemeral=True)
             return
 
+        if 시뮬레이션:
+            await interaction.response.defer()
+            ref_skill_data = db.reference("무기/스킬")
+            skill_data_firebase = ref_skill_data.get() or {}
+
+            ref_weapon_challenger = db.reference(f"무기/유저/{상대.name}")
+            weapon_data_challenger = ref_weapon_challenger.get() or {}
+
+            ref_skill = db.reference(f"무기/스킬")
+            skill_common_data = ref_skill.get() or {}
+
+            win_count = 0
+            for i in range(1000):
+                result = await Battle(channel = interaction.channel,challenger_m= 상대, raid = False, practice = False, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data)
+                if result:  # True면 승리
+                    win_count += 1
+
+            result_embed = discord.Embed(title="시뮬레이션 결과",color = discord.Color.blue())
+            win_probability = round((win_count / 1000) * 100, 2)
+            result_embed.add_field(name=f"{weapon_data_challenger.get('이름',"")}의 {층수}층 기대 승률",value=f"{win_probability}%")
+            await interaction.followup.send(embed = result_embed)
+            return
+        
         battle_ref = db.reference("승부예측/대결진행여부")
         is_battle = battle_ref.get() or {}
         if is_battle:
@@ -9050,7 +9110,7 @@ class hello(commands.Cog):
 
     @app_commands.command(name="배틀테스트",description="두 명을 싸움 붙힙니다.")
     @app_commands.describe(상대1 = "상대를 고르세요", 상대2 = "상대를 고르세요")
-    async def battleTest(self,interaction: discord.Interaction, 상대1 : discord.Member, 상대2 : discord.Member):
+    async def battleTest(self,interaction: discord.Interaction, 상대1 : discord.Member, 상대2 : discord.Member, 시뮬레이션 : bool = False):
         await interaction.response.defer()
 
         ref_weapon_challenger = db.reference(f"무기/유저/{상대1.name}")
@@ -9069,13 +9129,37 @@ class hello(commands.Cog):
             await interaction.followup.send("상대가 무기를 가지고 있지 않습니다!",ephemeral=True)
             return
         
+        if 시뮬레이션:
+            ref_skill_data = db.reference("무기/스킬")
+            skill_data_firebase = ref_skill_data.get() or {}
+
+            ref_weapon_challenger = db.reference(f"무기/유저/{상대1.name}")
+            weapon_data_challenger = ref_weapon_challenger.get() or {}
+
+            ref_weapon_opponent = db.reference(f"무기/유저/{상대2.name}")
+            weapon_data_opponent = ref_weapon_opponent.get() or {}
+
+            ref_skill = db.reference(f"무기/스킬")
+            skill_common_data = ref_skill.get() or {}
+
+            win_count = 0
+            for i in range(1000):
+                result = await Battle(channel = interaction.channel,challenger_m= 상대1, opponent_m = 상대2, raid = False, practice = False, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data)
+                if result:  # True면 승리
+                    win_count += 1
+
+            result_embed = discord.Embed(title="시뮬레이션 결과",color = discord.Color.blue())
+            result_embed.add_field(name=f"{weapon_data_challenger.get('이름',"")} vs {weapon_data_opponent.get('이름',"")}",value=f"{weapon_data_challenger.get('이름',"")} {win_count}승, {weapon_data_opponent.get('이름',"")} {1000 - win_count}승")
+            await interaction.followup.send(embed = result_embed)
+            return
+
         battle_ref = db.reference("승부예측/대결진행여부")
         is_battle = battle_ref.get() or {}
         if is_battle:
-                warnembed = discord.Embed(title="실패",color = discord.Color.red())
-                warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-                await interaction.followup.send(embed = warnembed)
-                return
+            warnembed = discord.Embed(title="실패",color = discord.Color.red())
+            warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+            await interaction.followup.send(embed = warnembed)
+            return
         battle_ref.set(True)
 
         # 임베드 생성
@@ -9096,7 +9180,7 @@ class hello(commands.Cog):
     Choice(name='브라움', value='브라움'),
     Choice(name='카이사', value='카이사')
     ])
-    async def raid_practice_test(self, interaction: discord.Interaction, 상대1 : discord.Member, 보스: str):
+    async def raid_practice_test(self, interaction: discord.Interaction, 상대1 : discord.Member, 보스: str, 시뮬레이션 : bool = False):
         await interaction.response.defer()
 
         ref_weapon_challenger = db.reference(f"무기/유저/{상대1.name}")
@@ -9117,6 +9201,41 @@ class hello(commands.Cog):
             await interaction.followup.send("상대가 없습니다!",ephemeral=True)
             return
         
+        if 시뮬레이션:
+            ref_skill_data = db.reference("무기/스킬")
+            skill_data_firebase = ref_skill_data.get() or {}
+
+            ref_weapon_challenger = db.reference(f"무기/유저/{상대1.name}")
+            weapon_data_challenger = ref_weapon_challenger.get() or {}
+
+            ref_weapon_opponent = db.reference(f"레이드/{boss_name}")
+            weapon_data_opponent = ref_weapon_opponent.get() or {}
+
+            ref_skill = db.reference(f"무기/스킬")
+            skill_common_data = ref_skill.get() or {}
+
+            damage_total = 0
+            damage_results = []
+            for i in range(1000):
+                result = await Battle(channel = interaction.channel,challenger_m = 상대1, boss = boss_name, raid = True, practice = True, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data)
+                damage_total += result  # 숫자 반환됨
+                damage_results.append(result)
+
+            average_damage = round(sum(damage_results) / len(damage_results))
+            max_damage = max(damage_results)
+            min_damage = min(damage_results)
+
+            result_embed = discord.Embed(title="시뮬레이션 결과", color=discord.Color.blue())
+            result_embed.add_field(
+                name="",
+                value=(
+                    f"**{weapon_data_challenger.get('이름', '')}**의 {boss_name} 상대 평균 대미지 : **{average_damage}**\n"
+                    f"최대 대미지 : **{max_damage}**\n"
+                    f"최소 대미지 : **{min_damage}**"
+                )
+            )
+            await interaction.followup.send(embed = result_embed)
+            return
         
         battle_ref = db.reference("승부예측/대결진행여부")
         is_battle = battle_ref.get() or {}
@@ -9139,6 +9258,51 @@ class hello(commands.Cog):
 
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
+
+
+    @app_commands.command(name="미공개",description="테스트")
+    async def Mirror(self,interaction: discord.Interaction):
+        await interaction.response.defer()
+
+        ref_weapon_challenger = db.reference(f"무기/유저/{interaction.user.name}")
+        weapon_data_challenger = ref_weapon_challenger.get() or {}
+
+        weapon_name_challenger = weapon_data_challenger.get("이름", "")
+        if weapon_name_challenger == "":
+            await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+            return
+        
+        ref_weapon_opponent = db.reference(f"무기/유저/{interaction.user.name}")
+        weapon_data_opponent = ref_weapon_opponent.get() or {}
+
+        weapon_name_opponent = weapon_data_opponent.get("이름", "")
+        if weapon_name_opponent == "":
+            await interaction.followup.send("상대가 무기를 가지고 있지 않습니다!",ephemeral=True)
+            return
+        
+        ref_skill_data = db.reference("무기/스킬")
+        skill_data_firebase = ref_skill_data.get() or {}
+
+        ref_weapon_challenger = db.reference(f"무기/유저/{interaction.user.name}")
+        weapon_data_challenger = ref_weapon_challenger.get() or {}
+
+        ref_weapon_opponent = db.reference(f"무기/유저/{interaction.user.name}")
+        weapon_data_opponent = ref_weapon_opponent.get() or {}
+
+        ref_skill = db.reference(f"무기/스킬")
+        skill_common_data = ref_skill.get() or {}
+
+        win_count = 0
+        for i in range(1000):
+            result = await Battle(channel = interaction.channel,challenger_m= interaction.user, opponent_m = "", raid = False, practice = False, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data)
+            if result:  # True면 승리
+                win_count += 1
+
+        result_embed = discord.Embed(title="시뮬레이션 결과",color = discord.Color.blue())
+        result_embed.add_field(name=f"{weapon_data_challenger.get('이름',"")} vs {weapon_data_opponent.get('이름',"")}",value=f"{weapon_data_challenger.get('이름',"")} {win_count}승, {weapon_data_opponent.get('이름',"")} {1000 - win_count}승")
+        await interaction.followup.send(embed = result_embed)
+        return
+
 
     # 명령어 정의
     @app_commands.command(name="룬사용", description="룬을 사용합니다.")

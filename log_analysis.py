@@ -18,7 +18,7 @@ firebase_admin.initialize_app(cred,{
 })
 
 def fetch_prediction_logs():
-    ref = db.reference('승부예측/예측시즌/정규시즌2/예측포인트변동로그')
+    ref = db.reference('승부예측/예측시즌/정규시즌3/예측포인트변동로그')
     data = ref.get()
     return data
 
