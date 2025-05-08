@@ -9149,7 +9149,7 @@ class hello(commands.Cog):
                     win_count += 1
 
             result_embed = discord.Embed(title="시뮬레이션 결과",color = discord.Color.blue())
-            result_embed.add_field(name=f"{weapon_data_challenger.get('이름',"")} vs {weapon_data_opponent.get('이름',"")}",value=f"{weapon_data_challenger.get('이름',"")} {win_count}승, {weapon_data_opponent.get('이름',"")} {1000 - win_count}승")
+            result_embed.add_field(name=f"{weapon_data_challenger.get('이름','')} vs {weapon_data_opponent.get('이름','')}",value=f"{weapon_data_challenger.get('이름','')} {win_count}승, {weapon_data_opponent.get('이름','')} {1000 - win_count}승")
             await interaction.followup.send(embed = result_embed)
             return
 
@@ -9299,7 +9299,7 @@ class hello(commands.Cog):
                 win_count += 1
 
         result_embed = discord.Embed(title="시뮬레이션 결과",color = discord.Color.blue())
-        result_embed.add_field(name=f"{weapon_data_challenger.get('이름',"")} vs {weapon_data_opponent.get('이름',"")}",value=f"{weapon_data_challenger.get('이름',"")} {win_count}승, {weapon_data_opponent.get('이름',"")} {1000 - win_count}승")
+        result_embed.add_field(name=f"{weapon_data_challenger.get('이름','')} vs {weapon_data_opponent.get('이름','')}",value=f"{weapon_data_challenger.get('이름','')} {win_count}승, {weapon_data_opponent.get('이름','')} {1000 - win_count}승")
         await interaction.followup.send(embed = result_embed)
         return
 
