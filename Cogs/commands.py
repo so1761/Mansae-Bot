@@ -415,14 +415,21 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         def apply_status_for_turn(character, status_name, duration=1, value = None):
             """
             상태를 적용하고 지속 시간을 관리합니다.
+            기존 상태보다 낮은 value는 무시하며, duration은 누적합니다.
             """
             if status_name not in character["Status"]:
                 character["Status"][status_name] = {"duration": duration}
+                if value is not None:
+                    character["Status"][status_name]["value"] = value
             else:
+                # 지속시간 누적
                 character["Status"][status_name]["duration"] += duration
 
-            if value is not None:
-                character["Status"][status_name]["value"] = value
+                # value가 있다면, 기존 value보다 높을 때만 갱신
+                if value is not None:
+                    current_value = character["Status"][status_name].get("value", None)
+                    if current_value is None or value > current_value:
+                        character["Status"][status_name]["value"] = value
         def update_status(character):
             """
             각 턴마다 상태의 지속 시간을 감소시켜서, 0이 되면 상태를 제거합니다.
@@ -447,6 +454,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             character["Speed"] = character["BaseSpeed"]
             character["DamageEnhance"] = 0
             character["DefenseIgnore"] = 0
+            character["HealBan"] = 0
 
             # 현재 적용 중인 상태 효과를 확인하고 반영
             if "기습" in character["Status"]:
@@ -689,10 +697,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 base_damage = random.uniform((attacker["Attack"] + attack_increase) * accuracy, (attacker["Attack"] + attack_increase))  # 최소 ~ 최대 피해
                 skill_damage = base_damage * (attacker["CritDamage"] + CritDamageIncrease)
                 apply_status_for_turn(defender, "둔화", duration=3,value = slow_amount)
-                message = f"**강타** 사용!\n치명타 대미지 + {round(CritDamageIncrease * 100)}%, 공격력 + {attack_increase} 부여한 공격!\n3턴간 {round(slow_amount * 100)}% 둔화 효과를 부여합니다!"
+                message = f"**<:smash:1370302994301583380>강타** 사용!\n치명타 대미지 + {round(CritDamageIncrease * 100)}%, 공격력 + {attack_increase} 부여한 공격!\n3턴간 {round(slow_amount * 100)}% 둔화 효과를 부여합니다!"
             else:
                 skill_damage = 0
-                message = f"\n**강타가 빗나갔습니다!**\n"
+                message = f"\n**<:smash:1370302994301583380>강타**가 빗나갔습니다!\n"
 
             return message,skill_damage
             
@@ -705,10 +713,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 attack_multiplier = (headShot_data['기본_공격력_계수'] + headShot_data['레벨당_공격력_계수_증가'] * skill_level)
                 skill_damage = (attacker["Spell"] * skill_multiplier + attacker["Attack"] * attack_multiplier) * (1 + attacker['CritChance'])
                 apply_status_for_turn(attacker, "장전", duration=1)
-                message = f"**헤드샷** 사용!\n(스킬 증폭 {int(skill_multiplier * 100)}%) + (공격력 {int(attack_multiplier * 100)}%) x {round(attacker['CritChance'] * 100)}%의 스킬 피해!\n1턴간 **장전**상태가 됩니다.\n"
+                message = f"**<:headShot:1370300576545640459>헤드샷** 사용!\n(스킬 증폭 {int(skill_multiplier * 100)}%) + (공격력 {int(attack_multiplier * 100)}%) x {round(attacker['CritChance'] * 100)}%의 스킬 피해!\n1턴간 **장전**상태가 됩니다.\n"
             else:
                 skill_damage = 0
-                message = f"\n**헤드샷이 빗나갔습니다!**\n" 
+                message = f"\n**<:headShot:1370300576545640459>헤드샷**이 빗나갔습니다!\n" 
             return message, skill_damage
         
         def spearShot(attacker,defender,evasion,skill_level):
@@ -763,10 +771,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     defender["Speed"] = 0
                 debuff_turns = mech_Arm_data['디버프_지속시간']
                 apply_status_for_turn(defender, "둔화", duration=debuff_turns, value = speed_decrease)
-                message = f"\n**전선더미 방출** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해를 입힌 후 상대를 {move_distance}만큼 날려버립니다!\n상대의 속도가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소합니다!\n현재 거리: {battle_distance}\n"
+                message = f"\n**<:siuu_Q:1370287135088840785>전선더미 방출** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해를 입힌 후 상대를 {move_distance}만큼 날려버립니다!\n상대의 속도가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소합니다!\n현재 거리: {battle_distance}\n"
             else:
                 skill_damage = 0
-                message = f"\n**전선더미 방출이 빗나갔습니다!**\n"
+                message = f"\n**<:siuu_Q:1370287135088840785>전선더미 방출이 빗나갔습니다!**\n"
 
             return message,skill_damage
         
@@ -807,7 +815,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             skill_multiplier = int(round((Shield_data['기본_스킬증폭_계수'] + Shield_data['레벨당_스킬증폭_계수'] * skill_level) * 100))
             shield_amount = int(round((skill_multiplier / 100) * attacker['Spell']))
             apply_status_for_turn(attacker,"보호막",3,shield_amount)
-            message = f"\n**보호막** 사용!\n{shield_amount}만큼의 보호막을 2턴간 얻습니다!\n"
+            message = f"\n**<:siuu_E:1370283463978123264>보호막** 사용!\n{shield_amount}만큼의 보호막을 2턴간 얻습니다!\n"
 
             return message
         
@@ -821,10 +829,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_multiplier = (electronic_line_data['기본_스킬증폭_계수'] + electronic_line_data['레벨당_스킬증폭_계수_증가'] * skill_level)
                 skill_damage = base_damage + attacker["Spell"] * skill_multiplier
                 apply_status_for_turn(defender,"기절",1)
-                message = f"\n**전깃줄** 사용!\n거리가 2 이상인 상대에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n1턴간 기절 부여!"
+                message = f"\n**<:siuu_R:1370289428341329971>전깃줄** 사용!\n거리가 2 이상인 상대에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n1턴간 기절 부여!"
             else:
                 skill_damage = 0
-                message = f"\n**거리가 너무 가까워 전깃줄 사용 불가!**\n" 
+                message = f"\n<:siuu_R:1370289428341329971>거리가 너무 가까워 **전깃줄** 사용 불가!\n" 
             
             return message,skill_damage
         
@@ -836,10 +844,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_multiplier = (Reap_data['기본_스킬증폭_계수'] + Reap_data['레벨당_스킬증폭_계수_증가'] * skill_level)
                 attack_multiplier = (Reap_data['기본_공격력_계수'] + Reap_data['레벨당_공격력_계수_증가'] * skill_level)
                 skill_damage = base_damage + attacker["Spell"] * skill_multiplier + attacker["Attack"] * attack_multiplier
-                message = f"\n**수확** 사용!\n상대에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%) + (공격력 {int(attack_multiplier * 100)}%)의 스킬 피해!\n"
+                message = f"\n**<:reap:1370301351187185674>수확** 사용!\n상대에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%) + (공격력 {int(attack_multiplier * 100)}%)의 스킬 피해!\n"
             else:
                 skill_damage = 0
-                message = f"\n**수확이 빗나갔습니다!**\n" 
+                message = f"\n**<:reap:1370301351187185674>수확**이 빗나갔습니다!\n" 
             return message, skill_damage
 
         def unyielding(defender, skill_level):
@@ -847,18 +855,18 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             unyielding_data = skill_data_firebase['불굴']['values']
             damage_reduction = min(unyielding_data['최대_피해감소율'], battle_distance * (unyielding_data['거리당_기본_피해감소'] + unyielding_data['거리당_레벨당_피해감소'] * skill_level))  # 최대 90% 감소 제한
             defender["DamageReduction"] = damage_reduction
-            return f"\n**불굴** 발동!\n거리에 비례하여 받는 대미지 {int(damage_reduction * 100)}% 감소!\n"
+            return f"\n**<:braum_E:1370258314666971236>불굴** 발동!\n거리에 비례하여 받는 대미지 {int(damage_reduction * 100)}% 감소!\n"
         
         def concussion_punch(target):
             """패시브 - 뇌진탕 펀치: 공격 적중 시 뇌진탕 스택 부여, 4스택 시 기절"""
             target["뇌진탕"] = target.get("뇌진탕", 0) + 1
 
-            message = f"**뇌진탕 펀치** 효과로 뇌진탕 스택 {target['뇌진탕']}/4 부여!"
+            message = f"**<:braum_P:1370258039092805673>뇌진탕 펀치** 효과로 뇌진탕 스택 {target['뇌진탕']}/4 부여!"
             
             if target["뇌진탕"] >= 4:
                 target["뇌진탕"] = 0
                 apply_status_for_turn(target, "기절", duration=1)
-                message += f"\n**뇌진탕 폭발!** {target['name']} 1턴간 기절!\n"
+                message += f"\n**<:braum_P:1370258039092805673>뇌진탕 폭발!** {target['name']} 1턴간 기절!\n"
             return message
 
         def frostbite(attacker, target, evasion, skill_level):
@@ -875,7 +883,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 target["Speed"] *= (1- speed_decrease)
                 target["뇌진탕"] = target.get("뇌진탕", 0) + 1
 
-                message = f"\n**동상 사용!**\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n뇌진탕을 부여하고, 스피드가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소!\n뇌진탕 스택 {target['뇌진탕']}/4 부여!\n"
+                message = f"\n**<:braum_Q:1370258276855451698>동상** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n뇌진탕을 부여하고, 스피드가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소!\n뇌진탕 스택 {target['뇌진탕']}/4 부여!\n"
                 
                 if target["뇌진탕"] >= 4:
                     target["뇌진탕"] = 0
@@ -884,7 +892,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             else:
                 skill_damage = 0
-                message = f"\n**동상이 빗나갔습니다!**\n"
+                message = f"\n**<:braum_Q:1370258276855451698>동상이 빗나갔습니다!**\n"
             return message, skill_damage
 
         def glacial_fissure(attacker, target, evasion,skill_level):
@@ -897,11 +905,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_damage = base_damage + attacker["Spell"] * skill_multiplier * (1 + distance_bonus)
                 apply_status_for_turn(target,"기절",1)
 
-                message = f"\n**빙하 균열 사용!**\n{base_damage} + (스킬 증폭 {int(round(skill_multiplier * 100))}%)의 스킬 피해!\n{target['name']} 1턴간 기절!\n"
+                message = f"\n**<:braum_R:1370258355804962826>빙하 균열** 사용!\n{base_damage} + (스킬 증폭 {int(round(skill_multiplier * 100))}%)의 스킬 피해!\n{target['name']} 1턴간 기절!\n"
 
             else:
                 skill_damage = 0
-                message = f"\n**빙하 균열이 빗나갔습니다!**\n"
+                message = f"\n**<:braum_R:1370258355804962826>빙하 균열이 빗나갔습니다!**\n"
             return message, skill_damage
         
         def rapid_fire(attacker, defender, skill_level):
@@ -946,7 +954,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 
                 total_damage += damage
             
-            message += f"속사로 {hit_count}연타 공격! 총 {total_damage} 피해!"
+            message += f"<:rapid_fire:1370301811663175802>**속사**로 {hit_count}연타 공격! 총 {total_damage} 피해!"
             return message,total_damage
         
         def meditate(attacker, skill_level):
@@ -958,7 +966,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 현재 쿨타임 감소
             attacker['명상'] = attacker.get("명상", 0) + 1 # 명상 스택 + 1 추가
             apply_status_for_turn(attacker,"보호막",1,shield_amount)
-            message = f"**명상** 사용!(현재 명상 스택 : {attacker['명상']})\n 모든 스킬의 현재 쿨타임이 1턴 감소하고 1턴간 {shield_amount}의 보호막 생성!\n"
+            message = f"**<:meditation:1370297293957496954>명상** 사용!(현재 명상 스택 : {attacker['명상']})\n 모든 스킬의 현재 쿨타임이 1턴 감소하고 1턴간 {shield_amount}의 보호막 생성!\n"
 
             skill_damage = 0
             return message,skill_damage
@@ -981,10 +989,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     burn_damage = round(fire_data['화상_대미지'] * skill_level + attacker['Spell'] * burn_skill_multiplier)
                     apply_status_for_turn(defender, "기절", 1)
                     apply_status_for_turn(defender, "화상", 3, burn_damage)
-                    message = f"**메테오** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 기절 부여 및 3턴간 화상 부여!"
+                    apply_status_for_turn(defender, "치유 감소", 4, fire_data['화상_치유감소_수치'])
+                    message = f"**<:meteor:1370295232889098250>메테오** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 기절 부여 및 3턴간 화상 부여!"
                 else:
                     skill_damage = 0
-                    message = f"**메테오가 빗나갔습니다!**\n"
+                    message = f"**<:meteor:1370295232889098250>메테오**가 빗나갔습니다!\n"
             else:
                 # 플레어
                 if not evasion:
@@ -994,10 +1003,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     burn_skill_multiplier = fire_data['화상_기본_스킬증폭_계수'] + fire_data['화상_레벨당_스킬증폭_계수_증가'] * skill_level
                     burn_damage = round(fire_data['화상_대미지'] * skill_level + attacker['Spell'] * burn_skill_multiplier)
                     apply_status_for_turn(defender, "화상", 1, burn_damage)
-                    message = f"**플레어** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 화상 부여!"
+                    apply_status_for_turn(defender, "치유 감소", 2, fire_data['화상_치유감소_수치'])
+                    message = f"**<:flare:1370295196948107314>플레어** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 화상 부여!"
                 else:
                     skill_damage = 0
-                    message = f"**플레어가 빗나갔습니다!**\n"
+                    message = f"**<:flare:1370295196948107314>플레어**가 빗나갔습니다!\n"
             return message,skill_damage
         
         def ice(attacker,defender, evasion, skill_level):
@@ -1017,10 +1027,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     slow_amount = int(round((ice_data['강화_둔화율'] + ice_data['강화_레벨당_둔화율'] * skill_level) * 100))
                     apply_status_for_turn(defender, "빙결", 3)
                     apply_status_for_turn(defender, "둔화", 5, slow_amount / 100)
-                    message = f"**블리자드** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n3턴간 빙결 부여!, 5턴간 {slow_amount}% 둔화 부여!"
+                    message = f"**<:blizzard:1370295342372749332>블리자드** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n3턴간 빙결 부여!, 5턴간 {slow_amount}% 둔화 부여!"
                 else:
                     skill_damage = 0
-                    message = f"**블리자드가 빗나갔습니다!**\n"
+                    message = f"**<:blizzard:1370295342372749332>블리자드**가 빗나갔습니다!\n"
             else:
                 # 프로스트
                 if not evasion:
@@ -1028,10 +1038,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     skill_multiplier = ice_data['기본_스킬증폭_계수'] + ice_data['레벨당_스킬증폭_계수_증가'] * skill_level
                     skill_damage = base_damage + attacker['Spell'] * skill_multiplier
                     apply_status_for_turn(defender, "빙결", 1)
-                    message = f"**프로스트** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 빙결 부여!"
+                    message = f"**<:frost:1370295315919540304>프로스트** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 빙결 부여!"
                 else:
                     skill_damage = 0
-                    message = f"**프로스트가 빗나갔습니다!**\n"
+                    message = f"**<:frost:1370295315919540304>프로스트**가 빗나갔습니다!\n"
             return message,skill_damage
 
         def holy(attacker,defender, evasion, skill_level):
@@ -1049,10 +1059,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     skill_multiplier = holy_data['강화_기본_스킬증폭_계수'] + holy_data['레벨당_강화_스킬증폭_계수_증가'] * skill_level
                     skill_damage = base_damage + attacker['Spell'] * skill_multiplier
                     apply_status_for_turn(defender, "침묵", 3)
-                    message = f"**저지먼트** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n3턴간 침묵 부여!"
+                    message = f"**<:judgement:1370295397813194772>저지먼트** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n3턴간 침묵 부여!"
                 else:
                     skill_damage = 0
-                    message = f"**저지먼트가 빗나갔습니다!**\n"
+                    message = f"**<:judgement:1370295397813194772>저지먼트**가 빗나갔습니다!\n"
             else:
                 # 블레스
                 if not evasion:
@@ -1062,24 +1072,33 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     heal_skill_multiplier = (holy_data['치유_기본_스킬증폭_계수'] + holy_data['치유_레벨당_스킬증폭_계수_증가'] * skill_level)
                     heal_amount = round(holy_data['레벨당_치유량'] * skill_level + attacker['Spell'] * heal_skill_multiplier)
                     # 기본 힐량과 스킬 관련 계산
+                    if "치유 감소" in attacker["Status"]:
+                        healban_amount = attacker['Status']['치유 감소']['value']
+                        reduced_heal = round(heal_amount * healban_amount)
+                    else:
+                        reduced_heal = 0
+
                     initial_HP = attacker['HP']  # 회복 전 내구도 저장
-                    attacker['HP'] += heal_amount  # 힐 적용
+                    attacker['HP'] += heal_amount - reduced_heal  # 힐 적용
                     attacker['HP'] = min(attacker['HP'], attacker['BaseHP'])  # 최대 내구도 이상 회복되지 않도록 제한
 
                     # 최종 회복된 내구도
                     final_HP = attacker['HP']
 
                     # 메시지 출력
-                    message = f"**블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}만큼 내구도 회복!\n내구도: [{initial_HP}] → [{final_HP}] ❤️ (+{final_HP - initial_HP})"
+                    if "치유 감소" in attacker["Status"]:
+                        message = f"**<:bless:1370295371997253673>블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}(-{reduced_heal})만큼 내구도 회복!\n내구도: [{initial_HP}] → [{final_HP}] ❤️ (+{final_HP - initial_HP})"
+                    else:
+                        message = f"**<:bless:1370295371997253673>블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}만큼 내구도 회복!\n내구도: [{initial_HP}] → [{final_HP}] ❤️ (+{final_HP - initial_HP})"
                 else:
                     skill_damage = 0
-                    message = f"**블레스가 빗나갔습니다!**\n"
+                    message = f"**<:bless:1370295371997253673>블레스**가 빗나갔습니다!\n"
             return message,skill_damage
         
         def second_skin(target, skill_level, value):
             """패시브 - 두번째 피부: 공격 적중 시 플라즈마 중첩 부여, 5스택 시 현재 체력 비례 10% 대미지"""
             target["플라즈마 중첩"] = target.get("플라즈마 중첩", 0) + value
-            message = f"**두번째 피부** 효과로 플라즈마 중첩 {target['플라즈마 중첩']}/5 부여!"
+            message = f"<:kaisa_P:1370259635596038175>**두번째 피부** 효과로 플라즈마 중첩 {target['플라즈마 중첩']}/5 부여!"
 
             second_skin_data = skill_data_firebase['두번째 피부']['values']
             skill_damage = 0
@@ -1088,7 +1107,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 target["플라즈마 중첩"] = 0
                 skill_damage = round(target['HP'] * (second_skin_data['기본_대미지'] + second_skin_data['레벨당_추가_대미지'] * skill_level))
                 damage_value = round((second_skin_data['기본_대미지'] + second_skin_data['레벨당_추가_대미지'] * skill_level) * 100)
-                message += f"\n**플라즈마 폭발!** 현재 내구도의 {damage_value}% 대미지!\n"
+                message += f"\n<:kaisa_P:1370259635596038175>**플라즈마 폭발!** 현재 내구도의 {damage_value}% 대미지!\n"
             return message, skill_damage
 
         def icathian_rain(attacker, defender, skill_level):
@@ -1140,7 +1159,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             damage_reduction = calculate_damage_reduction(defense)
             defend_damage = explosion_damage * (1 - damage_reduction)
             final_damage = defend_damage * (1 - defender['DamageReduction'])
-            message += f"이케시아 폭우로 {hit_count}연타 공격! 총 {total_damage} 피해!\n"
+            message += f"<:kaisa_Q:1370259693972361277>이케시아 폭우로 {hit_count}연타 공격! 총 {total_damage} 피해!\n"
             message += passive_message
             total_damage += final_damage
             return message,total_damage
@@ -1153,7 +1172,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_damage = attacker["Spell"] * skill_multiplier
                 apply_status_for_turn(defender,"속박",1)
 
-                message = f"\n**공허추적자 사용!**\n스킬 증폭 {int(round(skill_multiplier * 100))}%의 스킬 피해를 입히고 1턴간 속박!\n"
+                message = f"\n<:kaisa_W:1370259790772572171>**공허추적자** 사용!\n스킬 증폭 {int(round(skill_multiplier * 100))}%의 스킬 피해를 입히고 1턴간 속박!\n"
                 passive_skill_data = attacker["Skills"].get("두번째 피부", None)   
                 passive_skill_level = passive_skill_data["레벨"]
                 passive_message, explosion_damage = second_skin(defender, passive_skill_level, 2)
@@ -1161,7 +1180,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 skill_damage += explosion_damage
             else:
                 skill_damage = 0
-                message = f"\n**공허추적자가 빗나갔습니다!**\n"
+                message = f"\n**<:kaisa_W:1370259790772572171>공허추적자**가 빗나갔습니다!\n"
             return message, skill_damage
 
         def supercharger(attacker, skill_level):
@@ -1176,7 +1195,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             speedup_value = base_speedup + speedup_level * skill_level
             attacker["Speed"] += speedup_value
             apply_status_for_turn(attacker, "고속충전_속도증가", duration=speedup_turns)
-            return f"**고속충전** 사용! {invisibility_turns}턴간 은신 상태에 돌입합니다!\n{speedup_turns}턴간 스피드가 {speedup_value} 증가합니다!\n"
+            return f"<:kaisa_E:1370259874264518798>**고속충전** 사용! {invisibility_turns}턴간 은신 상태에 돌입합니다!\n{speedup_turns}턴간 스피드가 {speedup_value} 증가합니다!\n"
         
         def killer_instinct(attacker, defender, skill_level):
             # 사냥본능: 상대의 뒤로 파고들며 2턴간 보호막을 얻음.
@@ -1191,7 +1210,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             shield_amount = killer_instinct_data['기본_보호막량'] + killer_instinct_data['레벨당_보호막량'] * skill_level
             apply_status_for_turn(attacker,"보호막",3,shield_amount)
-            return f"**사냥본능** 사용! 상대 뒤로 즉시 이동하며, 2턴간 {shield_amount}의 보호막을 얻습니다!\n"
+            return f"**<:kaisa_R:1370259948172349481>사냥본능** 사용! 상대 뒤로 즉시 이동하며, 2턴간 {shield_amount}의 보호막을 얻습니다!\n"
 
         if simulate:
             weapon_data_challenger = wdc
@@ -1407,13 +1426,22 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                         heal_amount = round(real_damage * heal_multiplier)
                         # 기본 힐량과 스킬 관련 계산
+                        if "치유 감소" in attacker["Status"]:
+                            healban_amount = attacker['Status']['치유 감소']['value']
+                            reduced_heal = round(heal_amount * healban_amount)
+                        else:
+                            reduced_heal = 0
+
                         initial_HP = attacker['HP']  # 회복 전 내구도 저장
-                        attacker['HP'] += heal_amount  # 힐 적용
+                        attacker['HP'] += heal_amount - reduced_heal  # 힐 적용
                         attacker['HP'] = min(attacker['HP'], attacker['BaseHP'])  # 최대 내구도 이상 회복되지 않도록 제한
 
                         # 최종 회복된 내구도
                         final_HP = attacker['HP']
-                        result_message += f"가한 대미지의 {int(heal_multiplier * 100)}% 흡혈! (+{heal_amount} 회복)\n내구도: [{initial_HP}] → [{final_HP}] ❤️ (+{final_HP - initial_HP})"
+                        if "치유 감소" in attacker["Status"]:
+                            result_message += f"가한 대미지의 {int(heal_multiplier * 100)}% 흡혈! (+{heal_amount}(-{reduced_heal}) 회복)\n내구도: [{initial_HP}] → [{final_HP}] ❤️ (+{final_HP - initial_HP})"
+                        else:
+                            result_message += f"가한 대미지의 {int(heal_multiplier * 100)}% 흡혈! (+{heal_amount} 회복)\n내구도: [{initial_HP}] → [{final_HP}] ❤️ (+{final_HP - initial_HP})"
                 # 스킬 쿨타임 적용
                 attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
 
@@ -1648,6 +1676,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         while challenger["HP"] > 0 and opponent["HP"] > 0:
             turn += 1
 
+            if turn >= 30:
+                healban_amount = round((turn - 20) * 0.01,1)
+                apply_status_for_turn(attacker, "치유 감소", 1, healban_amount)
+                apply_status_for_turn(defender, "치유 감소", 1, healban_amount)
+
             attacked = False
             # 이동 확률 계산: 스피드에 따라 증가
             move_chance = calculate_move_chance(attacker["Speed"])
@@ -1817,7 +1850,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         used_skill.append(skill_name)
                         skill_attack_names.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⌛{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
                     
             dash, retreat, attacked = False, False, False
 
@@ -1827,8 +1860,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             if battle_distance > attack_range:  # 돌진
                 if random.random() < move_chance and "속박" not in attacker["Status"]:  
-                    move_distance = 2 if (attacker["Weapon"] == "단검" and 
-                                        random.random() < 0.5) else 1
+                    move_distance = 2 if ("기습" in attacker['Status']) else 1
                     if battle_distance == 2:
                         move_distance = 1
                     attacker["Position"] = adjust_position(attacker["Position"], move_distance, dash_direction)
@@ -1872,7 +1904,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         result_message += invisibility(attacker,skill_level)
                         used_skill.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             evasion = False # 회피
             
@@ -1905,7 +1937,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             result_message += charging_shot(attacker,defender,evasion,skill_level)
                             used_skill.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             if "강타" in skill_names:
                 skill_name = "강타"
@@ -1921,7 +1953,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             used_skill.append(skill_name)
                             skill_attack_names.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             if "보호막" in skill_names:
                 skill_name = "보호막"
@@ -1938,7 +1970,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             result_message += Shield(attacker,skill_level)
                             used_skill.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             if "고속충전" in skill_names:
                 skill_name = "고속충전"
@@ -1955,7 +1987,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             result_message += supercharger(attacker,skill_level)
                             used_skill.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             if "수확" in skill_names:
                 skill_name = "수확"
@@ -1971,7 +2003,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             used_skill.append(skill_name)
                             skill_attack_names.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             if "명상" in skill_names:
                 skill_name = "명상"
@@ -1987,7 +2019,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             used_skill.append(skill_name)
                             skill_attack_names.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             if "화염 마법" in skill_names:
                 skill_name = "화염 마법"
@@ -2003,7 +2035,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             used_skill.append(skill_name)
                             skill_attack_names.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             if "냉기 마법" in skill_names:
                 skill_name = "냉기 마법"
@@ -2019,7 +2051,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             used_skill.append(skill_name)
                             skill_attack_names.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
             
             if "신성 마법" in skill_names:
                 skill_name = "신성 마법"
@@ -2035,7 +2067,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             used_skill.append(skill_name)
                             skill_attack_names.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             if "공허추적자" in skill_names:
                 skill_name = "공허추적자"
@@ -2051,7 +2083,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             used_skill.append(skill_name)
                             skill_attack_names.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             if "이케시아 폭우" in skill_names:
                 skill_name = "이케시아 폭우"
@@ -2067,7 +2099,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             used_skill.append(skill_name)
                             skill_attack_names.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             if "사냥본능" in skill_names:
                 skill_name = "사냥본능"
@@ -2084,7 +2116,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             result_message += killer_instinct(attacker,defender,skill_level)
                             used_skill.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             if "헤드샷" in skill_names:
                 skill_name = "헤드샷"
@@ -2100,7 +2132,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             used_skill.append(skill_name)
                             skill_attack_names.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             if "창격" in skill_names:
                 skill_name = "창격"
@@ -2117,7 +2149,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             result_message += spearShot(attacker,defender,evasion,skill_level)
                             used_skill.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
      
             if "동상" in skill_names:
                 skill_name = "동상"
@@ -2133,7 +2165,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             used_skill.append(skill_name)
                             skill_attack_names.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             if "빙하 균열" in skill_names:
                 skill_name = "빙하 균열"
@@ -2149,7 +2181,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             used_skill.append(skill_name)
                             skill_attack_names.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             if "속사" in skill_names:
                 skill_name = "속사"
@@ -2165,7 +2197,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             used_skill.append(skill_name)
                             skill_attack_names.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
                             
             if "전선더미 방출" in skill_names:
                 skill_name = "전선더미 방출"
@@ -2181,7 +2213,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             used_skill.append(skill_name)
                             skill_attack_names.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             if "전깃줄" in skill_names:
                 skill_name = "전깃줄"
@@ -2197,7 +2229,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             used_skill.append(skill_name)
                             skill_attack_names.append(skill_name)
                 else:
-                    cooldown_message += f"{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
             if "기습" in attacker["Status"]: # 은신 상태일 경우, 추가 대미지 + 일정 확률로 '출혈' 상태 부여
                 skill_level = attacker["Skills"]["기습"]["레벨"]
@@ -8278,17 +8310,53 @@ class hello(commands.Cog):
             weapon_view.add_item(polish_button)
             weapon_view.add_item(speacial_polish_button)
 
-            enhance_description = {
-                "공격 강화": "공격력을 강화합니다!\n 공격력 + 3, 방어력 + 2, 속도 + 1, 내구도 + 5",
-                "치명타 확률 강화": "치명타 확률을 강화합니다!\n공격력 + 1, 방어력 + 1, 내구도 + 5, 치명타 확률 + 4%",
-                "치명타 대미지 강화": "치명타 대미지를 강화합니다!\n공격력 + 1, 방어력 + 1, 내구도 + 5, 치명타 대미지 + 10%",
-                "속도 강화": "스피드를 강화합니다!\n공격력 + 1, 방어력 + 1, 내구도 + 5, 속도 + 5",
-                "명중 강화": "명중을 강화합니다!\n공격력 + 2, 방어력 + 2, 내구도 + 5, 속도 + 1 명중 + 5",
-                "방어 강화": "방어력을 강화합니다!\n방어력 + 5, 내구도 + 10",
-                "내구도 강화": "내구도를 강화합니다!\n방어력 + 3, 내구도 + 20",
-                "스킬 강화": "스킬 대미지를 강화합니다!\n방어력 + 1, 내구도 + 5, 스킬 증폭 + 10",
-                "밸런스 강화": "모든 스탯을 강화합니다!\n공격력 + 1, 방어력 + 1, 내구도 + 7, 스킬 증폭 + 2, 치명타 확률 + 1%, 치명타 대미지 + 2%, 속도 + 1, 명중 + 1"
-            }
+            def chunked_stat_lines(stat_lines, chunk_size=3):
+                return [
+                    ", ".join(stat_lines[i:i+chunk_size])
+                    for i in range(0, len(stat_lines), chunk_size)
+                ]
+            
+            def generate_enhance_descriptions(enhancement_options):
+                fixed_descriptions = {
+                    "공격 강화": "공격력을 강화합니다!",
+                    "치명타 확률 강화": "치명타 확률을 강화합니다!",
+                    "치명타 대미지 강화": "치명타 대미지를 강화합니다!",
+                    "속도 강화": "스피드를 강화합니다!",
+                    "명중 강화": "명중을 강화합니다!",
+                    "방어 강화": "방어력을 강화합니다!",
+                    "내구도 강화": "내구도를 강화합니다!",
+                    "스킬 강화": "스킬 대미지를 강화합니다!",
+                    "밸런스 강화": "모든 스탯을 강화합니다!",
+                }
+                
+
+                enhance_description = {}
+
+                
+                for name, stats in enhancement_options.items():
+                    
+                    # 고정 문구 유지
+                    fixed_line = fixed_descriptions.get(name, f"{name} 효과!")
+
+                    # 스탯 설명 부분 자동 생성
+                    stat_lines = []
+                    for stat_name, value in stats['stats'].items():
+                        if stat_name in ["치명타 확률", "치명타 대미지"]:
+                            stat_lines.append(f"{stat_name} + {round(value * 100)}%")
+                        else:
+                            stat_lines.append(f"{stat_name} + {value}")
+
+                    # 3개마다 줄바꿈
+                    chunked_lines = chunked_stat_lines(stat_lines, 3)
+                    full_description = fixed_line + "\n" + "\n".join(chunked_lines)
+
+                    enhance_description[name] = full_description
+
+                return enhance_description
+            
+            ref_weapon_enhance = db.reference(f"무기/강화")
+            enhancement_options = ref_weapon_enhance.get() or {}
+            enhance_description = generate_enhance_descriptions(enhancement_options)
 
             global enhancement_probabilities
             enhancement_rate = enhancement_probabilities[weapon_enhanced]
@@ -8555,9 +8623,13 @@ class hello(commands.Cog):
                     @discord.ui.button(label="도전하기", style=discord.ButtonStyle.green)
                     async def after_raid(self, interaction: discord.Interaction, button: discord.ui.Button):
                         # 버튼 비활성화 처리
+                        if interaction.user.id != self.user_id:
+                            await interaction.response.send_message("이 버튼은 당신의 것이 아닙니다.", ephemeral=True)
+                            return
                         await interaction.response.defer()
                         self.disable_all_buttons()
                         self.future.set_result(True)
+                        await interaction.edit_original_response(view = self)
                         
                 view = AfterRaidView(interaction.user.id)
                 await interaction.followup.send(embed=retry_embed, view=view, ephemeral=True)
@@ -8636,6 +8708,11 @@ class hello(commands.Cog):
 
                     @discord.ui.button(label="사용하기", style=discord.ButtonStyle.green)
                     async def use_retry(self, interaction: discord.Interaction, button: discord.ui.Button):
+                        if interaction.user.id != self.user_id:
+                            await interaction.response.send_message("이 버튼은 당신의 것이 아닙니다.", ephemeral=True)
+                            return
+
+                        await interaction.response.defer()
                         # 레이드 재도전권 사용 로직
                         ref_item = db.reference(f"무기/아이템/{interaction.user.name}")
                         item_data = ref_item.get() or {}
@@ -8657,8 +8734,9 @@ class hello(commands.Cog):
                             ref_boss.update({"내구도" : Boss_HP + raid_damage})
 
                             self.future.set_result(True)  # ✅ True 반환 (재도전 성공)
+                            await interaction.edit_original_response(view = self)
                         else:
-                            await interaction.response.edit_message(content="레이드 재도전권이 없습니다!", view=None)
+                            await interaction.edit_original_response(content="레이드 재도전권이 없습니다!", view=None)
                             self.future.set_result(False)  # ✅ False 반환 (재도전 불가)
                 
                 view = RaidRetryView(interaction.user.id)
@@ -8884,6 +8962,8 @@ class hello(commands.Cog):
                 userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
                 userembed.add_field(name="",value=f"{interaction.user.display_name}님이 아이템을 사용하여 탑에 재도전했습니다!", inline=False)
                 ref_item.update({"탑 재도전": tower_refesh - 1})
+                ref_current_floor = db.reference(f"탑/유저/{nickname}")
+                ref_current_floor.update({"등반여부": False}) # 등반여부 초기화
                 channel = interaction.client.get_channel(int(CHANNEL_ID))
                 await channel.send(embed=userembed)
             else:
@@ -8963,7 +9043,9 @@ class hello(commands.Cog):
 
             result_embed = discord.Embed(title="시뮬레이션 결과",color = discord.Color.blue())
             win_probability = round((win_count / 1000) * 100, 2)
-            result_embed.add_field(name=f"{weapon_data_challenger.get('이름','')}의 {층수}층 기대 승률",value=f"{win_probability}%")
+            weapon_types = ["대검","스태프-화염", "조총", "스태프-냉기", "창", "활", "스태프-신성", "단검", "낫"]
+            weapon_type = weapon_types[(층수 - 1) % len(weapon_types)]  # 1층부터 시작
+            result_embed.add_field(name=f"{weapon_data_challenger.get('이름','')}의 {층수}층({weapon_type}) 기대 승률",value=f"{win_probability}%")
             await interaction.followup.send(embed = result_embed)
             return
         
@@ -9366,6 +9448,10 @@ class hello(commands.Cog):
         view = RuneUseButton(user=interaction.user, rune_name=룬, nickname=nickname, item_ref=ref_item, item_data=item_data)
         await interaction.followup.send(embed=rune_embed, view=view)
                     
+
+    @app_commands.command(name="이모지", description="이모지 테스트")
+    async def rune(self, interaction: discord.Interaction, 이모지 : str):
+        await interaction.response.send_message(이모지)
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(
         hello(bot),
