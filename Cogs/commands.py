@@ -9450,7 +9450,7 @@ class hello(commands.Cog):
                     
 
     @app_commands.command(name="이모지", description="이모지 테스트")
-    async def rune(self, interaction: discord.Interaction, 이모지 : str):
+    async def emoji(self, interaction: discord.Interaction, 이모지 : str):
         await interaction.response.send_message(이모지)
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(
