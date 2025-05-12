@@ -160,7 +160,7 @@ for idx, (nickname, data) in enumerate(raid_data_sorted, start=1):
         rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지")
 
 
-refraidboss = db.reference(f"레이드/{boss_name}")
+refraidboss = db.reference(f"레이드/보스/{boss_name}")
 raid_boss_data = refraidboss.get() or {}
 cur_dur = raid_boss_data.get("내구도", 0)
 total_dur = raid_boss_data.get("총 내구도",0)
@@ -172,9 +172,54 @@ if total_dur > 0:
 else:
     reward_count = 0  # 보스가 이미 처치된 경우
 
-refraidboss.update({"총 내구도" : total_dur + 100})
-refraidboss.update({"내구도" : total_dur + 100})
+cleared = False
+if cur_dur <= 0: # 보스가 처치된 경우
+    cleared = True
+
+
+raid_root = db.reference("레이드/보스")
+raid_bosses = raid_root.get() or {}
+
+for boss_name, boss_data in raid_bosses.items():
+    # 기존 값 가져오기 (없으면 기본값 0)
+    cur_dur = boss_data.get("내구도", 0)
+    total_dur = boss_data.get("총 내구도", 0)
+    attack = boss_data.get("공격력", 0)
+    skill_amp = boss_data.get("스킬 증폭", 0)
+    defense = boss_data.get("방어력", 0)
+    speed = boss_data.get("스피드", 0)
+    accuracy = boss_data.get("명중", 0)
+
+    # 업데이트 값 계산
+    updates = {
+        "내구도": total_dur + 100,
+        "총 내구도": total_dur + 100,
+        "공격력": attack + 1,
+        "스킬 증폭": skill_amp + 3,
+        "방어력": defense + 2,
+        "스피드": speed + 2,
+        "명중": accuracy + 3,
+    }
+
+    # 보스 데이터 업데이트
+    raid_root.child(boss_name).update(updates)
+
 refraid.set("")
+
+# 오늘 요일 가져오기 (0=월, 6=일)
+weekday = datetime.datetime.now().weekday()
+
+# 요일에 따른 보스 선택
+if weekday in [5, 6, 0]:  # 토(5), 일(6), 월(0)
+    current_boss = "카이사"
+elif weekday in [1, 2]:   # 화(1), 수(2)
+    current_boss = "스우"
+else:                     # 목(3), 금(4)
+    current_boss = "브라움"
+
+# Firebase에 현재 보스 업데이트
+raid_root = db.reference("레이드")
+raid_root.update({"현재 레이드 보스": current_boss})
 
 participants = list(raid_data.keys())
 for participant, data in raid_data.items():
@@ -182,6 +227,20 @@ for participant, data in raid_data.items():
     item_data = ref_item.get() or {}
     weapon_parts = item_data.get("강화재료", 0)
     ref_item.update({"강화재료" : weapon_parts + reward_count})
+
+    if cleared: # 보스가 처치된 경우
+        if boss_name == "카이사":
+            random_box = item_data.get("랜덤박스") or 0
+            ref_item.update({"랜덤박스": random_box + 1})
+        elif boss_name == "스우":
+            polish = item_data.get("연마제") or 0
+            ref_item.update({"연마제": polish + 2})
+        elif boss_name == "브라움":
+            Rune_of_Twisted_Fate = item_data.get("운명 왜곡의 룬") or 0
+            ref_item.update({"운명 왜곡의 룬": Rune_of_Twisted_Fate + 3})
+        else:
+            weapon_parts = item_data.get("강화재료") or 0
+            ref_item.update({"강화재료": weapon_parts + 3})
 
     if data.get('막타',False):
         raid_retry = item_data.get("레이드 재도전") or 0
@@ -211,7 +270,7 @@ for idx, (nickname, data) in enumerate(raid_after_data_sorted, start=1):
     reward_number = int(round(max_reward * 0.75))
     after_rankings.append(f"{nickname} - {damage} 대미지 ({damage_ratio}%)\n(강화재료 {reward_number}개 지급!)")
 
-    ref_item = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템")
+    ref_item = db.reference(f"무기/아이템/{nickname}")
     item_data = ref_item.get() or {}
     weapon_parts = item_data.get("강화재료", 0)
     ref_item.update({"강화재료" : weapon_parts + reward_number})
@@ -344,6 +403,38 @@ if today.weekday() == 6:
         {
             "title": "포인트 초기화",
             "description": "혼자보기 포인트가 100으로 초기화되었습니다!",
+            "color": 0x00ff00,  # 초록색
+            "footer": {
+                "text": "Mansae-Bot",
+            }
+        }
+    ]
+    }
+    
+
+    response = requests.post(WEBHOOK_URL, json=data)
+
+
+if today.weekday() == 0:
+    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트")
+    users = ref.get()
+
+    if users:
+        for nickname, data in users.items():
+            ref_current_floor = db.reference(f"탑/유저/{nickname}")
+            tower_data = ref_current_floor.get() or {}
+            if tower_data:
+                ref_current_floor.set({"층수": 1})
+                current_floor = 1
+            
+            ref_current_floor.update({"등반여부": False})
+    print(f"{date_str} 탑 진행상황이 초기화되었습니다.")
+    data = {
+    "content": "",
+    "embeds": [
+        {
+            "title": "탑 초기화",
+            "description": "탑 진행상황이 초기화되었습니다!",
             "color": 0x00ff00,  # 초록색
             "footer": {
                 "text": "Mansae-Bot",

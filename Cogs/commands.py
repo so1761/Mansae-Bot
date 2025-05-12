@@ -8570,7 +8570,7 @@ class hello(commands.Cog):
         ref_current_boss = db.reference(f"레이드/현재 레이드 보스")
         boss_name = ref_current_boss.get()
         
-        ref_weapon_opponent = db.reference(f"레이드/{boss_name}")
+        ref_weapon_opponent = db.reference(f"레이드/보스/{boss_name}")
         weapon_data_opponent = ref_weapon_opponent.get() or {}
 
         weapon_name_opponent = weapon_data_opponent.get("이름", "")
@@ -8728,7 +8728,7 @@ class hello(commands.Cog):
                             refraid = db.reference(f"레이드/내역/{interaction.user.name}")
                             refraid.delete() 
 
-                            ref_boss = db.reference(f"레이드/{boss_name}")
+                            ref_boss = db.reference(f"레이드/보스/{boss_name}")
                             boss_data = ref_boss.get() or {}
                             Boss_HP = boss_data.get("내구도", 0)
                             ref_boss.update({"내구도" : Boss_HP + raid_damage})
@@ -8799,7 +8799,7 @@ class hello(commands.Cog):
             else:
                 rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지")
 
-        refraidboss = db.reference(f"레이드/{boss_name}")
+        refraidboss = db.reference(f"레이드/보스/{boss_name}")
         raid_boss_data = refraidboss.get() or {}
         cur_dur = raid_boss_data.get("내구도", 0)
         total_dur = raid_boss_data.get("총 내구도",0)
@@ -8856,7 +8856,7 @@ class hello(commands.Cog):
         
         boss_name = 보스
         
-        ref_weapon_opponent = db.reference(f"레이드/{boss_name}")
+        ref_weapon_opponent = db.reference(f"레이드/보스/{boss_name}")
         weapon_data_opponent = ref_weapon_opponent.get() or {}
 
         weapon_name_opponent = weapon_data_opponent.get("이름", "")
@@ -9275,7 +9275,7 @@ class hello(commands.Cog):
         
         boss_name = 보스
         
-        ref_weapon_opponent = db.reference(f"레이드/{boss_name}")
+        ref_weapon_opponent = db.reference(f"레이드/보스/{boss_name}")
         weapon_data_opponent = ref_weapon_opponent.get() or {}
 
         weapon_name_opponent = weapon_data_opponent.get("이름", "")
@@ -9290,7 +9290,7 @@ class hello(commands.Cog):
             ref_weapon_challenger = db.reference(f"무기/유저/{상대1.name}")
             weapon_data_challenger = ref_weapon_challenger.get() or {}
 
-            ref_weapon_opponent = db.reference(f"레이드/{boss_name}")
+            ref_weapon_opponent = db.reference(f"레이드/보스/{boss_name}")
             weapon_data_opponent = ref_weapon_opponent.get() or {}
 
             ref_skill = db.reference(f"무기/스킬")
