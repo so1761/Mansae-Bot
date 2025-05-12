@@ -208,7 +208,7 @@ if cleared:
 refraid.set("")
 
 # 오늘 요일 가져오기 (0=월, 6=일)
-weekday = datetime.datetime.now().weekday()
+weekday = datetime.now().weekday()
 
 # 요일에 따른 보스 선택
 if weekday in [5, 6, 0]:  # 토(5), 일(6), 월(0)
