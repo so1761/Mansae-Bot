@@ -522,7 +522,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     ref_raid.update({"보스": boss})
                     ref_raid.update({"모의전": True})
 
-                ref_boss = db.reference(f"레이드/{boss}")
+                ref_boss = db.reference(f"레이드/보스/{boss}")
                 if winner == "attacker": # 일반적인 상황
                     if defender['name'] == challenger['name']: # 패배한 사람이 플레이어일 경우
                         final_HP = attacker['HP']
@@ -1220,7 +1220,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             weapon_data_challenger = ref_weapon_challenger.get() or {}
 
             if raid:
-                ref_weapon_opponent = db.reference(f"레이드/{boss}")
+                ref_weapon_opponent = db.reference(f"레이드/보스/{boss}")
                 weapon_data_opponent = ref_weapon_opponent.get() or {}
             elif tower:
                 if practice:

@@ -180,29 +180,30 @@ if cur_dur <= 0: # 보스가 처치된 경우
 raid_root = db.reference("레이드/보스")
 raid_bosses = raid_root.get() or {}
 
-for boss_name, boss_data in raid_bosses.items():
-    # 기존 값 가져오기 (없으면 기본값 0)
-    cur_dur = boss_data.get("내구도", 0)
-    total_dur = boss_data.get("총 내구도", 0)
-    attack = boss_data.get("공격력", 0)
-    skill_amp = boss_data.get("스킬 증폭", 0)
-    defense = boss_data.get("방어력", 0)
-    speed = boss_data.get("스피드", 0)
-    accuracy = boss_data.get("명중", 0)
+if cleared:
+    for boss_name, boss_data in raid_bosses.items():
+        # 기존 값 가져오기 (없으면 기본값 0)
+        cur_dur = boss_data.get("내구도", 0)
+        total_dur = boss_data.get("총 내구도", 0)
+        attack = boss_data.get("공격력", 0)
+        skill_amp = boss_data.get("스킬 증폭", 0)
+        defense = boss_data.get("방어력", 0)
+        speed = boss_data.get("스피드", 0)
+        accuracy = boss_data.get("명중", 0)
 
-    # 업데이트 값 계산
-    updates = {
-        "내구도": total_dur + 100,
-        "총 내구도": total_dur + 100,
-        "공격력": attack + 1,
-        "스킬 증폭": skill_amp + 3,
-        "방어력": defense + 2,
-        "스피드": speed + 2,
-        "명중": accuracy + 3,
-    }
+        # 업데이트 값 계산
+        updates = {
+            "내구도": total_dur + 100,
+            "총 내구도": total_dur + 100,
+            "공격력": attack + 1,
+            "스킬 증폭": skill_amp + 3,
+            "방어력": defense + 2,
+            "스피드": speed + 2,
+            "명중": accuracy + 3,
+        }
 
-    # 보스 데이터 업데이트
-    raid_root.child(boss_name).update(updates)
+        # 보스 데이터 업데이트
+        raid_root.child(boss_name).update(updates)
 
 refraid.set("")
 
