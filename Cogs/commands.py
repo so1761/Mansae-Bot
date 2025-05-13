@@ -194,7 +194,7 @@ def apply_stat_change(nickname: str):
 
     basic_skill_levelup = inherit_log_data.get("기본 스킬 레벨 증가", 0)
         
-    basic_skills = ["속사", "기습", "강타", "헤드샷", "창격", "수확", "명상", "화염 마법", "냉기 마법", "신성 마법"]
+    basic_skills = ["속사", "기습", "강타", "헤드샷", "창격", "수확", "명상", "화염 마법", "냉기 마법", "신성 마법", "일섬"]
     base_weapon_stat = base_weapon_stats[weapon_type]
     skills = base_weapon_stat["스킬"]
     for skill_name in basic_skills:
@@ -536,6 +536,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             character["DamageEnhance"] = 0
             character["DefenseIgnore"] = 0
             character["HealBan"] = 0
+            character["DamageReduction"] = 0
 
             # 현재 적용 중인 상태 효과를 확인하고 반영
             if "기습" in character["Status"]:
@@ -576,6 +577,13 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 accuracy_increase = (accuracy_increase_level * skill_level)
                 character["Attack"] += attack_increase
                 character["Accuracy"] += accuracy_increase
+
+            if "피해 감소" in character["Status"]:
+                reduce_amount = character['Status']['피해 감소']['value']
+                if reduce_amount > 1:
+                    reduce_amount = 1
+                character["DamageReduction"] = reduce_amount
+
 
         async def end(attacker, defender, winner, raid, simulate = False, winner_name = None):
             if simulate:
@@ -784,7 +792,58 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 message = f"\n**<:smash:1370302994301583380>강타**가 빗나갔습니다!\n"
 
             return message,skill_damage
+        
+        def issen(attacker, defender, skill_level):
+            # 일섬 : 엄청난 속도로 적을 벤 후, 다음 턴에 날카로운 참격을 가한다. 회피를 무시하고 명중률에 비례한 대미지를 입힌다.
+            # 출혈 상태일 경우, 대미지가 50% 증가하고, 출혈 상태를 없앤 뒤, 남은 출혈 턴 x 대미지만큼의 피해를 추가한다.
+            issen_data = skill_data_firebase['일섬']['values']
+
+            def calculate_damage(attacker,defender,multiplier):
+                accuracy = calculate_accuracy(attacker["Accuracy"])
+                accuracy_apply_rate = issen_data['기본_명중_반영_비율'] + issen_data['레벨당_명중_반영_비율'] * skill_level
+                base_damage = random.uniform(attacker["Attack"] + (attacker["Accuracy"] * accuracy_apply_rate) * accuracy, attacker["Attack"] + (attacker["Accuracy"] * accuracy_apply_rate))  # 최소 ~ 최대 피해
+                critical_bool = False
+
+                # 피해 증폭
+                base_damage *= 1 + attacker["DamageEnhance"]
+
+                explosion_damage = 0
+                if '출혈' in defender["Status"]: # 출혈 적용상태라면
+                    duration = defender["Status"]['출혈']['duration']
+                    if duration > 1: # 피해가 한턴 뒤에 적용되니, 적용 시간도 1턴 줄임
+                        value = defender["Status"]['출혈']['value']
+                        explosion_damage = ((duration - 1) * value)
+                        explosion_damage = round(explosion_damage)
+                        base_damage += explosion_damage
+
+                if random.random() < attacker["CritChance"]:
+                    base_damage *= attacker["CritDamage"]
+                    critical_bool = True
+                        
+                additional_DefenseIgnore = round(defender['Accuracy'] / 5)
+
+                defense = max(0, (defender["Defense"] - attacker["DefenseIgnore"]) * (1 - additional_DefenseIgnore))
+                damage_reduction = calculate_damage_reduction(defense)
+                defend_damage = base_damage * (1 - damage_reduction) * multiplier
+                final_damage = defend_damage * (1 - defender['DamageReduction']) # 대미지 감소 적용
+                return max(1, round(final_damage)), critical_bool, explosion_damage
+
+            bleed_explosion = False
+            if '출혈' in defender["Status"]: # 출혈 적용상태라면
+                duration = defender["Status"]['출혈']['duration']
+                if duration > 1: # 피해가 한턴 뒤에 적용되니, 적용 시간도 1턴 줄임
+                    bleed_explosion = True
+
+            bleed_damage = issen_data['출혈_대미지'] + issen_data['레벨당_출혈_대미지'] * skill_level
+            damage, critical, explosion_damage = calculate_damage(attacker,defender,1)
             
+            damage = round(damage)
+            #apply_status_for_turn(attacker,"피해 감소", duration=2, value = 0.5)
+            accuracy_apply_rate = round((issen_data['기본_명중_반영_비율'] + issen_data['레벨당_명중_반영_비율'] * skill_level) * 100)
+            apply_status_for_turn(defender, "일섬", duration=2, value = {"damage" : damage, "critical": critical, "bleed_explosion": bleed_explosion, "accuracy_apply_rate": accuracy_apply_rate, "bleed_damage": bleed_damage, "explosion_damage" : explosion_damage})
+            message = f"**일섬** 사용!\n엄청난 속도로 적을 벤 후, 다음 턴에 날카로운 참격을 가합니다.\n회피를 무시하고 명중에 비례하는 대미지를 입힙니다.\n" 
+            return message, 0
+        
         def headShot(attacker, evasion,skill_level):
             """액티브 - 헤드샷: 치명타 확률에 따라 증가하는 스킬 피해"""
             # 헤드샷: 공격력 80(+10)% + 스킬 증폭 100(+20)%, 치명타 확률 1%당 1% 추가 피해
@@ -1505,6 +1564,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 elif skill_name == "명상":
                     skill_message, damage= meditate(attacker,skill_level)
                     result_message += skill_message
+                elif skill_name == "일섬":
+                    skill_message, damage= issen(attacker,defender, skill_level)
+                    result_message += skill_message
                 elif skill_name == "화염 마법":
                     skill_message, damage= fire(attacker,defender, evasion,skill_level)
                     result_message += skill_message
@@ -1869,6 +1931,81 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             move_chance = calculate_move_chance(attacker["Speed"])
             attack_range = attacker["WeaponRange"]
 
+            if "일섬" in attacker["Status"]:
+                if attacker["Status"]["일섬"]["duration"] == 1:
+                    issen_damage = attacker["Status"]["일섬"]["value"]["damage"]
+                    critical = attacker['Status']["일섬"]["value"]["critical"]
+                    bleed_explosion = attacker['Status']["일섬"]["value"]['bleed_explosion']
+                    accuracy_apply_rate = attacker['Status']["일섬"]["value"]['accuracy_apply_rate']
+                    bleed_damage = attacker['Status']['일섬']["value"]['bleed_damage']
+                    explosion_damage = attacker['Status']['일섬']['value']['explosion_damage']
+
+                    shield_message = ""
+                    remain_shield = ""
+                    if attacker['name'] == challenger['name']: # 도전자 공격
+                        battle_embed = discord.Embed(title=f"{defender['name']}의 일섬!", color=discord.Color.red())
+                    elif attacker['name'] == opponent['name']: # 상대 공격
+                        battle_embed = discord.Embed(title=f"{defender['name']}의 일섬!", color=discord.Color.blue())
+                    if "보호막" in attacker['Status']:
+                        shield_amount = attacker["Status"]["보호막"]["value"]
+                        if shield_amount >= issen_damage:
+                            attacker["Status"]["보호막"]["value"] -= issen_damage
+                            shield_message = f" 🛡️피해 {issen_damage} 흡수!"
+                            issen_damage = 0
+                        else:
+                            issen_damage -= shield_amount
+                            shield_message = f" 🛡️피해 {shield_amount} 흡수!"
+                            attacker["Status"]["보호막"]["value"] = 0
+                        if "보호막" in attacker["Status"] and attacker["Status"]["보호막"]["value"] <= 0: # 보호막이 0이 되면 삭제
+                            del attacker["Status"]["보호막"]
+
+                    if "보호막" in attacker['Status']:
+                        shield_amount = attacker["Status"]["보호막"]["value"]
+                        remain_shield = f"(🛡️보호막 {shield_amount})"
+                    
+                    battle_embed.add_field(
+                        name="일섬!",
+                        value=f"명중의 {accuracy_apply_rate}%를 공격력과 합산한 대미지를 입힙니다!\n이 공격에 {round((defender['Accuracy'] / 5) * 100)}% 방어력 관통을 적용합니다!",
+                        inline=False
+                    )
+                    
+                    attacker["HP"] -= issen_damage
+                    crit_text = "💥" if critical else ""
+                    explosion_message = ""
+                    if bleed_explosion:
+                        if '출혈' in attacker["Status"]:
+                            del attacker["Status"]['출혈']
+                        battle_embed.add_field(
+                            name="추가 피해!",
+                            value="출혈 상태의 적에게 강력한 일격!\n남은 출혈 피해를 대미지에 합산합니다.",
+                            inline=False
+                        )
+                        explosion_message = f"(+🩸{explosion_damage} 대미지)"
+                    battle_embed.add_field(name ="", value = f"**{issen_damage} 대미지!{crit_text}{explosion_message}{shield_message}**",inline = False)
+
+                    bleed_rate = calculate_accuracy(defender['Accuracy'])
+                    if random.random() < bleed_rate and not bleed_explosion:
+                        apply_status_for_turn(attacker, "출혈", 5, bleed_damage)
+                        battle_embed.add_field(name ="", value = f"5턴간 **출혈** 부여!🩸",inline = False)
+
+                    if attacker['name'] == challenger['name']: # 도전자 공격
+                        battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
+
+                    elif attacker['name'] == opponent['name']: # 상대 공격
+                        if raid:
+                            battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['FullHP']}]{remain_shield}**")
+                        else:
+                            battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
+
+                    if attacker["HP"] <= 0:
+                        result = await end(attacker,defender,"defender",raid,simulate,winner_name = defender['name'])
+                        if simulate:
+                            return result
+                        break
+                    else:
+                        if not simulate:
+                            await weapon_battle_thread.send(embed = battle_embed)
+
             if "출혈" in attacker["Status"]:
                 bleed_damage = attacker["Status"]["출혈"]["value"]
                 shield_message = ""
@@ -2178,6 +2315,22 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             if "강타" in skill_names:
                 skill_name = "강타"
+                skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
+                skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
+                skill_level = attacker["Skills"][skill_name]["레벨"]
+
+                if skill_cooldown_current == 0:
+                    if slienced: # 침묵 상태일 경우
+                        result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
+                    else:
+                        if skill_name in skill_names:
+                            used_skill.append(skill_name)
+                            skill_attack_names.append(skill_name)
+                else:
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+
+            if "일섬" in skill_names:
+                skill_name = "일섬"
                 skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
                 skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
                 skill_level = attacker["Skills"][skill_name]["레벨"]
@@ -2885,7 +3038,7 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
         
         basic_skill_levelup = inherit_log.get("기본 스킬 레벨 증가", 0)
         
-        basic_skills = ["속사", "기습", "강타", "헤드샷", "창격", "수확", "명상", "화염 마법", "냉기 마법", "신성 마법"]
+        basic_skills = ["속사", "기습", "강타", "헤드샷", "창격", "수확", "명상", "화염 마법", "냉기 마법", "신성 마법", "일섬"]
         skills = base_weapon_stat["스킬"]
         for skill_name in basic_skills:
             if skill_name in skills:

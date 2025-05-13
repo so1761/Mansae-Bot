@@ -195,11 +195,11 @@ if cleared:
         updates = {
             "내구도": total_dur + 100,
             "총 내구도": total_dur + 100,
-            "공격력": attack + 1,
-            "스킬 증폭": skill_amp + 3,
-            "방어력": defense + 2,
+            "공격력": attack + 3,
+            "스킬 증폭": skill_amp + 5,
+            "방어력": defense + 3,
             "스피드": speed + 2,
-            "명중": accuracy + 3,
+            "명중": accuracy + 5,
         }
 
         # 보스 데이터 업데이트
@@ -211,7 +211,9 @@ refraid.set("")
 weekday = datetime.now().weekday()
 
 # 요일에 따른 보스 선택
-if weekday in [5, 6, 0]:  # 토(5), 일(6), 월(0)
+if weekday == 5: # 토(5)
+    current_boss = "팬텀"
+elif weekday in [6, 0]:  # 일(6), 월(0)
     current_boss = "카이사"
 elif weekday in [1, 2]:   # 화(1), 수(2)
     current_boss = "스우"
@@ -239,6 +241,9 @@ for participant, data in raid_data.items():
         elif boss_name == "브라움":
             Rune_of_Twisted_Fate = item_data.get("운명 왜곡의 룬") or 0
             ref_item.update({"운명 왜곡의 룬": Rune_of_Twisted_Fate + 3})
+        elif boss_name == "팬텀":
+            weapon_parts = item_data.get("강화재료") or 0
+            ref_item.update({"강화재료": weapon_parts + 3})
         else:
             weapon_parts = item_data.get("강화재료") or 0
             ref_item.update({"강화재료": weapon_parts + 3})
@@ -255,10 +260,23 @@ fields = [
     }
 ]
 
+clear_message = ""
+if cleared: # 보스가 처치된 경우
+    if boss_name == "카이사":
+        clear_message = "\n카이사 토벌로 **랜덤박스** 지급!"
+    elif boss_name == "스우":
+        clear_message = "\n스우 토벌로 **연마제 2개** 지급!"
+    elif boss_name == "브라움":
+        clear_message = "\n브라움 토벌로 **운명 왜곡의 룬 3개** 지급!"
+    elif boss_name == "팬텀":
+        clear_message = "\n팬텀 토벌로 **강화재료 3개** 지급!"
+    else:
+        clear_message = "\n보스 토벌로 **강화재료 3개** 지급!"
+
 # 보상 필드 추가
 fields.append({
     "name": "보상",
-    "value": f"강화 재료 **{reward_count}개** 지급!"
+    "value": f"강화 재료 **{reward_count}개** 지급!{clear_message}"
 })
 
 raid_after_data = {key:value for key, value in raid_all_data.items() if value['보스'] == boss_name and value['모의전'] == True}
