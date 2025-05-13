@@ -193,8 +193,8 @@ if cleared:
 
         # 업데이트 값 계산
         updates = {
-            "내구도": total_dur + 100,
-            "총 내구도": total_dur + 100,
+            "내구도": total_dur + 200,
+            "총 내구도": total_dur + 200,
             "공격력": attack + 3,
             "스킬 증폭": skill_amp + 5,
             "방어력": defense + 3,
