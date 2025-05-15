@@ -309,8 +309,8 @@ class RuneUseButton(discord.ui.View):
             ref_inherit_log.update({"기본 스탯 증가": base_stat_increase - 2})
             ref_inherit_log.update({"기본 스킬 레벨 증가": base_skill_level_increase + 1})
             
-            embed.description = f"{weapon_name}의 **기본 스탯 증가 2**가 **기본 스킬 레벨 증가 1**로 전환되었습니다!"
             weapon_name, stat_changes = apply_stat_change(self.nickname)
+            embed.description = f"{weapon_name}의 **기본 스탯 증가 2**가 **기본 스킬 레벨 증가 1**로 전환되었습니다!"
             if weapon_name and stat_changes:
                 embed.add_field(
                     name=f"🛠️ {weapon_name}의 변경된 스탯",
@@ -396,7 +396,7 @@ class RuneUseButton(discord.ui.View):
                     inline=False
                 )
 
-        elif self.rune_name == "운명 의 룬":
+        elif self.rune_name == "운명의 룬":
             ref_enhance_list = db.reference(f"무기/강화")
             enhance_list = ref_enhance_list.get() or {}
             stat_options = list(enhance_list.keys())
@@ -9219,6 +9219,18 @@ class hello(commands.Cog):
             damage_ratio = round(damage/total_dur * 100)
             reward_number = int(round(max_reward * 0.75))
             after_rankings.append(f"{nickname} - {damage} 대미지 ({damage_ratio}%)\n(강화재료 {reward_number}개 지급 예정!)")
+            if cur_dur <= 0: # 보스가 처치된 경우
+                if boss_name == "카이사":
+                    after_rankings.append(f"카이사 토벌로 랜덤박스 1개 지급 예정!")
+                elif boss_name == "스우":
+                    after_rankings.append(f"스우 토벌로 연마제 2개 지급 예정!")
+                elif boss_name == "브라움":
+                    after_rankings.append(f"브라움 토벌로 운명 왜곡의 룬 3개 지급 예정!")
+                elif boss_name == "팬텀":
+                    after_rankings.append(f"팬텀 토벌로 강화재료 3개 지급 예정!")
+                else:
+                    after_rankings.append(f"보스 토벌로 강화재료 3개 지급 예정!")
+
 
         # 디스코드 임베드 생성
         embed = discord.Embed(title="🎯 레이드 현황", color=0x00ff00)
