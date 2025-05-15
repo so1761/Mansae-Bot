@@ -9219,17 +9219,6 @@ class hello(commands.Cog):
             damage_ratio = round(damage/total_dur * 100)
             reward_number = int(round(max_reward * 0.75))
             after_rankings.append(f"{nickname} - {damage} 대미지 ({damage_ratio}%)\n(강화재료 {reward_number}개 지급 예정!)")
-            if cur_dur <= 0: # 보스가 처치된 경우
-                if boss_name == "카이사":
-                    after_rankings.append(f"카이사 토벌로 랜덤박스 1개 지급 예정!")
-                elif boss_name == "스우":
-                    after_rankings.append(f"스우 토벌로 연마제 2개 지급 예정!")
-                elif boss_name == "브라움":
-                    after_rankings.append(f"브라움 토벌로 운명 왜곡의 룬 3개 지급 예정!")
-                elif boss_name == "팬텀":
-                    after_rankings.append(f"팬텀 토벌로 강화재료 3개 지급 예정!")
-                else:
-                    after_rankings.append(f"보스 토벌로 강화재료 3개 지급 예정!")
 
 
         # 디스코드 임베드 생성
@@ -9238,6 +9227,17 @@ class hello(commands.Cog):
         embed.add_field(name="레이드 보스의 현재 체력", value=f"[{cur_dur}/{total_dur}] {remain_durability_ratio}%", inline=False)
         embed.add_field(name="현재 대미지", value="\n".join(rankings), inline=False)
         embed.add_field(name="보상 현황", value=f"강화재료 **{reward_count}개** 지급 예정!", inline=False)
+        if cur_dur <= 0: # 보스가 처치된 경우
+            if boss_name == "카이사":
+                embed.append(f"카이사 토벌로 랜덤박스 1개 지급 예정!")
+            elif boss_name == "스우":
+                embed.append(f"스우 토벌로 연마제 2개 지급 예정!")
+            elif boss_name == "브라움":
+                embed.append(f"브라움 토벌로 운명 왜곡의 룬 3개 지급 예정!")
+            elif boss_name == "팬텀":
+                embed.append(f"팬텀 토벌로 강화재료 3개 지급 예정!")
+            else:
+                embed.append(f"보스 토벌로 강화재료 3개 지급 예정!")
         if cur_dur <= 0:
             embed.add_field(name="레이드 종료 이후 도전 인원", value="\n".join(after_rankings), inline=False)
         await interaction.followup.send(embed = embed)
