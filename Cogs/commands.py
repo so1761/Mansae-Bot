@@ -9158,7 +9158,7 @@ class hello(commands.Cog):
                 )
                 await interaction.followup.send(embed=warn_embed, ephemeral=True)
                 return
-        battle_ref.set(True)
+        # battle_ref.set(True)
 
         # 임베드 생성
         embed = discord.Embed(
@@ -9172,8 +9172,8 @@ class hello(commands.Cog):
             await interaction.followup.send(embed=embed)
         await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = boss_name, raid = True, practice = False)
 
-        battle_ref = db.reference("승부예측/대결진행여부")
-        battle_ref.set(False)
+        # battle_ref = db.reference("승부예측/대결진행여부")
+        # battle_ref.set(False)
 
     @app_commands.command(name="레이드현황",description="현재 레이드 현황을 보여줍니다.")
     async def raid_status(self, interaction: discord.Interaction):
