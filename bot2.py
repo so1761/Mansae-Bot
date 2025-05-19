@@ -1475,14 +1475,14 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 )
 
 
-                            for winner in result_winners:
-                                member = winner['name']
-                                give_item(member.name, "운명 왜곡의 룬", 1)
-                                eventembed.add_field(
-                                    name="",
-                                    value=f"{member.display_name}님이 예측 적중으로 **[운명 왜곡의 룬]**를 획득하셨습니다!",
-                                    inline=False
-                                )
+                            # for winner in result_winners:
+                            #     member = winner['name']
+                            #     give_item(member.name, "운명 왜곡의 룬", 1)
+                            #     eventembed.add_field(
+                            #         name="",
+                            #         value=f"{member.display_name}님이 예측 적중으로 **[운명 왜곡의 룬]**를 획득하셨습니다!",
+                            #         inline=False
+                            #     )
 
                             await channel.send(embed=eventembed)
 
@@ -1959,28 +1959,24 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
             
 
             onoffref = db.reference("승부예측/이벤트온오프")
-            predict_event = onoffref.get()
 
-            event_string = ""
-            if predict_event:
-                event_string = "\n**승부 예측 이벤트 진행중!**"
             if game_win_streak >= 1:
                 streak_bonusRate = calculate_bonus(game_win_streak)
                 if name == "지모":
-                    p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 **{streak_bonusRate}** 추가!{event_string}", view=prediction_view, embed=prediction_embed)
+                    p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
                 elif name == "Melon":
-                    p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 **{streak_bonusRate}** 추가!{event_string}", view=prediction_view, embed=prediction_embed)
+                    p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_win_streak}연승으로 패배 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
             elif game_lose_streak >= 1:
                 streak_bonusRate = calculate_bonus(game_lose_streak)
                 if name == "지모":
-                    p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 **{streak_bonusRate}** 추가!{event_string}", view=prediction_view, embed=prediction_embed)
+                    p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
                 elif name == "Melon":
-                    p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 **{streak_bonusRate}** 추가!{event_string}", view=prediction_view, embed=prediction_embed)
+                    p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{game_lose_streak}연패로 승리 시 배율 {streak_bonusRate} 추가!", view=prediction_view, embed=prediction_embed)
             else:
                 if name == "지모":
-                    p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!{event_string}", view=prediction_view, embed=prediction_embed)
+                    p.current_message_jimo = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!", view=prediction_view, embed=prediction_embed)
                 elif name == "Melon":
-                    p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!{event_string}", view=prediction_view, embed=prediction_embed)
+                    p.current_message_melon = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!", view=prediction_view, embed=prediction_embed)
 
             if name == "지모":
                 p.current_message_kda_jimo = await channel.send("\n", view=kda_view, embed=kda_embed)

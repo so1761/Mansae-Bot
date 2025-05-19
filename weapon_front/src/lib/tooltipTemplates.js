@@ -698,4 +698,68 @@ export const tooltipTemplates = {
       </div>
     );
   },
+  skill_tooltip_v11: (params) => {
+    const 명중반영비율 = params.기본_명중_반영_비율 + params.레벨 * params.레벨당_명중_반영_비율;
+    const 명중전환 = Math.round(
+      params.명중 * 명중반영비율
+    );
+    const 명중반영비율_퍼센트 = (명중반영비율 * 100).toFixed(0);
+    const 명중률 = Math.min(0.99, 1 - 50 / (50 + params.명중));
+    const 명중률_퍼센트 = (명중률 * 100).toFixed(1);
+    const 최소피해 = Math.round(
+      (params.공격력 + params.명중 * 명중반영비율) * 명중률
+    );
+    const 최대피해 = Math.round(
+      (params.공격력 + params.명중 * 명중반영비율)
+    );
+    const 출혈피해 = params.출혈_대미지 + params.레벨 * params.레벨당_출혈_대미지;
+  
+    return (
+      <div className="space-y-2 text-sm text-gray-600">
+        <div>
+          <span className="text-red-500">🗡️ 일섬</span> : 대상에게 한 턴 뒤{" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`  
+              <div style="font-size: 13px; line-height: 1.5;">
+                <span style="color: #f87171;">🗡️ 일섬</span><br />
+                · 공격력으로 전환되는 명중: ${명중전환} (명중 반영: ${명중반영비율_퍼센트}%)<br />
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+            {최소피해} ~ {최대피해}
+          </span>
+          의 피해를 입힙니다.<br />
+          적이 <span className="text-rose-500">출혈 상태</span>일 경우, 출혈 상태를 없앤 뒤,<br />
+          남은 출혈 피해를 대미지에 합산하고,<br />
+          총 피해의 50%를 <span className="text-rose-500">고정피해</span>로 입힙니다.
+
+        </div>
+  
+        <div>
+          <span className="text-gray-700">[패시브 효과]</span><br />
+          일섬을 포함한 모든 공격 적중 시,<br />
+          명중률과 동일한 확률로 {" "}
+          <span
+            className="text-rose-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <div style="font-size: 13px; line-height: 1.5;">
+                · 기본 출혈: 2턴 지속<br />
+                · 출혈 상태에게 적중 시: 3턴 추가<br />
+                · 출혈 확률 : ${명중률_퍼센트}%<br />
+                · 출혈 피해: 10 + 레벨 × 5 = ${출혈피해}<br />
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+            출혈 상태이상🩸
+          </span>
+          을 부여합니다.
+        </div>
+      </div>
+    );
+  },  
 };

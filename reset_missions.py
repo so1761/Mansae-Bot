@@ -184,15 +184,21 @@ raid_bosses = raid_root.get() or {}
 # 오늘 요일 가져오기 (0=월, 6=일)
 weekday = datetime.now().weekday()
 
-# 요일에 따른 보스 선택
-if weekday == 5: # 토(5)
-    current_boss = "팬텀"
-elif weekday in [6, 0]:  # 일(6), 월(0)
-    current_boss = "카이사"
-elif weekday in [1, 2]:   # 화(1), 수(2)
-    current_boss = "스우"
-else:                     # 목(3), 금(4)
-    current_boss = "브라움"
+boss_order = ["팬텀", "카이사", "스우", "브라움"]
+
+current_boss = raid_root.child("현재 레이드 보스").get()
+if current_boss is None:
+    current_boss = boss_order[0]  # 없으면 첫 보스부터 시작
+
+# 현재 보스 클리어 여부
+if cleared:
+    # 현재 보스 인덱스를 찾고 다음 보스로 이동
+    current_index = boss_order.index(current_boss)
+    next_index = (current_index + 1) % len(boss_order)  # 순환
+    next_boss = boss_order[next_index]
+    
+    current_boss = next_boss
+
 
 # Firebase에 현재 보스 업데이트
 raid_boss_root = db.reference("레이드")
@@ -238,15 +244,39 @@ if cleared:
         speed = boss_data.get("스피드", 0)
         accuracy = boss_data.get("명중", 0)
 
-        # 업데이트 값 계산
+        if boss == boss_name:
+            # 업데이트 값 계산
+            updates = {
+                "내구도": total_dura + 500,
+                "총 내구도": total_dura + 500,
+                "공격력": attack + 10,
+                "스킬 증폭": skill_amp + 20,
+                "방어력": defense + 15,
+                "스피드": speed + 10,
+                "명중": accuracy + 20,
+            }
+        else:
+            # 나머지 보스는 유지
+            updates = {
+                "내구도": total_dura,
+                "총 내구도": total_dura,
+            }
+
+        # 보스 데이터 업데이트
+        raid_root.child(boss).update(updates)
+else:
+    for boss, boss_data in raid_bosses.items():
+        # 기존 값 가져오기 (없으면 기본값 0)
+        total_dura = boss_data.get("총 내구도", 0)
+        attack = boss_data.get("공격력", 0)
+        skill_amp = boss_data.get("스킬 증폭", 0)
+        defense = boss_data.get("방어력", 0)
+        speed = boss_data.get("스피드", 0)
+        accuracy = boss_data.get("명중", 0)
+
         updates = {
-            "내구도": total_dura + 200,
-            "총 내구도": total_dura + 200,
-            "공격력": attack + 3,
-            "스킬 증폭": skill_amp + 5,
-            "방어력": defense + 3,
-            "스피드": speed + 2,
-            "명중": accuracy + 5,
+            "내구도": total_dura,
+            "총 내구도": total_dura,
         }
 
         # 보스 데이터 업데이트

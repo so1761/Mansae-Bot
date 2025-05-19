@@ -471,6 +471,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         MAX_DISTANCE = 8
         MIN_DISTANCE = -8
 
+        battle_distance = 1
+
+        weapon_battle_thread = None
         if simulate:
             skill_data_firebase = skill_data
         else:
@@ -493,19 +496,24 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         def apply_status_for_turn(character, status_name, duration=1, value=None):
             """
             상태를 적용하고 지속 시간을 관리합니다.
-            기존 상태보다 낮은 value는 무시하며,
-            duration은 누적하지 않고 더 길 경우에만 갱신합니다.
+            출혈, 화상 상태는 duration이 누적되며,
+            다른 상태는 기존보다 길 경우에만 갱신합니다.
+            value는 기존보다 높을 때만 갱신합니다.
             """
             if status_name not in character["Status"]:
                 character["Status"][status_name] = {"duration": duration}
                 if value is not None:
                     character["Status"][status_name]["value"] = value
             else:
-                # 지속시간 갱신: 기존보다 크면 덮어씀
-                if duration >= character["Status"][status_name]["duration"]:
-                    character["Status"][status_name]["duration"] = duration
+                # 출혈은 지속시간을 누적
+                if status_name == "출혈" or status_name == "화상":
+                    character["Status"][status_name]["duration"] += duration
+                else:
+                    # 출혈 외 상태는 기존보다 길 경우만 갱신
+                    if duration >= character["Status"][status_name]["duration"]:
+                        character["Status"][status_name]["duration"] = duration
 
-                # value가 있다면, 기존 value보다 높을 때만 갱신
+                # value 갱신: 기존보다 높을 때만
                 if value is not None:
                     current_value = character["Status"][status_name].get("value", None)
                     if current_value is None or value > current_value:
@@ -585,17 +593,17 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 character["DamageReduction"] = reduce_amount
 
 
-        async def end(attacker, defender, winner, raid, simulate = False, winner_name = None):
+        async def end(attacker, defender, winner, raid, simulate = False, winner_id = None):
             if simulate:
                 if raid:
-                    if winner == "attacker" and defender['name'] == challenger['name']:
+                    if winner == "attacker" and defender['Id'] == 0:
                         return first_HP - attacker['HP']
-                    elif winner == "defender" and attacker['name'] == challenger['name']:
+                    elif winner == "defender" and attacker['Id'] == 0:
                         return first_HP - defender['HP']
                     else:
                         return first_HP  # 보스가 0이 되면 끝났다는 뜻
                 else:
-                    return winner_name == challenger['name']  # 일반전투일 경우 승리 여부만 반환
+                    return winner_id == challenger['Id']  # 일반전투일 경우 승리 여부만 반환
             await weapon_battle_thread.send(embed = battle_embed)
 
             if raid: #레이드 상황
@@ -613,7 +621,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 ref_boss = db.reference(f"레이드/보스/{boss}")
                 if winner == "attacker": # 일반적인 상황
-                    if defender['name'] == challenger['name']: # 패배한 사람이 플레이어일 경우
+                    if defender['Id'] == 0: # 패배한 사람이 플레이어일 경우
                         final_HP = attacker['HP']
                         if not practice:
                             ref_boss.update({"내구도" : final_HP})
@@ -630,7 +638,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         await weapon_battle_thread.send(f"**토벌 완료!** 총 대미지 : {total_damage}")
                         
                 elif winner == "defender": # 출혈 등특수한 상황
-                    if attacker['name'] == challenger['name']: # 패배한 사람이 플레이어일 경우
+                    if attacker['Id'] == 0: # 패배한 사람이 플레이어일 경우
                         final_HP = defender['HP']
                         if not practice:
                             ref_boss.update({"내구도" : final_HP})
@@ -654,7 +662,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 current_floor = tower_data.get("층수", 1)
 
                 if winner == "attacker": # 일반적인 상황
-                    if defender['name'] == challenger['name']: # 패배한 사람이 플레이어일 경우
+                    if defender['Id'] == 0: # 패배한 사람이 플레이어일 경우
                         await weapon_battle_thread.send(f"**{attacker['name']}**에게 패배!")
                         result = False
                     else: # 플레이어가 승리한 경우
@@ -666,16 +674,16 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             await weapon_battle_thread.send(f"**{attacker['name']}** 승리! {current_floor}층 클리어!")
                         result = True
                 elif winner == "defender": # 출혈 등 특수한 상황
-                    if attacker['name'] == challenger['name']: # 패배한 사람이 플레이어일 경우
-                        await weapon_battle_thread.send(f"**{attacker['name']}**에게 패배!")
+                    if attacker['Id'] == 0: # 패배한 사람이 플레이어일 경우
+                        await weapon_battle_thread.send(f"**{defender['name']}**에게 패배!")
                         result = False
                     else: # 플레이어가 승리한 경우
                         if practice:
-                            await weapon_battle_thread.send(f"**{attacker['name']}** 승리! {tower_floor}층 클리어!")
+                            await weapon_battle_thread.send(f"**{defender['name']}** 승리! {tower_floor}층 클리어!")
                         else:
                             if tower_floor != 1: #tower_floor 설정했다면? -> 빠른 전투
                                 current_floor = tower_floor
-                            await weapon_battle_thread.send(f"**{attacker['name']}** 승리! {current_floor}층 클리어!")
+                            await weapon_battle_thread.send(f"**{defender['name']}** 승리! {current_floor}층 클리어!")
                         result = True
 
                 if not practice: # 연습모드 아닐 경우
@@ -715,8 +723,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 elif winner == "defender": # 출혈 등 특수한 상황
                     await weapon_battle_thread.send(f"**{defender['name']}** 승리!")
             return None
-        global battle_distance
-        battle_distance = 1
+        
         
         def adjust_position(pos, move_distance, direction):
             """
@@ -736,9 +743,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         def charging_shot(attacker, defender,evasion,skill_level):
             if not evasion:
                 charging_shot_data = skill_data_firebase['차징샷']['values']
-                global battle_distance
                 move_distance = charging_shot_data['넉백거리']
-                knockback_direction = -1 if defender['name'] == opponent['name'] else 1
+                knockback_direction = -1 if defender['Id'] == 1 else 1
                 defender["Position"] = adjust_position(defender["Position"], move_distance, knockback_direction)
                 if (attacker["Position"] < 0 and defender["Position"] > 0) or (attacker["Position"] > 0 and defender["Position"] < 0):
                     battle_distance = abs(attacker["Position"] - defender["Position"]) - 1  # 0을 건너뛰므로 -1
@@ -794,53 +800,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             return message,skill_damage
         
         def issen(attacker, defender, skill_level):
-            # 일섬 : 엄청난 속도로 적을 벤 후, 다음 턴에 날카로운 참격을 가한다. 회피를 무시하고 명중률에 비례한 대미지를 입힌다.
-            # 출혈 상태일 경우, 대미지가 50% 증가하고, 출혈 상태를 없앤 뒤, 남은 출혈 턴 x 대미지만큼의 피해를 추가한다.
-            issen_data = skill_data_firebase['일섬']['values']
+            # 일섬 : 다음턴에 적에게 날카로운 참격을 가한다. 회피를 무시하고 명중률에 비례한 대미지를 입히며, 표식을 부여한다.
+            # 출혈 상태일 경우, 출혈 상태 해제 후 남은 피해의 150%를 즉시 입히고, 해당 피해의 50%를 고정 피해로 변환
 
-            def calculate_damage(attacker,defender,multiplier):
-                accuracy = calculate_accuracy(attacker["Accuracy"])
-                accuracy_apply_rate = issen_data['기본_명중_반영_비율'] + issen_data['레벨당_명중_반영_비율'] * skill_level
-                base_damage = random.uniform(attacker["Attack"] + (attacker["Accuracy"] * accuracy_apply_rate) * accuracy, attacker["Attack"] + (attacker["Accuracy"] * accuracy_apply_rate))  # 최소 ~ 최대 피해
-                critical_bool = False
-
-                # 피해 증폭
-                base_damage *= 1 + attacker["DamageEnhance"]
-
-                explosion_damage = 0
-                if '출혈' in defender["Status"]: # 출혈 적용상태라면
-                    duration = defender["Status"]['출혈']['duration']
-                    if duration > 1: # 피해가 한턴 뒤에 적용되니, 적용 시간도 1턴 줄임
-                        value = defender["Status"]['출혈']['value']
-                        explosion_damage = ((duration - 1) * value)
-                        explosion_damage = round(explosion_damage)
-                        base_damage += explosion_damage
-
-                if random.random() < attacker["CritChance"]:
-                    base_damage *= attacker["CritDamage"]
-                    critical_bool = True
-                        
-                additional_DefenseIgnore = round(defender['Accuracy'] / 5)
-
-                defense = max(0, (defender["Defense"] - attacker["DefenseIgnore"]) * (1 - additional_DefenseIgnore))
-                damage_reduction = calculate_damage_reduction(defense)
-                defend_damage = base_damage * (1 - damage_reduction) * multiplier
-                final_damage = defend_damage * (1 - defender['DamageReduction']) # 대미지 감소 적용
-                return max(1, round(final_damage)), critical_bool, explosion_damage
-
-            bleed_explosion = False
-            if '출혈' in defender["Status"]: # 출혈 적용상태라면
-                duration = defender["Status"]['출혈']['duration']
-                if duration > 1: # 피해가 한턴 뒤에 적용되니, 적용 시간도 1턴 줄임
-                    bleed_explosion = True
-
-            bleed_damage = issen_data['출혈_대미지'] + issen_data['레벨당_출혈_대미지'] * skill_level
-            damage, critical, explosion_damage = calculate_damage(attacker,defender,1)
-            
-            damage = round(damage)
-            #apply_status_for_turn(attacker,"피해 감소", duration=2, value = 0.5)
-            accuracy_apply_rate = round((issen_data['기본_명중_반영_비율'] + issen_data['레벨당_명중_반영_비율'] * skill_level) * 100)
-            apply_status_for_turn(defender, "일섬", duration=2, value = {"damage" : damage, "critical": critical, "bleed_explosion": bleed_explosion, "accuracy_apply_rate": accuracy_apply_rate, "bleed_damage": bleed_damage, "explosion_damage" : explosion_damage})
+            apply_status_for_turn(defender, "일섬", duration=2)
             message = f"**일섬** 사용!\n엄청난 속도로 적을 벤 후, 다음 턴에 날카로운 참격을 가합니다.\n회피를 무시하고 명중에 비례하는 대미지를 입힙니다.\n" 
             return message, 0
         
@@ -860,17 +823,18 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             return message, skill_damage
         
         def spearShot(attacker,defender,evasion,skill_level):
-            global battle_distance
             spearShot_data = skill_data_firebase['창격']['values']
             near_distance = spearShot_data['근접_거리']
             condition_distance = spearShot_data['적정_거리']
             slow_amount = spearShot_data['기본_둔화량'] + spearShot_data['레벨당_둔화량'] * skill_level
 
+            nonlocal battle_distance
+
             if evasion:
                 return f"\n**창격** 사용 불가!\n공격이 빗나갔습니다!\n"
             if battle_distance <= near_distance: # 붙었을 땐 밀치기
                 move_distance = spearShot_data['근접_밀쳐내기_거리']
-                knockback_direction = -1 if defender['name'] == opponent['name'] else 1
+                knockback_direction = -1 if defender['Id'] == 1 else 1
                 defender["Position"] = adjust_position(defender["Position"], move_distance, knockback_direction)
                 if (attacker["Position"] < 0 and defender["Position"] > 0) or (attacker["Position"] > 0 and defender["Position"] < 0):
                     battle_distance = abs(attacker["Position"] - defender["Position"]) - 1  # 0을 건너뛰므로 -1
@@ -883,7 +847,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 return f"**창격(적정 거리)** 사용!\n1턴간 기절 상태이상 부여!\n"
             elif battle_distance >= condition_distance + 1: # 원거리면 둔화
                 apply_status_for_turn(defender, "둔화", duration=2,value = slow_amount)
-                dash_direction = -1 if attacker['name'] == challenger['name'] else 1
+                dash_direction = -1 if attacker['Id'] == 0 else 1
                 attacker["Position"] = adjust_position(attacker["Position"], 1, dash_direction)
                 if (attacker["Position"] < 0 and defender["Position"] > 0) or (attacker["Position"] > 0 and defender["Position"] < 0):
                     battle_distance = abs(attacker["Position"] - defender["Position"]) - 1  # 0을 건너뛰므로 -1
@@ -893,14 +857,15 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             
         def mech_Arm(attacker,defender, evasion, skill_level):
             # 전선더미 방출: (20 + 레벨 당 5) + 스킬 증폭 20% + 레벨당 10% 추가 피해
-            global battle_distance
             if not evasion:
+                nonlocal battle_distance
+
                 mech_Arm_data = skill_data_firebase['전선더미 방출']['values']
                 base_damage = mech_Arm_data['기본_피해량'] + mech_Arm_data['레벨당_피해량_증가'] * skill_level
                 skill_multiplier = (mech_Arm_data['기본_스킬증폭_계수'] + mech_Arm_data['레벨당_스킬증폭_계수_증가'] * skill_level)
                 skill_damage = base_damage + attacker["Spell"] * skill_multiplier
                 move_distance = mech_Arm_data['밀쳐내기_거리']
-                knockback_direction = -1 if defender['name'] == opponent['name'] else 1
+                knockback_direction = -1 if defender['Id'] == 1 else 1
                 defender["Position"] = adjust_position(defender["Position"], move_distance, knockback_direction)
                 if (attacker["Position"] < 0 and defender["Position"] > 0) or (attacker["Position"] > 0 and defender["Position"] < 0):
                     battle_distance = abs(attacker["Position"] - defender["Position"]) - 1  # 0을 건너뛰므로 -1
@@ -920,10 +885,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             return message,skill_damage
         
         def Magnetic(attacker, defender, skill_level):
+            nonlocal battle_distance
+
             # 자력 발산: (10 + 레벨 당 2) + 스킬 증폭 10% + 레벨당 5% 추가 피해
             Magnetic_data = skill_data_firebase['자력 발산']['values']
             grap_distance = Magnetic_data['최소_조건_거리']
-            global battle_distance
             if battle_distance >= grap_distance:
                 move_distance = Magnetic_data['끌어오기_거리']
                 if battle_distance <= 1:
@@ -931,7 +897,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 base_damage = Magnetic_data['기본_피해량'] + Magnetic_data['레벨당_피해량_증가'] * skill_level
                 skill_multiplier = (Magnetic_data['기본_스킬증폭_계수'] + Magnetic_data['레벨당_스킬증폭_계수_증가'] * skill_level)
                 skill_damage = base_damage + attacker["Spell"] * skill_multiplier
-                grab_direction = 1 if defender['name'] == opponent['name'] else -1
+                grab_direction = 1 if defender['Id'] == 1 else -1
                 defender["Position"] = adjust_position(defender["Position"], move_distance, grab_direction)
                 if (attacker["Position"] < 0 and defender["Position"] > 0) or (attacker["Position"] > 0 and defender["Position"] < 0):
                     battle_distance = abs(attacker["Position"] - defender["Position"]) - 1  # 0을 건너뛰므로 -1
@@ -962,8 +928,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         
         def electronic_line(attacker,defender,skill_level):
             # 전깃줄: (40 + 레벨 당 10) + 스킬 증폭 50% + 레벨당 20% 추가 피해
-            global battle_distance
-            
+            nonlocal battle_distance
+
             if battle_distance >= 2:
                 electronic_line_data = skill_data_firebase['전깃줄']['values']
                 base_damage = electronic_line_data['기본_피해량'] + electronic_line_data['레벨당_피해량_증가'] * skill_level
@@ -1341,12 +1307,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         def killer_instinct(attacker, defender, skill_level):
             # 사냥본능: 상대의 뒤로 파고들며 2턴간 보호막을 얻음.
             killer_instinct_data = skill_data_firebase['사냥본능']['values']
-            retreat_direction = 1 if attacker['name'] == challenger['name'] else -1  
+            retreat_direction = 1 if attacker['Id'] == 0 else -1  
 
             target_position = defender['Position'] - (retreat_direction * 1)
             attacker['Position'] = target_position * -1
             defender['Position'] = defender['Position'] * -1
-            global battle_distance
             battle_distance = 1
 
             shield_amount = killer_instinct_data['기본_보호막량'] + killer_instinct_data['레벨당_보호막량'] * skill_level
@@ -1730,6 +1695,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             "DamageEnhance" : 0, # 피해 증폭
             "DamageReduction" : 0, # 피해 감소
             "Position" : 1,
+            "Id": 0, # Id를 통해 도전자와 상대 파악 도전자 = 0, 상대 = 1
             "Accuracy": weapon_data_challenger.get("명중", 0),
             "BaseAccuracy": weapon_data_challenger.get("명중", 0),
             "Defense": weapon_data_challenger.get("방어력", 0),
@@ -1780,6 +1746,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             "DamageEnhance" : 0,
             "DamageReduction" : 0,
             "Position" : -1,
+            "Id" : 1, # Id를 통해 도전자와 상대 파악 도전자 = 0, 상대 = 1
             "Accuracy": weapon_data_opponent.get("명중", 0),
             "BaseAccuracy": weapon_data_opponent.get("명중", 0),
             "Defense": weapon_data_opponent.get("방어력", 0),
@@ -1788,9 +1755,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         }
 
         # 비동기 전투 시뮬레이션
-        attacker, defender = (challenger, opponent) if challenger["Speed"] > opponent["Speed"] else (opponent, challenger)
-        
-        global weapon_battle_thread
+        attacker, defender = random.choice([(challenger, opponent), (opponent, challenger)]) if challenger["Speed"] == opponent["Speed"] else \
+                     (challenger, opponent) if challenger["Speed"] > opponent["Speed"] else \
+                     (opponent, challenger)
         
         if not simulate:
             if raid:
@@ -1933,18 +1900,52 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             if "일섬" in attacker["Status"]:
                 if attacker["Status"]["일섬"]["duration"] == 1:
-                    issen_damage = attacker["Status"]["일섬"]["value"]["damage"]
-                    critical = attacker['Status']["일섬"]["value"]["critical"]
-                    bleed_explosion = attacker['Status']["일섬"]["value"]['bleed_explosion']
-                    accuracy_apply_rate = attacker['Status']["일섬"]["value"]['accuracy_apply_rate']
-                    bleed_damage = attacker['Status']['일섬']["value"]['bleed_damage']
-                    explosion_damage = attacker['Status']['일섬']['value']['explosion_damage']
+                    issen_data = skill_data_firebase['일섬']['values']
+                    accuracy_apply_rate = round((issen_data['기본_명중_반영_비율'] + issen_data['레벨당_명중_반영_비율'] * skill_level) * 100)
 
+                    def calculate_damage(attacker,defender,multiplier):
+                        accuracy = calculate_accuracy(attacker["Accuracy"])
+                        accuracy_apply_rate = issen_data['기본_명중_반영_비율'] + issen_data['레벨당_명중_반영_비율'] * skill_level
+                        base_damage = random.uniform(attacker["Attack"] + (attacker["Accuracy"] * accuracy_apply_rate) * accuracy, attacker["Attack"] + (attacker["Accuracy"] * accuracy_apply_rate))  # 최소 ~ 최대 피해
+                        critical_bool = False
+
+                        # 피해 증폭
+                        base_damage *= 1 + attacker["DamageEnhance"]
+
+                        explosion_damage = 0
+                        bleed_explosion = False
+                        if '출혈' in defender["Status"]: # 출혈 적용상태라면
+                            duration = defender["Status"]['출혈']['duration']
+                            value = defender["Status"]['출혈']['value']
+                            explosion_damage = (duration * value)
+                            explosion_damage = round(explosion_damage)
+                            base_damage += explosion_damage
+                            bleed_explosion = True
+
+                        if random.random() < attacker["CritChance"]:
+                            base_damage *= attacker["CritDamage"]
+                            critical_bool = True
+
+                        fixed_damage = 0 # 출혈 상태 적용 시 고정 피해 50%
+                        if '출혈' in defender["Status"]: # 출혈 적용상태라면
+                            duration = defender["Status"]['출혈']['duration']
+                            fixed_damage = round(base_damage / 2)
+                            base_damage = fixed_damage
+
+                        defense = max(0, (defender["Defense"] - attacker["DefenseIgnore"]))
+                        damage_reduction = calculate_damage_reduction(defense)
+                        defend_damage = base_damage * (1 - damage_reduction) * multiplier
+                        final_damage = defend_damage * (1 - defender['DamageReduction']) + fixed_damage # 대미지 감소 적용
+                        return max(1, round(final_damage)), critical_bool, explosion_damage,bleed_explosion
+
+                    bleed_damage = issen_data['출혈_대미지'] + issen_data['레벨당_출혈_대미지'] * skill_level
+                    issen_damage, critical, explosion_damage, bleed_explosion = calculate_damage(defender,attacker,1)
+            
                     shield_message = ""
                     remain_shield = ""
-                    if attacker['name'] == challenger['name']: # 도전자 공격
+                    if attacker['Id'] == 0: # 도전자 공격
                         battle_embed = discord.Embed(title=f"{defender['name']}의 일섬!", color=discord.Color.red())
-                    elif attacker['name'] == opponent['name']: # 상대 공격
+                    elif attacker['Id'] == 1: # 상대 공격
                         battle_embed = discord.Embed(title=f"{defender['name']}의 일섬!", color=discord.Color.blue())
                     if "보호막" in attacker['Status']:
                         shield_amount = attacker["Status"]["보호막"]["value"]
@@ -1965,7 +1966,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     
                     battle_embed.add_field(
                         name="일섬!",
-                        value=f"명중의 {accuracy_apply_rate}%를 공격력과 합산한 대미지를 입힙니다!\n이 공격에 {round((defender['Accuracy'] / 5) * 100)}% 방어력 관통을 적용합니다!",
+                        value=f"명중의 {accuracy_apply_rate}%를 공격력과 합산한 대미지를 입힙니다!\n",
                         inline=False
                     )
                     
@@ -1977,28 +1978,23 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             del attacker["Status"]['출혈']
                         battle_embed.add_field(
                             name="추가 피해!",
-                            value="출혈 상태의 적에게 강력한 일격!\n남은 출혈 피해를 대미지에 합산합니다.",
+                            value="출혈 상태의 적에게 추가 효과!\n남은 출혈 피해를 대미지에 합산하고, 총 피해의 50%를 고정피해로 입힙니다.",
                             inline=False
                         )
                         explosion_message = f"(+🩸{explosion_damage} 대미지)"
                     battle_embed.add_field(name ="", value = f"**{issen_damage} 대미지!{crit_text}{explosion_message}{shield_message}**",inline = False)
 
-                    bleed_rate = calculate_accuracy(defender['Accuracy'])
-                    if random.random() < bleed_rate and not bleed_explosion:
-                        apply_status_for_turn(attacker, "출혈", 5, bleed_damage)
-                        battle_embed.add_field(name ="", value = f"5턴간 **출혈** 부여!🩸",inline = False)
-
-                    if attacker['name'] == challenger['name']: # 도전자 공격
+                    if attacker['Id'] == 0: # 도전자 공격
                         battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
 
-                    elif attacker['name'] == opponent['name']: # 상대 공격
+                    elif attacker['Id'] == 1: # 상대 공격
                         if raid:
                             battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['FullHP']}]{remain_shield}**")
                         else:
                             battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
 
                     if attacker["HP"] <= 0:
-                        result = await end(attacker,defender,"defender",raid,simulate,winner_name = defender['name'])
+                        result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
                         if simulate:
                             return result
                         break
@@ -2010,9 +2006,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 bleed_damage = attacker["Status"]["출혈"]["value"]
                 shield_message = ""
                 remain_shield = ""
-                if attacker['name'] == challenger['name']: # 도전자 공격
+                if attacker['Id'] == 0: # 도전자 공격
                     battle_embed = discord.Embed(title=f"{attacker['name']}의 출혈!🩸", color=discord.Color.red())
-                elif attacker['name'] == opponent['name']: # 상대 공격
+                elif attacker['Id'] == 1: # 상대 공격
                     battle_embed = discord.Embed(title=f"{attacker['name']}의 출혈!🩸", color=discord.Color.blue())
                 if "보호막" in attacker['Status']:
                     shield_amount = attacker["Status"]["보호막"]["value"]
@@ -2035,17 +2031,17 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 battle_embed.add_field(name="", value = f"출혈 상태로 인하여 {bleed_damage} 대미지를 받았습니다!{shield_message}", inline = False)
                 battle_embed.add_field(name="남은 턴", value = f"출혈 상태 남은 턴 : {attacker['Status']['출혈']['duration']}", inline = False)
 
-                if attacker['name'] == challenger['name']: # 도전자 공격
+                if attacker['Id'] == 0: # 도전자 공격
                     battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
 
-                elif attacker['name'] == opponent['name']: # 상대 공격
+                elif attacker['Id'] == 1: # 상대 공격
                     if raid:
                         battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['FullHP']}]{remain_shield}**")
                     else:
                         battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
 
                 if attacker["HP"] <= 0:
-                    result = await end(attacker,defender,"defender",raid,simulate,winner_name = defender['name'])
+                    result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
                     if simulate:
                         return result
                     break
@@ -2057,9 +2053,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 burn_damage = attacker["Status"]["화상"]["value"]
                 shield_message = ""
                 remain_shield = ""
-                if attacker['name'] == challenger['name']: # 도전자 공격
+                if attacker['Id'] == 0: # 도전자 공격
                     battle_embed = discord.Embed(title=f"{attacker['name']}의 화상!🔥", color=discord.Color.red())
-                elif attacker['name'] == opponent['name']: # 상대 공격
+                elif attacker['Id'] == 1: # 상대 공격
                     battle_embed = discord.Embed(title=f"{attacker['name']}의 화상!🔥", color=discord.Color.blue())
                 if "보호막" in attacker['Status']:
                     shield_amount = attacker["Status"]["보호막"]["value"]
@@ -2082,17 +2078,17 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 battle_embed.add_field(name="", value = f"화상 상태로 인하여 {burn_damage} 대미지를 받았습니다!{shield_message}", inline = False)
                 battle_embed.add_field(name="남은 턴", value = f"화상 상태 남은 턴 : {attacker['Status']['화상']['duration']}", inline = False)
 
-                if attacker['name'] == challenger['name']: # 도전자 공격
+                if attacker['Id'] == 0: # 도전자 공격
                     battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
 
-                elif attacker['name'] == opponent['name']: # 상대 공격
+                elif attacker['Id'] == 1: # 상대 공격
                     if raid:
                         battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['FullHP']}]{remain_shield}**")
                     else:
                         battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
 
                 if attacker["HP"] <= 0:
-                    result = await end(attacker,defender,"defender",raid,simulate,winner_name = defender['name'])
+                    result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
                     if simulate:
                         return result
                     break
@@ -2104,9 +2100,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 posion_damage = round(attacker['HP'] / 16)
                 shield_message = ""
                 remain_shield = ""
-                if attacker['name'] == challenger['name']: # 도전자 공격
+                if attacker['Id'] == 0: # 도전자 공격
                     battle_embed = discord.Embed(title=f"{attacker['name']}의 독!🫧", color=discord.Color.red())
-                elif attacker['name'] == opponent['name']: # 상대 공격
+                elif attacker['Id'] == 1: # 상대 공격
                     battle_embed = discord.Embed(title=f"{attacker['name']}의 독!🫧", color=discord.Color.blue())
     
                     
@@ -2114,17 +2110,17 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 battle_embed.add_field(name="", value = f"독 상태로 인하여 {posion_damage} 대미지를 받았습니다!{shield_message}", inline = False)
                 battle_embed.add_field(name="남은 턴", value = f"독 상태 남은 턴 : {attacker['Status']['독']['duration']}", inline = False)
 
-                if attacker['name'] == challenger['name']: # 도전자 공격
+                if attacker['Id'] == 0: # 도전자 공격
                     battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
 
-                elif attacker['name'] == opponent['name']: # 상대 공격
+                elif attacker['Id'] == 1: # 상대 공격
                     if raid:
                         battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['FullHP']}]{remain_shield}**")
                     else:
                         battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
 
                 if attacker["HP"] <= 0:
-                    result = await end(attacker,defender,"defender",raid,simulate,winner_name = defender['name'])
+                    result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
                     if simulate:
                         return result
                     break
@@ -2229,8 +2225,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             dash, retreat, attacked = False, False, False
 
             # 돌진 및 후퇴 방향 설정
-            dash_direction = -1 if attacker['name'] == challenger['name'] else 1  
-            retreat_direction = 1 if attacker['name'] == challenger['name'] else -1  
+            dash_direction = -1 if attacker['Id'] == 0 else 1  
+            retreat_direction = 1 if attacker['Id'] == 0 else -1  
 
             if battle_distance > attack_range:  # 돌진
                 if random.random() < move_chance and "속박" not in attacker["Status"]:  
@@ -2655,6 +2651,20 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         skill_level = defender["Skills"]["저주받은 바디"]["레벨"]
                         result_message += cursed_body(attacker, skill_level)
 
+                if "일섬" in skill_names:
+                    if not evasion:
+                        bleed_rate = calculate_accuracy(attacker['Accuracy'])
+                        if random.random() < bleed_rate:
+                            issen_data = skill_data_firebase['일섬']['values']
+                            skill_level = attacker["Skills"]["일섬"]["레벨"]
+                            bleed_damage = issen_data['출혈_대미지'] + issen_data['레벨당_출혈_대미지'] * skill_level
+                            if '출혈' in defender['Status']:
+                                apply_status_for_turn(defender, "출혈", 3, bleed_damage)
+                                battle_embed.add_field(name ="출혈!", value = f"출혈 상태에서 공격 적중으로 3턴간 **출혈** 부여!🩸",inline = False)
+                            else:
+                                apply_status_for_turn(defender, "출혈", 2, bleed_damage)
+                                battle_embed.add_field(name ="출혈!", value = f"공격 적중으로 2턴간 **출혈** 부여!🩸",inline = False)
+
             if skill_attack_names or attacked: # 공격시 상대의 빙결 상태 해제
                 if skill_attack_names != ['명상'] and not evasion: # 명상만 썼을 경우, 회피했을 경우 제외!
                     if '빙결' in defender['Status']:
@@ -2664,9 +2674,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             # 공격 처리 (돌진 후 또는 후퇴 후)
             if skill_attack_names: # 공격 스킬 사용 시
                 battle_embed.title = f"{attacker['name']}의 스킬 사용!⚔️"
-                if attacker['name'] == challenger['name']: # 도전자 공격
+                if attacker['Id'] == 0: # 도전자 공격
                     battle_embed.color = discord.Color.blue()
-                elif attacker['name'] == opponent['name']: # 상대 공격
+                elif attacker['Id'] == 1: # 상대 공격
                     battle_embed.color = discord.Color.red()
                 battle_embed.add_field(name="위치", value =f"{challenger['name']} 위치: {challenger['Position']}, {opponent['name']} 위치: {opponent['Position']}", inline = False) 
                 battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
@@ -2678,9 +2688,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 result_message += skill_message
             elif attacked: # 공격 시
                 battle_embed.title = f"{attacker['name']}의 공격!⚔️"
-                if attacker['name'] == challenger['name']: # 도전자 공격
+                if attacker['Id'] == 0: # 도전자 공격
                     battle_embed.color = discord.Color.blue()
-                elif attacker['name'] == opponent['name']: # 상대 공격
+                elif attacker['Id'] == 1: # 상대 공격
                     battle_embed.color = discord.Color.red() 
                 battle_embed.add_field(name="위치", value =f"{challenger['name']} 위치: {challenger['Position']}, {opponent['name']} 위치: {opponent['Position']}", inline = False) 
                 battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
@@ -2692,9 +2702,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 result_message += skill_message
             else: # 공격 불가 시
                 if dash:
-                    if attacker['name'] == challenger['name']: # 도전자 공격
+                    if attacker['Id'] == 0: # 도전자 공격
                         battle_embed.color = discord.Color.blue()
-                    elif attacker['name'] == opponent['name']: # 상대 공격
+                    elif attacker['Id'] == 1: # 상대 공격
                         battle_embed.color = discord.Color.red()
 
                     battle_embed.add_field(name="위치", value =f"{challenger['name']} 위치: {challenger['Position']}, {opponent['name']} 위치: {opponent['Position']}", inline = False) 
@@ -2710,9 +2720,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     await attack(attacker, defender, evasion, reloading)
                 else:
                     battle_embed.title = f"{attacker['name']}의 공격!⚔️"
-                    if attacker['name'] == challenger['name']: # 도전자 공격
+                    if attacker['Id'] == 0: # 도전자 공격
                         battle_embed.color = discord.Color.blue()
-                    elif attacker['name'] == opponent['name']: # 상대 공격
+                    elif attacker['Id'] == 1: # 상대 공격
                         battle_embed.color = discord.Color.red()
                     battle_embed.add_field(name="위치", value =f"{challenger['name']} 위치: {challenger['Position']}, {opponent['name']} 위치: {opponent['Position']}", inline = False) 
                     battle_embed.add_field(name="거리", value = f"현재 거리 : {battle_distance}", inline = False)
@@ -2752,12 +2762,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 battle_embed.add_field(name ="", value = f"**{evade_text}{distance_text} {damage} 대미지!{crit_text}{shield_message}**",inline = False)
                 defender["HP"] -= damage
-                if attacker['name'] == challenger['name']: # 도전자 공격
+                if attacker['Id'] == 0: # 도전자 공격
                     if raid:
                         battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {defender['FullHP']}]**")
                     else:
                         battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {defender['BaseHP']}]**")
-                elif attacker['name'] == opponent['name']: # 상대 공격
+                elif attacker['Id'] == 1: # 상대 공격
                     battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_challenger.get('내구도', '')}]{remain_shield}**")
             elif attacked:
                 # 크리티컬 또는 회피 여부에 따라 메시지 추가
@@ -2787,21 +2797,21 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 battle_embed.add_field(name ="", value = f"**{evade_text}{distance_text} {damage} 대미지!{crit_text}{shield_message}**",inline = False)
                 defender["HP"] -= damage
-                if attacker['name'] == challenger['name']: # 도전자 공격
+                if attacker['Id'] == 0: # 도전자 공격
                     if raid:
                         battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {defender['FullHP']}]{remain_shield}**")
                     else:
                         battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_opponent.get('내구도', '')}]{remain_shield}**")
-                elif attacker['name'] == opponent['name']: # 상대 공격
+                elif attacker['Id'] == 1: # 상대 공격
                     battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_challenger.get('내구도', '')}]{remain_shield}**")
             else:
-                if attacker['name'] == challenger['name']: # 도전자 이동
+                if attacker['Id'] == 0: # 도전자 이동
                     battle_embed.add_field(name="스킬", value = result_message.rstrip("\n"), inline = False)
-                elif attacker['name'] == opponent['name']: # 상대 이동
+                elif attacker['Id'] == 1: # 상대 이동
                     battle_embed.add_field(name="스킬", value = result_message.rstrip("\n"), inline = False)
 
             if defender["HP"] <= 0:
-                result = await end(attacker,defender,"attacker",raid,simulate,winner_name = attacker['name'])
+                result = await end(attacker,defender,"attacker",raid,simulate,winner_id = attacker['Id'])
                 if simulate:
                     return result
                 break
@@ -8785,6 +8795,7 @@ class hello(commands.Cog):
     Choice(name='스태프-화염', value='스태프-화염'),
     Choice(name='스태프-냉기', value='스태프-냉기'),
     Choice(name='스태프-신성', value='스태프-신성'),
+    Choice(name='태도', value='태도'),
     ])
     @app_commands.describe(이름 = "무기의 이름을 입력하세요", 무기타입 = "무기의 타입을 선택하세요")
     async def create_weapon(self,interaction: discord.Interaction, 이름: str, 무기타입: str):
@@ -8854,14 +8865,14 @@ class hello(commands.Cog):
             await interaction.followup.send("상대가 무기를 가지고 있지 않습니다!",ephemeral=True)
             return
 
-        battle_ref = db.reference("승부예측/대결진행여부")
-        is_battle = battle_ref.get() or {}
-        if is_battle:
-                warnembed = discord.Embed(title="실패",color = discord.Color.red())
-                warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-                await interaction.followup.send(embed = warnembed)
-                return
-        battle_ref.set(True)
+        # battle_ref = db.reference("승부예측/대결진행여부")
+        # is_battle = battle_ref.get() or {}
+        # if is_battle:
+        #         warnembed = discord.Embed(title="실패",color = discord.Color.red())
+        #         warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+        #         await interaction.followup.send(embed = warnembed)
+        #         return
+        # battle_ref.set(True)
 
         # 임베드 생성
         embed = discord.Embed(
@@ -8916,6 +8927,7 @@ class hello(commands.Cog):
                 discord.SelectOption(label="스태프-화염", description="강력한 화력과 지속적 화상 피해"),
                 discord.SelectOption(label="스태프-냉기", description="얼음과 관련된 군중제어기 보유"),
                 discord.SelectOption(label="스태프-신성", description="치유 능력과 침묵 부여"),
+                discord.SelectOption(label="태도", description="명중에 따른 공격 능력 증가, 출혈을 통한 피해"),
             ]
         )
 
@@ -8975,13 +8987,13 @@ class hello(commands.Cog):
             return
         
         
-        battle_ref = db.reference("승부예측/대결진행여부")
-        is_battle = battle_ref.get() or {}
-        if is_battle:
-            warnembed = discord.Embed(title="실패",color = discord.Color.red())
-            warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-            await interaction.followup.send(embed = warnembed)
-            return
+        # battle_ref = db.reference("승부예측/대결진행여부")
+        # is_battle = battle_ref.get() or {}
+        # if is_battle:
+        #     warnembed = discord.Embed(title="실패",color = discord.Color.red())
+        #     warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+        #     await interaction.followup.send(embed = warnembed)
+        #     return
 
         ref_raid = db.reference(f"레이드/내역/{nickname}")
         raid_data = ref_raid.get() or {}
@@ -9035,8 +9047,6 @@ class hello(commands.Cog):
 
                 if not result:
                     return  # 안했으면 return
-                
-                battle_ref.set(True)
 
                 # 임베드 생성
                 embed = discord.Embed(
@@ -9050,8 +9060,6 @@ class hello(commands.Cog):
                     await interaction.followup.send(embed=embed)
                 await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = boss_name, raid = True, practice = True, raid_ended= True)
 
-                battle_ref = db.reference("승부예측/대결진행여부")
-                battle_ref.set(False)
                 return
             else: # 레이드 참여했을 경우
                 warn_embed = discord.Embed(
@@ -9229,15 +9237,15 @@ class hello(commands.Cog):
         embed.add_field(name="보상 현황", value=f"강화재료 **{reward_count}개** 지급 예정!", inline=False)
         if cur_dur <= 0: # 보스가 처치된 경우
             if boss_name == "카이사":
-                embed.append(f"카이사 토벌로 랜덤박스 1개 지급 예정!")
+                embed.add_field(name = "", value = f"카이사 토벌로 랜덤박스 1개 지급 예정!")
             elif boss_name == "스우":
-                embed.append(f"스우 토벌로 연마제 2개 지급 예정!")
+                embed.add_field(name = "", value = f"스우 토벌로 연마제 2개 지급 예정!")
             elif boss_name == "브라움":
-                embed.append(f"브라움 토벌로 운명 왜곡의 룬 3개 지급 예정!")
+                embed.add_field(name = "", value = f"브라움 토벌로 운명 왜곡의 룬 3개 지급 예정!")
             elif boss_name == "팬텀":
-                embed.append(f"팬텀 토벌로 강화재료 3개 지급 예정!")
+                embed.add_field(name = "", value = f"팬텀 토벌로 강화재료 3개 지급 예정!")
             else:
-                embed.append(f"보스 토벌로 강화재료 3개 지급 예정!")
+                embed.add_field(name = "", value = f"보스 토벌로 강화재료 3개 지급 예정!")
         if cur_dur <= 0:
             embed.add_field(name="레이드 종료 이후 도전 인원", value="\n".join(after_rankings), inline=False)
         await interaction.followup.send(embed = embed)
@@ -9310,7 +9318,7 @@ class hello(commands.Cog):
             warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
             await interaction.followup.send(embed = warnembed)
             return
-        
+        battle_ref.set(True)
         tower_bool = tower_data.get("등반여부", False)
         if tower_bool:
             if tower_refesh:
@@ -9327,7 +9335,7 @@ class hello(commands.Cog):
                 await interaction.followup.send(embed = warnembed)
                 return
         
-        battle_ref.set(True)
+       
 
         # ====================  [미션]  ====================
         # 일일미션 : 탑 1회 도전
@@ -9404,15 +9412,15 @@ class hello(commands.Cog):
             await interaction.followup.send(embed = result_embed)
             return
         
-        battle_ref = db.reference("승부예측/대결진행여부")
-        is_battle = battle_ref.get() or {}
-        if is_battle:
-            warnembed = discord.Embed(title="실패",color = discord.Color.red())
-            warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-            await interaction.response.send_message(embed = warnembed)
-            return
+        # battle_ref = db.reference("승부예측/대결진행여부")
+        # is_battle = battle_ref.get() or {}
+        # if is_battle:
+        #     warnembed = discord.Embed(title="실패",color = discord.Color.red())
+        #     warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+        #     await interaction.response.send_message(embed = warnembed)
+        #     return
         
-        battle_ref.set(True)
+        # battle_ref.set(True)
                     
         # 임베드 생성
         embed = discord.Embed(
@@ -9590,14 +9598,14 @@ class hello(commands.Cog):
             await interaction.followup.send(embed = result_embed)
             return
 
-        battle_ref = db.reference("승부예측/대결진행여부")
-        is_battle = battle_ref.get() or {}
-        if is_battle:
-            warnembed = discord.Embed(title="실패",color = discord.Color.red())
-            warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-            await interaction.followup.send(embed = warnembed)
-            return
-        battle_ref.set(True)
+        # battle_ref = db.reference("승부예측/대결진행여부")
+        # is_battle = battle_ref.get() or {}
+        # if is_battle:
+        #     warnembed = discord.Embed(title="실패",color = discord.Color.red())
+        #     warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+        #     await interaction.followup.send(embed = warnembed)
+        #     return
+        # battle_ref.set(True)
 
         # 임베드 생성
         embed = discord.Embed(
@@ -9678,15 +9686,15 @@ class hello(commands.Cog):
             await interaction.followup.send(embed = result_embed)
             return
         
-        battle_ref = db.reference("승부예측/대결진행여부")
-        is_battle = battle_ref.get() or {}
-        if is_battle:
-            warnembed = discord.Embed(title="실패",color = discord.Color.red())
-            warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-            await interaction.followup.send(embed = warnembed)
-            return
+        # battle_ref = db.reference("승부예측/대결진행여부")
+        # is_battle = battle_ref.get() or {}
+        # if is_battle:
+        #     warnembed = discord.Embed(title="실패",color = discord.Color.red())
+        #     warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+        #     await interaction.followup.send(embed = warnembed)
+        #     return
         
-        battle_ref.set(True)
+        # battle_ref.set(True)
 
         # 임베드 생성
         embed = discord.Embed(
