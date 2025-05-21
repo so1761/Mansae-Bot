@@ -287,7 +287,7 @@ def give_item(nickname, item_name, amount):
     current_predict_season = cur_predict_seasonref.get()
 
     # 사용자 아이템 데이터 위치
-    weapon_items = ['강화재료','랜덤박스','레이드 재도전','연마제','특수 연마제','탑코인','스킬 각성의 룬','운명 왜곡의 룬']
+    weapon_items = ['강화재료','랜덤박스','레이드 재도전','연마제','특수 연마제','탑코인','스킬 각성의 룬','운명 왜곡의 룬','회귀의 룬']
     if item_name in weapon_items:
         refitem = db.reference(f'무기/아이템/{nickname}')
     else:

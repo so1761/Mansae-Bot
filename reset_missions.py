@@ -186,7 +186,8 @@ weekday = datetime.now().weekday()
 
 boss_order = ["팬텀", "카이사", "스우", "브라움"]
 
-current_boss = raid_root.child("현재 레이드 보스").get()
+ref_current_boss = db.reference(f"레이드/현재 레이드 보스")
+current_boss = ref_current_boss.get()
 if current_boss is None:
     current_boss = boss_order[0]  # 없으면 첫 보스부터 시작
 
@@ -247,8 +248,8 @@ if cleared:
         if boss == boss_name:
             # 업데이트 값 계산
             updates = {
-                "내구도": total_dura + 500,
-                "총 내구도": total_dura + 500,
+                "내구도": total_dura + 1000,
+                "총 내구도": total_dura + 1000,
                 "공격력": attack + 10,
                 "스킬 증폭": skill_amp + 20,
                 "방어력": defense + 15,

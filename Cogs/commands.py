@@ -2,6 +2,7 @@ import requests
 import discord
 import platform
 import random
+import copy
 import matplotlib.pyplot as plt
 import concurrent.futures
 import asyncio
@@ -113,6 +114,335 @@ class NotFoundError(Exception):
 
 class TooManyRequestError(Exception):
     pass
+
+class ResultButton(discord.ui.View):
+    weapon_main_unwanted = {
+        "스태프-신성": (["스킬 강화", "명중 강화"], ["공격 강화", "치명타 확률 강화", "치명타 대미지 강화"]),
+        "스태프-화염": (["스킬 강화", "명중 강화"], ["공격 강화", "치명타 확률 강화", "치명타 대미지 강화"]),
+        "스태프-냉기": (["스킬 강화", "명중 강화"], ["공격 강화", "치명타 확률 강화", "치명타 대미지 강화"]),
+        "태도":       (["명중 강화", "속도 강화", "치명타 대미지 강화", "치명타 확률 강화"], ["스킬 강화"]),
+        "단검":       (["공격 강화", "속도 강화", "치명타 대미지 강화", "치명타 확률 강화"], ["스킬 강화"]),
+        "대검":       (["공격 강화", "속도 강화", "치명타 대미지 강화"], ["스킬 강화", "치명타 확률 강화"]),
+        "창":         (["공격 강화", "명중 강화", "치명타 대미지 강화", "치명타 확률 강화"], ["스킬 강화"]),
+        "활":         (["속도 강화", "공격 강화", "치명타 대미지 강화", "치명타 확률 강화"], ["스킬 강화"]),
+        "조총":       (["스킬 강화", "속도 강화", "치명타 대미지 강화", "치명타 확률 강화"], []),
+        "낫":         (["스킬 강화", "속도 강화"], ["치명타 확률 강화", "치명타 대미지 강화"]),
+    }
+
+    def __init__(self, user: discord.User, wdc: dict, wdo: dict, skill_data: dict):
+        super().__init__(timeout=None)
+        self.user = user
+        self.wdc = wdc            # 원본 무기 데이터 (강화 전)
+        self.wdo = wdo            # 강화 후 무기 데이터
+        self.skill_data = skill_data
+        self.reroll_count = 0     # 재구성 시도 횟수
+        self.win_count = 0        # 시뮬레이션 승리 횟수
+        self.message = None       # 나중에 메세지 저장
+
+    def scale_weights_with_main_and_unwanted(self, stats_list, win_count, max_win=10):
+        """
+        승수에 따라 주요 스탯은 곡선 형태로 가중치 증가, 미사용 스탯은 곡선 형태로 감소
+        stats_list: 강화내역의 스탯 리스트
+        win_count: 현재 승수 (0~max_win)
+        """
+        main_stats, unwanted_stats = self.weapon_main_unwanted.get(self.wdc.get("무기타입", ""), ([], []))
+        
+        linear_ratio = min(win_count / max_win, 1)
+        curved_ratio = linear_ratio ** 1.5  # 곡선 적용 (1보다 크면 느리게 시작 → 빠르게 증가)
+        
+        weights = {}
+
+        for stat in stats_list:
+            if stat in main_stats:
+                # 주요 스탯: 기본 1에서 최대 10까지 부드럽게 증가
+                weights[stat] = 1 + 9 * curved_ratio
+            elif stat in unwanted_stats:
+                # 미사용 스탯: 1에서 0까지 곡선 형태로 감소
+                weights[stat] = max(1 - curved_ratio, 0)
+            else:
+                # 기타 스탯: 1에서 0.5까지 곡선 형태로 감소
+                weights[stat] = 1 - 0.5 * curved_ratio
+
+        return weights
+
+    def weighted_redistribute(self, total_points, weights):
+        """
+        가중치 비율에 따라 total_points를 분배
+        """
+        assigned = {k: 0 for k in weights.keys()}
+        weight_sum = sum(weights.values())
+
+        for _ in range(total_points):
+            r = random.uniform(0, weight_sum)
+            upto = 0
+            for stat, w in weights.items():
+                if upto + w >= r:
+                    assigned[stat] += 1
+                    break
+                upto += w
+        return assigned
+
+    async def do_reroll(self):
+        total_enhancement = sum(self.wdc.get("강화내역", {}).values())
+
+        ref_weapon_enhance = db.reference(f"무기/강화")
+        enhance_types_dict = ref_weapon_enhance.get() or {}
+        enhance_types = list(enhance_types_dict.keys())  # dict_keys -> list 변환
+
+        all_stats = enhance_types
+
+        # 승수 기반으로 가중치 계산
+        scaled_weights = self.scale_weights_with_main_and_unwanted(all_stats, self.win_count)
+
+        # 강화 점수 재분배
+        random_log = self.weighted_redistribute(total_enhancement, scaled_weights)
+
+        self.wdo = self.wdc.copy()
+        self.wdo["강화내역"] = random_log
+
+        max_enhance_type = max(random_log, key=random_log.get)
+        prefix = max_enhance_type.split()[0] + "형"
+        self.wdo["이름"] = f"{self.wdc['이름']}-{prefix}"
+
+        # 외부 함수 호출 (db는 외부에서 임포트 되어 있어야 함)
+        enhancement_options = db.reference("무기/강화").get() or {}
+        base_weapon_stats = db.reference("무기/기본 스탯").get() or {}
+        self.wdo = apply_stat_to_weapon_data(self.wdo, enhancement_options, base_weapon_stats)
+
+    @discord.ui.button(label="⚔️ 결과 확인", style=discord.ButtonStyle.primary)
+    async def show_result(self, interaction: Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user.id:
+            await interaction.response.send_message("이 버튼은 당신이 사용할 수 없습니다.", ephemeral=True)
+            return
+        
+        await interaction.response.defer()
+        win_count = 0
+
+        # 1000회 시뮬레이션 (비동기 Battle 함수 사용)
+        for _ in range(1000):
+            result = await Battle(
+                channel=interaction.channel,
+                challenger_m=self.user,
+                opponent_m="",
+                raid=False,
+                practice=False,
+                simulate=True,
+                skill_data=self.skill_data,
+                wdc=self.wdc,
+                wdo=self.wdo,
+                scd=self.skill_data
+            )
+            if result:
+                win_count += 1
+
+        
+        win_rate = win_count / 1000 * 100
+        outcome = f"🏆 **승리!**[{self.win_count + 1}승!]" if win_rate >= 50 else "❌ **패배!**"
+
+        embed = discord.Embed(title="시뮬레이션 결과", color=discord.Color.gold())
+        embed.add_field(
+            name=f"{self.wdc['이름']} vs {self.wdo['이름']}",
+            value=(
+                f"{self.wdc['이름']} {win_count}승\n"
+                f"{self.wdo['이름']} {1000 - win_count}승\n\n"
+                f"**승률**: {win_rate:.1f}%\n"
+                f"{outcome}"
+            )
+        )
+
+        # 자동 재구성
+        if win_rate >= 50:
+            await self.do_reroll()
+            self.win_count += 1
+            if self.message:
+                await self.message.edit(
+                    embeds=[get_stat_embed(self.wdc, self.wdo), get_enhance_embed(self.wdc, self.wdo)],
+                    view=self
+                )
+        else:
+            # 모든 버튼 비활성화
+            for child in self.children:
+                child.disabled = True
+            if self.message:
+                await self.message.edit(view=self)
+
+            # 최종 결과 Embed (패배 시)
+            final_embed = discord.Embed(title="📉 최종 결과", color=discord.Color.red())
+            final_embed.add_field(
+                name="최종 승수",
+                value=f"🏁 **[{self.win_count}승/10승]**",
+                inline=False
+            )
+            final_embed.add_field(
+                name=f"{self.wdc['이름']} vs {self.wdo['이름']}",
+                value=(
+                    f"{self.wdc['이름']} {win_count}승\n"
+                    f"{self.wdo['이름']} {1000 - win_count}승\n\n"
+                    f"**승률**: {win_rate:.1f}%\n"
+                    f"{outcome}"
+                )
+            )
+            await interaction.followup.send(embed=final_embed)
+            return
+
+        await interaction.followup.send(embed=embed)
+
+    @discord.ui.button(label="🔁 재구성 (10회 가능)", style=discord.ButtonStyle.secondary)
+    async def reroll_opponent(self, interaction: Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.user.id:
+            await interaction.response.send_message("이 버튼은 당신이 사용할 수 없습니다.", ephemeral=True)
+            return
+        
+        await interaction.response.defer()
+
+        if self.reroll_count >= 10:
+            await interaction.followup.send("재구성은 최대 10회까지만 가능합니다.", ephemeral=True)
+            return
+
+        await self.do_reroll()
+        self.reroll_count += 1
+        button.label = f"🔁 재구성 ({10 - self.reroll_count}/10 남음)"
+        if self.message:
+            await self.message.edit(
+                embeds=[get_stat_embed(self.wdc, self.wdo), get_enhance_embed(self.wdc, self.wdo)],
+                view=self
+            )
+
+
+
+def redistribute_enhancements(total_points, template):
+    assigned = {key: int(total_points * template[key]) for key in template}
+    remain = total_points - sum(assigned.values())
+    keys = list(template.keys())
+    for _ in range(remain):
+        selected = random.choice(keys)
+        assigned[selected] += 1
+    return assigned
+
+
+def apply_stat_to_weapon_data(weapon_data: dict, enhancement_options: dict, base_weapon_stats: dict) -> dict:
+    updated_data = copy.deepcopy(weapon_data)
+    enhance_log_data = updated_data.get("강화내역", {})
+    inherit_log_data = updated_data.get("계승 내역", {})
+    weapon_type = updated_data.get("무기타입", "")
+
+    inherit_level = inherit_log_data.get("기본 스탯 증가", 0)
+    inherit_multiplier = inherit_level * 0.3
+
+    if weapon_type not in base_weapon_stats:
+        return updated_data
+
+    inherit_stats = ["공격력", "스킬 증폭", "내구도", "방어력", "스피드", "명중"]
+    new_stats = {
+        stat: value + round(value * inherit_multiplier) if stat in inherit_stats else value
+        for stat, value in base_weapon_stats[weapon_type].items()
+        if stat not in ["강화", "스킬"]
+    }
+
+    for enhance_type, enhance_count in enhance_log_data.items():
+        if enhance_type in enhancement_options:
+            for stat, value in enhancement_options[enhance_type]["stats"].items():
+                new_stats[stat] = round(new_stats.get(stat, 0) + value * enhance_count, 3)
+
+    basic_skill_levelup = inherit_log_data.get("기본 스킬 레벨 증가", 0)
+    basic_skills = ["속사", "기습", "강타", "헤드샷", "창격", "수확", "명상", "화염 마법", "냉기 마법", "신성 마법", "일섬"]
+    skills = base_weapon_stats[weapon_type].get("스킬", {})
+    updated_skills = {}
+    for skill_name in skills:
+        updated_skills[skill_name] = copy.deepcopy(skills[skill_name])
+        if skill_name in basic_skills:
+            updated_skills[skill_name]["레벨"] = basic_skill_levelup + 1
+
+    for key, val in new_stats.items():
+        updated_data[key] = val
+    updated_data["스킬"] = updated_skills
+    return updated_data
+
+
+def get_stat_embed(challenger: dict, opponent: dict) -> discord.Embed:
+    embed = discord.Embed(title="📊 스탯 비교", color=discord.Color.orange())
+
+    stat_name_map = {
+        "공격력": "공격",
+        "스킬 증폭": "스증",
+        "방어력": "방어",
+        "스피드": "속도",
+        "명중": "명중",
+        "치명타 확률": "치확",
+        "치명타 대미지": "치댐",
+        "내구도": "내구"
+    }
+
+    stat_keys = [
+        "공격력", "스킬 증폭", "방어력", "스피드",
+        "명중", "치명타 확률", "치명타 대미지", "내구도"
+    ]
+
+    lines = []
+
+    for key in stat_keys:
+        c_val = challenger.get(key, 0)
+        o_val = opponent.get(key, 0)
+
+        # 퍼센트 처리
+        is_percent = key in ["치명타 확률", "치명타 대미지"]
+        c_val_display = f"{round(c_val * 100)}%" if is_percent else str(c_val)
+        o_val_display = f"{round(o_val * 100)}%" if is_percent else str(o_val)
+        diff_val = round((o_val - c_val) * 100) if is_percent else o_val - c_val
+
+        emoji = "🟢" if diff_val > 0 else "🔴"
+        sign = "+" if diff_val > 0 else "-"
+        diff_display = f"{sign}{abs(diff_val)}{'%' if is_percent else ''}"
+
+        label = stat_name_map.get(key, key)
+        lines.append(f"{label}: {c_val_display} ⟷ {o_val_display} (**{diff_display}** {emoji})")
+
+    if not lines:
+        embed.add_field(name="변경된 스탯 없음", value="모든 스탯이 동일합니다.", inline=False)
+    else:
+        embed.add_field(name="스탯 차이", value="\n".join(lines), inline=False)
+
+    return embed
+
+
+def get_enhance_embed(challenger: dict, opponent: dict) -> discord.Embed:
+    embed = discord.Embed(title="📈 강화 내역 비교", color=discord.Color.orange())
+    ch_log = challenger.get("강화내역", {})
+    op_log = opponent.get("강화내역", {})
+    all_keys = sorted(set(ch_log.keys()) | set(op_log.keys()))
+
+    enhance_name_map = {
+        "공격 강화": "공격",
+        "방어 강화": "방어",
+        "속도 강화": "속도",
+        "치명타 확률 강화": "치확",
+        "치명타 대미지 강화": "치댐",
+        "밸런스 강화": "균형",
+        "스킬 강화": "스증",
+        "명중 강화": "명중",
+        "내구도 강화": "내구"
+    }
+
+    lines = []
+
+    for k in all_keys:
+        ch_val = ch_log.get(k, 0)
+        op_val = op_log.get(k, 0)
+        diff = op_val - ch_val
+
+        emoji = "🟢" if diff > 0 else "🔴"
+        sign = "+" if diff > 0 else "-"
+        diff_display = f"{sign}{abs(diff)}회"
+
+        label = enhance_name_map.get(k, k)
+        lines.append(f"{label}: {ch_val}회 ⟷ {op_val}회 (**{diff_display}** {emoji})")
+
+    if not lines:
+        embed.add_field(name="변경된 강화 내역 없음", value="모든 강화 내역이 동일합니다.", inline=False)
+    else:
+        embed.add_field(name="강화 차이", value="\n".join(lines), inline=False)
+
+    return embed
 
 def calculate_bonus_rate(streak):
     bonus = 0
@@ -273,7 +603,42 @@ class ExcludeStatView(discord.ui.View):
         super().__init__(timeout=60)
         self.add_item(ExcludeStatSelect(stat_options, callback))
 
+
+
 class RuneUseButton(discord.ui.View):
+    class ConvertToRegressionRuneButton(discord.ui.Button):
+        def __init__(self):
+            super().__init__(label="회귀의 룬으로 변환 (50개 소모)", style=discord.ButtonStyle.secondary)
+
+        async def callback(self, interaction: discord.Interaction):
+            view: RuneUseButton = self.view  # type: ignore
+            if interaction.user.id != view.user.id:
+                await interaction.response.send_message("이 버튼은 당신의 것이 아닙니다.", ephemeral=True)
+                return
+
+            if view.item_data.get("운명 왜곡의 룬", 0) < 50:
+                await interaction.response.send_message("운명 왜곡의 룬이 부족합니다. (50개 필요)", ephemeral=True)
+                return
+
+            await interaction.response.defer()
+            # 50개 소모
+            view.item_data["운명 왜곡의 룬"] -= 50
+            # 회귀의 룬 1개 지급
+            view.item_data["회귀의 룬"] = view.item_data.get("회귀의 룬", 0) + 1
+            view.item_ref.update(view.item_data)
+
+            # 버튼 제거 (view.children에서 모두 삭제)
+            view.clear_items()
+
+            await interaction.edit_original_response(
+                embed=discord.Embed(
+                    title="🔁 룬 변환 완료",
+                    description="운명 왜곡의 룬 50개를 소모하여 **회귀의 룬 1개**를 획득했습니다!",
+                    color=discord.Color.blurple()
+                ),
+                view=view
+            )
+
     def __init__(self, user: discord.User, rune_name: str, nickname: str, item_ref, item_data):
         super().__init__(timeout=60)
         self.user = user
@@ -281,6 +646,10 @@ class RuneUseButton(discord.ui.View):
         self.nickname = nickname
         self.item_ref = item_ref
         self.item_data = item_data
+        
+        # 운명 왜곡의 룬이 50개 이상이면 회귀의 룬으로 변환 버튼 추가
+        if self.rune_name == "운명 왜곡의 룬" and self.item_data.get("운명 왜곡의 룬", 0) >= 50:
+            self.add_item(self.ConvertToRegressionRuneButton())
 
     @discord.ui.button(label="룬 발동", style=discord.ButtonStyle.primary)
     async def activate_rune(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -460,16 +829,73 @@ class RuneUseButton(discord.ui.View):
                         inline=False
                     )
 
+        elif self.rune_name == "회귀의 룬":
+            embed.title = "회귀의 룬 발동!"
+
+            # 기존의 추가강화 수치
+            ref_inherit_log = db.reference(f"무기/유저/{self.nickname}/계승 내역")
+            inherit_log = ref_inherit_log.get() or {}
+            additional_enhance = inherit_log.get("추가강화", {})
+
+            ref_additional_enhance = db.reference(f"무기/유저/{self.nickname}/계승 내역/추가강화")
+            ref_weapon_enhance = db.reference(f"무기/유저/{self.nickname}/강화내역")
+            enhance_data = ref_weapon_enhance.get() or {}
+
+            # 총 수치 계산 및 제거
+            enhance_removed = 0
+            for key, value in additional_enhance.items():
+                enhance_removed += value
+                if key in enhance_data:
+                    enhance_data[key] -= value
+                    if enhance_data[key] <= 0:
+                        del enhance_data[key]
+
+            # 강화내역 갱신 및 추가강화 초기화
+            ref_weapon_enhance.set(enhance_data)
+            ref_additional_enhance.set({})  # 추가 강화 초기화
+
+            # 특수 연마제 지급
+            ref_refine_stone = db.reference(f"무기/유저/{self.nickname}/특수연마제")
+            current_refine = ref_refine_stone.get() or 0
+            ref_refine_stone.set(current_refine + enhance_removed)
+
+            # 임베드 메시지
+            embed = discord.Embed(
+                title="🔮 회귀의 룬이 사용되었습니다!",
+                description=(
+                    f"{interaction.user.display_name}님의 추가 강화 수치가 모두 제거되었으며,\n"
+                    f"해당 수치 {enhance_removed}만큼의 **특수 연마제**가 연성되었습니다."
+                ),
+                color=discord.Color.purple()
+            )
+
+            if enhance_removed == 0:
+                embed.set_footer(text="※ 회귀의 룬 사용 시 회수할 강화 수치가 없어 아무 일도 일어나지 않았습니다.")
+            else:
+                embed.add_field(
+                    name="💠 연성된 특수 연마제",
+                    value=f"총 {enhance_removed} 개",
+                    inline=False
+                )
+                give_item(self.nickname,"특수 연마제",enhance_removed)
+
+            weapon_name, stat_changes = apply_stat_change(self.nickname)
+            if weapon_name and stat_changes:
+                embed.add_field(
+                    name=f"🛠️ {weapon_name}의 변경된 스탯",
+                    value="\n".join(stat_changes),
+                    inline=False
+                )
         # 룬 1개 소모 처리
         self.item_data[self.rune_name] -= 1
-        self.item_ref.set(self.item_data)
+        self.item_ref.update(self.item_data)
 
         await interaction.edit_original_response(embed=embed, view=None)
 
 async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = False, practice = False, tower = False, tower_floor = 1, raid_ended = False, simulate = False, skill_data = None, wdc = None, wdo = None, scd = None):
-        # 전장 크기 (-8 ~ 8), 0은 없음
-        MAX_DISTANCE = 8
-        MIN_DISTANCE = -8
+        # 전장 크기 (-10 ~ 10), 0은 없음
+        MAX_DISTANCE = 10
+        MIN_DISTANCE = -10
 
         battle_distance = 1
 
@@ -809,18 +1235,36 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         
         def headShot(attacker, evasion,skill_level):
             """액티브 - 헤드샷: 치명타 확률에 따라 증가하는 스킬 피해"""
-            # 헤드샷: 공격력 80(+10)% + 스킬 증폭 100(+20)%, 치명타 확률 1%당 1% 추가 피해
+            # 헤드샷: 공격력 150(+50)%, 스킬 증폭 100(+30)%
             if not evasion:
                 headShot_data = skill_data_firebase['헤드샷']['values']
+                base_damage = headShot_data['기본_대미지'] + headShot_data['레벨당_기본_대미지'] * skill_level
                 skill_multiplier = (headShot_data['기본_스킬증폭_계수'] + headShot_data['레벨당_스킬증폭_계수_증가'] * skill_level)
                 attack_multiplier = (headShot_data['기본_공격력_계수'] + headShot_data['레벨당_공격력_계수_증가'] * skill_level)
-                skill_damage = (attacker["Spell"] * skill_multiplier + attacker["Attack"] * attack_multiplier) * (1 + attacker['CritChance'])
+
+                # 각각의 피해량 계산
+                attack_based_damage = attacker['Attack'] * attack_multiplier
+                spell_based_damage = attacker['Spell'] * skill_multiplier
+
+                # 더 높은 피해를 기준으로 선택
+                if attack_based_damage >= spell_based_damage:
+                    skill_damage = attack_based_damage
+                    skill_message = f"공격력을 기반으로 한 공격!\n{base_damage} + 공격력의 {round(attack_multiplier * 100)}% 피해를 입힙니다!\n"
+                else:
+                    skill_damage = spell_based_damage
+                    skill_message = f"스킬 증폭을 기반으로 한 공격!\n{base_damage} + 스킬 증폭의 {round(skill_multiplier * 100)}% 피해를 입힙니다!\n"
+                critical_bool = False
+                if random.random() < attacker["CritChance"]:
+                    skill_damage *= attacker["CritDamage"]
+                    critical_bool = True
+
                 apply_status_for_turn(attacker, "장전", duration=1)
-                message = f"**<:headShot:1370300576545640459>헤드샷** 사용!\n(스킬 증폭 {int(skill_multiplier * 100)}%) + (공격력 {int(attack_multiplier * 100)}%) x {round(attacker['CritChance'] * 100)}%의 스킬 피해!\n1턴간 **장전**상태가 됩니다.\n"
+                message = f"**<:headShot:1370300576545640459>헤드샷** 사용!\n{skill_message}1턴간 **장전**상태가 됩니다.\n"
             else:
                 skill_damage = 0
                 message = f"\n**<:headShot:1370300576545640459>헤드샷**이 빗나갔습니다!\n" 
-            return message, skill_damage
+                critical_bool = False
+            return message, skill_damage, critical_bool
         
         def spearShot(attacker,defender,evasion,skill_level):
             spearShot_data = skill_data_firebase['창격']['values']
@@ -1046,14 +1490,15 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 defense = max(0, defender["Defense"] - attacker["DefenseIgnore"])
                 damage_reduction = calculate_damage_reduction(defense)
-                defend_damage = base_damage * (1 - damage_reduction) * (multiplier + skill_level * rapid_fire_data['레벨당_피해배율'])
+                defend_damage = base_damage * (1 - damage_reduction) * (multiplier)
                 final_damage = defend_damage * (1 - defender['DamageReduction']) # 대미지 감소 적용
                 return max(1, round(final_damage)), critical_bool, evasion_bool
                 
             message = ""
             for i in range(hit_count):
-                multiplier = rapid_fire_data['일반타격_기본_피해배율'] if i < hit_count - 1 else rapid_fire_data['마지막타격_기본_피해배율']  # 마지막 공격은 조금 더 강하게
-                damage, critical, evade = calculate_damage(attacker, defender, multiplier=multiplier)
+                # multiplier = rapid_fire_data['일반타격_기본_피해배율'] if i < hit_count - 1 else rapid_fire_data['마지막타격_기본_피해배율']  # 마지막 공격은 조금 더 강하게
+                multiplier = rapid_fire_data['일반타격_기본_피해배율']
+                damage, critical, evade = calculate_damage(attacker, defender, multiplier=multiplier + skill_level * rapid_fire_data['레벨당_피해배율'])
 
                 crit_text = "💥" if critical else ""
                 evade_text = "회피!⚡️" if evade else ""
@@ -1404,6 +1849,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 message = f"\n**불꽃 펀치**가 빗나갔습니다!\n"
             return message, skill_damage
 
+        def timer():
+            skill_damage = 1000000
+            message = f"타이머 종료!\n"
+            return message, skill_damage
+
         if simulate:
             weapon_data_challenger = wdc
             weapon_data_opponent = wdo
@@ -1519,7 +1969,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
                         return None, result_message, critical_bool
                 elif skill_name == "헤드샷":
-                    skill_message, damage = headShot(attacker,evasion,skill_level)
+                    skill_message, damage, critical_bool = headShot(attacker,evasion,skill_level)
                     result_message += skill_message
                     if evasion:
                         # 스킬 쿨타임 적용
@@ -1528,6 +1978,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         return None, result_message, critical_bool
                 elif skill_name == "명상":
                     skill_message, damage= meditate(attacker,skill_level)
+                    result_message += skill_message
+                elif skill_name == "타이머":
+                    skill_message, damage= timer()
                     result_message += skill_message
                 elif skill_name == "일섬":
                     skill_message, damage= issen(attacker,defender, skill_level)
@@ -1884,6 +2337,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             elif boss == "팬텀":
                 apply_status_for_turn(opponent, "저주받은 바디", 2669)
                 apply_status_for_turn(opponent, "기술 사용", 2669)
+            elif boss == "허수아비":
+                apply_status_for_turn(opponent, "속박", 2669)
                 
         while challenger["HP"] > 0 and opponent["HP"] > 0:
             turn += 1
@@ -2322,6 +2777,19 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         if skill_name in skill_names:
                             used_skill.append(skill_name)
                             skill_attack_names.append(skill_name)
+                else:
+                    cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
+
+            if "타이머" in skill_names:
+                skill_name = "타이머"
+                skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
+                skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
+                skill_level = attacker["Skills"][skill_name]["레벨"]
+
+                if skill_cooldown_current == 0:
+                    if skill_name in skill_names:
+                        used_skill.append(skill_name)
+                        skill_attack_names.append(skill_name)
                 else:
                     cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
 
@@ -2875,7 +3343,7 @@ def give_item(nickname, item_name, amount):
     cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
     current_predict_season = cur_predict_seasonref.get()
 
-    weapon_items = ['강화재료','랜덤박스','레이드 재도전','탑 재도전','연마제','특수 연마제','탑코인','스킬 각성의 룬','운명 왜곡의 룬']
+    weapon_items = ['강화재료','랜덤박스','레이드 재도전','탑 재도전','연마제','특수 연마제','탑코인','스킬 각성의 룬','운명 왜곡의 룬', '회귀의 룬']
     if item_name in weapon_items:
         refitem = db.reference(f'무기/아이템/{nickname}')
     else:
@@ -8987,13 +9455,13 @@ class hello(commands.Cog):
             return
         
         
-        # battle_ref = db.reference("승부예측/대결진행여부")
-        # is_battle = battle_ref.get() or {}
-        # if is_battle:
-        #     warnembed = discord.Embed(title="실패",color = discord.Color.red())
-        #     warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-        #     await interaction.followup.send(embed = warnembed)
-        #     return
+        battle_ref = db.reference("승부예측/대결진행여부")
+        is_battle = battle_ref.get() or {}
+        if is_battle:
+            warnembed = discord.Embed(title="실패",color = discord.Color.red())
+            warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+            await interaction.followup.send(embed = warnembed)
+            return
 
         ref_raid = db.reference(f"레이드/내역/{nickname}")
         raid_data = ref_raid.get() or {}
@@ -9158,7 +9626,7 @@ class hello(commands.Cog):
                 )
                 await interaction.followup.send(embed=warn_embed, ephemeral=True)
                 return
-        # battle_ref.set(True)
+        battle_ref.set(True)
 
         # 임베드 생성
         embed = discord.Embed(
@@ -9172,8 +9640,8 @@ class hello(commands.Cog):
             await interaction.followup.send(embed=embed)
         await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = boss_name, raid = True, practice = False)
 
-        # battle_ref = db.reference("승부예측/대결진행여부")
-        # battle_ref.set(False)
+        battle_ref = db.reference("승부예측/대결진행여부")
+        battle_ref.set(False)
 
     @app_commands.command(name="레이드현황",description="현재 레이드 현황을 보여줍니다.")
     async def raid_status(self, interaction: discord.Interaction):
@@ -9624,8 +10092,10 @@ class hello(commands.Cog):
     Choice(name='스우', value='스우'),
     Choice(name='브라움', value='브라움'),
     Choice(name='카이사', value='카이사'),
-    Choice(name='팬텀', value = '팬텀')
+    Choice(name='팬텀', value = '팬텀'),
+    Choice(name='허수아비', value = '허수아비'),
     ])
+    @app_commands.describe(보스 = "전투할 보스를 선택하세요")
     async def raid_practice_test(self, interaction: discord.Interaction, 보스: str, 상대1 : discord.Member = None, 시뮬레이션 : bool = False):
         await interaction.response.defer()
 
@@ -9709,56 +10179,97 @@ class hello(commands.Cog):
         battle_ref.set(False)
 
 
-    @app_commands.command(name="미공개",description="테스트")
-    async def Mirror(self,interaction: discord.Interaction):
+    @app_commands.command(name="거울", description="테스트")
+    async def Mirror(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
-        ref_weapon_challenger = db.reference(f"무기/유저/{interaction.user.name}")
-        weapon_data_challenger = ref_weapon_challenger.get() or {}
+        user_name = interaction.user.name
+        ref_weapon = db.reference(f"무기/유저/{user_name}")
+        weapon_data_challenger = ref_weapon.get() or {}
 
-        weapon_name_challenger = weapon_data_challenger.get("이름", "")
-        if weapon_name_challenger == "":
-            await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+        if not weapon_data_challenger.get("이름"):
+            await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!", ephemeral=True)
             return
-        
-        ref_weapon_opponent = db.reference(f"무기/유저/{interaction.user.name}")
-        weapon_data_opponent = ref_weapon_opponent.get() or {}
 
-        weapon_name_opponent = weapon_data_opponent.get("이름", "")
-        if weapon_name_opponent == "":
-            await interaction.followup.send("상대가 무기를 가지고 있지 않습니다!",ephemeral=True)
-            return
-        
-        ref_skill_data = db.reference("무기/스킬")
-        skill_data_firebase = ref_skill_data.get() or {}
+        # 강화 보정 적용
+        ref_weapon_enhance = db.reference(f"무기/강화")
+        enhance_types_dict = ref_weapon_enhance.get() or {}
+        enhance_types = list(enhance_types_dict.keys())  # dict_keys -> list 변환
 
-        ref_weapon_challenger = db.reference(f"무기/유저/{interaction.user.name}")
-        weapon_data_challenger = ref_weapon_challenger.get() or {}
+        # 기존 강화 내역
+        original_enhance_log = weapon_data_challenger.get("강화내역", {})
+        total_enhancement = sum(original_enhance_log.values())
 
-        ref_weapon_opponent = db.reference(f"무기/유저/{interaction.user.name}")
-        weapon_data_opponent = ref_weapon_opponent.get() or {}
+        # 랜덤 분배 함수
+        def random_redistribute(total_points, keys):
+            assigned = {key: 0 for key in keys}
+            for _ in range(total_points):
+                selected = random.choice(keys)
+                assigned[selected] += 1
+            return assigned
 
-        ref_skill = db.reference(f"무기/스킬")
-        skill_common_data = ref_skill.get() or {}
+        # 랜덤 분배 실행
+        new_enhance_log = random_redistribute(total_enhancement, enhance_types)
 
-        win_count = 0
-        for i in range(1000):
-            result = await Battle(channel = interaction.channel,challenger_m= interaction.user, opponent_m = "", raid = False, practice = False, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data)
-            if result:  # True면 승리
-                win_count += 1
+        weapon_data_opponent = weapon_data_challenger.copy()
+        weapon_data_opponent["강화내역"] = new_enhance_log
 
-        result_embed = discord.Embed(title="시뮬레이션 결과",color = discord.Color.blue())
-        result_embed.add_field(name=f"{weapon_data_challenger.get('이름','')} vs {weapon_data_opponent.get('이름','')}",value=f"{weapon_data_challenger.get('이름','')} {win_count}승, {weapon_data_opponent.get('이름','')} {1000 - win_count}승")
-        await interaction.followup.send(embed = result_embed)
-        return
+        # 가장 많이 강화된 항목 찾기
+        max_enhance_type = max(new_enhance_log, key=new_enhance_log.get)
+
+        # 이름 앞 글자 추출 (예: "스킬 강화" -> "스킬형")
+        prefix = max_enhance_type.split()[0] + "형"
+
+        # 이름 변경
+        original_name = weapon_data_challenger["이름"]
+        weapon_data_opponent["이름"] = f"{original_name}-{prefix}"
+
+        # 스탯 반영
+        enhancement_options = db.reference(f"무기/강화").get() or {}
+        base_weapon_stats = db.reference(f"무기/기본 스탯").get() or {}
+        weapon_data_opponent = apply_stat_to_weapon_data(
+            weapon_data_opponent,
+            enhancement_options,
+            base_weapon_stats
+        )
+
+        skill_data_firebase = db.reference("무기/스킬").get() or {}
+
+        # 쓰레드 생성
+        thread = await interaction.channel.create_thread(
+            name=f"{interaction.user.display_name}의 미러 시뮬레이션",
+            type=discord.ChannelType.public_thread
+        )
+
+        # 임베드 생성
+        embed = discord.Embed(
+            title=f"{interaction.user.display_name}의 미러 시뮬레이션",
+            description="시뮬레이션이 시작되었습니다!",
+            color=discord.Color.blue()  # 원하는 색상 선택
+        )
+
+        result_view = ResultButton(interaction.user, weapon_data_challenger, weapon_data_opponent, skill_data_firebase)
+        msg = await thread.send(
+            content="💡 강화된 무기 비교 및 시뮬레이션 결과를 확인해보세요!",
+            embeds=[
+                get_stat_embed(weapon_data_challenger, weapon_data_opponent),
+                get_enhance_embed(weapon_data_challenger, weapon_data_opponent)
+            ],
+            view=result_view
+        )
+        result_view.message = msg  # 메시지 저장
+
+        await interaction.followup.send(embed = embed, ephemeral=True)
 
 
     # 명령어 정의
     @app_commands.command(name="룬사용", description="룬을 사용합니다.")
     @app_commands.choices(룬=[
         Choice(name='스킬 각성의 룬', value='스킬 각성의 룬'),
-        Choice(name='운명 왜곡의 룬', value='운명 왜곡의 룬')
+        Choice(name='운명 왜곡의 룬', value='운명 왜곡의 룬'),
+        Choice(name='회귀의 룬', value='회귀의 룬'),
     ])
+    @app_commands.describe(룬 = "사용할 룬을 선택하세요")
     async def rune(self, interaction: discord.Interaction, 룬: str):
         await interaction.response.defer()
 
@@ -9805,10 +10316,40 @@ class hello(commands.Cog):
                 )
                 await interaction.followup.send(embed=warning_embed)
                 return
+            
+            # 여기서 보유한 룬 수량 확인
+            owned_rune_count = item_data.get("운명 왜곡의 룬", 0)
+
+            if owned_rune_count >= 50:
+                rune_embed.description = (
+                    f"🔮 {interaction.user.display_name}님의 손에 **운명 왜곡의 룬**이 반응합니다...\n\n"
+                    f"사용 시, 알 수 없는 힘이 발현되어\n"
+                    f"**추가 강화 수치가 랜덤하게 재구성**됩니다.\n\n"
+                    f"운명 왜곡의 룬이 50개 이상일 경우,\n이를 융합하여 **회귀의 룬**으로 변환이 가능합니다."
+                )
+            else:
+                rune_embed.description = (
+                    f"🔮 {interaction.user.display_name}님의 손에 **운명 왜곡의 룬**이 반응합니다...\n\n"
+                    f"사용 시, 알 수 없는 힘이 발현되어\n"
+                    f"**추가 강화 수치가 랜덤하게 재구성**됩니다."
+                )
+        elif 룬 == "회귀의 룬":
+            ref_inherit_log = db.reference(f"무기/유저/{nickname}/계승 내역")
+            inherit_log = ref_inherit_log.get() or {}
+            additional_enhance = inherit_log.get("추가강화", {})
+            enhance_count = sum(additional_enhance.values())
+            if enhance_count <= 0: # 추가강화 수치가 0이라면 사용 불가 
+                warning_embed = discord.Embed(title=f"{룬} 사용 실패!", color=discord.Color.red())
+                warning_embed.description = (
+                    f"{interaction.user.display_name}님의 **추가 강화**수치가 부족하여 발동이 **실패**하였습니다!\n"
+                )
+                await interaction.followup.send(embed=warning_embed)
+                return
             rune_embed.description = (
-                f"🔮 {interaction.user.display_name}님의 손에 **운명 왜곡의 룬**이 반응합니다...\n\n"
-                f"사용 시, 알수 없는 힘이 발현하여\n"
-                f"추가 강화 수치를 랜덤으로 **재구성**합니다."
+                f"🔮 {interaction.user.display_name}님의 손에 **회귀의 룬**이 반응합니다...\n\n"
+                f"사용 시, 시간을 거슬러, 강화의 흔적을 지워냅니다.\n"
+                f"사라진 힘은 **특수 연마제**의 형태로 응축됩니다. \n"
+                f"추가 강화 수치를 모두 제거하고, 그 수치만큼 **특수 연마제**를 연성합니다."
             )
 
         # 버튼 뷰 구성
