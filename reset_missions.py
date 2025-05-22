@@ -429,6 +429,9 @@ if users:
         
         ref_current_floor.update({"등반여부": False})
 
+        ref_mirror = db.reference(f"무기/거울")
+        ref_mirror.set("")
+
         dice_ref.update({"배틀여부" : False})
         dice_ref.update({"숫자야구배틀여부" : False})
 
