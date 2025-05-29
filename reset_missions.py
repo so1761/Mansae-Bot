@@ -224,10 +224,10 @@ for participant, data in raid_data.items():
             ref_item.update({"운명 왜곡의 룬": Rune_of_Twisted_Fate + 3})
         elif boss_name == "팬텀":
             weapon_parts = item_data.get("강화재료") or 0
-            ref_item.update({"강화재료": weapon_parts + 3})
+            ref_item.update({"강화재료": weapon_parts + reward_count + 3})
         else:
             weapon_parts = item_data.get("강화재료") or 0
-            ref_item.update({"강화재료": weapon_parts + 3})
+            ref_item.update({"강화재료": weapon_parts + reward_count + 3})
 
     if data.get('막타',False):
         raid_retry = item_data.get("레이드 재도전") or 0
@@ -324,6 +324,21 @@ for idx, (nickname, data) in enumerate(raid_after_data_sorted, start=1):
     item_data = ref_item.get() or {}
     weapon_parts = item_data.get("강화재료", 0)
     ref_item.update({"강화재료" : weapon_parts + reward_number})
+    if boss_name == "카이사":
+        random_box = item_data.get("랜덤박스") or 0
+        ref_item.update({"랜덤박스": random_box + 1})
+    elif boss_name == "스우":
+        polish = item_data.get("연마제") or 0
+        ref_item.update({"연마제": polish + 2})
+    elif boss_name == "브라움":
+        Rune_of_Twisted_Fate = item_data.get("운명 왜곡의 룬") or 0
+        ref_item.update({"운명 왜곡의 룬": Rune_of_Twisted_Fate + 3})
+    elif boss_name == "팬텀":
+        weapon_parts = item_data.get("강화재료") or 0
+        ref_item.update({"강화재료": weapon_parts + reward_number + 3})
+    else:
+        weapon_parts = item_data.get("강화재료") or 0
+        ref_item.update({"강화재료": weapon_parts + reward_number + 3})
     
 # 보상 필드 추가
 fields.append({
