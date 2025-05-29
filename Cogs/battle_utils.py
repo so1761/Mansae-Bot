@@ -19,7 +19,7 @@ def calculate_move_chance(speed, move_chain=0):
     move_chance = min(0.99, 1 - math.exp(-effective_speed / 70))
     return move_chance
 
-def adjust_position(pos, move_distance, direction, MIN_DISTANCE, MAX_DISTANCE):
+def adjust_position(pos, move_distance, direction):
     for _ in range(move_distance):
         new_pos = pos + direction
         if new_pos == 0:

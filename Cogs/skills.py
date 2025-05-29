@@ -554,7 +554,7 @@ def icathian_rain(attacker, defender, skill_level, skill_data_firebase, battle_d
     
     passive_skill_data = attacker["Skills"].get("두번째 피부", None)   
     passive_skill_level = passive_skill_data["레벨"]
-    passive_message, explosion_damage = second_skin(defender, passive_skill_level, 1)
+    passive_message, explosion_damage = second_skin(defender, passive_skill_level, 1, skill_data_firebase)
     defense = max(0, defender["Defense"] - attacker["DefenseIgnore"])
     damage_reduction = calculate_damage_reduction(defense)
     defend_damage = explosion_damage * (1 - damage_reduction)
@@ -575,7 +575,7 @@ def voidseeker(attacker, defender, evasion, skill_level, skill_data_firebase):
         message = f"\n<:kaisa_W:1370259790772572171>**공허추적자** 사용!\n스킬 증폭 {int(round(skill_multiplier * 100))}%의 스킬 피해를 입히고 1턴간 속박!\n"
         passive_skill_data = attacker["Skills"].get("두번째 피부", None)   
         passive_skill_level = passive_skill_data["레벨"]
-        passive_message, explosion_damage = second_skin(defender, passive_skill_level, 2)
+        passive_message, explosion_damage = second_skin(defender, passive_skill_level, 2, skill_data_firebase)
         message += passive_message
         skill_damage += explosion_damage
     else:
