@@ -22,6 +22,7 @@ def update_status(character):
             del character["Status"][status]
 
 def remove_status_effects(character, skill_data_firebase):
+
     """
     상태가 사라졌을 때 효과를 되돌리는 함수
     """
@@ -83,3 +84,4 @@ def remove_status_effects(character, skill_data_firebase):
         if reduce_amount > 1:
             reduce_amount = 1
         character["DamageReduction"] = reduce_amount
+

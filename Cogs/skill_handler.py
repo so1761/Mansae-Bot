@@ -155,3 +155,176 @@ def process_on_hit_effects(
                     if battle_embed:
                         battle_embed.add_field(name="출혈!", value="공격 적중으로 2턴간 **출혈** 부여!🩸", inline=False)
     return result_message, used_skill
+
+def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebase, battle_distance):
+    """스킬을 사용하여 피해를 입히고 효과를 적용"""
+
+    total_damage = 0  # 총 피해량 저장
+    result_message = ""
+    critical_bool = False
+    for skill_name in skills:
+        skill_data = attacker["Skills"].get(skill_name, None)
+        if not skill_data or skill_data["현재 쿨타임"] > 0:
+            result_message += f"{skill_name}의 남은 쿨타임 : {skill_data['현재 쿨타임']}턴\n"
+            return None, result_message, critical_bool  # 쿨타임 중
+        
+        skill_level = skill_data["레벨"]
+        skill_cooldown = skill_data["전체 쿨타임"]
+
+        if reloading:
+            result_message += f"재장전 중이라 {skill_name}을 사용할 수 없습니다!\n"
+            return None, result_message, critical_bool # 재장전 중
+        
+        skill_range = skill_data.get("사거리", 1)
+        if battle_distance > skill_range:
+            result_message += f"거리가 멀어 {skill_name} 사용 불가!\n"
+            if skill_name != "강타":
+                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
+            return None, result_message, critical_bool  # 사거리가 안닿는 경우 쿨타임을 돌림
+        
+        if skill_name == "빙하 균열":
+            skill_message, damage= glacial_fissure(attacker,defender,evasion,skill_level, skill_data_firebase, battle_distance)
+            result_message += skill_message
+            if evasion:
+                # 스킬 쿨타임 적용
+                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
+                return None, result_message, critical_bool
+        elif skill_name == "헤드샷":
+            skill_message, damage, critical_bool = headShot(attacker,evasion,skill_level, skill_data_firebase)
+            result_message += skill_message
+            if evasion:
+                # 스킬 쿨타임 적용
+                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
+                apply_status_for_turn(attacker, "장전", duration=1)
+                return None, result_message, critical_bool
+        elif skill_name == "명상":
+            skill_message, damage= meditate(attacker,skill_level, skill_data_firebase)
+            result_message += skill_message
+        elif skill_name == "타이머":
+            skill_message, damage= timer()
+            result_message += skill_message
+        elif skill_name == "일섬":
+            skill_message, damage= issen(attacker,defender, skill_level, skill_data_firebase)
+            result_message += skill_message
+        elif skill_name == "화염 마법":
+            skill_message, damage= fire(attacker,defender, evasion,skill_level, skill_data_firebase)
+            result_message += skill_message
+        elif skill_name == "냉기 마법":
+            skill_message, damage= ice(attacker,defender, evasion,skill_level, skill_data_firebase)
+            result_message += skill_message
+        elif skill_name == "신성 마법":
+            skill_message, damage= holy(attacker,defender, evasion,skill_level, skill_data_firebase)
+            result_message += skill_message
+        elif skill_name == "강타":
+            skill_message, damage = smash(attacker,defender,evasion,skill_level, skill_data_firebase)
+            critical_bool = True
+            result_message += skill_message
+            if evasion:
+                # 스킬 쿨타임 적용
+                critical_bool = False
+                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
+                return None, result_message, critical_bool 
+        elif skill_name == "동상":
+            skill_message, damage= frostbite(attacker,defender,evasion,skill_level, skill_data_firebase)
+            result_message += skill_message
+            if evasion:
+                # 스킬 쿨타임 적용
+                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
+                return None, result_message, critical_bool
+        elif skill_name == "속사":
+            skill_message, damage = rapid_fire(attacker,defender,skill_level, skill_data_firebase, battle_distance)
+            result_message += skill_message
+            total_damage += damage
+        elif skill_name == '이케시아 폭우':
+            skill_message, damage = icathian_rain(attacker,defender,skill_level, skill_data_firebase, battle_distance)
+            result_message += skill_message
+            total_damage += damage
+        elif skill_name == '공허추적자':
+            skill_message, damage = voidseeker(attacker,defender,evasion,skill_level, skill_data_firebase)
+            result_message += skill_message
+        elif skill_name == "수확":
+            skill_message, damage = Reap(attacker,evasion,skill_level, skill_data_firebase)
+            result_message += skill_message
+            if evasion:
+                # 스킬 쿨타임 적용
+                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
+                return None, result_message, critical_bool
+        elif skill_name == "자력 발산":
+            skill_message, damage= Magnetic(attacker,defender,skill_level, skill_data_firebase, battle_distance)
+            result_message += skill_message
+            if evasion:
+                # 스킬 쿨타임 적용
+                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
+                return None, result_message, critical_bool
+        elif skill_name == "전선더미 방출":
+            skill_message, damage= mech_Arm(attacker,defender,evasion,skill_level, skill_data_firebase, battle_distance)
+            result_message += skill_message
+            if evasion:
+                # 스킬 쿨타임 적용
+                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
+                return None, result_message, critical_bool
+        elif skill_name == "전깃줄":
+            skill_message, damage= electronic_line(attacker,defender,skill_level, skill_data_firebase, battle_distance)
+            result_message += skill_message
+            if evasion:
+                # 스킬 쿨타임 적용
+                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
+                return None, result_message, critical_bool
+        elif skill_name == "섀도볼":
+            skill_message, damage= shadow_ball(attacker, defender, evasion, skill_level, skill_data_firebase)
+            result_message += skill_message
+        elif skill_name == "독찌르기":
+            skill_message, damage= poison_jab(attacker, defender, evasion, skill_level, skill_data_firebase)
+            result_message += skill_message
+        elif skill_name == "불꽃 펀치":
+            skill_message, damage= fire_punch(attacker, defender, evasion, skill_level, skill_data_firebase)
+            result_message += skill_message
+        elif skill_name == "병상첨병":
+            skill_message, damage= Hex(attacker, defender, evasion, skill_level, skill_data_firebase)
+            result_message += skill_message
+
+        if skill_name != "속사" and skill_name != "이케시아 폭우":
+            # 피해 증폭
+            damage *= 1 + attacker["DamageEnhance"]
+            # 방어력 계산 적용
+            defense = max(0, defender["Defense"] - attacker["DefenseIgnore"])
+            damage_reduction = calculate_damage_reduction(defense)
+            defend_damage = damage * (1 - damage_reduction)
+            final_damage = defend_damage * (1 - defender['DamageReduction']) # 대미지 감소 적용
+            total_damage += final_damage
+
+            if skill_name == "수확" and not evasion:
+                Reap_data = skill_data_firebase['수확']['values']
+                heal_multiplier = min(1, (Reap_data['기본_흡혈_비율'] + Reap_data['스킬증폭당_추가흡혈_비율'] * attacker["Spell"]))
+                real_damage = final_damage
+
+                if "보호막" in defender['Status']:
+                    shield_amount = defender["Status"]["보호막"]["value"]
+                    if shield_amount >= final_damage:
+                        real_damage = 0
+                    else:
+                        real_damage = final_damage - shield_amount
+
+                heal_amount = round(real_damage * heal_multiplier)
+                # 기본 힐량과 스킬 관련 계산
+                if "치유 감소" in attacker["Status"]:
+                    healban_amount = attacker['Status']['치유 감소']['value']
+                    reduced_heal = round(heal_amount * healban_amount)
+                else:
+                    reduced_heal = 0
+
+                initial_HP = attacker['HP']  # 회복 전 내구도 저장
+                attacker['HP'] += heal_amount - reduced_heal  # 힐 적용
+                attacker['HP'] = min(attacker['HP'], attacker['BaseHP'])  # 최대 내구도 이상 회복되지 않도록 제한
+
+                # 최종 회복된 내구도
+                final_HP = attacker['HP']
+                if "치유 감소" in attacker["Status"]:
+                    result_message += f"가한 대미지의 {int(heal_multiplier * 100)}% 흡혈! (+{heal_amount}(-{reduced_heal}) 회복)\n내구도: [{initial_HP}] → [{final_HP}] ❤️ (+{final_HP - initial_HP})"
+                else:
+                    result_message += f"가한 대미지의 {int(heal_multiplier * 100)}% 흡혈! (+{heal_amount} 회복)\n내구도: [{initial_HP}] → [{final_HP}] ❤️ (+{final_HP - initial_HP})"
+        # 스킬 쿨타임 적용
+        attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
+
+    return max(0, round(total_damage)), result_message, critical_bool  # 최소 0 피해
+
