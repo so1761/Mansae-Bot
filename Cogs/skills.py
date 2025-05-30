@@ -1,33 +1,7 @@
 import random
 from .battle_utils import calculate_accuracy, calculate_evasion
 from .status import apply_status_for_turn
-from .battle_utils import adjust_position, calculate_damage_reduction
-
-def charging_shot(attacker, defender,evasion,skill_level, skill_data_firebase):
-    if not evasion:
-        charging_shot_data = skill_data_firebase['차징샷']['values']
-        move_distance = charging_shot_data['넉백거리']
-        knockback_direction = -1 if defender['Id'] == 1 else 1
-        defender["Position"] = adjust_position(defender["Position"], move_distance, knockback_direction)
-        if (attacker["Position"] < 0 and defender["Position"] > 0) or (attacker["Position"] > 0 and defender["Position"] < 0):
-            battle_distance = abs(attacker["Position"] - defender["Position"]) - 1  # 0을 건너뛰므로 -1
-        else:
-            battle_distance = abs(attacker["Position"] - defender["Position"])  # 같은 방향이면 그대로 계산
-        if battle_distance >= charging_shot_data['적정거리']:
-            attack_increase_level = charging_shot_data['적정거리_공격력증가']
-            attack_increase = (attack_increase_level * skill_level)
-            accuracy_increase_level = charging_shot_data['적정거리_명중증가']
-            accuracy_increase = (accuracy_increase_level * skill_level)
-            attacker["Attack"] += attack_increase
-            attacker["Accuracy"] += accuracy_increase
-            apply_status_for_turn(defender, "속박", duration=charging_shot_data['속박_지속시간'])  # 속박 상태 지속시간만큼 지속
-            apply_status_for_turn(attacker, "차징샷", duration=1)
-            return f"**차징샷** 사용!\n상대를 {move_distance}만큼 날려버리고, {charging_shot_data['속박_지속시간']}턴간 속박합니다.\n적정 거리 추가 효과!\n이번 공격에 공격력 +{attack_increase}, 명중률 +{accuracy_increase} 부여!\n현재 거리: {battle_distance}\n"
-        else:
-            apply_status_for_turn(defender, "속박", duration=charging_shot_data['속박_지속시간'])  # 속박 상태 지속시간만큼 지속
-            return f"**차징샷** 사용!\n상대를 {move_distance}만큼 날려버리고, {charging_shot_data['속박_지속시간']}턴간 속박합니다.\n현재 거리: {battle_distance}\n"
-    else:
-        return "**차징샷**이 빗나갔습니다!"
+from .battle_utils import calculate_damage_reduction
 
 def invisibility(attacker,skill_level, skill_data_firebase):
     # 은신 상태에서 회피율 증가
@@ -121,92 +95,29 @@ def headShot(attacker, evasion, skill_level, skill_data_firebase):
 
     return message, skill_damage, critical_bool
 
-def spearShot(attacker,defender,evasion,skill_level, skill_data_firebase, battle_distance):
+def spearShot(attacker,defender,evasion,skill_level, skill_data_firebase):
     spearShot_data = skill_data_firebase['창격']['values']
-    near_distance = spearShot_data['근접_거리']
-    condition_distance = spearShot_data['적정_거리']
-    slow_amount = spearShot_data['기본_둔화량'] + spearShot_data['레벨당_둔화량'] * skill_level
-
-    if evasion:
-        return f"\n**창격** 사용 불가!\n공격이 빗나갔습니다!\n"
-    if battle_distance <= near_distance: # 붙었을 땐 밀치기
-        move_distance = spearShot_data['근접_밀쳐내기_거리']
-        knockback_direction = -1 if defender['Id'] == 1 else 1
-        defender["Position"] = adjust_position(defender["Position"], move_distance, knockback_direction)
-        if (attacker["Position"] < 0 and defender["Position"] > 0) or (attacker["Position"] > 0 and defender["Position"] < 0):
-            battle_distance = abs(attacker["Position"] - defender["Position"]) - 1  # 0을 건너뛰므로 -1
-        else:
-            battle_distance = abs(attacker["Position"] - defender["Position"])  # 같은 방향이면 그대로 계산
-        apply_status_for_turn(defender, "속박", duration=1)
-        return f"**창격(근접)** 사용!\n상대를 {move_distance}만큼 날려버립니다!\n1턴간 속박 효과를 부여합니다.\n"
-    elif battle_distance == condition_distance: # 적정거리면 기절
-        apply_status_for_turn(defender, "기절", duration=1)
-        return f"**창격(적정 거리)** 사용!\n1턴간 기절 상태이상 부여!\n"
-    elif battle_distance >= condition_distance + 1: # 원거리면 둔화
-        apply_status_for_turn(defender, "둔화", duration=2,value = slow_amount)
-        dash_direction = -1 if attacker['Id'] == 0 else 1
-        attacker["Position"] = adjust_position(attacker["Position"], 1, dash_direction)
-        if (attacker["Position"] < 0 and defender["Position"] > 0) or (attacker["Position"] > 0 and defender["Position"] < 0):
-            battle_distance = abs(attacker["Position"] - defender["Position"]) - 1  # 0을 건너뛰므로 -1
-        else:
-            battle_distance = abs(attacker["Position"] - defender["Position"])  # 같은 방향이면 그대로 계산
-        return f"**창격(원거리)** 사용!\n적을 향해 1칸 돌진합니다\n창을 던져 2턴간 {round(slow_amount * 100)}% 둔화 효과를 부여합니다\n"
+    message = f"\n창격 메세지\n"
+    skill_damage = 0
+    return message,skill_damage
     
-def mech_Arm(attacker,defender, evasion, skill_level, skill_data_firebase, battle_distance):
+def mech_Arm(attacker,defender, evasion, skill_level, skill_data_firebase):
     # 전선더미 방출: (20 + 레벨 당 5) + 스킬 증폭 20% + 레벨당 10% 추가 피해
     if not evasion:
-
         mech_Arm_data = skill_data_firebase['전선더미 방출']['values']
         base_damage = mech_Arm_data['기본_피해량'] + mech_Arm_data['레벨당_피해량_증가'] * skill_level
         skill_multiplier = (mech_Arm_data['기본_스킬증폭_계수'] + mech_Arm_data['레벨당_스킬증폭_계수_증가'] * skill_level)
         skill_damage = base_damage + attacker["Spell"] * skill_multiplier
-        move_distance = mech_Arm_data['밀쳐내기_거리']
-        knockback_direction = -1 if defender['Id'] == 1 else 1
-        defender["Position"] = adjust_position(defender["Position"], move_distance, knockback_direction)
-        if (attacker["Position"] < 0 and defender["Position"] > 0) or (attacker["Position"] > 0 and defender["Position"] < 0):
-            battle_distance = abs(attacker["Position"] - defender["Position"]) - 1  # 0을 건너뛰므로 -1
-        else:
-            battle_distance = abs(attacker["Position"] - defender["Position"])  # 같은 방향이면 그대로 계산
         speed_decrease = mech_Arm_data['레벨당_속도감소_배율'] * skill_level
         defender["Speed"] *= 1 - speed_decrease
         if defender["Speed"] < 0:
             defender["Speed"] = 0
         debuff_turns = mech_Arm_data['디버프_지속시간']
         apply_status_for_turn(defender, "둔화", duration=debuff_turns, value = speed_decrease)
-        message = f"\n**<:siuu_Q:1370287135088840785>전선더미 방출** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해를 입힌 후 상대를 {move_distance}만큼 날려버립니다!\n상대의 속도가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소합니다!\n현재 거리: {battle_distance}\n"
+        message = f"\n**<:siuu_Q:1370287135088840785>전선더미 방출** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해를 입힙니다!\n상대의 속도가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소합니다!\n"
     else:
         skill_damage = 0
         message = f"\n**<:siuu_Q:1370287135088840785>전선더미 방출이 빗나갔습니다!**\n"
-
-    return message,skill_damage
-
-def Magnetic(attacker, defender, skill_level, skill_data_firebase, battle_distance):
-    # 자력 발산: (10 + 레벨 당 2) + 스킬 증폭 10% + 레벨당 5% 추가 피해
-    Magnetic_data = skill_data_firebase['자력 발산']['values']
-    grap_distance = Magnetic_data['최소_조건_거리']
-    if battle_distance >= grap_distance:
-        move_distance = Magnetic_data['끌어오기_거리']
-        if battle_distance <= 1:
-            move_distance = 1
-        base_damage = Magnetic_data['기본_피해량'] + Magnetic_data['레벨당_피해량_증가'] * skill_level
-        skill_multiplier = (Magnetic_data['기본_스킬증폭_계수'] + Magnetic_data['레벨당_스킬증폭_계수_증가'] * skill_level)
-        skill_damage = base_damage + attacker["Spell"] * skill_multiplier
-        grab_direction = 1 if defender['Id'] == 1 else -1
-        defender["Position"] = adjust_position(defender["Position"], move_distance, grab_direction)
-        if (attacker["Position"] < 0 and defender["Position"] > 0) or (attacker["Position"] > 0 and defender["Position"] < 0):
-            battle_distance = abs(attacker["Position"] - defender["Position"]) - 1  # 0을 건너뛰므로 -1
-        else:
-            battle_distance = abs(attacker["Position"] - defender["Position"])  # 같은 방향이면 그대로 계산
-        speed_decrease = Magnetic_data['레벨당_속도감소_배율'] * skill_level
-        defender["Speed"] *= 1 - speed_decrease
-        if defender["Speed"] < 0:
-            defender["Speed"] = 0
-        debuff_turns = Magnetic_data['디버프_지속시간']
-        apply_status_for_turn(defender, "둔화", duration=debuff_turns, value = speed_decrease)
-        message =  f"\n**자력 발산** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해를 입힌 후 상대를 {move_distance}만큼 끌어옵니다!\n상대의 속도가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소합니다!\n현재 거리: {battle_distance}\n"
-    else:
-        skill_damage = 0
-        message = f"\n거리가 너무 가까워 **자력 발산**을 사용할 수 없습니다!\n"
 
     return message,skill_damage
 
@@ -220,18 +131,14 @@ def Shield(attacker, skill_level, skill_data_firebase):
 
     return message
 
-def electronic_line(attacker,defender,skill_level, skill_data_firebase, battle_distance):
+def electronic_line(attacker,defender,skill_level, skill_data_firebase):
     # 전깃줄: (40 + 레벨 당 10) + 스킬 증폭 50% + 레벨당 20% 추가 피해
-    if battle_distance >= 2:
-        electronic_line_data = skill_data_firebase['전깃줄']['values']
-        base_damage = electronic_line_data['기본_피해량'] + electronic_line_data['레벨당_피해량_증가'] * skill_level
-        skill_multiplier = (electronic_line_data['기본_스킬증폭_계수'] + electronic_line_data['레벨당_스킬증폭_계수_증가'] * skill_level)
-        skill_damage = base_damage + attacker["Spell"] * skill_multiplier
-        apply_status_for_turn(defender,"기절",1)
-        message = f"\n**<:siuu_R:1370289428341329971>전깃줄** 사용!\n거리가 2 이상인 상대에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n1턴간 기절 부여!"
-    else:
-        skill_damage = 0
-        message = f"\n<:siuu_R:1370289428341329971>거리가 너무 가까워 **전깃줄** 사용 불가!\n" 
+    electronic_line_data = skill_data_firebase['전깃줄']['values']
+    base_damage = electronic_line_data['기본_피해량'] + electronic_line_data['레벨당_피해량_증가'] * skill_level
+    skill_multiplier = (electronic_line_data['기본_스킬증폭_계수'] + electronic_line_data['레벨당_스킬증폭_계수_증가'] * skill_level)
+    skill_damage = base_damage + attacker["Spell"] * skill_multiplier
+    apply_status_for_turn(defender,"기절",1)
+    message = f"\n**<:siuu_R:1370289428341329971>전깃줄** 사용!\n상대에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n1턴간 기절 부여!"
     
     return message,skill_damage
 
@@ -249,12 +156,15 @@ def Reap(attacker, evasion, skill_level, skill_data_firebase):
         message = f"\n**<:reap:1370301351187185674>수확**이 빗나갔습니다!\n" 
     return message, skill_damage
 
-def unyielding(defender, skill_level, skill_data_firebase, battle_distance):
-    """불굴: 거리에 비례해 받는 대미지를 감소시킴"""
+def unyielding(defender, skill_level, skill_data_firebase):
+    """불굴: 받는 대미지를 감소시킴"""
     unyielding_data = skill_data_firebase['불굴']['values']
-    damage_reduction = min(unyielding_data['최대_피해감소율'], battle_distance * (unyielding_data['거리당_기본_피해감소'] + unyielding_data['거리당_레벨당_피해감소'] * skill_level))  # 최대 90% 감소 제한
+    damage_reduction = min(unyielding_data['최대_피해감소율'], unyielding_data['기본_피해감소'] + unyielding_data['레벨당_피해감소'] * skill_level)  # 최대 90% 감소 제한
+    apply_status_for_turn(defender, "불굴", 2)
     defender["DamageReduction"] = damage_reduction
-    return f"\n**<:braum_E:1370258314666971236>불굴** 발동!\n거리에 비례하여 받는 대미지 {int(damage_reduction * 100)}% 감소!\n"
+    message = f"\n**<:braum_E:1370258314666971236>불굴** 발동!\n방패를 들어 2턴간 받는 대미지 {int(damage_reduction * 100)}% 감소!\n"
+    damage = 0
+    return message, damage
 
 def concussion_punch(target):
     """패시브 - 뇌진탕 펀치: 공격 적중 시 뇌진탕 스택 부여, 4스택 시 기절"""
@@ -294,14 +204,13 @@ def frostbite(attacker, target, evasion, skill_level, skill_data_firebase):
         message = f"\n**<:braum_Q:1370258276855451698>동상이 빗나갔습니다!**\n"
     return message, skill_damage
 
-def glacial_fissure(attacker, target, evasion,skill_level, skill_data_firebase, battle_distance):
-    # 빙하 균열: (40 + 레벨 당 30) +스킬 증폭 60% + 레벨당 30% + 거리 추가 피해 (1당 5%)
+def glacial_fissure(attacker, target, evasion,skill_level, skill_data_firebase):
+    # 빙하 균열: (40 + 레벨 당 30) +스킬 증폭 60% + 레벨당 30%
     if not evasion:
         glacial_fissure_data = skill_data_firebase['빙하 균열']['values']       
         base_damage = glacial_fissure_data['기본_피해량'] + (glacial_fissure_data['레벨당_피해량_증가'] * skill_level)
         skill_multiplier = (glacial_fissure_data['기본_스킬증폭_계수'] + glacial_fissure_data['레벨당_스킬증폭_계수_증가'] * skill_level)
-        distance_bonus = min(glacial_fissure_data['거리당_레벨당_피해배율_증가'] * skill_level * battle_distance, glacial_fissure_data['최대_거리_피해배율_보너스'])
-        skill_damage = base_damage + attacker["Spell"] * skill_multiplier * (1 + distance_bonus)
+        skill_damage = base_damage + attacker["Spell"] * skill_multiplier
         apply_status_for_turn(target,"기절",1)
 
         message = f"\n**<:braum_R:1370258355804962826>빙하 균열** 사용!\n{base_damage} + (스킬 증폭 {int(round(skill_multiplier * 100))}%)의 스킬 피해!\n{target['name']} 1턴간 기절!\n"
@@ -311,12 +220,13 @@ def glacial_fissure(attacker, target, evasion,skill_level, skill_data_firebase, 
         message = f"\n**<:braum_R:1370258355804962826>빙하 균열이 빗나갔습니다!**\n"
     return message, skill_damage
 
-def rapid_fire(attacker, defender, skill_level, skill_data_firebase, battle_distance):
+def rapid_fire(attacker, defender, skill_level, skill_data_firebase):
     """스피드에 비례하여 연속 공격하는 속사 스킬"""
     rapid_fire_data = skill_data_firebase['속사']['values']
 
     speed = attacker["Speed"]
-    hit_count = max(2, speed // rapid_fire_data['타격횟수결정_스피드값'])  # 최소 2회, 스피드 20당 1회 추가
+    # hit_count = max(2, speed // rapid_fire_data['타격횟수결정_스피드값'])  # 최소 2회, 스피드 20당 1회 추가
+    hit_count = 3
     total_damage = 0
 
     def calculate_damage(attacker,defender,multiplier):
@@ -324,17 +234,14 @@ def rapid_fire(attacker, defender, skill_level, skill_data_firebase, battle_dist
         base_damage = random.uniform(attacker["Attack"] * accuracy, attacker["Attack"])  # 최소 ~ 최대 피해
         critical_bool = False
         evasion_bool = False
-        distance_evasion = calculate_evasion(battle_distance) # 거리 2부터 1당 10%씩 빗나갈 확률 추가   
-        if random.random() < (defender["Evasion"] + distance_evasion) * (1 - accuracy): # 회피
+        speed_evasion = calculate_evasion(defender["Speed"])
+        if random.random() < (defender["Evasion"] + speed_evasion) * (1 - accuracy): # 회피
+        #if random.random() > accuracy:
             evasion_bool = True
             return 0, False, evasion_bool
 
         # 피해 증폭
         base_damage *= 1 + attacker["DamageEnhance"]
-
-        if random.random() < attacker["CritChance"]:
-            base_damage *= attacker["CritDamage"]
-            critical_bool = True
 
         defense = max(0, defender["Defense"] - attacker["DefenseIgnore"])
         damage_reduction = calculate_damage_reduction(defense)
@@ -344,9 +251,8 @@ def rapid_fire(attacker, defender, skill_level, skill_data_firebase, battle_dist
         
     message = ""
     for i in range(hit_count):
-        # multiplier = rapid_fire_data['일반타격_기본_피해배율'] if i < hit_count - 1 else rapid_fire_data['마지막타격_기본_피해배율']  # 마지막 공격은 조금 더 강하게
-        multiplier = rapid_fire_data['일반타격_기본_피해배율']
-        damage, critical, evade = calculate_damage(attacker, defender, multiplier=multiplier + skill_level * rapid_fire_data['레벨당_피해배율'])
+        multiplier = rapid_fire_data['일반타격_기본_피해배율'] + skill_level * rapid_fire_data['레벨당_피해배율'] + speed * 0.02
+        damage, critical, evade = calculate_damage(attacker, defender, multiplier=multiplier)
 
         crit_text = "💥" if critical else ""
         evade_text = "회피!⚡️" if evade else ""
@@ -473,7 +379,7 @@ def holy(attacker,defender, evasion, skill_level, skill_data_firebase):
             heal_amount = round(holy_data['레벨당_치유량'] * skill_level + attacker['Spell'] * heal_skill_multiplier)
             # 기본 힐량과 스킬 관련 계산
             if "치유 감소" in attacker["Status"]:
-                healban_amount = attacker['Status']['치유 감소']['value']
+                healban_amount = min(1, attacker['Status']['치유 감소']['value'])
                 reduced_heal = round(heal_amount * healban_amount)
             else:
                 reduced_heal = 0
@@ -510,7 +416,7 @@ def second_skin(target, skill_level, value, skill_data_firebase):
         message += f"\n<:kaisa_P:1370259635596038175>**플라즈마 폭발!** 현재 내구도의 {damage_value}% 대미지!\n"
     return message, skill_damage
 
-def icathian_rain(attacker, defender, skill_level, skill_data_firebase, battle_distance):
+def icathian_rain(attacker, defender, skill_level, skill_data_firebase):
     """스피드에 비례하여 연속 공격하는 속사 스킬"""
     icathian_rain_data = skill_data_firebase['이케시아 폭우']['values']
 
@@ -523,8 +429,9 @@ def icathian_rain(attacker, defender, skill_level, skill_data_firebase, battle_d
         base_damage = random.uniform(attacker["Attack"] * accuracy, attacker["Attack"])  # 최소 ~ 최대 피해
         critical_bool = False
         evasion_bool = False
-        distance_evasion = calculate_evasion(battle_distance) # 거리 2부터 1당 10%씩 빗나갈 확률 추가   
-        if random.random() < (defender["Evasion"] + distance_evasion)* (1 - accuracy): # 회피
+        speed_evasion = calculate_evasion(defender["Speed"])
+        if random.random() < (defender["Evasion"] + speed_evasion)* (1 - accuracy): # 회피
+        # if random.random() > accuracy: # 회피
             evasion_bool = True
             return 0, False, evasion_bool
 
@@ -598,18 +505,12 @@ def supercharger(attacker, skill_level, skill_data_firebase):
     return f"<:kaisa_E:1370259874264518798>**고속충전** 사용! {invisibility_turns}턴간 은신 상태에 돌입합니다!\n{speedup_turns}턴간 스피드가 {speedup_value} 증가합니다!\n"
 
 def killer_instinct(attacker, defender, skill_level, skill_data_firebase):
-    # 사냥본능: 상대의 뒤로 파고들며 2턴간 보호막을 얻음.
+    # 사냥본능: 2턴간 보호막을 얻음.
     killer_instinct_data = skill_data_firebase['사냥본능']['values']
-    retreat_direction = 1 if attacker['Id'] == 0 else -1  
-
-    target_position = defender['Position'] - (retreat_direction * 1)
-    attacker['Position'] = target_position * -1
-    defender['Position'] = defender['Position'] * -1
-    battle_distance = 1
 
     shield_amount = killer_instinct_data['기본_보호막량'] + killer_instinct_data['레벨당_보호막량'] * skill_level
     apply_status_for_turn(attacker,"보호막",3,shield_amount)
-    return f"**<:kaisa_R:1370259948172349481>사냥본능** 사용! 상대 뒤로 즉시 이동하며, 2턴간 {shield_amount}의 보호막을 얻습니다!\n"
+    return f"**<:kaisa_R:1370259948172349481>사냥본능** 사용! 2턴간 {shield_amount}의 보호막을 얻습니다!\n"
 
 def cursed_body(attacker, skill_level, skill_data_firebase):
     #저주받은 바디: 공격당하면 확률에 따라 공격자를 둔화
@@ -623,7 +524,6 @@ def cursed_body(attacker, skill_level, skill_data_firebase):
 
 def shadow_ball(attacker,defender,evasion,skill_level, skill_data_firebase):
     #섀도볼 : 스킬 증폭 기반 피해를 입히고, 50% 확률로 2턴간 침묵
-    
     if not evasion:
         shadow_ball_data = skill_data_firebase['섀도볼']['values']    
         skill_multiplier = (shadow_ball_data['기본_스킬증폭_계수'] + shadow_ball_data['레벨당_스킬증폭_계수_증가'] * skill_level)
@@ -678,7 +578,7 @@ def poison_jab(attacker,defender,evasion,skill_level, skill_data_firebase):
     return message, skill_damage
 
 def fire_punch(attacker,defender,evasion,skill_level, skill_data_firebase):
-    #불꽃 펀치 : 공격력 기반 피해를 입히고, 50% 확률로 3턴간 화상 상태 부여
+    #불꽃 펀치 : 공격력 기반 피해를 입히고, 50% 확률로 2턴간 화상 상태 부여
     if not evasion:
         poison_jab_data = skill_data_firebase['불꽃 펀치']['values']    
         attack_multiplier = (poison_jab_data['기본_공격력_계수'] + poison_jab_data['레벨당_공격력_계수_증가'] * skill_level)
@@ -688,7 +588,7 @@ def fire_punch(attacker,defender,evasion,skill_level, skill_data_firebase):
         cc_probability = poison_jab_data['화상_확률'] + poison_jab_data['레벨당_화상_확률'] * skill_level
         if random.random() < cc_probability: # 확룰에 따라 화상 부여
             burn_damage = poison_jab_data['화상_대미지'] + poison_jab_data['레벨당_화상_대미지'] * skill_level
-            apply_status_for_turn(defender,"화상",3, burn_damage)
+            apply_status_for_turn(defender,"화상",2, burn_damage)
             apply_status_for_turn(defender,"치유 감소", 4, 0.3)
             message += f"화상 상태이상 3턴간 부여!(확률 : {round(cc_probability * 100)}%)"
 

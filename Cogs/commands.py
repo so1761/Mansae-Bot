@@ -7947,7 +7947,8 @@ class hello(commands.Cog):
     async def emoji(self, interaction: discord.Interaction, 이모지 : str):
         await interaction.response.send_message(이모지)
 async def setup(bot: commands.Bot) -> None:
-    await bot.add_cog(
-        hello(bot),
-        guilds=[Object(id=298064707460268032)]
-    )
+    # await bot.add_cog(
+    #     hello(bot),
+    #     guilds=[Object(id=298064707460268032)]
+    # )
+    await bot.add_cog(hello(bot))

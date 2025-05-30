@@ -2159,7 +2159,8 @@ class MyBot(commands.Bot):
         for ext in self.initial_extension:
             await self.load_extension(ext)
 
-        await bot.tree.sync(guild=Object(id=298064707460268032))
+        #await bot.tree.sync(guild=Object(id=298064707460268032))
+        await bot.tree.sync()
 
     async def on_ready(self):
         print('Logged on as', self.user)
@@ -2169,7 +2170,7 @@ class MyBot(commands.Bot):
         firebase_admin.initialize_app(cred,{
             'databaseURL' : 'https://mansaebot-default-rtdb.firebaseio.com/'
         })
-        await self.tree.sync(guild=Object(id=298064707460268032))
+        #await self.tree.sync(guild=Object(id=298064707460268032))
 
         bot.loop.create_task(update_mission_message())
         
