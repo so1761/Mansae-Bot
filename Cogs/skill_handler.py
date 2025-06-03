@@ -28,10 +28,6 @@ def process_skill(
                 attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
                 result_message += supercharger(attacker, skill_level, skill_data_firebase)
                 used_skill.append(skill_name)
-            elif skill_name == "창격":
-                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
-                result_message += spearShot(attacker, defender, evasion, skill_level, skill_data_firebase)
-                used_skill.append(skill_name)
             elif skill_name == "사냥본능":
                 attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
                 result_message += killer_instinct(attacker, defender, skill_level, skill_data_firebase)
@@ -69,7 +65,7 @@ def process_all_skills(
             used_skill.append(ai_skill_to_use)
             skill_attack_names.append(ai_skill_to_use)
         # 기술 사용 관련 처리를 했으므로, 아래 일반 스킬 처리로 바로 넘어가지 않도록 return
-        return result_message, used_skill, skill_attack_names
+        return result_message, used_skill, skill_attack_names, cooldown_message
 
     for skill_name in skill_names:
         result_message = process_skill(
@@ -202,6 +198,9 @@ def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebas
             result_message += skill_message
         elif skill_name == "신성 마법":
             skill_message, damage= holy(attacker,defender, evasion,skill_level, skill_data_firebase)
+            result_message += skill_message
+        elif skill_name == "창격":
+            skill_message, damage = spearShot(attacker, defender, evasion, skill_level,skill_data_firebase)
             result_message += skill_message
         elif skill_name == "강타":
             skill_message, damage = smash(attacker,defender,evasion,skill_level, skill_data_firebase)

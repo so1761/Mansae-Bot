@@ -33,7 +33,7 @@ def calculate_move_chance(speed, move_chain=0):
     return move_chance
 
 def generate_tower_weapon(floor: int):
-    weapon_types = ["대검","스태프-화염", "조총", "스태프-냉기", "창", "활", "스태프-신성", "단검", "낫"]
+    weapon_types = ["대검","스태프-화염", "조총", "스태프-냉기", "태도", "활", "스태프-신성", "단검", "낫"]
     weapon_type = weapon_types[(floor - 1) % len(weapon_types)]  # 1층부터 시작
     enhancement_level = floor
 

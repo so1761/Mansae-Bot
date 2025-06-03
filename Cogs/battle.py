@@ -783,7 +783,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
                 else:
                     attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
-                    result_message += invisibility(attacker,skill_level)
+                    result_message += invisibility(attacker,skill_level,skill_data_firebase)
                     used_skill.append(skill_name)
             else:
                 cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
