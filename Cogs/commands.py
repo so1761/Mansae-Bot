@@ -118,16 +118,16 @@ class TooManyRequestError(Exception):
 
 class ResultButton(discord.ui.View):
     weapon_main_unwanted = {
-        "스태프-신성": (["스킬 강화", "명중 강화"], ["공격 강화", "치명타 확률 강화", "치명타 대미지 강화"]),
-        "스태프-화염": (["스킬 강화", "명중 강화"], ["공격 강화", "치명타 확률 강화", "치명타 대미지 강화"]),
-        "스태프-냉기": (["스킬 강화", "명중 강화"], ["공격 강화", "치명타 확률 강화", "치명타 대미지 강화"]),
-        "태도":       (["명중 강화", "속도 강화", "치명타 대미지 강화", "치명타 확률 강화"], ["스킬 강화"]),
-        "단검":       (["공격 강화", "속도 강화", "치명타 대미지 강화", "치명타 확률 강화"], ["스킬 강화"]),
-        "대검":       (["공격 강화", "속도 강화", "치명타 대미지 강화"], ["스킬 강화", "치명타 확률 강화"]),
-        "창":         (["공격 강화", "명중 강화", "치명타 대미지 강화", "치명타 확률 강화"], ["스킬 강화"]),
-        "활":         (["속도 강화", "공격 강화", "치명타 대미지 강화", "치명타 확률 강화"], ["스킬 강화"]),
-        "조총":       (["스킬 강화", "속도 강화", "치명타 대미지 강화", "치명타 확률 강화"], []),
-        "낫":         (["스킬 강화", "속도 강화"], ["치명타 확률 강화", "치명타 대미지 강화"]),
+        "스태프-신성": (["스킬 강화"], ["공격 강화"]),
+        "스태프-화염": (["스킬 강화"], ["공격 강화"]),
+        "스태프-냉기": (["스킬 강화"], ["공격 강화"]),
+        "태도":       (["명중 강화", "속도 강화"], ["스킬 강화"]),
+        "단검":       (["공격 강화", "속도 강화"], ["스킬 강화"]),
+        "대검":       (["공격 강화", "속도 강화"], ["스킬 강화"]),
+        "창":         (["공격 강화", "명중 강화"], ["스킬 강화"]),
+        "활":         (["속도 강화", "공격 강화"], ["스킬 강화"]),
+        "조총":       (["공격 강화"], ["스킬 강화"]),
+        "낫":         (["스킬 강화", "속도 강화"], ["공격 강화"]),
     }
 
     def __init__(self, user: discord.User, wdc: dict, wdo: dict, skill_data: dict):
@@ -339,7 +339,116 @@ class ResultButton(discord.ui.View):
                 view=self
             )
 
+class InsigniaView(discord.ui.View):
+    def __init__(self, user: discord.User, nickname: str, inventory: dict, equipped: list, ref_user_insignia):
+        super().__init__(timeout=60)
+        self.user = user
+        self.nickname = nickname
+        self.inventory = inventory  # {인장명: 개수}
+        self.equipped = equipped    # 길이 3 리스트, 빈 슬롯은 None 또는 '-'
+        self.ref_user_insignia = ref_user_insignia
 
+        for i in range(3):
+            insignia_name = self.equipped[i] if i < len(self.equipped) and self.equipped[i] else "-"
+            self.add_item(InsigniaSlotButton(label=insignia_name, slot_index=i, view_ref=self))
+
+    async def update_message(self, interaction: discord.Interaction):
+        desc_lines = []
+        for i in range(3):
+            name = self.equipped[i] if i < len(self.equipped) and self.equipped[i] else "-"
+            if name and name != "-" and name in self.inventory:
+                data = self.inventory[name]
+                level = data.get("레벨", "N/A")
+                stat = data.get("주스탯", "N/A")
+                value = data.get("초기 수치",0) + data.get("증가 수치", 0) * level
+                percent_names = ['강철의 맹세', '바람의 잔상', '약점 간파', '타오르는 혼']
+
+                if name in percent_names:
+                    value_str = f"{float(value) * 100:.1f}%"
+                else:
+                    value_str = str(value)
+
+                desc_lines.append(f"{i+1}번: {name} (Lv.{level}, {stat} +{value_str})")
+            else:
+                desc_lines.append(f"{i+1}번: -")
+
+        self.clear_items()
+        for i in range(3):
+            insignia_name = self.equipped[i] if i < len(self.equipped) and self.equipped[i] else "-"
+            self.add_item(InsigniaSlotButton(label=insignia_name, slot_index=i, view_ref=self))
+
+        embed = discord.Embed(
+            title=f"{self.user.display_name}님의 각인 장착 상태",
+            description="\n".join(desc_lines),
+            color=discord.Color.blue()
+        )
+        await interaction.message.edit(embed=embed, view=self)
+
+
+class InsigniaSlotButton(discord.ui.Button):
+    def __init__(self, label, slot_index, view_ref):
+        is_equipped = label != "-" and label != "" and label is not None
+        style = discord.ButtonStyle.success if is_equipped else discord.ButtonStyle.secondary
+        super().__init__(label=label, style=style)
+        self.slot_index = slot_index
+        self.view_ref = view_ref
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user != self.view_ref.user:
+            await interaction.response.send_message("본인만 조작할 수 있습니다.", ephemeral=True)
+            return
+
+        current_insignia = self.view_ref.equipped[self.slot_index] if self.slot_index < len(self.view_ref.equipped) else None
+
+        if current_insignia and current_insignia != '-':
+            # 해제
+            self.view_ref.equipped[self.slot_index] = ""
+            self.view_ref.ref_user_insignia.set(self.view_ref.equipped)
+            await interaction.response.defer()
+            await self.view_ref.update_message(interaction)
+        else:
+            # 장착 가능한 인장 목록 보여주기
+            options = [name
+                for name, data in self.view_ref.inventory.items()
+                if data.get("개수", 0) > 0
+                and name not in self.view_ref.equipped
+                and name != "" and name != "-"
+                ]
+            if not options:
+                await interaction.response.send_message("장착 가능한 인장이 없습니다.", delete_after= 3.0,ephemeral=True)
+                return
+
+            # 선택 메뉴 띄우기
+            select = InsigniaSelect(slot_index=self.slot_index, options=options, view_ref=self.view_ref, interaction = interaction)
+            view = discord.ui.View()
+            view.add_item(select)
+            await interaction.response.send_message(f"{self.slot_index +1}번 슬롯에 장착할 인장을 선택하세요.", view=view, ephemeral=True)
+
+
+class InsigniaSelect(discord.ui.Select):
+    def __init__(self, slot_index, options, view_ref, interaction):
+        super().__init__(placeholder="인장을 선택하세요", min_values=1, max_values=1,
+                         options=[discord.SelectOption(label=opt) for opt in options])
+        self.slot_index = slot_index
+        self.view_ref = view_ref
+        self.interaction = interaction
+
+    async def callback(self, interaction: discord.Interaction):
+        chosen = self.values[0]
+        if len(self.view_ref.equipped) < 3:
+            self.view_ref.equipped += [""] * (3 - len(self.view_ref.equipped))
+        self.view_ref.equipped[self.slot_index] = chosen
+        self.view_ref.ref_user_insignia.set(self.view_ref.equipped)
+
+        # 업데이트 메시지 갱신
+        # (슬롯 버튼을 포함한 뷰를 다시 띄우는게 좋음)
+        # 여기에선 예외 처리 없이 간단하게
+        await interaction.response.edit_message(
+            content=f"{self.slot_index + 1}번 슬롯에 장착 완료!",
+            delete_after=1.0,
+            view=None  # 뷰도 제거하려면 이 줄 포함
+        )
+        await self.view_ref.update_message(self.interaction)
 
 def redistribute_enhancements(total_points, template):
     assigned = {key: int(total_points * template[key]) for key in template}
@@ -461,7 +570,15 @@ def get_enhance_embed(challenger: dict, opponent: dict) -> discord.Embed:
         op_val = op_log.get(k, 0)
         diff = op_val - ch_val
 
-        emoji = "🟢" if diff > 0 else "🔴"
+        if diff > 0:
+            emoji = "🟢"
+            sign = "+"
+        elif diff < 0:
+            emoji = "🔴"
+            sign = "-"
+        else:
+            emoji = "⚪️"
+            sign = "±"
         sign = "+" if diff > 0 else "-"
         diff_display = f"{sign}{abs(diff)}회"
 
@@ -7946,6 +8063,57 @@ class hello(commands.Cog):
     @app_commands.command(name="이모지", description="이모지 테스트")
     async def emoji(self, interaction: discord.Interaction, 이모지 : str):
         await interaction.response.send_message(이모지)
+
+
+    @app_commands.command(name="각인", description="인장을 확인하고 장착 또는 해제합니다.")
+    async def handle_insignia(self, interaction: discord.Interaction):
+        await interaction.response.defer(thinking=True)
+        nickname = interaction.user.name
+
+        ref_item_insignia = db.reference(f"무기/각인/{nickname}")
+        ref_user_insignia = db.reference(f"무기/유저/{nickname}/각인")
+        inventory = ref_item_insignia.get() or {}
+        equipped = ref_user_insignia.get() or []
+
+        if not inventory:
+            await interaction.followup.send("보유한 인장이 없습니다.", ephemeral=True)
+            return
+
+        embed = discord.Embed(title="🔹 인장 관리", color=discord.Color.blue())
+
+        desc_lines = []
+        for i in range(3):
+            name = equipped[i] if i < len(equipped) and equipped[i] else "-"
+            if name and name != "-" and name in inventory:
+                data = inventory[name]
+                level = data.get("레벨", "N/A")
+                stat = data.get("주스탯", "N/A")
+                value = data.get("초기 수치",0) + data.get("증가 수치", 0) * level
+                percent_names = ['강철의 맹세', '바람의 잔상', '약점 간파', '타오르는 혼']
+
+                if name in percent_names:
+                    value = f"{float(value) * 100:.0f}%"
+                else:
+                    value = f"{value}"
+
+                desc_lines.append(f"{i+1}번: {name} (Lv.{level}, {stat} +{value})")
+            else:
+                desc_lines.append(f"{i+1}번: -")
+
+        embed.add_field(name="📌 장착 중", value="\n".join(desc_lines), inline=False)
+        embed.set_footer(text="버튼을 눌러 인장을 장착하거나 해제하세요.")
+
+        view = InsigniaView(
+            user=interaction.user,
+            nickname=nickname,
+            inventory=inventory,
+            equipped=equipped,
+            ref_user_insignia=ref_user_insignia,
+        )
+        msg = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+        await asyncio.sleep(60)
+        await msg.delete()
+
 async def setup(bot: commands.Bot) -> None:
     # await bot.add_cog(
     #     hello(bot),

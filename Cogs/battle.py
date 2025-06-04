@@ -269,6 +269,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         "Evasion" : 0,
         "DamageEnhance" : 0, # 피해 증폭
         "DamageReduction" : 0, # 피해 감소
+        "Tenacity" : 0,
         "Id": 0, # Id를 통해 도전자와 상대 파악 도전자 = 0, 상대 = 1
         "Accuracy": weapon_data_challenger.get("명중", 0),
         "BaseAccuracy": weapon_data_challenger.get("명중", 0),
@@ -276,6 +277,71 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         "Skills": challenger_merged_skills,
         "Status" : {}
     }
+
+    if not simulate:
+        # 유저 각인 정보 가져오기
+        ref_user_insignia = db.reference(f"무기/유저/{challenger_m.name}/각인")  # 예: 'nickname' 변수는 해당 유저명
+        user_insignia = ref_user_insignia.get() or {}
+
+        # 0,1,2 슬롯 중 인장 찾기
+        if isinstance(user_insignia, dict):
+            # 딕셔너리일 경우 한 번만 슬롯 돌기
+            for slot_key in ['0', '1', '2']:
+                insignia_name = user_insignia.get(slot_key, "")
+                if not insignia_name:
+                    continue
+                
+                # 인장 상세 정보 가져오기
+                ref_insignia_detail = db.reference(f"무기/각인/{challenger_m.name}/{insignia_name}")
+                insignia_detail = ref_insignia_detail.get() or {}
+
+                level = insignia_detail.get("레벨", 1)
+                base_value = insignia_detail.get("초기 수치", 0)
+                increase_per_level = insignia_detail.get("증가 수치", 0)
+
+                total_bonus = base_value + (increase_per_level * level)
+
+                if insignia_name == "약점 간파":
+                    challenger["CritChance"] += total_bonus
+                elif insignia_name == "꿰뚫는 집념":
+                    challenger["DefenseIgnore"] += total_bonus
+                elif insignia_name == "강철의 맹세":
+                    challenger["DamageReduction"] += total_bonus
+                elif insignia_name == "불굴의 심장":
+                    challenger["Tenacity"] += total_bonus
+                elif insignia_name == "타오르는 혼":
+                    challenger["DamageEnhance"] += total_bonus
+                elif insignia_name == "바람의 잔상":
+                    challenger["Evaison"] += total_bonus
+
+        elif isinstance(user_insignia, list):
+            # 리스트일 경우에도 한 번만 슬롯 돌기
+            for slot_key in [0, 1, 2]:
+                insignia_name = user_insignia[slot_key] if slot_key < len(user_insignia) else ""
+                if not insignia_name:
+                    continue
+
+                ref_insignia_detail = db.reference(f"무기/각인/{challenger_m.name}/{insignia_name}")
+                insignia_detail = ref_insignia_detail.get() or {}
+
+                level = insignia_detail.get("레벨", 1)
+                base_value = insignia_detail.get("초기 수치", 0)
+                increase_per_level = insignia_detail.get("증가 수치", 0)
+
+                total_bonus = base_value + (increase_per_level * level)
+
+                if insignia_name == "약점 간파":
+                    challenger["CritChance"] += total_bonus
+                elif insignia_name == "꿰뚫는 집념":
+                    challenger["DefenseIgnore"] += total_bonus
+                elif insignia_name == "강철의 맹세":
+                    challenger["DamageReduction"] += total_bonus
+                elif insignia_name == "불굴의 심장":
+                    challenger["Tenacity"] += total_bonus
+                elif insignia_name == "타오르는 혼":
+                    challenger["DamageEnhance"] += total_bonus
+                elif insignia_name == "바람의 잔상":
+                    challenger["Evasion"] += total_bonus
     
     skills_data = weapon_data_opponent.get("스킬", {})
     opponent_merged_skills = {}
@@ -318,6 +384,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         "Evasion" : 0,
         "DamageEnhance" : 0,
         "DamageReduction" : 0,
+        "Tenacity" : 0,
         "Id" : 1, # Id를 통해 도전자와 상대 파악 도전자 = 0, 상대 = 1
         "Accuracy": weapon_data_opponent.get("명중", 0),
         "BaseAccuracy": weapon_data_opponent.get("명중", 0),
@@ -359,86 +426,107 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 name=f"{challenger_m.display_name} vs {opponent_m.display_name} 무기 대결",
                 type=discord.ChannelType.public_thread
             )
-            
-    # 비동기 전투 시뮬레이션 전에 스탯을 임베드로 전송
-    embed = discord.Embed(title="⚔️ 무기 대결 시작!", color=discord.Color.green())
-
-    # 스킬 정보 추가
-    skills_message_challenger = "• 스킬: "
-    skills_list_challenger = []
-
-    # challenger['Skills']에서 모든 스킬 이름과 레벨을 가져와서 형식에 맞게 저장
-    for skill_name, skill_data in challenger['Skills'].items():
-        skill_level = skill_data['레벨']  # 스킬 레벨을 가져옴
-        skills_list_challenger.append(f"{skill_name} Lv {skill_level}")
-
-    # 스킬 목록을 콤마로 구분하여 메시지에 추가
-    skills_message_challenger += " ".join(skills_list_challenger)
-
-    # 스킬 정보 추가
-    skills_message_opponent = "• 스킬: "
-    skills_list_opponent = []
-
-    # challenger['Skills']에서 모든 스킬 이름과 레벨을 가져와서 형식에 맞게 저장
-    for skill_name, skill_data in opponent['Skills'].items():
-        skill_level = skill_data['레벨']  # 스킬 레벨을 가져옴
-        skills_list_opponent.append(f"{skill_name} Lv {skill_level}")
-
-    # 스킬 목록을 콤마로 구분하여 메시지에 추가
-    skills_message_opponent += " ".join(skills_list_opponent)
 
     # 챌린저 무기 스탯 정보 추가
-    embed.add_field(name=f"[{challenger['name']}](+{weapon_data_challenger.get('강화', 0)})", value=f"""
-    • 무기 타입: {challenger['Weapon']}
-    • 대미지: {round(challenger['Attack'] * calculate_accuracy(challenger['Accuracy']))} ~ {challenger['Attack']}
-    • 내구도: {challenger['HP']}
-    • 공격력: {challenger['Attack']}
-    • 스킬 증폭: {challenger['Spell']}
-    • 치명타 확률: {round(challenger['CritChance'] * 100, 2)}%
-    • 치명타 대미지: {round(challenger['CritDamage'] * 100, 2)}%
-    • 스피드: {challenger['Speed']} (회피율: {round(calculate_evasion(challenger['Speed']) * 100, 2)}%)
-    • 명중: {challenger['Accuracy']} (명중률: {round(calculate_accuracy(challenger['Accuracy']) * 100, 2)}%)
-    • 방어력: {challenger['Defense']} (대미지 감소율: {round(calculate_damage_reduction(challenger['Defense']) * 100, 2)}%)
-    {skills_message_challenger}
-    """, inline=False)
+    challenger_embed = discord.Embed(title="🟦 도전자 스탯", color=discord.Color.blue())
 
-    # 상대 무기 스탯 정보 추가
-    embed.add_field(name=f"[{opponent['name']}](+{weapon_data_opponent.get('강화', 0)})", value=f"""
-    • 무기 타입: {opponent['Weapon']}
-    • 대미지: {round(opponent['Attack'] * calculate_accuracy(opponent['Accuracy']))} ~ {opponent['Attack']}
-    • 내구도: {opponent['HP']}
-    • 공격력: {opponent['Attack']}
-    • 스킬 증폭: {opponent['Spell']}
-    • 치명타 확률: {round(opponent['CritChance'] * 100, 2)}%
-    • 치명타 대미지: {round(opponent['CritDamage'] * 100, 2)}%
-    • 스피드: {opponent['Speed']} (회피율: {round(calculate_evasion(opponent['Speed']) * 100, 2)}%)
-    • 명중: {opponent['Accuracy']} (명중률: {round(calculate_accuracy(opponent['Accuracy']) * 100, 2)}%)
-    • 방어력: {opponent['Defense']} (대미지 감소율: {round(calculate_damage_reduction(opponent['Defense']) * 100, 2)}%)
-    {skills_message_opponent}
-    """, inline=False)
+    challenger_embed.add_field(
+        name=f"[{challenger['name']}](+{weapon_data_challenger.get('강화', 0)}) [{challenger['Weapon']}]",
+        value=(
+            f"대미지        : `{round(challenger['Attack'] * calculate_accuracy(challenger['Accuracy']))} ~ {challenger['Attack']}`\n"
+            f"내구도        : `{challenger['HP']}`\n"
+            f"공격력        : `{challenger['Attack']}`\n"
+            f"스킬 증폭     : `{challenger['Spell']}`\n"
+            f"치명타 확률   : `{round(challenger['CritChance'] * 100, 2)}%`\n"
+            f"치명타 대미지 : `{round(challenger['CritDamage'] * 100, 2)}%`\n"
+            f"스피드        : `{challenger['Speed']}` (회피율: `{round(calculate_evasion(challenger['Speed']) * 100, 2)}%`)\n"
+            f"명중          : `{challenger['Accuracy']}` (명중률: `{round(calculate_accuracy(challenger['Accuracy']) * 100, 2)}%`)\n"
+            f"방어력        : `{challenger['Defense']}` (피해 감소: `{round(calculate_damage_reduction(challenger['Defense']) * 100, 2)}%`)\n"
+        ),
+        inline=False
+    )
+
+    # 스킬 정보 따로 아래에 추가
+    skills_text_challenger = "\n".join(
+        f"• {skill_name} Lv{skill_data['레벨']}" for skill_name, skill_data in challenger['Skills'].items()
+    )
+    challenger_embed.add_field(
+        name="📘 스킬",
+        value=skills_text_challenger or "없음",
+        inline=False
+)
+
+    # 상대 스탯 임베드
+    opponent_embed = discord.Embed(title="🟥 상대 스탯", color=discord.Color.red())
+
+    opponent_embed.add_field(
+        name=f"[{opponent['name']}](+{weapon_data_opponent.get('강화', 0)}) [{opponent['Weapon']}]",
+        value=(
+            f"대미지        : `{round(opponent['Attack'] * calculate_accuracy(opponent['Accuracy']))} ~ {opponent['Attack']}`\n"
+            f"내구도        : `{opponent['HP']}`\n"
+            f"공격력        : `{opponent['Attack']}`\n"
+            f"스킬 증폭     : `{opponent['Spell']}`\n"
+            f"치명타 확률   : `{round(opponent['CritChance'] * 100, 2)}%`\n"
+            f"치명타 대미지 : `{round(opponent['CritDamage'] * 100, 2)}%`\n"
+            f"스피드        : `{opponent['Speed']}` (회피율: `{round(calculate_evasion(opponent['Speed']) * 100, 2)}%`)\n"
+            f"명중          : `{opponent['Accuracy']}` (명중률: `{round(calculate_accuracy(opponent['Accuracy']) * 100, 2)}%`)\n"
+            f"방어력        : `{opponent['Defense']}` (피해 감소: `{round(calculate_damage_reduction(opponent['Defense']) * 100, 2)}%`)\n"
+        ),
+        inline=False
+    )
+
+    # 스킬 정보 따로 아래에 깔끔하게 추가
+    skills_text_opponent = "\n".join(
+        f"• {skill_name} Lv{skill_data['레벨']}" for skill_name, skill_data in opponent['Skills'].items()
+    )
+    opponent_embed.add_field(
+        name="📘 스킬",
+        value=skills_text_opponent or "없음",
+        inline=False
+)
 
     if not simulate:
-        await weapon_battle_thread.send(embed=embed)
+        await weapon_battle_thread.send(embed=challenger_embed)
+        await weapon_battle_thread.send(embed=opponent_embed)
+
+    def create_bar(value: int, max_val: int = 50, bar_length: int = 10):
+        filled_len = round((value / max_val) * bar_length)
+        return "■" * filled_len
 
     embed = discord.Embed(title="⚔️ 무기 강화 내역", color=discord.Color.green())
-    
+
+    # 강화 항목 표시 이름 매핑
+    enhance_name_map = {
+        "공격 강화": "공격", "방어 강화": "방어", "속도 강화": "속도",
+        "치명타 확률 강화": "치확", "치명타 대미지 강화": "치댐",
+        "밸런스 강화": "균형", "스킬 강화": "스증", "명중 강화": "명중", "내구도 강화": "내구"
+    }
+
     # 챌린저 무기 스탯 정보 추가
     challenger_weapon_enhancement = ""
     for enhancement, count in weapon_data_challenger.get('강화내역', {}).items():
-        challenger_weapon_enhancement += f"• {enhancement}: {count}\n"
+        label = enhance_name_map.get(enhancement, enhancement).ljust(4)
+        bar = create_bar(count)
+        challenger_weapon_enhancement += f"+{str(count).rjust(2)} {bar.ljust(10)} {label}\n"
 
-    embed.add_field(name=f"[{challenger['name']}](+{weapon_data_challenger.get('강화', 0)})", value=f"""
-    {challenger_weapon_enhancement if challenger_weapon_enhancement else "강화 내역 없음"}
-    """, inline=False)
+    embed.add_field(
+        name=f"[{challenger['name']}](+{weapon_data_challenger.get('강화', 0)})",
+        value=f"```ansi\n{challenger_weapon_enhancement if challenger_weapon_enhancement else '강화 내역 없음'}\n```",
+        inline=False
+    )
 
     # 상대 무기 스탯 정보 추가
     opponent_weapon_enhancement = ""
     for enhancement, count in weapon_data_opponent.get('강화내역', {}).items():
-        opponent_weapon_enhancement += f"• **{enhancement}** +{count}\n"
+        label = enhance_name_map.get(enhancement, enhancement).ljust(4)
+        bar = create_bar(count)
+        opponent_weapon_enhancement += f"+{str(count).rjust(2)} {bar.ljust(10)} {label}\n"
 
-    embed.add_field(name=f"[{opponent['name']}](+{weapon_data_opponent.get('강화', 0)})", value=f"""
-    {opponent_weapon_enhancement if opponent_weapon_enhancement else "강화 내역 없음"}
-    """, inline=False)
+    embed.add_field(
+        name=f"[{opponent['name']}](+{weapon_data_opponent.get('강화', 0)})",
+        value=f"```ansi\n{opponent_weapon_enhancement if opponent_weapon_enhancement else '강화 내역 없음'}\n```",
+        inline=False
+    )
 
     if not simulate:
         await weapon_battle_thread.send(embed=embed)
@@ -469,6 +557,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         if "일섬" in attacker["Status"]:
             if attacker["Status"]["일섬"]["duration"] == 1:
                 issen_data = skill_data_firebase['일섬']['values']
+                skill_level = defender['Skills']['일섬']['레벨']
                 accuracy_apply_rate = round((issen_data['기본_명중_반영_비율'] + issen_data['레벨당_명중_반영_비율'] * skill_level) * 100)
 
                 def calculate_damage(attacker,defender,multiplier):
