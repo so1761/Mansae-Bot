@@ -9,22 +9,10 @@ def calculate_damage_reduction(defense):
     return min(0.99, 1 - (100 / (100 + defense)))
 
 def calculate_accuracy(accuracy):
-    return min(0.99, 1 - (50 / (50 + accuracy)))
+    return min(0.99, 1 - (30 / (30 + accuracy)))
 
-def calculate_evasion(speed: int) -> float:
-    """
-    스피드를 받아서 회피율을 계산 (speed 1당 0.005씩 증가)
-
-    Args:
-        speed (int): 캐릭터의 스피드 스탯
-
-    Returns:
-        float: 0~1 범위의 회피율 (ex: 0.5는 50% 회피)
-    """
-    evasion = speed * 0.002
-    
-    return evasion
-
+def calculate_evasion_score(speed):
+    return speed // 5
 
 def calculate_move_chance(speed, move_chain=0):
     penalty_ratio = 0.7 ** move_chain
@@ -32,8 +20,25 @@ def calculate_move_chance(speed, move_chain=0):
     move_chance = min(0.99, 1 - math.exp(-effective_speed / 70))
     return move_chance
 
+def durability_bar(current, max_value, shield, bar_length=20):
+    if current < 0:
+        current = 0
+    total = min(current + shield, max_value)
+    ratio = total / max_value
+    filled = int((current / max_value) * bar_length)
+    shield_fill = int((min(shield, max_value - current) / max_value) * bar_length)
+    empty = bar_length - filled - shield_fill
+
+    bar = "█" * filled + "▒" * shield_fill + "░" * empty
+    result = f"`{current:>4} [{bar}] {max_value:<4}`"
+    
+    if shield > 0:
+        result += f" 🛡️{shield}"
+
+    return result
+
 def generate_tower_weapon(floor: int):
-    weapon_types = ["대검","스태프-화염", "조총", "스태프-냉기", "태도", "활", "스태프-신성", "단검", "낫"]
+    weapon_types = ["대검","스태프-화염", "조총", "스태프-냉기", "태도", "활", "스태프-신성", "단검", "낫", "창"]
     weapon_type = weapon_types[(floor - 1) % len(weapon_types)]  # 1층부터 시작
     enhancement_level = floor
 
@@ -43,9 +48,10 @@ def generate_tower_weapon(floor: int):
     # 기본 스탯
     base_stats = base_weapon_stats[weapon_type]
 
-    skill_weapons = ["스태프-화염", "스태프-냉기", "스태프-신성"]
-    attack_weapons = ["대검", "창", "활", "단검"]
-    hybrid_weapons = ["낫", "조총"]
+    skill_weapons = ["스태프-화염", "스태프-냉기", "스태프-신성", "낫"]
+    attack_weapons = ["대검", "창", "활", "단검", "조총", "태도"]
+    hybrid_weapons = []
+    critical_weapons = ["대검", "조총", "태도"]
 
     # 강화 단계만큼 일괄 증가
     weapon_data = base_stats.copy()
@@ -54,7 +60,11 @@ def generate_tower_weapon(floor: int):
     if weapon_type in skill_weapons:
         weapon_data["스킬 증폭"] += enhancement_level * 5
     elif weapon_type in attack_weapons:
-        weapon_data["공격력"] += enhancement_level * 2
+        if weapon_type in critical_weapons:
+            weapon_data["공격력"] += round(enhancement_level * 1.5)
+            weapon_data["치명타 확률"] += min((enhancement_level // 10) * 0.05, 70)
+        else:
+            weapon_data["공격력"] += enhancement_level * 2 
     elif weapon_type in hybrid_weapons:
         weapon_data["스킬 증폭"] += enhancement_level * 3
         weapon_data["공격력"] += enhancement_level * 1

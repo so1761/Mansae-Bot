@@ -207,12 +207,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             skill_message += message
             base_damage += damage
 
-        if attacker["Weapon"] == "창": #창 적정거리 추가 대미지
-            skill_level = attacker["Skills"]["창격"]["레벨"]
-            spearShot_data = skill_data_firebase['창격']['values']
-            base_damage *= 1 + (spearShot_data['중거리_기본공격_추가피해_레벨당'] * skill_level)
-            distance_bool = True
-
         # 피해 증폭
         base_damage *= 1 + attacker["DamageEnhance"]
 
@@ -439,7 +433,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             f"스킬 증폭     : `{challenger['Spell']}`\n"
             f"치명타 확률   : `{round(challenger['CritChance'] * 100, 2)}%`\n"
             f"치명타 대미지 : `{round(challenger['CritDamage'] * 100, 2)}%`\n"
-            f"스피드        : `{challenger['Speed']}` (회피율: `{round(calculate_evasion(challenger['Speed']) * 100, 2)}%`)\n"
+            f"스피드        : `{challenger['Speed']}` (회피: `{round(calculate_evasion_score(challenger['Speed']))}`)\n"
             f"명중          : `{challenger['Accuracy']}` (명중률: `{round(calculate_accuracy(challenger['Accuracy']) * 100, 2)}%`)\n"
             f"방어력        : `{challenger['Defense']}` (피해 감소: `{round(calculate_damage_reduction(challenger['Defense']) * 100, 2)}%`)\n"
         ),
@@ -468,7 +462,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             f"스킬 증폭     : `{opponent['Spell']}`\n"
             f"치명타 확률   : `{round(opponent['CritChance'] * 100, 2)}%`\n"
             f"치명타 대미지 : `{round(opponent['CritDamage'] * 100, 2)}%`\n"
-            f"스피드        : `{opponent['Speed']}` (회피율: `{round(calculate_evasion(opponent['Speed']) * 100, 2)}%`)\n"
+            f"스피드        : `{opponent['Speed']}` (회피: `{round(calculate_evasion_score(opponent['Speed']))}`)\n"
             f"명중          : `{opponent['Accuracy']}` (명중률: `{round(calculate_accuracy(opponent['Accuracy']) * 100, 2)}%`)\n"
             f"방어력        : `{opponent['Defense']}` (피해 감소: `{round(calculate_damage_reduction(opponent['Defense']) * 100, 2)}%`)\n"
         ),
@@ -599,7 +593,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 issen_damage, critical, explosion_damage, bleed_explosion = calculate_damage(defender,attacker,1)
         
                 shield_message = ""
-                remain_shield = ""
                 if attacker['Id'] == 0: # 도전자 공격
                     battle_embed = discord.Embed(title=f"{defender['name']}의 일섬!", color=discord.Color.red())
                 elif attacker['Id'] == 1: # 상대 공격
@@ -619,8 +612,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if "보호막" in attacker['Status']:
                     shield_amount = attacker["Status"]["보호막"]["value"]
-                    remain_shield = f"(🛡️보호막 {shield_amount})"
+                else:
+                    shield_amount = 0
+
                 
+
                 battle_embed.add_field(
                     name="일섬!",
                     value=f"명중의 {accuracy_apply_rate}%를 공격력과 합산한 대미지를 입힙니다!\n",
@@ -641,14 +637,27 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     explosion_message = f"(+🩸{explosion_damage} 대미지)"
                 battle_embed.add_field(name ="", value = f"**{issen_damage} 대미지!{crit_text}{explosion_message}{shield_message}**",inline = False)
 
-                if attacker['Id'] == 0: # 도전자 공격
-                    battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
+                if "보호막" in challenger['Status']:
+                    shield_amount_challenger = challenger["Status"]["보호막"]["value"]
+                else:
+                    shield_amount_challenger = 0
 
-                elif attacker['Id'] == 1: # 상대 공격
-                    if raid:
-                        battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['FullHP']}]{remain_shield}**")
-                    else:
-                        battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
+                if "보호막" in opponent['Status']:
+                    shield_amount_opponent = opponent["Status"]["보호막"]["value"]
+                else:
+                    shield_amount_opponent = 0
+                
+
+                if raid:
+                    bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
+                    battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
+                    bar = durability_bar(opponent['HP'], opponent['FullHP'], shield_amount_opponent)
+                    battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
+                else:
+                    bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
+                    battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
+                    bar = durability_bar(opponent['HP'], opponent['BaseHP'], shield_amount_opponent)
+                    battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
 
                 if attacker["HP"] <= 0:
                     result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
@@ -662,7 +671,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         if "출혈" in attacker["Status"]:
             bleed_damage = attacker["Status"]["출혈"]["value"]
             shield_message = ""
-            remain_shield = ""
             if attacker['Id'] == 0: # 도전자 공격
                 battle_embed = discord.Embed(title=f"{attacker['name']}의 출혈!🩸", color=discord.Color.red())
             elif attacker['Id'] == 1: # 상대 공격
@@ -682,20 +690,33 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             if "보호막" in attacker['Status']:
                 shield_amount = attacker["Status"]["보호막"]["value"]
-                remain_shield = f"(🛡️보호막 {shield_amount})"
+            else:
+                shield_amount = 0
                 
             attacker["HP"] -= bleed_damage
             battle_embed.add_field(name="", value = f"출혈 상태로 인하여 {bleed_damage} 대미지를 받았습니다!{shield_message}", inline = False)
             battle_embed.add_field(name="남은 턴", value = f"출혈 상태 남은 턴 : {attacker['Status']['출혈']['duration']}", inline = False)
 
-            if attacker['Id'] == 0: # 도전자 공격
-                battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
+            if "보호막" in challenger['Status']:
+                shield_amount_challenger = challenger["Status"]["보호막"]["value"]
+            else:
+                shield_amount_challenger = 0
 
-            elif attacker['Id'] == 1: # 상대 공격
-                if raid:
-                    battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['FullHP']}]{remain_shield}**")
-                else:
-                    battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
+            if "보호막" in opponent['Status']:
+                shield_amount_opponent = opponent["Status"]["보호막"]["value"]
+            else:
+                shield_amount_opponent = 0
+
+            if raid:
+                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
+                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
+                bar = durability_bar(opponent['HP'], opponent['FullHP'], shield_amount_opponent)
+                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
+            else:
+                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
+                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
+                bar = durability_bar(opponent['HP'], opponent['BaseHP'], shield_amount_opponent)
+                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
 
             if attacker["HP"] <= 0:
                 result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
@@ -709,7 +730,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         if "화상" in attacker["Status"]:
             burn_damage = attacker["Status"]["화상"]["value"]
             shield_message = ""
-            remain_shield = ""
             if attacker['Id'] == 0: # 도전자 공격
                 battle_embed = discord.Embed(title=f"{attacker['name']}의 화상!🔥", color=discord.Color.red())
             elif attacker['Id'] == 1: # 상대 공격
@@ -729,20 +749,33 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             if "보호막" in attacker['Status']:
                 shield_amount = attacker["Status"]["보호막"]["value"]
-                remain_shield = f"(🛡️보호막 {shield_amount})"
+            else:
+                shield_amount = 0
                 
             attacker["HP"] -= burn_damage
             battle_embed.add_field(name="", value = f"화상 상태로 인하여 {burn_damage} 대미지를 받았습니다!{shield_message}", inline = False)
             battle_embed.add_field(name="남은 턴", value = f"화상 상태 남은 턴 : {attacker['Status']['화상']['duration']}", inline = False)
 
-            if attacker['Id'] == 0: # 도전자 공격
-                battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
+            if "보호막" in challenger['Status']:
+                shield_amount_challenger = challenger["Status"]["보호막"]["value"]
+            else:
+                shield_amount_challenger = 0
 
-            elif attacker['Id'] == 1: # 상대 공격
-                if raid:
-                    battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['FullHP']}]{remain_shield}**")
-                else:
-                    battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
+            if "보호막" in opponent['Status']:
+                shield_amount_opponent = opponent["Status"]["보호막"]["value"]
+            else:
+                shield_amount_opponent = 0
+
+            if raid:
+                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
+                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
+                bar = durability_bar(opponent['HP'], opponent['FullHP'], shield_amount_opponent)
+                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
+            else:
+                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
+                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
+                bar = durability_bar(opponent['HP'], opponent['BaseHP'], shield_amount_opponent)
+                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
 
             if attacker["HP"] <= 0:
                 result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
@@ -756,7 +789,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         if "독" in attacker["Status"]:
             posion_damage = round(attacker['HP'] / 16)
             shield_message = ""
-            remain_shield = ""
             if attacker['Id'] == 0: # 도전자 공격
                 battle_embed = discord.Embed(title=f"{attacker['name']}의 독!🫧", color=discord.Color.red())
             elif attacker['Id'] == 1: # 상대 공격
@@ -767,14 +799,26 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             battle_embed.add_field(name="", value = f"독 상태로 인하여 {posion_damage} 대미지를 받았습니다!{shield_message}", inline = False)
             battle_embed.add_field(name="남은 턴", value = f"독 상태 남은 턴 : {attacker['Status']['독']['duration']}", inline = False)
 
-            if attacker['Id'] == 0: # 도전자 공격
-                battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
+            if "보호막" in challenger['Status']:
+                shield_amount_challenger = challenger["Status"]["보호막"]["value"]
+            else:
+                shield_amount_challenger = 0
 
-            elif attacker['Id'] == 1: # 상대 공격
-                if raid:
-                    battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['FullHP']}]{remain_shield}**")
-                else:
-                    battle_embed.add_field(name = "남은 내구도", value=f"**[{attacker['HP']} / {attacker['BaseHP']}]{remain_shield}**")
+            if "보호막" in opponent['Status']:
+                shield_amount_opponent = opponent["Status"]["보호막"]["value"]
+            else:
+                shield_amount_opponent = 0
+            
+            if raid:
+                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
+                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
+                bar = durability_bar(opponent['HP'], opponent['FullHP'], shield_amount_opponent)
+                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
+            else:
+                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
+                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
+                bar = durability_bar(opponent['HP'], opponent['BaseHP'], shield_amount_opponent)
+                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
 
             if attacker["HP"] <= 0:
                 result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
@@ -822,7 +866,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         # 가속 확률 계산 (스피드 5당 1% 확률)
         speed = attacker.get("Speed", 0)
         acceleration_chance = speed // 5  # 예: 스피드 50이면 10%
-        overdrive_chance = max(0, (speed - 200) // 10)  # 초가속: 200 초과부터 10당 1%
+        overdrive_chance = max(0, (speed - 200) // 5)  # 초가속: 200 초과부터 5당 1%
 
         skill_names = list(attacker["Skills"].keys())
         used_skill = []
@@ -847,9 +891,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                     # 메시지 처리
                     if overdrive_triggered:
-                        result_message += f"⚡ {attacker['name']}의 **초가속!** {skill}의 쿨타임이 **{cooldown_reduction} 감소**했습니다!\n"
+                        result_message += f"⚡**초가속!** {skill}의 쿨타임이 **{cooldown_reduction} 감소**했습니다!\n"
                     else:
-                        result_message += f"💨 {attacker['name']}의 가속! {skill}의 쿨타임이 1 감소했습니다!\n"
+                        result_message += f"💨가속! {skill}의 쿨타임이 1 감소했습니다!\n"
 
                     # 헤드샷이라면 장전 지속시간도 감소
                     if skill == "헤드샷" and "장전" in attacker["Status"]:
@@ -879,9 +923,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
         evasion = False # 회피 
 
-        accuracy = calculate_accuracy(attacker["Accuracy"]) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
-        speed_evasion = calculate_evasion(defender["Speed"])
-        if random.random() < (defender["Evasion"] + speed_evasion) * (1 - accuracy): # 회피
+        evasion_score = calculate_evasion_score(defender["Speed"])
+        accuracy = calculate_accuracy(attacker["Accuracy"] - evasion_score) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
+        accuracy = max(accuracy, 0.1)  # 최소 명중률 10%
+        if random.random() > accuracy: # 회피
         # if random.random() > accuracy:
             evasion = True
         else:
@@ -904,17 +949,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         result_message += skill_message
 
 
-        if attacked:
-            result_message, used_skill = process_on_hit_effects(
-                attacker, defender, evasion, skill_attack_names, used_skill, result_message,
-                skill_data_firebase, battle_embed
-            )
         
-        if skill_attack_names or attacked: # 공격시 상대의 빙결 상태 해제
-            if skill_attack_names != ['명상'] and not evasion: # 명상만 썼을 경우, 회피했을 경우 제외!
-                if '빙결' in defender['Status']:
-                    del defender['Status']['빙결']
-                    battle_embed.add_field(name="❄️빙결 상태 해제!", value = f"공격을 받아 빙결 상태가 해제되었습니다!\n")
 
         # 공격 처리
         if skill_attack_names: # 공격 스킬 사용 시
@@ -934,6 +969,17 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             damage, critical, dist, evade, skill_message = await attack(attacker, defender, evasion, reloading, skill_attack_names)
             result_message += skill_message
 
+        if attacked:
+            result_message, used_skill = process_on_hit_effects(
+                attacker, defender, evasion, critical, skill_attack_names, used_skill, result_message,
+                skill_data_firebase, battle_embed
+            )
+        
+        if skill_attack_names or attacked: # 공격시 상대의 빙결 상태 해제
+            if skill_attack_names != ['명상'] and not evasion: # 명상만 썼을 경우, 회피했을 경우 제외!
+                if '빙결' in defender['Status']:
+                    del defender['Status']['빙결']
+                    battle_embed.add_field(name="❄️빙결 상태 해제!", value = f"공격을 받아 빙결 상태가 해제되었습니다!\n")
 
         if cooldown_messages:
             result_message += "\n" + "\n".join(cooldown_messages)
@@ -949,7 +995,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             distance_text = "🎯" if dist else ""
 
             shield_message = ""
-            remain_shield = ""
             battle_embed.add_field(name="스킬", value = result_message.rstrip("\n"), inline = False)
             if "보호막" in defender['Status']:
                 shield_amount = defender["Status"]["보호막"]["value"]
@@ -966,17 +1011,33 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             if "보호막" in defender['Status']:
                 shield_amount = defender["Status"]["보호막"]["value"]
-                remain_shield = f"(🛡️보호막 {shield_amount})"
+            else:
+                shield_amount = 0
 
             battle_embed.add_field(name ="", value = f"**{evade_text}{distance_text} {damage} 대미지!{crit_text}{shield_message}**",inline = False)
             defender["HP"] -= damage
-            if attacker['Id'] == 0: # 도전자 공격
-                if raid:
-                    battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {defender['FullHP']}]**")
-                else:
-                    battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {defender['BaseHP']}]**")
-            elif attacker['Id'] == 1: # 상대 공격
-                battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_challenger.get('내구도', '')}]{remain_shield}**")
+
+            if "보호막" in challenger['Status']:
+                shield_amount_challenger = challenger["Status"]["보호막"]["value"]
+            else:
+                shield_amount_challenger = 0
+
+            if "보호막" in opponent['Status']:
+                shield_amount_opponent = opponent["Status"]["보호막"]["value"]
+            else:
+                shield_amount_opponent = 0
+            
+
+            if raid:
+                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
+                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
+                bar = durability_bar(opponent['HP'], opponent['FullHP'], shield_amount_opponent)
+                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
+            else:
+                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
+                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
+                bar = durability_bar(opponent['HP'], opponent['BaseHP'], shield_amount_opponent)
+                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
         else:
             # 크리티컬 또는 회피 여부에 따라 메시지 추가
             crit_text = "💥" if critical else ""
@@ -984,7 +1045,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             distance_text = "🎯" if dist else ""
 
             shield_message = ""
-            remain_shield = ""
             battle_embed.add_field(name="스킬", value = result_message.rstrip("\n"), inline = False)
             if "보호막" in defender['Status']:
                 shield_amount = defender["Status"]["보호막"]["value"]
@@ -1001,17 +1061,33 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
             if "보호막" in defender['Status']:
                 shield_amount = defender["Status"]["보호막"]["value"]
-                remain_shield = f"(🛡️보호막 {shield_amount})"
+            else:
+                shield_amount = 0
 
             battle_embed.add_field(name ="", value = f"**{evade_text}{distance_text} {damage} 대미지!{crit_text}{shield_message}**",inline = False)
             defender["HP"] -= damage
-            if attacker['Id'] == 0: # 도전자 공격
-                if raid:
-                    battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {defender['FullHP']}]{remain_shield}**")
-                else:
-                    battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_opponent.get('내구도', '')}]{remain_shield}**")
-            elif attacker['Id'] == 1: # 상대 공격
-                battle_embed.add_field(name = "남은 내구도", value=f"**[{defender['HP']} / {weapon_data_challenger.get('내구도', '')}]{remain_shield}**")
+
+            if "보호막" in challenger['Status']:
+                shield_amount_challenger = challenger["Status"]["보호막"]["value"]
+            else:
+                shield_amount_challenger = 0
+
+            if "보호막" in opponent['Status']:
+                shield_amount_opponent = opponent["Status"]["보호막"]["value"]
+            else:
+                shield_amount_opponent = 0
+            
+
+            if raid:
+                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
+                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
+                bar = durability_bar(opponent['HP'], opponent['FullHP'], shield_amount_opponent)
+                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
+            else:
+                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
+                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
+                bar = durability_bar(opponent['HP'], opponent['BaseHP'], shield_amount_opponent)
+                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
 
         if defender["HP"] <= 0:
             result = await end(attacker,defender,"attacker",raid,simulate,winner_id = attacker['Id'])

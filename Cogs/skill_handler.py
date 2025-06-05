@@ -94,7 +94,7 @@ def process_all_skills(
     return result_message, used_skill, skill_attack_names, cooldown_message
 
 def process_on_hit_effects(
-    attacker, defender, evasion, skill_attack_names, used_skill, result_message,
+    attacker, defender, evasion, critical_bool, skill_attack_names, used_skill, result_message,
     skill_data_firebase, battle_embed
 ):
     # 불굴 (방어자)
@@ -129,19 +129,18 @@ def process_on_hit_effects(
     # 일섬 (공격자 스킬 목록)
     if "일섬" in attacker["Skills"]:
         if not evasion:
-            bleed_rate = calculate_accuracy(attacker['Accuracy'])
-            if random.random() < bleed_rate:
+            if critical_bool:
                 issen_data = skill_data_firebase['일섬']['values']
                 skill_level = attacker["Skills"]["일섬"]["레벨"]
                 bleed_damage = issen_data['출혈_대미지'] + issen_data['레벨당_출혈_대미지'] * skill_level
                 if '출혈' in defender['Status']:
                     apply_status_for_turn(defender, "출혈", 3, bleed_damage)
                     if battle_embed:
-                        battle_embed.add_field(name="출혈!", value="출혈 상태에서 공격 적중으로 3턴간 **출혈** 부여!🩸", inline=False)
+                        battle_embed.add_field(name="출혈!", value="출혈 상태에서 치명타 공격으로 3턴간 **출혈** 부여!🩸", inline=False)
                 else:
                     apply_status_for_turn(defender, "출혈", 2, bleed_damage)
                     if battle_embed:
-                        battle_embed.add_field(name="출혈!", value="공격 적중으로 2턴간 **출혈** 부여!🩸", inline=False)
+                        battle_embed.add_field(name="출혈!", value="치명타 공격으로 2턴간 **출혈** 부여!🩸", inline=False)
     return result_message, used_skill
 
 def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebase):
@@ -163,13 +162,12 @@ def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebas
             result_message += f"재장전 중이라 {skill_name}을 사용할 수 없습니다!\n"
             return None, result_message, critical_bool # 재장전 중
 
+        # 스킬 쿨타임 적용
+        attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
+
         if skill_name == "빙하 균열":
             skill_message, damage= glacial_fissure(attacker,defender,evasion,skill_level, skill_data_firebase)
             result_message += skill_message
-            if evasion:
-                # 스킬 쿨타임 적용
-                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
-                return None, result_message, critical_bool
         elif skill_name == "불굴":
             skill_message, damage = unyielding(attacker, skill_level, skill_data_firebase)
             result_message += skill_message
@@ -178,7 +176,6 @@ def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebas
             result_message += skill_message
             if evasion:
                 # 스킬 쿨타임 적용
-                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
                 apply_status_for_turn(attacker, "장전", duration=1)
                 return None, result_message, critical_bool
         elif skill_name == "명상":
@@ -203,21 +200,11 @@ def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebas
             skill_message, damage = spearShot(attacker, defender, evasion, skill_level,skill_data_firebase)
             result_message += skill_message
         elif skill_name == "강타":
-            skill_message, damage = smash(attacker,defender,evasion,skill_level, skill_data_firebase)
-            critical_bool = True
+            skill_message, damage, critical_bool = smash(attacker,defender,evasion,skill_level, skill_data_firebase)
             result_message += skill_message
-            if evasion:
-                # 스킬 쿨타임 적용
-                critical_bool = False
-                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
-                return None, result_message, critical_bool 
         elif skill_name == "동상":
             skill_message, damage= frostbite(attacker,defender,evasion,skill_level, skill_data_firebase)
             result_message += skill_message
-            if evasion:
-                # 스킬 쿨타임 적용
-                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
-                return None, result_message, critical_bool
         elif skill_name == "속사":
             skill_message, damage = rapid_fire(attacker,defender,skill_level, skill_data_firebase)
             result_message += skill_message
@@ -232,24 +219,12 @@ def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebas
         elif skill_name == "수확":
             skill_message, damage = Reap(attacker,evasion,skill_level, skill_data_firebase)
             result_message += skill_message
-            if evasion:
-                # 스킬 쿨타임 적용
-                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
-                return None, result_message, critical_bool
         elif skill_name == "전선더미 방출":
             skill_message, damage= mech_Arm(attacker,defender,evasion,skill_level, skill_data_firebase)
             result_message += skill_message
-            if evasion:
-                # 스킬 쿨타임 적용
-                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
-                return None, result_message, critical_bool
         elif skill_name == "전깃줄":
             skill_message, damage= electronic_line(attacker,defender,skill_level, skill_data_firebase)
             result_message += skill_message
-            if evasion:
-                # 스킬 쿨타임 적용
-                attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
-                return None, result_message, critical_bool
         elif skill_name == "섀도볼":
             skill_message, damage= shadow_ball(attacker, defender, evasion, skill_level, skill_data_firebase)
             result_message += skill_message
@@ -275,7 +250,7 @@ def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebas
 
             if skill_name == "수확" and not evasion:
                 Reap_data = skill_data_firebase['수확']['values']
-                heal_multiplier = min(1, (Reap_data['기본_흡혈_비율'] + Reap_data['스킬증폭당_추가흡혈_비율'] * attacker["Spell"]))
+                heal_multiplier = Reap_data['기본_흡혈_비율']
                 real_damage = final_damage
 
                 if "보호막" in defender['Status']:
@@ -300,11 +275,10 @@ def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebas
                 # 최종 회복된 내구도
                 final_HP = attacker['HP']
                 if "치유 감소" in attacker["Status"]:
-                    result_message += f"가한 대미지의 {int(heal_multiplier * 100)}% 흡혈! (+{heal_amount}(-{reduced_heal}) 회복)\n내구도: [{initial_HP}] → [{final_HP}] ❤️ (+{final_HP - initial_HP})"
+                    result_message += f"가한 대미지의 {int(heal_multiplier * 100)}% 흡혈! (+{heal_amount - reduced_heal}(-{reduced_heal}) 회복)\n내구도: [{initial_HP} → {final_HP}] ❤️ (+{final_HP - initial_HP})"
                 else:
-                    result_message += f"가한 대미지의 {int(heal_multiplier * 100)}% 흡혈! (+{heal_amount} 회복)\n내구도: [{initial_HP}] → [{final_HP}] ❤️ (+{final_HP - initial_HP})"
-        # 스킬 쿨타임 적용
-        attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown
+                    result_message += f"가한 대미지의 {int(heal_multiplier * 100)}% 흡혈! (+{heal_amount - reduced_heal} 회복)\n내구도: [{initial_HP} → {final_HP}] ❤️ (+{final_HP - initial_HP})"
+        
 
     return max(0, round(total_damage)), result_message, critical_bool  # 최소 0 피해
 

@@ -53,6 +53,9 @@ def remove_status_effects(character, skill_data_firebase):
     if "은신" in character["Status"]:
         character["Evasion"] = 1 # 회피율 증가
 
+    if "꿰뚫림" in character["Status"]:
+        character["DamageReduction"] -= 0.3 * character["Status"]["꿰뚫림"]["value"]
+
     if "고속충전_속도증가" in character["Status"]:
         skill_level = character["Skills"]["고속충전"]["레벨"]
         supercharger_data = skill_data_firebase['고속충전']['values']

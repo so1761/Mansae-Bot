@@ -1,5 +1,5 @@
 import random
-from .battle_utils import calculate_accuracy, calculate_evasion
+from .battle_utils import calculate_accuracy, calculate_evasion_score
 from .status import apply_status_for_turn
 from .battle_utils import calculate_damage_reduction
 
@@ -16,25 +16,41 @@ def invisibility(attacker,skill_level, skill_data_firebase):
     return f"**기습** 사용! {invisibility_turns}턴간 은신 상태에 돌입하고 추가 피해를 입힙니다!\n"
 
 def smash(attacker, defender, evasion, skill_level, skill_data_firebase):
-    # 다음 공격은 반드시 치명타로 적용, 치명타 대미지 증가
-    # 3턴간 둔화 부여
     if not evasion:
         smash_data = skill_data_firebase['강타']['values']
-        slow_amount = smash_data['기본_둔화량'] + smash_data['레벨당_둔화량'] * skill_level
-        CritDamageIncrease_level = smash_data['레벨당_치명타피해_증가']
-        CritDamageIncrease = skill_level * CritDamageIncrease_level
-        attack_increase_level = smash_data['레벨당_공격력_증가']
-        attack_increase = skill_level * attack_increase_level
-        accuracy = calculate_accuracy(attacker["Accuracy"]) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
-        base_damage = random.uniform((attacker["Attack"] + attack_increase) * accuracy, (attacker["Attack"] + attack_increase))  # 최소 ~ 최대 피해
-        skill_damage = base_damage * (attacker["CritDamage"] + CritDamageIncrease)
-        apply_status_for_turn(defender, "둔화", duration=3,value = slow_amount)
-        message = f"**<:smash:1370302994301583380>강타** 사용!\n치명타 대미지 + {round(CritDamageIncrease * 100)}%, 공격력 + {attack_increase} 부여한 공격!\n3턴간 {round(slow_amount * 100)}% 둔화 효과를 부여합니다!"
-    else:
-        skill_damage = 0
-        message = f"\n**<:smash:1370302994301583380>강타**가 빗나갔습니다!\n"
+        base_damage = smash_data['기본_피해량'] + smash_data['레벨당_피해량_증가'] * skill_level
+        attack_multiplier = (smash_data['기본_공격력_계수'] + smash_data['레벨당_공격력_계수_증가'] * skill_level)
+        attack_value = base_damage + attacker["Attack"] * attack_multiplier
+        
+        accuracy = calculate_accuracy(attacker["Accuracy"])
+        skill_damage = random.uniform(attack_value * accuracy, attack_value)
+        critical_bool = False
+        stun_message = ""
+        break_message = ""
 
-    return message,skill_damage
+        if "보호막" in defender['Status']:
+            del defender['Status']['보호막'] # 보호막 파괴
+            break_message = "🛡️ 보호막 파괴!\n"
+
+        if random.random() < attacker["CritChance"]:
+            skill_damage *= attacker["CritDamage"]
+            critical_bool = True
+            stun_message = "💥 치명타 발생! 적에게 1턴간 **기절** 부여!\n"
+            apply_status_for_turn(defender,"기절",1)
+
+        # 메시지
+        message = (
+            f"**<:smash:1370302994301583380>강타** 사용! **{int(skill_damage)}**의 피해!\n{break_message}{stun_message}"
+        )
+
+    else:
+        # 회피 시
+        skill_damage = 0
+        message = "<:smash:1370302994301583380>강타**가 빗나갔습니다!\n반동으로 한 턴간 **기절**!"
+        apply_status_for_turn(attacker,"기절",1)
+        critical_bool = False
+
+    return message, skill_damage, critical_bool
 
 def issen(attacker, defender, skill_level, skill_data_firebase):
     # 일섬 : 다음턴에 적에게 날카로운 참격을 가한다. 회피를 무시하고 명중률에 비례한 대미지를 입히며, 표식을 부여한다.
@@ -45,60 +61,72 @@ def issen(attacker, defender, skill_level, skill_data_firebase):
     return message, 0
 
 def headShot(attacker, evasion, skill_level, skill_data_firebase):
-    """액티브 - 헤드샷: 공격력 or 스킬 증폭 중 높은 스탯을 기반으로 피해, 장전 스택마다 20%씩 추가 피해 누적"""
-    
+    """액티브 - 헤드샷"""
     if not evasion:
         headShot_data = skill_data_firebase['헤드샷']['values']
-        base_damage = headShot_data['기본_대미지'] + headShot_data['레벨당_기본_대미지'] * skill_level
-        skill_multiplier = headShot_data['기본_스킬증폭_계수'] + headShot_data['레벨당_스킬증폭_계수_증가'] * skill_level
-        attack_multiplier = headShot_data['기본_공격력_계수'] + headShot_data['레벨당_공격력_계수_증가'] * skill_level
-
-        # 장전 스택 가져오기
-        stack = attacker.get("HeadshotStack", 0)
-        bonus_multiplier = 1 + (0.5 * stack)  # 스택당 +50% 누적 피해 증가
-
-        # 공격력 기반 또는 스증 기반 중 높은 스탯 기준으로 결정
-        if attacker["Attack"] >= attacker["Spell"]:
-            # 공격력 기반 → 랜덤 딜 적용
-            accuracy = calculate_accuracy(attacker["Accuracy"])
-            attack_value = attacker["Attack"] * attack_multiplier
-            skill_damage = random.uniform(attack_value * accuracy, attack_value) * bonus_multiplier
-            damage_type = "공격력 기반"
-            critical_bool = False
-            if random.random() < attacker["CritChance"]:
-                skill_damage *= attacker["CritDamage"]
-                critical_bool = True
-        else:
-            # 스킬 증폭 기반 → 고정 딜, 치명타 없음
-            spell_value = attacker["Spell"] * skill_multiplier
-            skill_damage = spell_value * bonus_multiplier
-            damage_type = "스킬 증폭 기반"
-            critical_bool = False
+        crit_bonus = headShot_data['치명타_확률_증가']
+        base_damage = headShot_data['기본_피해량'] + headShot_data['레벨당_피해량_증가'] * skill_level
+        attack_multiplier = (headShot_data['기본_공격력_계수'] + headShot_data['레벨당_공격력_계수_증가'] * skill_level)
+        attack_value = base_damage + attacker["Attack"] * attack_multiplier
+        
+        # 공격력, 치명타 확률을 보정한 공격
+        accuracy = calculate_accuracy(attacker["Accuracy"])
+        skill_damage = random.uniform(attack_value * accuracy, attack_value)
+        critical_bool = False
+        cooldown_message = ""
+        if random.random() < attacker["CritChance"] + crit_bonus:
+            skill_damage *= attacker["CritDamage"]
+            critical_bool = True
+            attacker["Skills"]["헤드샷"]["현재 쿨타임"] -= 1
+            cooldown_message = "치명타로 헤드샷 쿨타임 1턴 감소!\n"
 
         # 메시지
         message = (
-            f"**<:headShot:1370300576545640459>헤드샷** 사용! ({damage_type})\n"
-            f"장전 스택: {stack} → 추가 피해 **+{int(round((bonus_multiplier - 1) * 100))}%** 적용!\n"
+            f"**<:headShot:1370300576545640459>헤드샷** 사용! 치명타 확률 +{int(round(crit_bonus * 100))}%! {int(skill_damage)}의 피해!\n{cooldown_message}"
         )
 
-        # 장전 스택 +1 및 상태 부여
-        attacker["HeadshotStack"] = stack + 1
+        # 장전 상태 부여
         apply_status_for_turn(attacker, "장전", duration=1)
         message += "1턴간 **장전** 상태가 됩니다."
 
     else:
         # 회피 시
         skill_damage = 0
-        message = "**<:headShot:1370300576545640459>헤드샷**이 빗나갔습니다!\n장전 스택이 초기화됩니다."
+        message = "**<:headShot:1370300576545640459>헤드샷**이 빗나갔습니다!\n"
         critical_bool = False
-        attacker["HeadshotStack"] = 0
 
     return message, skill_damage, critical_bool
 
 def spearShot(attacker,defender,evasion,skill_level, skill_data_firebase):
+    """ 창격 - 공격력 비례 스킬 대미지를 입히고, 4턴간 "꿰뚫림" 상태 부여 (최대 2스택)
+        꿰뚫림 : 받는 피해가 30% 증가
+        이미 꿰뚫림 2스택인 상대에게 창격 사용 시, 1턴간 기절 상태이상을 부여하며, 창격의 대미지가 2배가 된다.
+    """
     spearShot_data = skill_data_firebase['창격']['values']
-    message = f"\n창격 메세지\n"
-    skill_damage = 0
+    if not evasion:
+        base_damage = spearShot_data['기본_피해량'] + spearShot_data['레벨당_피해량_증가'] * skill_level
+        attack_multiplier = (spearShot_data['기본_공격력_계수'] + spearShot_data['레벨당_공격력_계수_증가'] * skill_level)
+        skill_damage = base_damage + attacker["Attack"] * attack_multiplier
+        message = f"\n**창격** 사용!\n{base_damage} + (공격력 {int(attack_multiplier * 100)}%)의 스킬 피해!\n"
+        if "꿰뚫림" in defender["Status"]:
+            pierce_stack = defender["Status"]["꿰뚫림"]["value"]
+            if pierce_stack == 2: # 2스택이 이미 쌓여있었다면?
+                del defender["Status"]["꿰뚫림"] # 꿰뚫림 스택 삭제
+                skill_damage *= 2 # 스킬 대미지 2배
+                apply_status_for_turn(defender,"기절",1) # 기절 부여
+                message += f"꿰뚫림 상태를 제거하고 창격 대미지 2배, 1턴간 기절 부여!\n"
+                
+            else: # 스택이 2 미만이라면
+                apply_status_for_turn(defender,"꿰뚫림",4,pierce_stack + 1)
+                message += f"꿰뚫림 스택 부여! 받는 피해 {int(30 * (pierce_stack + 1))}% 증가![꿰뚫림 스택 : **{pierce_stack + 1}**]\n"
+        else:
+            apply_status_for_turn(defender,"꿰뚫림",4,1)
+            message += f"꿰뚫림 스택 부여! 받는 피해 30% 증가![꿰뚫림 스택 : **1**]\n"
+    else:
+        message = f"\n창격이 빗나갔습니다!\n"
+        skill_damage = 0
+
+
     return message,skill_damage
     
 def mech_Arm(attacker,defender, evasion, skill_level, skill_data_firebase):
@@ -225,17 +253,19 @@ def rapid_fire(attacker, defender, skill_level, skill_data_firebase):
     rapid_fire_data = skill_data_firebase['속사']['values']
 
     speed = attacker["Speed"]
-    # hit_count = max(2, speed // rapid_fire_data['타격횟수결정_스피드값'])  # 최소 2회, 스피드 20당 1회 추가
-    hit_count = 3
+    hit_count = 2 + speed // rapid_fire_data['타격횟수결정_스피드값'] # 최소 2회, 스피드 100당 1회 추가
     total_damage = 0
 
-    def calculate_damage(attacker,defender,multiplier):
+    def calculate_damage(attacker,defender, damage, multiplier):
         accuracy = calculate_accuracy(attacker["Accuracy"]) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
-        base_damage = random.uniform(attacker["Attack"] * accuracy, attacker["Attack"])  # 최소 ~ 최대 피해
+        base_damage = random.uniform(damage * accuracy, damage)  # 최소 ~ 최대 피해
         critical_bool = False
         evasion_bool = False
-        speed_evasion = calculate_evasion(defender["Speed"])
-        if random.random() < (defender["Evasion"] + speed_evasion) * (1 - accuracy): # 회피
+
+        evasion_score = calculate_evasion_score(defender["Speed"])
+        accuracy = calculate_accuracy(attacker["Accuracy"] - evasion_score) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
+        accuracy = max(accuracy, 0.1)  # 최소 명중률 10%
+        if random.random() > accuracy: # 회피
         #if random.random() > accuracy:
             evasion_bool = True
             return 0, False, evasion_bool
@@ -251,8 +281,11 @@ def rapid_fire(attacker, defender, skill_level, skill_data_firebase):
         
     message = ""
     for i in range(hit_count):
-        multiplier = rapid_fire_data['일반타격_기본_피해배율'] + skill_level * rapid_fire_data['레벨당_피해배율'] + speed * 0.02
-        damage, critical, evade = calculate_damage(attacker, defender, multiplier=multiplier)
+        base_damage = rapid_fire_data['기본_대미지'] + rapid_fire_data['레벨당_대미지'] * skill_level
+        attack_multiplier = rapid_fire_data['기본_공격력_계수'] + rapid_fire_data['레벨당_공격력_계수_증가'] * skill_level
+        attack_damage = base_damage + attack_multiplier * attacker['Attack']
+        multiplier = 1 + speed * rapid_fire_data['스피드당_계수'] # 0.004
+        damage, critical, evade = calculate_damage(attacker, defender, attack_damage, multiplier=multiplier)
 
         crit_text = "💥" if critical else ""
         evade_text = "회피!⚡️" if evade else ""
@@ -268,7 +301,7 @@ def meditate(attacker, skill_level,skill_data_firebase):
     meditate_data = skill_data_firebase['명상']['values']
     shield_amount = int(round(attacker['Spell'] * (meditate_data['스킬증폭당_보호막_계수'] + meditate_data['레벨당_보호막_계수_증가'] * skill_level)))
     for skill, cooldown_data in attacker["Skills"].items():
-        if cooldown_data["현재 쿨타임"] > 0:
+        if cooldown_data["현재 쿨타임"] > 0 and skill != "명상":
             attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 현재 쿨타임 감소
     attacker['명상'] = attacker.get("명상", 0) + 1 # 명상 스택 + 1 추가
     apply_status_for_turn(attacker,"보호막",1,shield_amount)
@@ -429,8 +462,10 @@ def icathian_rain(attacker, defender, skill_level, skill_data_firebase):
         base_damage = random.uniform(attacker["Attack"] * accuracy, attacker["Attack"])  # 최소 ~ 최대 피해
         critical_bool = False
         evasion_bool = False
-        speed_evasion = calculate_evasion(defender["Speed"])
-        if random.random() < (defender["Evasion"] + speed_evasion)* (1 - accuracy): # 회피
+        evasion_score = calculate_evasion_score(defender["Speed"])
+        accuracy = calculate_accuracy(attacker["Accuracy"] - evasion_score) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
+        accuracy = max(accuracy, 0.1)  # 최소 명중률 10%
+        if random.random() > accuracy: # 회피
         # if random.random() > accuracy: # 회피
             evasion_bool = True
             return 0, False, evasion_bool

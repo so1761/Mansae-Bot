@@ -702,7 +702,7 @@ def apply_stat_change(nickname: str):
     return weapon_name, stat_changes
 
 def generate_tower_weapon(floor: int):
-    weapon_types = ["대검","스태프-화염", "조총", "스태프-냉기", "창", "활", "스태프-신성", "단검", "낫"]
+    weapon_types = ["대검","스태프-화염", "조총", "스태프-냉기", "태도", "활", "스태프-신성", "단검", "낫", "창"]
     weapon_type = weapon_types[(floor - 1) % len(weapon_types)]  # 1층부터 시작
     enhancement_level = floor
 
@@ -712,10 +712,10 @@ def generate_tower_weapon(floor: int):
     # 기본 스탯
     base_stats = base_weapon_stats[weapon_type]
 
-    skill_weapons = ["스태프-화염", "스태프-냉기", "스태프-신성"]
-    attack_weapons = ["대검", "창", "활", "단검"]
-    hybrid_weapons = ["낫", "조총"]
-
+    skill_weapons = ["스태프-화염", "스태프-냉기", "스태프-신성", "낫"]
+    attack_weapons = ["대검", "창", "활", "단검", "태도", "조총"]
+    hybrid_weapons = []
+    
     # 강화 단계만큼 일괄 증가
     weapon_data = base_stats.copy()
     weapon_data["이름"] = f"{weapon_type} +{enhancement_level}"
@@ -6560,12 +6560,9 @@ class hello(commands.Cog):
             placeholder="강화 타입을 선택하세요.",
             options=[
                 discord.SelectOption(label="공격 강화", description="공격력 증가", value="공격 강화"),
-                discord.SelectOption(label="치명타 확률 강화", description="치명타 확률 증가", value="치명타 확률 강화"),
-                discord.SelectOption(label="치명타 대미지 강화", description="치명타 대미지 증가", value="치명타 대미지 강화"),
                 discord.SelectOption(label="속도 강화", description="스피드 증가", value="속도 강화"),
                 discord.SelectOption(label="명중 강화", description="명중 증가", value="명중 강화"),
                 discord.SelectOption(label="방어 강화", description="방어력 증가", value="방어 강화"),
-                discord.SelectOption(label="내구도 강화", description="내구도 증가", value="내구도 강화"),
                 discord.SelectOption(label="스킬 강화", description="스킬 증폭 증가", value="스킬 강화"),
                 discord.SelectOption(label="밸런스 강화", description="모든 스탯 증가", value="밸런스 강화")
             ]
@@ -7410,7 +7407,8 @@ class hello(commands.Cog):
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="탑",description="탑을 등반하여 탑 코인을 획득합니다.")
-    async def infinity_tower(self, interaction: discord.Interaction, 빠른도전: bool = False):
+    @app_commands.describe(층수 = "도전할 층수를 선택하세요")
+    async def infinity_tower(self, interaction: discord.Interaction, 층수 : app_commands.Range[int, 1] = None):
         await interaction.response.defer()
         nickname = interaction.user.name
         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
@@ -7432,10 +7430,16 @@ class hello(commands.Cog):
         else:
             current_floor = tower_data.get("층수", 1)
         
-        if 빠른도전:
-            target_floor = (current_floor // 10 + 1) * 10
-        else:
+        if 층수 is None:
             target_floor = current_floor
+            
+        else:
+            if 층수 < current_floor: # 현재 층수보다 낮은 곳을 입력한다면?
+                warnembed = discord.Embed(title="실패",color = discord.Color.red())
+                warnembed.add_field(name="",value="다음 층수보다 낮은 층수를 입력했습니다! ❌")
+                await interaction.followup.send(embed = warnembed)
+                return
+            target_floor = 층수
 
         weapon_data_opponent = generate_tower_weapon(target_floor)
 
@@ -7543,7 +7547,7 @@ class hello(commands.Cog):
 
             result_embed = discord.Embed(title="시뮬레이션 결과",color = discord.Color.blue())
             win_probability = round((win_count / 1000) * 100, 2)
-            weapon_types = ["대검","스태프-화염", "조총", "스태프-냉기", "창", "활", "스태프-신성", "단검", "낫"]
+            weapon_types = ["대검","스태프-화염", "조총", "스태프-냉기", "태도", "활", "스태프-신성", "단검", "낫", "창"]
             weapon_type = weapon_types[(층수 - 1) % len(weapon_types)]  # 1층부터 시작
             result_embed.add_field(name=f"{weapon_data_challenger.get('이름','')}의 {층수}층({weapon_type}) 기대 승률",value=f"{win_probability}%")
             await interaction.followup.send(embed = result_embed)
