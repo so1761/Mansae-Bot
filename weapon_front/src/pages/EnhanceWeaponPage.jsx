@@ -268,7 +268,7 @@ export default function EnhanceWeaponPage() {
       return;
     }
 
-    if (weaponPartsLimit > itemData.강화재료) {
+    if (useWeaponPartsLimit > itemData.강화재료) {
       alert(`강화재료 개수가 부족합니다. 현재: ${itemData.강화재료}개`);
       return;
     }
@@ -292,7 +292,7 @@ export default function EnhanceWeaponPage() {
           usePolishLimit: usePolish,          // 연마제 사용 수 제한
           useHighPolishLimit: useHighPolish,  // 특수 연마제 사용 수 제한
           targetEnhancement: targetEnhancement, // 목표 강화 수치
-          useWeaponPartsLimit: weaponPartsLimit // 강화재료 사용 수 제한
+          useWeaponPartsLimit: useWeaponPartsLimit // 강화재료 사용 수 제한
         }),
       });
   

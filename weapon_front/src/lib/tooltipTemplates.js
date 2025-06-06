@@ -111,7 +111,7 @@ export const tooltipTemplates = {
           </span>
         </div>
         <div>
-          최종 피해량의 {round(params.기본_흡혈_비율 * 100)}% 만큼 내구도를 회복합니다.
+          최종 피해량의 {Math.round(params.기본_흡혈_비율 * 100)}% 만큼 내구도를 회복합니다.
         </div>
       </div>
     );
