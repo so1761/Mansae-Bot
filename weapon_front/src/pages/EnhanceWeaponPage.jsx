@@ -17,7 +17,7 @@ export default function EnhanceWeaponPage() {
   const [isRefreshing, setIsRefreshing] = useState(false); // 새로고침 중인지
   const [enhanceResult, setEnhanceResult] = useState(null);
   const [showEnhanceBatchModal, setShowEnhanceBatchModal] = useState(false); // 연속 강화 모달을 띄움
-  const [targetEnhancement, setTargetEnhancement] = useState(enhancementLevel + 1);
+  const [targetEnhancement, setTargetEnhancement] = useState(1);
   const [usePolishLimit, setUsePolishLimit] = useState(0);
   const [useHighPolishLimit, setUseHighPolishLimit] = useState(0);
   const [useWeaponPartsLimit, setUseWeaponPartsLimit] = useState(0);
@@ -50,7 +50,7 @@ export default function EnhanceWeaponPage() {
             <>
               <div className="text-red-500 text-4xl font-extrabold mb-4">😢 강화 실패...</div>
               <div className="text-xl text-red-700 font-semibold mb-4">아쉽게도 실패했습니다.</div>
-              <div className="bg-red-200 p-3 rounded-xl text-lg text-red-800 shadow-md">걱정 마세요, 다음 번에 성공할 수 있습니다!</div>
+              <div className="bg-red-200 p-3 rounded-xl text-lg text-red-800 shadow-md">다시 도전해보세요!</div>
             </>
           ) : (
             <>

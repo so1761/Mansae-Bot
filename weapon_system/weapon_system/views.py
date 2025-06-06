@@ -579,6 +579,7 @@ def enhance_weapon_batch(request):
                 "chance": enhancement_rate,
             })
 
+            weapon_stats = {}  # 미리 초기화
             if success:
                 current_enhancement += 1
                 # 스탯 적용 로직 (기존 enhance_weapon에서 그대로 가져오기)
