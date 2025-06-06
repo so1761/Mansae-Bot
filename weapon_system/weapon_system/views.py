@@ -590,7 +590,7 @@ def enhance_weapon_batch(request):
 
                 weapon_stats = {k: v for k, v in weapon_data.items() if k not in ["강화", "이름", "강화확률", "강화내역"]}
                 enhancement_options = db.reference(f"무기/강화").get() or {}
-                stats = enhancement_options.get(enhance_type, enhancement_options["밸런스 강화"])["stats"]
+                stats = enhancement_options.get(enhance_type, "밸런스 강화")["stats"]
 
                 for stat, base_increase in stats.items():
                     increase = round(base_increase, 3)
