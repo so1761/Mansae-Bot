@@ -522,6 +522,8 @@ def enhance_weapon_batch(request):
 
         nickname = body.get('discord_username')
         enhance_type = body.get('enhanceType', '밸런스 강화')
+        if isinstance(enhance_type, list):
+            enhance_type = enhance_type[0]
         use_polish_limit = int(body.get('usePolishLimit', 0))
         use_high_polish_limit = int(body.get('useHighPolishLimit', 0))
         target_enhancement = int(body.get('targetEnhancement', 0))
@@ -652,8 +654,6 @@ def enhance_weapon_batch(request):
             },
             "logs": logs
         })
-
-        
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
