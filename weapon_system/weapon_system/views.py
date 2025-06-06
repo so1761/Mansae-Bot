@@ -606,7 +606,7 @@ def enhance_weapon_batch(request):
         # 로그 집계
         success_count = sum(1 for log in logs if log["success"])
         attempt_count = len(logs)
-        
+
         # 최종 강화 수치 및 인벤토리 반영
         ref_weapon.update({"강화": current_enhancement})
         if success_count > 0 and weapon_stats: # 강화 성공했을 경우에만
@@ -624,6 +624,7 @@ def enhance_weapon_batch(request):
         if used_polish: used_items_text.append(f"연마제 {used_polish}개")
         if used_high_polish: used_items_text.append(f"특수 연마제 {used_high_polish}개")
 
+        previous_enhancement = weapon_data.get('강화', 0)
         ref_weapon = db.reference(f"무기/유저/{nickname}")
         weapon_data = ref_weapon.get() or {}
         # 웹훅 임베드 구성
@@ -650,14 +651,29 @@ def enhance_weapon_batch(request):
         except Exception as webhook_error:
             print("Webhook Error:", webhook_error)
 
+
+        formatted_logs = []
+        for log in logs:
+            from_lv = log["from"]
+            to_lv = log["to"]
+            success = log["success"]
+            chance = log["chance"]
+            message = f"{from_lv}강 ➜ {to_lv}강 : {'성공 🎉' if success else '실패 ❌'} (확률: {chance}%)"
+            costs = {
+                "강화재료": log["used_parts"],
+                "연마제": log["used_polish"],
+                "특수 연마제": log["used_high_polish"],
+            }
+            formatted_logs.append({"message": message, "costs": costs})
+
         return JsonResponse({
-            "result": f"{weapon_data.get('이름', '무기')} {weapon_data.get('강화', 0)}강 → {current_enhancement}강",
+            "result": f"{weapon_data.get('이름', '무기')} {previous_enhancement}강 → {current_enhancement}강",
             "used": {
                 "강화재료": used_parts,
                 "연마제": used_polish,
                 "특수 연마제": used_high_polish,
             },
-            "logs": logs
+            "logs": formatted_logs
         })
 
     except Exception as e:
