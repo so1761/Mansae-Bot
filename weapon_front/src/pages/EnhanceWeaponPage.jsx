@@ -358,11 +358,7 @@ export default function EnhanceWeaponPage() {
       console.log("서버 응답 데이터:", data);
   
       if (res.ok) {
-        if (data.success) {
           setEnhanceResultBatch(data);
-        } else {
-          setEnhanceResult('partial'); // 강화 시도는 했지만 목표 미도달
-        }
       } else {
         if (data.error) {
           alert(`에러: ${data.error}`);
@@ -740,7 +736,9 @@ export default function EnhanceWeaponPage() {
             </div>
           </div>
         )}
-      {enhanceResult && <EnhanceResultModal result={enhanceResult} onClose={closeModal}/>}
+      {enhanceResult && !enhanceResultBatch && (
+        <EnhanceResultModal result={enhanceResult} onClose={closeModal} />
+      )}
       {enhanceResultBatch && (
         <EnhanceResultBatchModal resultData={enhanceResultBatch} onClose={() => setEnhanceResultBatch(null)} />
       )}

@@ -621,6 +621,8 @@ def enhance_weapon_batch(request):
         if used_polish: used_items_text.append(f"연마제 {used_polish}개")
         if used_high_polish: used_items_text.append(f"특수 연마제 {used_high_polish}개")
 
+        ref_weapon = db.reference(f"무기/유저/{nickname}")
+        weapon_data = ref_weapon.get() or {}
         # 웹훅 임베드 구성
         embed_data = {
             "embeds": [
