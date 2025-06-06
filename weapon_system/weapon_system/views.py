@@ -652,19 +652,47 @@ def enhance_weapon_batch(request):
             print("Webhook Error:", webhook_error)
 
 
+        def format_logs(logs):
+            merged = []
+
+            for log in logs:
+                from_lv = log["from"]
+                to_lv = log["to"]
+
+                if merged and merged[-1]["from"] == from_lv and merged[-1]["to"] == to_lv:
+                    last = merged[-1]
+                    last["count"] += 1
+                    last["used_parts"] += log["used_parts"]
+                    last["used_polish"] += log["used_polish"]
+                    last["used_high_polish"] += log["used_high_polish"]
+                    last["success"] = log["success"]  # 마지막 결과 기준
+                else:
+                    merged.append({
+                        "from": from_lv,
+                        "to": to_lv,
+                        "count": 1,
+                        "used_parts": log["used_parts"],
+                        "used_polish": log["used_polish"],
+                        "used_high_polish": log["used_high_polish"],
+                        "success": log["success"]
+                    })
+
+            # 로그 포맷팅
+            formatted_logs = format_logs(logs)
+            for m in merged:
+                message = f"{m['from']}강 → {m['to']}강 {'성공 🎉' if m['success'] else '실패 ❌'}"
+                if m["count"] > 1:
+                    message += f" ({m['count']}회 시도)"
+                costs = {
+                    "강화재료": m["used_parts"],
+                    "연마제": m["used_polish"],
+                    "특수 연마제": m["used_high_polish"],
+                }
+                formatted_logs.append({"message": message, "costs": costs})
+
+            return formatted_logs
+
         formatted_logs = []
-        for log in logs:
-            from_lv = log["from"]
-            to_lv = log["to"]
-            success = log["success"]
-            chance = log["chance"]
-            message = f"{from_lv}강 ➜ {to_lv}강 : {'성공 🎉' if success else '실패 ❌'} (확률: {chance}%)"
-            costs = {
-                "강화재료": log["used_parts"],
-                "연마제": log["used_polish"],
-                "특수 연마제": log["used_high_polish"],
-            }
-            formatted_logs.append({"message": message, "costs": costs})
 
         return JsonResponse({
             "result": f"{weapon_data.get('이름', '무기')} {previous_enhancement}강 → {current_enhancement}강",

@@ -410,6 +410,10 @@ export default function EnhanceWeaponPage() {
     skill_enhance: "스킬 증폭",
   };
 
+  const maxWeaponParts = itemData.강화재료;
+  const maxPolish = itemData.연마제;
+  const maxHighPolish = itemData["특수 연마제"];
+
   return (
     <div className="px-6 py-0 max-w-3xl mx-auto">
       <h2 className="text-3xl font-bold text-indigo-600 mb-6 text-center">⚒️ 무기 강화</h2>
@@ -666,56 +670,98 @@ export default function EnhanceWeaponPage() {
             연속 강화
           </button>
         </div>
-      
+        
         {showEnhanceBatchModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
             <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
               <h2 className="text-xl font-bold mb-4">연속 강화 설정</h2>
 
               <div className="space-y-4">
+                {/* 목표 강화 수치 */}
                 <div>
                   <label className="block text-sm font-medium mb-1">목표 강화 수치</label>
-                  <input
-                    type="number"
-                    min={enhancementLevel + 1}
-                    max={20}
-                    value={targetEnhancement}
-                    onChange={(e) => setTargetEnhancement(Number(e.target.value))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={enhancementLevel + 1}
+                      max={20}
+                      value={targetEnhancement}
+                      onChange={(e) => setTargetEnhancement(Number(e.target.value))}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                    {[15, 18, 20].map((value) => (
+                      <button
+                        key={value}
+                        onClick={() => setTargetEnhancement(value)}
+                        className="text-xs bg-gray-200 px-2 py-1 rounded hover:bg-gray-300"
+                      >
+                        {value}강
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
+                {/* 강화재료 */}
                 <div>
                   <label className="block text-sm font-medium mb-1">강화재료 사용 제한</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={useWeaponPartsLimit}
-                    onChange={(e) => setUseWeaponPartsLimit(Number(e.target.value))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={maxWeaponParts}
+                      value={useWeaponPartsLimit}
+                      onChange={(e) => {
+                        const val = Math.min(Number(e.target.value), maxWeaponParts);
+                        setUseWeaponPartsLimit(val);
+                      }}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                    <button onClick={() => setUseWeaponPartsLimit((prev) => Math.min(prev + 1, maxWeaponParts))} className="text-xs bg-gray-200 px-2 py-1 rounded">+1</button>
+                    <button onClick={() => setUseWeaponPartsLimit((prev) => Math.min(prev + 10, maxWeaponParts))} className="text-xs bg-gray-200 px-2 py-1 rounded">+10</button>
+                    <button onClick={() => setUseWeaponPartsLimit(maxWeaponParts)} className="text-xs bg-gray-200 px-2 py-1 rounded">최대</button>
+                  </div>
                 </div>
 
+                {/* 연마제 */}
                 <div>
                   <label className="block text-sm font-medium mb-1">연마제 사용 수량</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={usePolishLimit}
-                    onChange={(e) => setUsePolishLimit(Number(e.target.value))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      max={maxPolish}
+                      value={usePolishLimit}
+                      onChange={(e) => {
+                        const val = Math.min(Number(e.target.value), maxPolish);
+                        setUsePolishLimit(val);
+                      }}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                    <button onClick={() => setUsePolishLimit((prev) => Math.min(prev + 1, maxPolish))} className="text-xs bg-gray-200 px-2 py-1 rounded">+1</button>
+                    <button onClick={() => setUsePolishLimit((prev) => Math.min(prev + 10, maxPolish))} className="text-xs bg-gray-200 px-2 py-1 rounded">+10</button>
+                    <button onClick={() => setUsePolishLimit(maxPolish)} className="text-xs bg-gray-200 px-2 py-1 rounded">최대</button>
+                  </div>
                 </div>
 
+                {/* 특수 연마제 */}
                 <div>
                   <label className="block text-sm font-medium mb-1">특수 연마제 사용 수량</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={useHighPolishLimit}
-                    onChange={(e) => setUseHighPolishLimit(Number(e.target.value))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      max={maxHighPolish}
+                      value={useHighPolishLimit}
+                      onChange={(e) => {
+                        const val = Math.min(Number(e.target.value), maxHighPolish);
+                        setUseHighPolishLimit(val);
+                      }}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                    <button onClick={() => setUseHighPolishLimit((prev) => Math.min(prev + 1, maxHighPolish))} className="text-xs bg-gray-200 px-2 py-1 rounded">+1</button>
+                    <button onClick={() => setUseHighPolishLimit((prev) => Math.min(prev + 10, maxHighPolish))} className="text-xs bg-gray-200 px-2 py-1 rounded">+10</button>
+                    <button onClick={() => setUseHighPolishLimit(maxHighPolish)} className="text-xs bg-gray-200 px-2 py-1 rounded">최대</button>
+                  </div>
                 </div>
               </div>
 
