@@ -16,6 +16,7 @@ export default function EnhanceWeaponPage() {
   const [enhancementOptions, setEnhancementOptions] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false); // 새로고침 중인지
   const [enhanceResult, setEnhanceResult] = useState(null);
+  const [enhanceResultBatch, setEnhanceResultBatch] = useState(null); // 연속 강화용
   const [showEnhanceBatchModal, setShowEnhanceBatchModal] = useState(false); // 연속 강화 모달을 띄움
   const [targetEnhancement, setTargetEnhancement] = useState(1);
   const [usePolishLimit, setUsePolishLimit] = useState(0);
@@ -26,6 +27,63 @@ export default function EnhanceWeaponPage() {
     40, 30, 20, 20, 10, 10, 5, 5, 3, 1
   ];
 
+  const EnhanceResultBatchModal = ({ resultData, onClose }) => {
+    const handleOverlayClick = (event) => {
+      if (event.target === event.currentTarget) {
+        onClose();
+      }
+    };
+  
+    if (!resultData) return null;
+  
+    const { success, result, logs, used } = resultData;
+  
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60"
+        onClick={handleOverlayClick}
+      >
+        <div className="bg-white rounded-2xl p-8 shadow-2xl text-center animate-fade-in-up w-[90%] max-w-2xl max-h-[90%] overflow-y-auto">
+          <div className={`text-4xl font-extrabold mb-4 ${success ? 'text-green-500' : 'text-yellow-600'}`}>
+            {success ? '🔥 연속 강화 완료!' : '🔁 연속 강화 진행'}
+          </div>
+  
+          <div className="text-lg text-gray-800 font-semibold mb-2">{result}</div>
+  
+          {used && (
+            <div className="text-sm text-gray-600 mb-4">
+              사용된 재료:
+              <ul className="list-disc list-inside">
+                <li>강화재료: {used["강화재료"]}개</li>
+                <li>연마제: {used["연마제"]}개</li>
+                <li>특수 연마제: {used["특수 연마제"]}개</li>
+              </ul>
+            </div>
+          )}
+  
+          <div className="text-sm text-left max-h-64 overflow-y-auto bg-gray-100 rounded-xl p-4 shadow-inner">
+            <div className="font-bold mb-2">🔍 강화 로그</div>
+            {logs && logs.length > 0 ? (
+              logs.map((log, index) => (
+                <div key={index} className="mb-2">
+                  <div className="font-semibold">{log.message}</div>
+                  {log.costs && (
+                    <div className="text-xs text-gray-500 ml-2">
+                      재료 사용 - 강화재료: {log.costs["강화재료"]}, 연마제: {log.costs["연마제"]}, 특수 연마제: {log.costs["특수 연마제"]}
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="text-gray-500">로그가 없습니다.</div>
+            )}
+          </div>
+  
+          <div className="text-gray-500 text-sm mt-6">아무데나 클릭하여 닫기</div>
+        </div>
+      </div>
+    );
+  };
   
   const EnhanceResultModal = ({ result, onClose }) => {
     const handleOverlayClick = (event) => {
@@ -301,7 +359,7 @@ export default function EnhanceWeaponPage() {
   
       if (res.ok) {
         if (data.success) {
-          setEnhanceResult('success');
+          setEnhanceResultBatch(data);
         } else {
           setEnhanceResult('partial'); // 강화 시도는 했지만 목표 미도달
         }
@@ -683,6 +741,9 @@ export default function EnhanceWeaponPage() {
           </div>
         )}
       {enhanceResult && <EnhanceResultModal result={enhanceResult} onClose={closeModal}/>}
+      {enhanceResultBatch && (
+        <EnhanceResultBatchModal resultData={enhanceResultBatch} onClose={() => setEnhanceResultBatch(null)} />
+      )}
     </div>
   );
 }

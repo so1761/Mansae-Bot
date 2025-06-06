@@ -1183,8 +1183,6 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
 
         # 🔹 강화 내역 가져오기
         nickname = interaction.user.name
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
 
         ref_enhancement_log = db.reference(f"무기/유저/{nickname}/강화내역")
         enhancement_log = ref_enhancement_log.get() or {}
@@ -1280,7 +1278,6 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
             "방어력": base_weapon_stat["방어력"] + round(base_weapon_stat["방어력"] * base_stat_increase + enhanced_stats.get("방어력", 0)),
             "스피드": base_weapon_stat["스피드"] + round(base_weapon_stat["스피드"] * base_stat_increase + enhanced_stats.get("스피드", 0)),
             "명중": base_weapon_stat["명중"] + round(base_weapon_stat["명중"] * base_stat_increase + enhanced_stats.get("명중", 0)),
-            "사거리": base_weapon_stat["사거리"],  # 사거리는 변경되지 않음
             "치명타 대미지": base_weapon_stat["치명타 대미지"] + enhanced_stats.get("치명타 대미지", 0),
             "치명타 확률": base_weapon_stat["치명타 확률"] + enhanced_stats.get("치명타 확률", 0),
             "스킬": skills,
@@ -1289,8 +1286,6 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
         }
 
         nickname = interaction.user.name
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
 
         ref_weapon = db.reference(f"무기/유저/{nickname}")
         ref_weapon.update(new_weapon_data)
@@ -7052,11 +7047,11 @@ class hello(commands.Cog):
         select = discord.ui.Select(
             placeholder="무기 타입을 선택하세요.",
             options = [
-                discord.SelectOption(label="활", description="긴 사거리와 정확성을 가진 무기"),
-                discord.SelectOption(label="대검", description="높은 공격력과 강력함"),
-                discord.SelectOption(label="단검", description="높은 기동성과 회피율"),
-                discord.SelectOption(label="조총", description="긴 사거리에서 강한 한 방"),
-                discord.SelectOption(label="창", description="준수한 사거리와 거리 조절 능력"),
+                discord.SelectOption(label="활", description="스피드를 통한 연사"),
+                discord.SelectOption(label="대검", description="높은 공격력과 보호막 파괴"),
+                discord.SelectOption(label="단검", description="높은 회피와 암살 능력"),
+                discord.SelectOption(label="조총", description="치명타를 통한 스킬 연속 사용"),
+                discord.SelectOption(label="창", description="꿰뚫림 스택을 통한 누적 피해"),
                 discord.SelectOption(label="낫", description="흡혈을 통한 유지력"),
                 discord.SelectOption(label="스태프-화염", description="강력한 화력과 지속적 화상 피해"),
                 discord.SelectOption(label="스태프-냉기", description="얼음과 관련된 군중제어기 보유"),
