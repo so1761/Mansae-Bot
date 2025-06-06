@@ -16,10 +16,16 @@ export default function EnhanceWeaponPage() {
   const [enhancementOptions, setEnhancementOptions] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false); // 새로고침 중인지
   const [enhanceResult, setEnhanceResult] = useState(null);
+  const [showEnhanceBatchModal, setShowEnhanceBatchModal] = useState(false); // 연속 강화 모달을 띄움
+  const [targetEnhancement, setTargetEnhancement] = useState(enhancementLevel + 1);
+  const [usePolishLimit, setUsePolishLimit] = useState(0);
+  const [useHighPolishLimit, setUseHighPolishLimit] = useState(0);
+  const [useWeaponPartsLimit, setUseWeaponPartsLimit] = useState(0);
     const enhancementChances = [
     100, 90, 90, 80, 80, 80, 70, 60, 60, 40,
     40, 30, 20, 20, 10, 10, 5, 5, 3, 1
   ];
+
   
   const EnhanceResultModal = ({ result, onClose }) => {
     const handleOverlayClick = (event) => {
@@ -243,6 +249,82 @@ export default function EnhanceWeaponPage() {
       setEnhanceResult('error'); // 오류 발생 시 상태 설정
     } finally {
       setIsEnhancing(false); // 강화 진행 상태 종료
+    }
+  };
+
+  const handleEnhanceBatch = async () => {
+    if (!user) return;
+
+    const discordUsername = user.discord_username;
+
+    // 아이템 재고 체크
+    if (usePolish > itemData.연마제) {
+      alert(`연마제 개수가 부족합니다. 현재: ${itemData.연마제}개`);
+      return;
+    }
+
+    if (useHighPolish > itemData["특수 연마제"]) {
+      alert(`특수 연마제 개수가 부족합니다. 현재: ${itemData["특수 연마제"]}개`);
+      return;
+    }
+
+    if (weaponPartsLimit > itemData.강화재료) {
+      alert(`강화재료 개수가 부족합니다. 현재: ${itemData.강화재료}개`);
+      return;
+    }
+
+    // 강화 수치 체크
+    if (targetEnhancement <= enhancementLevel) {
+      alert(`목표 강화 수치는 현재 강화 수치(${enhancementLevel}강)보다 커야 합니다.`);
+      return;
+    }
+
+    console.log('Selected Stats:', selectedStats);
+    setIsEnhancing(true);
+  
+    try {
+      const res = await fetch(`${baseUrl}/api/enhance_batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          discord_username: discordUsername,
+          enhanceType: selectedStats,
+          usePolishLimit: usePolish,          // 연마제 사용 수 제한
+          useHighPolishLimit: useHighPolish,  // 특수 연마제 사용 수 제한
+          targetEnhancement: targetEnhancement, // 목표 강화 수치
+          useWeaponPartsLimit: weaponPartsLimit // 강화재료 사용 수 제한
+        }),
+      });
+  
+      const data = await res.json();
+      console.log("서버 응답 데이터:", data);
+  
+      if (res.ok) {
+        if (data.success) {
+          setEnhanceResult('success');
+        } else {
+          setEnhanceResult('partial'); // 강화 시도는 했지만 목표 미도달
+        }
+      } else {
+        if (data.error) {
+          alert(`에러: ${data.error}`);
+        } else {
+          alert('알 수 없는 오류가 발생했습니다.');
+        }
+        setEnhanceResult('error');
+      }
+  
+      // 캐시 무효화 및 데이터 갱신
+      sessionStorage.removeItem(`weapon_${discordUsername}`);
+      sessionStorage.removeItem(`weapon_${discordUsername}_time`);
+      sessionStorage.removeItem(`items_${discordUsername}`);
+      sessionStorage.removeItem(`items_${discordUsername}_time`);
+      fetchAllData(discordUsername);
+    } catch (err) {
+      console.error('연속 강화 요청 실패:', err);
+      setEnhanceResult('error');
+    } finally {
+      setIsEnhancing(false);
     }
   };
   
@@ -481,9 +563,9 @@ export default function EnhanceWeaponPage() {
         </div>
         </div>
 
-        <div>
+        <div className="flex space-x-2">
           <button
-            className={`bg-blue-600 text-white px-4 py-2 rounded-xl transition w-full 
+            className={`flex-1 bg-blue-600 text-white px-4 py-2 rounded-xl transition
               ${
                 isEnhancing ||
                 enhancementLevel === 20 ||
@@ -514,8 +596,92 @@ export default function EnhanceWeaponPage() {
               ? '재료가 부족합니다'
               : '강화하기'}
           </button>
-        </div>
 
+          <button
+            className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition"
+            onClick={() => setShowEnhanceBatchModal(true)}
+            disabled={
+              isEnhancing ||
+              enhancementLevel === 20 ||
+              !selectedStats ||
+              selectedStats.length === 0 ||
+              !itemData.강화재료 ||
+              itemData.강화재료 === 0 
+            }
+          >
+            연속 강화
+          </button>
+        </div>
+      
+        {showEnhanceBatchModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+            <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4">연속 강화 설정</h2>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">목표 강화 수치</label>
+                  <input
+                    type="number"
+                    min={enhancementLevel + 1}
+                    max={20}
+                    value={targetEnhancement}
+                    onChange={(e) => setTargetEnhancement(Number(e.target.value))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">강화재료 사용 제한</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={useWeaponPartsLimit}
+                    onChange={(e) => setUseWeaponPartsLimit(Number(e.target.value))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">연마제 사용 수량</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={usePolishLimit}
+                    onChange={(e) => setUsePolishLimit(Number(e.target.value))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">특수 연마제 사용 수량</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={useHighPolishLimit}
+                    onChange={(e) => setUseHighPolishLimit(Number(e.target.value))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end space-x-2">
+                <button
+                  onClick={() => setShowEnhanceBatchModal(false)}
+                  className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleEnhanceBatch}
+                  className="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700"
+                >
+                  연속 강화 실행
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       {enhanceResult && <EnhanceResultModal result={enhanceResult} onClose={closeModal}/>}
     </div>
   );

@@ -512,6 +512,150 @@ def enhance_weapon(request):
     
     return JsonResponse({'error': 'Invalid request method'}, status=405)
     
+@csrf_exempt
+def enhance_weapon_batch(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+    try:
+        body = json.loads(request.body)
+
+        nickname = body.get('discord_username')
+        enhance_type = body.get('enhanceType', '밸런스 강화')
+        use_polish_limit = int(body.get('usePolishLimit', 0))
+        use_high_polish_limit = int(body.get('useHighPolishLimit', 0))
+        target_enhancement = int(body.get('targetEnhancement', 0))
+        weapon_parts_limit = int(body.get('useWeaponPartsLimit', 0))
+
+        # 강화 확률 테이블
+        enhancement_probabilities = {
+            0: 100, 1: 90, 2: 90, 3: 80, 4: 80, 5: 80,
+            6: 70, 7: 60, 8: 60, 9: 40, 10: 40, 11: 30,
+            12: 20, 13: 20, 14: 10, 15: 10, 16: 5, 17: 5,
+            18: 3, 19: 1,
+        }
+
+        ref_weapon = db.reference(f"무기/유저/{nickname}")
+        ref_item = db.reference(f"무기/아이템/{nickname}")
+        weapon_data = ref_weapon.get() or {}
+        item_data = ref_item.get() or {}
+
+        current_enhancement = weapon_data.get("강화", 0)
+        available_parts = item_data.get("강화재료", 0)
+        available_polish = item_data.get("연마제", 0)
+        available_high_polish = item_data.get("특수 연마제", 0)
+
+        used_parts = used_polish = used_high_polish = 0
+        logs = []
+
+        while (current_enhancement < target_enhancement and 
+               used_parts < weapon_parts_limit and 
+               available_parts - used_parts > 0):
+
+            # 강화 준비
+            enhancement_rate = enhancement_probabilities.get(current_enhancement, 0)
+            use_polish = used_polish < use_polish_limit and (available_polish - used_polish) > 0
+            use_high_polish = used_high_polish < use_high_polish_limit and (available_high_polish - used_high_polish) > 0
+
+            if use_polish:
+                enhancement_rate += 5
+            if use_high_polish:
+                enhancement_rate += 50
+
+            roll = random.randint(1, 100)
+            success = roll <= enhancement_rate
+
+            used_parts += 1
+            if use_polish: used_polish += 1
+            if use_high_polish: used_high_polish += 1
+
+            logs.append({
+                "from": current_enhancement,
+                "to": current_enhancement + 1 if success else current_enhancement,
+                "success": success,
+                "used_parts": 1,
+                "used_polish": 1 if use_polish else 0,
+                "used_high_polish": 1 if use_high_polish else 0,
+                "chance": enhancement_rate,
+            })
+
+            if success:
+                current_enhancement += 1
+                # 스탯 적용 로직 (기존 enhance_weapon에서 그대로 가져오기)
+                ref_weapon_log = db.reference(f"무기/유저/{nickname}/강화내역")
+                weapon_log_data = ref_weapon_log.get() or {}
+                current_stat_log = weapon_log_data.get(enhance_type, 0)
+                ref_weapon_log.update({enhance_type: current_stat_log + 1})
+
+                weapon_stats = {k: v for k, v in weapon_data.items() if k not in ["강화", "이름", "강화확률", "강화내역"]}
+                enhancement_options = db.reference(f"무기/강화").get() or {}
+                stats = enhancement_options.get(enhance_type, enhancement_options["밸런스 강화"])["stats"]
+
+                for stat, base_increase in stats.items():
+                    increase = round(base_increase, 3)
+                    final = round(weapon_stats.get(stat, 0) + increase, 3)
+                    if final >= 1 and stat == "치명타 확률":
+                        weapon_stats[stat] = 1
+                    else:
+                        weapon_stats[stat] = final
+                weapon_data.update(weapon_stats)
+
+        # 최종 강화 수치 및 인벤토리 반영
+        ref_weapon.update({"강화": current_enhancement})
+        ref_weapon.update(weapon_stats)
+        ref_item.update({
+            "강화재료": max(available_parts - used_parts, 0),
+            "연마제": max(available_polish - used_polish, 0),
+            "특수 연마제": max(available_high_polish - used_high_polish, 0),
+        })
+
+        # 로그 집계
+        success_count = sum(1 for log in logs if log["success"])
+        attempt_count = len(logs)
+
+        used_items_text = []
+        if used_parts: used_items_text.append(f"강화재료 {used_parts}개")
+        if used_polish: used_items_text.append(f"연마제 {used_polish}개")
+        if used_high_polish: used_items_text.append(f"특수 연마제 {used_high_polish}개")
+
+        # 웹훅 임베드 구성
+        embed_data = {
+            "embeds": [
+                {
+                    "title": f"✅ {nickname}님의 연속 강화 결과",
+                    "color": 0x00ff00,
+                    "fields": [
+                        {"name": "무기 이름", "value": f"`{weapon_data.get('이름','무기')}`", "inline": True},
+                        {"name": "강화 종류", "value": enhance_type, "inline": True},
+                        {"name": "강화 수치 변화", "value": f"{weapon_data.get('강화', 0) - success_count}강 ➜ {weapon_data.get('강화', 0)}강", "inline": True},
+                        {"name": "사용한 아이템", "value": ', '.join(used_items_text) if used_items_text else "없음", "inline": False},
+                        {"name": "성공 횟수 / 시도 횟수", "value": f"{success_count} / {attempt_count}", "inline": True},
+                    ],
+                    "footer": {"text": "무기 강화 시스템"},
+                }
+            ]
+        }
+
+        # 실제 전송
+        try:
+            requests.post(DISCORD_ENHANCE_WEBHOOK_URL, json=embed_data)
+        except Exception as webhook_error:
+            print("Webhook Error:", webhook_error)
+
+        return JsonResponse({
+            "result": f"{weapon_data.get('이름', '무기')} {weapon_data.get('강화', 0)}강 → {current_enhancement}강",
+            "used": {
+                "강화재료": used_parts,
+                "연마제": used_polish,
+                "특수 연마제": used_high_polish,
+            },
+            "logs": logs
+        })
+
+        
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
 def get_skill_params(request, discord_username):
     skill_name = request.GET.get('key')  # 프론트엔드에서 보내는 skill_tooltip_xxx
