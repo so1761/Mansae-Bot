@@ -605,7 +605,8 @@ def enhance_weapon_batch(request):
 
         # 최종 강화 수치 및 인벤토리 반영
         ref_weapon.update({"강화": current_enhancement})
-        ref_weapon.update(weapon_stats)
+        if success_count > 0 and weapon_stats: # 강화 성공했을 경우에만
+            ref_weapon.update(weapon_stats)
         ref_item.update({
             "강화재료": max(available_parts - used_parts, 0),
             "연마제": max(available_polish - used_polish, 0),
