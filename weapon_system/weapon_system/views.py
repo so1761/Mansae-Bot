@@ -603,6 +603,10 @@ def enhance_weapon_batch(request):
                         weapon_stats[stat] = final
                 weapon_data.update(weapon_stats)
 
+        # 로그 집계
+        success_count = sum(1 for log in logs if log["success"])
+        attempt_count = len(logs)
+        
         # 최종 강화 수치 및 인벤토리 반영
         ref_weapon.update({"강화": current_enhancement})
         if success_count > 0 and weapon_stats: # 강화 성공했을 경우에만
@@ -613,9 +617,7 @@ def enhance_weapon_batch(request):
             "특수 연마제": max(available_high_polish - used_high_polish, 0),
         })
 
-        # 로그 집계
-        success_count = sum(1 for log in logs if log["success"])
-        attempt_count = len(logs)
+        
 
         used_items_text = []
         if used_parts: used_items_text.append(f"강화재료 {used_parts}개")
