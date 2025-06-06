@@ -72,25 +72,7 @@ def process_all_skills(
             attacker, defender, skill_name, slienced, evasion, attacked,
             skill_data_firebase, result_message, used_skill, skill_attack_names, cooldown_message
         )
-
-    # 특수 상태 처리 (예: 기습)
-    if "기습" in attacker["Status"]:
-        skill_level = attacker["Skills"]["기습"]["레벨"]
-        invisibility_data = skill_data_firebase['기습']['values']
-        DefenseIgnore_increase = skill_level * invisibility_data['은신공격_레벨당_방관_증가']
-        bleed_chance = invisibility_data['은신공격_레벨당_출혈_확률'] * skill_level
-        bleed_damage = invisibility_data['은신공격_출혈_기본_지속피해'] + skill_level * invisibility_data['은신공격_출혈_레벨당_지속피해']
-        if random.random() < bleed_chance and not evasion and attacked:
-            bleed_turns = invisibility_data['은신공격_출혈_지속시간']
-            # apply_status_for_turn 함수는 별도 import 필요함
-            try:
-                from .status import apply_status_for_turn
-                apply_status_for_turn(defender, "출혈", duration=bleed_turns, value=bleed_damage)
-            except ImportError:
-                pass  # 임포트 불가 시 무시(예시)
-            result_message +=f"\n**🩸{attacker['name']}의 기습**!\n{bleed_turns}턴간 출혈 상태 부여!\n"
-        result_message +=f"\n**{attacker['name']}의 기습**!\n방어력 관통 + {DefenseIgnore_increase}!\n{round(invisibility_data['은신공격_레벨당_피해_배율'] * skill_level * 100)}% 추가 대미지!\n"
-    
+       
     return result_message, used_skill, skill_attack_names, cooldown_message
 
 def process_on_hit_effects(
@@ -180,6 +162,12 @@ def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebas
                 return None, result_message, critical_bool
         elif skill_name == "명상":
             skill_message, damage= meditate(attacker,skill_level, skill_data_firebase)
+            result_message += skill_message
+        elif skill_name == "기습":
+            if "기습" in attacker['Status']:
+                skill_message, damage = invisibility(attacker, defender, evasion, skill_level, skill_data_firebase, mode = "attack")
+            else:
+                skill_message, damage = invisibility(attacker, defender, evasion, skill_level, skill_data_firebase)
             result_message += skill_message
         elif skill_name == "타이머":
             skill_message, damage= timer()

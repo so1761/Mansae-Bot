@@ -905,32 +905,20 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         if '침묵' in attacker['Status']:
             slienced = True
 
-        if "기습" in skill_names:
-            skill_name = "기습"
-            skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
-            skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
-            skill_level = attacker["Skills"][skill_name]["레벨"]
-
-            if skill_cooldown_current == 0:
-                if slienced: # 침묵 상태일 경우
-                    result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
-                else:
-                    attacker["Skills"][skill_name]["현재 쿨타임"] = skill_cooldown_total
-                    result_message += invisibility(attacker,skill_level,skill_data_firebase)
-                    used_skill.append(skill_name)
-            else:
-                cooldown_message += f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴\n"
-
         evasion = False # 회피 
 
         evasion_score = calculate_evasion_score(defender["Speed"])
-        accuracy = calculate_accuracy(attacker["Accuracy"] - evasion_score) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
+        accuracy = calculate_accuracy(attacker["Accuracy"] - (evasion_score + defender["Evasion"])) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
         accuracy = max(accuracy, 0.1)  # 최소 명중률 10%
         if random.random() > accuracy: # 회피
         # if random.random() > accuracy:
             evasion = True
         else:
             attacked = True
+
+        if "기습" in defender["Status"]:
+            if evasion: # 기습 스킬 시전 후 회피했다면?
+                defender['evaded'] = True
 
         reloading = False
         if "장전" in attacker['Status']: 
@@ -947,9 +935,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         )
 
         result_message += skill_message
-
-
-        
 
         # 공격 처리
         if skill_attack_names: # 공격 스킬 사용 시

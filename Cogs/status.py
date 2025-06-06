@@ -40,18 +40,9 @@ def remove_status_effects(character, skill_data_firebase):
     character["DamageReduction"] = 0
 
     # 현재 적용 중인 상태 효과를 확인하고 반영
-    if "기습" in character["Status"]:
-        skill_level = character["Skills"]["기습"]["레벨"]
-        invisibility_data = skill_data_firebase['기습']['values']
-        DefenseIgnore_increase = invisibility_data['은신공격_레벨당_방관_증가'] * skill_level
-        character["DefenseIgnore"] += DefenseIgnore_increase
-        skill_level = character["Skills"]["기습"]["레벨"]
-
-        # 피해 증가
-        character["DamageEnhance"] += invisibility_data['은신공격_레벨당_피해_배율'] * skill_level
-
     if "은신" in character["Status"]:
-        character["Evasion"] = 1 # 회피율 증가
+        value = character["Status"]['은신']['value']
+        character["Evasion"] += value # 회피 수치 증가
 
     if "꿰뚫림" in character["Status"]:
         character["DamageReduction"] -= 0.3 * character["Status"]["꿰뚫림"]["value"]

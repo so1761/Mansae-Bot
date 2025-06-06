@@ -6519,1599 +6519,1599 @@ class hello(commands.Cog):
 
     
     
-    @app_commands.command(name="강화", description="보유한 무기를 강화합니다.")
-    async def enhance(self, interaction: discord.Interaction):
-        nickname = interaction.user.name
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
+#     @app_commands.command(name="강화", description="보유한 무기를 강화합니다.")
+#     async def enhance(self, interaction: discord.Interaction):
+#         nickname = interaction.user.name
+#         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+#         current_predict_season = cur_predict_seasonref.get()
 
-        ref_weapon = db.reference(f"무기/유저/{nickname}")
-        weapon_data = ref_weapon.get() or {}
-        ref_item = db.reference(f"무기/아이템/{nickname}")
-        item_data = ref_item.get() or {}
-        weapon_name = weapon_data.get("이름", "")
+#         ref_weapon = db.reference(f"무기/유저/{nickname}")
+#         weapon_data = ref_weapon.get() or {}
+#         ref_item = db.reference(f"무기/아이템/{nickname}")
+#         item_data = ref_item.get() or {}
+#         weapon_name = weapon_data.get("이름", "")
 
-        if weapon_name == "":
-            await interaction.response.send_message("무기가 없습니다! 먼저 무기를 생성하세요.", ephemeral=True)
-            return
+#         if weapon_name == "":
+#             await interaction.response.send_message("무기가 없습니다! 먼저 무기를 생성하세요.", ephemeral=True)
+#             return
 
-        weapon_enhanced = weapon_data.get("강화", 0)
-        weapon_parts = item_data.get("강화재료", 0)
+#         weapon_enhanced = weapon_data.get("강화", 0)
+#         weapon_parts = item_data.get("강화재료", 0)
 
-        weapon_embed = discord.Embed(title="무기 강화", color=0xff00ff)
-        weapon_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
-        weapon_embed.add_field(name="내구도", value=f"{weapon_data.get('내구도', 0)}", inline=False)
-        weapon_embed.add_field(name="공격력", value=f"{weapon_data.get('공격력', 0)}", inline=True)
-        weapon_embed.add_field(name="스킬 증폭", value=f"{weapon_data.get('스킬 증폭', 0)}", inline=True)
-        weapon_embed.add_field(name="방어력", value=f"{weapon_data.get('방어력', 0)}", inline=True)
-        weapon_embed.add_field(name="스피드", value=f"{weapon_data.get('스피드', 0)}", inline=True)
-        weapon_embed.add_field(name="명중", value=f"{weapon_data.get('명중', 0)}", inline=True)
-        weapon_embed.add_field(name="치명타 확률", value=f"{weapon_data.get('치명타 확률', 0) * 100:.1f}%", inline=True)
-        weapon_embed.add_field(name="치명타 대미지", value=f"{weapon_data.get('치명타 대미지', 0) * 100:.1f}%", inline=True)
-        weapon_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
+#         weapon_embed = discord.Embed(title="무기 강화", color=0xff00ff)
+#         weapon_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
+#         weapon_embed.add_field(name="내구도", value=f"{weapon_data.get('내구도', 0)}", inline=False)
+#         weapon_embed.add_field(name="공격력", value=f"{weapon_data.get('공격력', 0)}", inline=True)
+#         weapon_embed.add_field(name="스킬 증폭", value=f"{weapon_data.get('스킬 증폭', 0)}", inline=True)
+#         weapon_embed.add_field(name="방어력", value=f"{weapon_data.get('방어력', 0)}", inline=True)
+#         weapon_embed.add_field(name="스피드", value=f"{weapon_data.get('스피드', 0)}", inline=True)
+#         weapon_embed.add_field(name="명중", value=f"{weapon_data.get('명중', 0)}", inline=True)
+#         weapon_embed.add_field(name="치명타 확률", value=f"{weapon_data.get('치명타 확률', 0) * 100:.1f}%", inline=True)
+#         weapon_embed.add_field(name="치명타 대미지", value=f"{weapon_data.get('치명타 대미지', 0) * 100:.1f}%", inline=True)
+#         weapon_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
 
-        # 선택창 생성
-        select = discord.ui.Select(
-            placeholder="강화 타입을 선택하세요.",
-            options=[
-                discord.SelectOption(label="공격 강화", description="공격력 증가", value="공격 강화"),
-                discord.SelectOption(label="속도 강화", description="스피드 증가", value="속도 강화"),
-                discord.SelectOption(label="명중 강화", description="명중 증가", value="명중 강화"),
-                discord.SelectOption(label="방어 강화", description="방어력 증가", value="방어 강화"),
-                discord.SelectOption(label="스킬 강화", description="스킬 증폭 증가", value="스킬 강화"),
-                discord.SelectOption(label="밸런스 강화", description="모든 스탯 증가", value="밸런스 강화")
-            ]
-        )
+#         # 선택창 생성
+#         select = discord.ui.Select(
+#             placeholder="강화 타입을 선택하세요.",
+#             options=[
+#                 discord.SelectOption(label="공격 강화", description="공격력 증가", value="공격 강화"),
+#                 discord.SelectOption(label="속도 강화", description="스피드 증가", value="속도 강화"),
+#                 discord.SelectOption(label="명중 강화", description="명중 증가", value="명중 강화"),
+#                 discord.SelectOption(label="방어 강화", description="방어력 증가", value="방어 강화"),
+#                 discord.SelectOption(label="스킬 강화", description="스킬 증폭 증가", value="스킬 강화"),
+#                 discord.SelectOption(label="밸런스 강화", description="모든 스탯 증가", value="밸런스 강화")
+#             ]
+#         )
 
-        async def select_callback(interaction: discord.Interaction):
-            selected_enhance_type = select.values[0]
+#         async def select_callback(interaction: discord.Interaction):
+#             selected_enhance_type = select.values[0]
 
-            ref_weapon = db.reference(f"무기/유저/{nickname}")
-            weapon_data = ref_weapon.get() or {}
-            ref_item = db.reference(f"무기/아이템/{nickname}")
-            item_data = ref_item.get() or {}
-            weapon_name = weapon_data.get("이름", "")
-            weapon_enhanced = weapon_data.get("강화", 0)
-            weapon_parts = item_data.get("강화재료", 0)
+#             ref_weapon = db.reference(f"무기/유저/{nickname}")
+#             weapon_data = ref_weapon.get() or {}
+#             ref_item = db.reference(f"무기/아이템/{nickname}")
+#             item_data = ref_item.get() or {}
+#             weapon_name = weapon_data.get("이름", "")
+#             weapon_enhanced = weapon_data.get("강화", 0)
+#             weapon_parts = item_data.get("강화재료", 0)
             
-            polish_available = item_data.get("연마제", 0)
-            speacial_polish_available = item_data.get("특수 연마제", 0)
-            # 초기 연마 상태 (False: 미사용, True: 사용)
-            polish_state = False
-            speacial_polish_state = False
-            # 강화 버튼
-            enhance_button = discord.ui.Button(label="강화", style=discord.ButtonStyle.green)
+#             polish_available = item_data.get("연마제", 0)
+#             speacial_polish_available = item_data.get("특수 연마제", 0)
+#             # 초기 연마 상태 (False: 미사용, True: 사용)
+#             polish_state = False
+#             speacial_polish_state = False
+#             # 강화 버튼
+#             enhance_button = discord.ui.Button(label="강화", style=discord.ButtonStyle.green)
 
-            # 연마제 토글 버튼 (초기에는 미사용 상태)
-            polish_button = discord.ui.Button(label="🛠️연마: 미사용", style=discord.ButtonStyle.secondary)
+#             # 연마제 토글 버튼 (초기에는 미사용 상태)
+#             polish_button = discord.ui.Button(label="🛠️연마: 미사용", style=discord.ButtonStyle.secondary)
 
-            async def polish_callback(interaction: discord.Interaction):
-                nonlocal polish_state
-                # 연마제가 없으면 토글 불가
-                if polish_available <= 0:
-                    await interaction.response.send_message("연마제가 없습니다!", ephemeral=True)
-                    return
-                # 토글 상태 변경
-                polish_state = not polish_state
-                polish_button.label = "🛠️연마: 사용" if polish_state else "🛠️연마: 미사용"
-                polish_button.style = discord.ButtonStyle.success if polish_state else discord.ButtonStyle.secondary
-                # 변경된 버튼 상태를 반영한 뷰로 메시지 업데이트
-                ref_weapon = db.reference(f"무기/유저/{nickname}")
-                weapon_data = ref_weapon.get() or {}
-                ref_item = db.reference(f"무기/아이템/{nickname}")
-                item_data = ref_item.get() or {}
-                weapon_name = weapon_data.get("이름", "")
-                weapon_enhanced = weapon_data.get("강화", 0)
-                weapon_parts = item_data.get("강화재료", 0)
-                enhancement_rate = enhancement_probabilities[weapon_enhanced]
-                if polish_state:
-                    enhancement_rate += 5
-                if speacial_polish_state:
-                    enhancement_rate += 50
+#             async def polish_callback(interaction: discord.Interaction):
+#                 nonlocal polish_state
+#                 # 연마제가 없으면 토글 불가
+#                 if polish_available <= 0:
+#                     await interaction.response.send_message("연마제가 없습니다!", ephemeral=True)
+#                     return
+#                 # 토글 상태 변경
+#                 polish_state = not polish_state
+#                 polish_button.label = "🛠️연마: 사용" if polish_state else "🛠️연마: 미사용"
+#                 polish_button.style = discord.ButtonStyle.success if polish_state else discord.ButtonStyle.secondary
+#                 # 변경된 버튼 상태를 반영한 뷰로 메시지 업데이트
+#                 ref_weapon = db.reference(f"무기/유저/{nickname}")
+#                 weapon_data = ref_weapon.get() or {}
+#                 ref_item = db.reference(f"무기/아이템/{nickname}")
+#                 item_data = ref_item.get() or {}
+#                 weapon_name = weapon_data.get("이름", "")
+#                 weapon_enhanced = weapon_data.get("강화", 0)
+#                 weapon_parts = item_data.get("강화재료", 0)
+#                 enhancement_rate = enhancement_probabilities[weapon_enhanced]
+#                 if polish_state:
+#                     enhancement_rate += 5
+#                 if speacial_polish_state:
+#                     enhancement_rate += 50
 
-                enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
-                enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
-                enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
-                enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} → +{weapon_enhanced + 1})**", inline=False)
-                enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
-                await interaction.response.edit_message(embed=enhance_embed, view=weapon_view)
+#                 enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
+#                 enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
+#                 enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
+#                 enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} → +{weapon_enhanced + 1})**", inline=False)
+#                 enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
+#                 await interaction.response.edit_message(embed=enhance_embed, view=weapon_view)
 
-            speacial_polish_button = discord.ui.Button(label="💎특수 연마: 미사용", style=discord.ButtonStyle.secondary)
+#             speacial_polish_button = discord.ui.Button(label="💎특수 연마: 미사용", style=discord.ButtonStyle.secondary)
 
-            async def speacial_polish_callback(interaction: discord.Interaction):
-                nonlocal speacial_polish_state
-                # 연마제가 없으면 토글 불가
-                if speacial_polish_available <= 0:
-                    await interaction.response.send_message("특수 연마제가 없습니다!", ephemeral=True)
-                    return
-                # 토글 상태 변경
-                speacial_polish_state = not speacial_polish_state
-                speacial_polish_button.label = "💎특수 연마: 사용" if speacial_polish_state else "💎특수 연마: 미사용"
-                speacial_polish_button.style = discord.ButtonStyle.success if speacial_polish_state else discord.ButtonStyle.secondary
-                # 변경된 버튼 상태를 반영한 뷰로 메시지 업데이트
-                ref_weapon = db.reference(f"무기/유저/{nickname}")
-                weapon_data = ref_weapon.get() or {}
-                ref_item = db.reference(f"무기/아이템/{nickname}")
-                item_data = ref_item.get() or {}
-                weapon_name = weapon_data.get("이름", "")
-                weapon_enhanced = weapon_data.get("강화", 0)
-                weapon_parts = item_data.get("강화재료", 0)
-                enhancement_rate = enhancement_probabilities[weapon_enhanced]
-                if polish_state:
-                    enhancement_rate += 5
-                if speacial_polish_state:
-                    enhancement_rate += 50
+#             async def speacial_polish_callback(interaction: discord.Interaction):
+#                 nonlocal speacial_polish_state
+#                 # 연마제가 없으면 토글 불가
+#                 if speacial_polish_available <= 0:
+#                     await interaction.response.send_message("특수 연마제가 없습니다!", ephemeral=True)
+#                     return
+#                 # 토글 상태 변경
+#                 speacial_polish_state = not speacial_polish_state
+#                 speacial_polish_button.label = "💎특수 연마: 사용" if speacial_polish_state else "💎특수 연마: 미사용"
+#                 speacial_polish_button.style = discord.ButtonStyle.success if speacial_polish_state else discord.ButtonStyle.secondary
+#                 # 변경된 버튼 상태를 반영한 뷰로 메시지 업데이트
+#                 ref_weapon = db.reference(f"무기/유저/{nickname}")
+#                 weapon_data = ref_weapon.get() or {}
+#                 ref_item = db.reference(f"무기/아이템/{nickname}")
+#                 item_data = ref_item.get() or {}
+#                 weapon_name = weapon_data.get("이름", "")
+#                 weapon_enhanced = weapon_data.get("강화", 0)
+#                 weapon_parts = item_data.get("강화재료", 0)
+#                 enhancement_rate = enhancement_probabilities[weapon_enhanced]
+#                 if polish_state:
+#                     enhancement_rate += 5
+#                 if speacial_polish_state:
+#                     enhancement_rate += 50
 
-                enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
-                enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
-                enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
-                enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} → +{weapon_enhanced + 1})**", inline=False)
-                enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
-                await interaction.response.edit_message(embed=enhance_embed, view=weapon_view)
+#                 enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
+#                 enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
+#                 enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
+#                 enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} → +{weapon_enhanced + 1})**", inline=False)
+#                 enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
+#                 await interaction.response.edit_message(embed=enhance_embed, view=weapon_view)
 
-            polish_button.callback = polish_callback
-            speacial_polish_button.callback = speacial_polish_callback
+#             polish_button.callback = polish_callback
+#             speacial_polish_button.callback = speacial_polish_callback
 
-            async def enhance_callback(interaction: discord.Interaction):
-                nonlocal polish_state
-                nonlocal speacial_polish_state
-                nickname = interaction.user.name
+#             async def enhance_callback(interaction: discord.Interaction):
+#                 nonlocal polish_state
+#                 nonlocal speacial_polish_state
+#                 nickname = interaction.user.name
 
-                ref_weapon = db.reference(f"무기/유저/{nickname}")
-                weapon_data = ref_weapon.get() or {}
-                ref_item = db.reference(f"무기/아이템/{nickname}")
-                item_data = ref_item.get() or {}
-                weapon_enhanced = weapon_data.get("강화", 0)
-                weapon_parts = item_data.get("강화재료", 0)
+#                 ref_weapon = db.reference(f"무기/유저/{nickname}")
+#                 weapon_data = ref_weapon.get() or {}
+#                 ref_item = db.reference(f"무기/아이템/{nickname}")
+#                 item_data = ref_item.get() or {}
+#                 weapon_enhanced = weapon_data.get("강화", 0)
+#                 weapon_parts = item_data.get("강화재료", 0)
                 
-                if weapon_parts <= 0:
-                    await interaction.response.send_message("재료가 없습니다! 일일퀘스트를 통해 재료를 모아보세요!",ephemeral=True)
-                    return
+#                 if weapon_parts <= 0:
+#                     await interaction.response.send_message("재료가 없습니다! 일일퀘스트를 통해 재료를 모아보세요!",ephemeral=True)
+#                     return
 
-                if weapon_enhanced == 20:
-                    await interaction.response.send_message("이미 최고 강화입니다!",ephemeral=True)
-                    return
+#                 if weapon_enhanced == 20:
+#                     await interaction.response.send_message("이미 최고 강화입니다!",ephemeral=True)
+#                     return
                 
-                await interaction.response.defer()
-                ref_item.update({"강화재료": weapon_parts - 1})
+#                 await interaction.response.defer()
+#                 ref_item.update({"강화재료": weapon_parts - 1})
 
-                enhancement_rate = enhancement_probabilities[weapon_enhanced]
-                if polish_state:
-                    enhancement_rate += 5
-                    polish_state = False
-                    polish_button.label = "🛠️연마: 미사용"
-                    polish_button.style = discord.ButtonStyle.secondary
-                    # 연마제 차감
-                    item_ref = db.reference(f"무기/아이템/{nickname}")
-                    current_items = item_ref.get() or {}
-                    polish_count = current_items.get("연마제", 0)
-                    if polish_count > 0:
-                        item_ref.update({"연마제": polish_count - 1})
-                if speacial_polish_state:
-                    enhancement_rate += 50
-                    speacial_polish_state = False
-                    speacial_polish_button.label = "💎특수 연마: 미사용"
-                    speacial_polish_button.style = discord.ButtonStyle.secondary
-                    # 특수 연마제 차감
-                    item_ref = db.reference(f"무기/아이템/{nickname}")
-                    current_items = item_ref.get() or {}
-                    special_polish_count = current_items.get("특수 연마제", 0)
-                    if special_polish_count > 0:
-                        item_ref.update({"특수 연마제": special_polish_count - 1})
+#                 enhancement_rate = enhancement_probabilities[weapon_enhanced]
+#                 if polish_state:
+#                     enhancement_rate += 5
+#                     polish_state = False
+#                     polish_button.label = "🛠️연마: 미사용"
+#                     polish_button.style = discord.ButtonStyle.secondary
+#                     # 연마제 차감
+#                     item_ref = db.reference(f"무기/아이템/{nickname}")
+#                     current_items = item_ref.get() or {}
+#                     polish_count = current_items.get("연마제", 0)
+#                     if polish_count > 0:
+#                         item_ref.update({"연마제": polish_count - 1})
+#                 if speacial_polish_state:
+#                     enhancement_rate += 50
+#                     speacial_polish_state = False
+#                     speacial_polish_button.label = "💎특수 연마: 미사용"
+#                     speacial_polish_button.style = discord.ButtonStyle.secondary
+#                     # 특수 연마제 차감
+#                     item_ref = db.reference(f"무기/아이템/{nickname}")
+#                     current_items = item_ref.get() or {}
+#                     special_polish_count = current_items.get("특수 연마제", 0)
+#                     if special_polish_count > 0:
+#                         item_ref.update({"특수 연마제": special_polish_count - 1})
 
 
-                ref_weapon = db.reference(f"무기/유저/{nickname}")
-                weapon_data = ref_weapon.get() or {}
-                ref_item = db.reference(f"무기/아이템/{nickname}")
-                item_data = ref_item.get() or {}
-                weapon_name = weapon_data.get("이름", "")
-                weapon_enhanced = weapon_data.get("강화", 0)
-                weapon_parts = item_data.get("강화재료", 0)
-                enhancement_rate = enhancement_probabilities[weapon_enhanced]
-                if polish_state:
-                    enhancement_rate += 5
-                if speacial_polish_state:
-                    enhancement_rate += 50
+#                 ref_weapon = db.reference(f"무기/유저/{nickname}")
+#                 weapon_data = ref_weapon.get() or {}
+#                 ref_item = db.reference(f"무기/아이템/{nickname}")
+#                 item_data = ref_item.get() or {}
+#                 weapon_name = weapon_data.get("이름", "")
+#                 weapon_enhanced = weapon_data.get("강화", 0)
+#                 weapon_parts = item_data.get("강화재료", 0)
+#                 enhancement_rate = enhancement_probabilities[weapon_enhanced]
+#                 if polish_state:
+#                     enhancement_rate += 5
+#                 if speacial_polish_state:
+#                     enhancement_rate += 50
                     
-                enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
-                enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
-                enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
-                enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} → +{weapon_enhanced + 1})**", inline=False)
-                enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
-                await interaction.edit_original_response(embed=enhance_embed, view=weapon_view)
+#                 enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
+#                 enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
+#                 enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
+#                 enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} → +{weapon_enhanced + 1})**", inline=False)
+#                 enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
+#                 await interaction.edit_original_response(embed=enhance_embed, view=weapon_view)
 
-                channel = self.bot.get_channel(int(ENHANCEMENT_CHANNEL))
+#                 channel = self.bot.get_channel(int(ENHANCEMENT_CHANNEL))
 
-                userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-                userembed.add_field(name="", value=f"{interaction.user.display_name}님이 **[{weapon_name}]**의 강화를 시작했습니다!⚔️", inline=False)
-                userembed.add_field(name="", value=f"**[{weapon_name}](+{weapon_enhanced}) → [{weapon_name}](+{weapon_enhanced + 1})**", inline=False)
-                userembed.add_field(
-                    name="현재 강화 확률",
-                    value=f"{enhancement_rate}%",
-                    inline=False
-                )
-                userembed.add_field(name="", value=f"5초 후 결과가 발표됩니다!", inline=False)
-                enhance_message = await channel.send(embed=userembed)
+#                 userembed = discord.Embed(title="메세지", color=discord.Color.blue())
+#                 userembed.add_field(name="", value=f"{interaction.user.display_name}님이 **[{weapon_name}]**의 강화를 시작했습니다!⚔️", inline=False)
+#                 userembed.add_field(name="", value=f"**[{weapon_name}](+{weapon_enhanced}) → [{weapon_name}](+{weapon_enhanced + 1})**", inline=False)
+#                 userembed.add_field(
+#                     name="현재 강화 확률",
+#                     value=f"{enhancement_rate}%",
+#                     inline=False
+#                 )
+#                 userembed.add_field(name="", value=f"5초 후 결과가 발표됩니다!", inline=False)
+#                 enhance_message = await channel.send(embed=userembed)
 
-                roll = random.randint(1, 100)
+#                 roll = random.randint(1, 100)
 
-                if roll <= enhancement_rate:  # 성공
-                    weapon_enhanced += 1
-                    ref_weapon.update({"강화": weapon_enhanced})
+#                 if roll <= enhancement_rate:  # 성공
+#                     weapon_enhanced += 1
+#                     ref_weapon.update({"강화": weapon_enhanced})
                 
-                    # 강화 옵션 설정
+#                     # 강화 옵션 설정
 
-                    # 강화 함수
-                    async def enhance_weapon(enhancement_type):
+#                     # 강화 함수
+#                     async def enhance_weapon(enhancement_type):
                         
-                        ref_weapon = db.reference(f"무기/유저/{nickname}")
-                        weapon_data = ref_weapon.get() or {}
+#                         ref_weapon = db.reference(f"무기/유저/{nickname}")
+#                         weapon_data = ref_weapon.get() or {}
 
-                        ref_weapon_log = db.reference(f"무기/유저/{nickname}/강화내역")
-                        weapon_log_data = ref_weapon_log.get() or {}
+#                         ref_weapon_log = db.reference(f"무기/유저/{nickname}/강화내역")
+#                         weapon_log_data = ref_weapon_log.get() or {}
 
-                        original_enhancement = weapon_log_data.get(enhancement_type,0)
-                        ref_weapon_log.update({enhancement_type : original_enhancement + 1}) # 선택한 강화 + 1
+#                         original_enhancement = weapon_log_data.get(enhancement_type,0)
+#                         ref_weapon_log.update({enhancement_type : original_enhancement + 1}) # 선택한 강화 + 1
 
-                        # 무기의 기존 스탯 가져오기
-                        weapon_stats = {key: value for key, value in weapon_data.items() if key not in ["강화","이름", "강화확률", "강화내역"]}
+#                         # 무기의 기존 스탯 가져오기
+#                         weapon_stats = {key: value for key, value in weapon_data.items() if key not in ["강화","이름", "강화확률", "강화내역"]}
 
-                        # 강화 옵션 가져오기
-                        ref_weapon_enhance = db.reference(f"무기/강화")
-                        enhancement_options = ref_weapon_enhance.get() or {}
-                        options = enhancement_options.get(enhancement_type, enhancement_options["밸런스 강화"])
-                        stats = options["stats"]  # 실제 강화 수치가 있는 부분
-                        main_stat = options["main_stat"]
+#                         # 강화 옵션 가져오기
+#                         ref_weapon_enhance = db.reference(f"무기/강화")
+#                         enhancement_options = ref_weapon_enhance.get() or {}
+#                         options = enhancement_options.get(enhancement_type, enhancement_options["밸런스 강화"])
+#                         stats = options["stats"]  # 실제 강화 수치가 있는 부분
+#                         main_stat = options["main_stat"]
 
-                        # 스탯 적용
-                        for stat, base_increase in stats.items():
-                            # 선택한 스탯은 특화 배율 적용
-                            increase = round(base_increase, 3)  # 기본 배율 적용
-                            final_stat = round(weapon_stats.get(stat, 0) + increase, 3)
+#                         # 스탯 적용
+#                         for stat, base_increase in stats.items():
+#                             # 선택한 스탯은 특화 배율 적용
+#                             increase = round(base_increase, 3)  # 기본 배율 적용
+#                             final_stat = round(weapon_stats.get(stat, 0) + increase, 3)
                             
-                            if final_stat >= 1 and stat in ["치명타 확률"]:
-                                weapon_stats[stat] = 1
-                            else:
-                                weapon_stats[stat] = final_stat
+#                             if final_stat >= 1 and stat in ["치명타 확률"]:
+#                                 weapon_stats[stat] = 1
+#                             else:
+#                                 weapon_stats[stat] = final_stat
                         
-                        # 결과 반영
-                        ref_weapon.update(weapon_stats)
+#                         # 결과 반영
+#                         ref_weapon.update(weapon_stats)
 
-                        # 강화 성공
-                        embed_color = 0x00FF00  # 녹색
-                        status_text = "✅ **강화 성공!**"
+#                         # 강화 성공
+#                         embed_color = 0x00FF00  # 녹색
+#                         status_text = "✅ **강화 성공!**"
 
-                        used_items = []
-                        if polish_state:
-                            used_items.append("연마제")
-                        if speacial_polish_state:
-                            used_items.append("특수 연마제")
+#                         used_items = []
+#                         if polish_state:
+#                             used_items.append("연마제")
+#                         if speacial_polish_state:
+#                             used_items.append("특수 연마제")
 
-                        embed_data = {
-                            "embeds": [
-                                {
-                                    "title": status_text,
-                                    "color": embed_color,
-                                    "fields": [
-                                        {"name": "무기 이름", "value": f"`{weapon_name}`", "inline": True},
-                                        {"name": "강화 종류", "value": selected_enhance_type, "inline": True},
-                                        {"name": "현재 강화 수치", "value": f"{weapon_enhanced - 1}강 ➜ {weapon_enhanced}강", "inline": True},
-                                        {"name": "사용한 아이템", "value": ', '.join(used_items) if used_items else "없음", "inline": False},
-                                        {"name": "성공 확률", "value": f"{enhancement_rate}%", "inline": True},
-                                    ],
-                                    "footer": {"text": "무기 강화 시스템"},
-                                }
-                            ]
-                        }
-                        await enhance_message.edit(embed=discord.Embed.from_dict(embed_data["embeds"][0]))
+#                         embed_data = {
+#                             "embeds": [
+#                                 {
+#                                     "title": status_text,
+#                                     "color": embed_color,
+#                                     "fields": [
+#                                         {"name": "무기 이름", "value": f"`{weapon_name}`", "inline": True},
+#                                         {"name": "강화 종류", "value": selected_enhance_type, "inline": True},
+#                                         {"name": "현재 강화 수치", "value": f"{weapon_enhanced - 1}강 ➜ {weapon_enhanced}강", "inline": True},
+#                                         {"name": "사용한 아이템", "value": ', '.join(used_items) if used_items else "없음", "inline": False},
+#                                         {"name": "성공 확률", "value": f"{enhancement_rate}%", "inline": True},
+#                                     ],
+#                                     "footer": {"text": "무기 강화 시스템"},
+#                                 }
+#                             ]
+#                         }
+#                         await enhance_message.edit(embed=discord.Embed.from_dict(embed_data["embeds"][0]))
                         
-                    await enhance_weapon(selected_enhance_type)
+#                     await enhance_weapon(selected_enhance_type)
 
-                else:  # 실패
-                    await asyncio.sleep(5)
-                    # 강화 실패
-                    embed_color = 0xFF0000  # 빨간색
-                    status_text = "❌ **강화 실패**"
+#                 else:  # 실패
+#                     await asyncio.sleep(5)
+#                     # 강화 실패
+#                     embed_color = 0xFF0000  # 빨간색
+#                     status_text = "❌ **강화 실패**"
 
-                    used_items = []
-                    if polish_state:
-                        used_items.append("연마제")
-                    if speacial_polish_state:
-                        used_items.append("특수 연마제")
+#                     used_items = []
+#                     if polish_state:
+#                         used_items.append("연마제")
+#                     if speacial_polish_state:
+#                         used_items.append("특수 연마제")
 
-                    embed_data = {
-                        "embeds": [
-                            {
-                                "title": status_text,
-                                "color": embed_color,
-                                "fields": [
-                                    {"name": "무기 이름", "value": f"`{weapon_name}`", "inline": True},
-                                    {"name": "강화 종류", "value": selected_enhance_type, "inline": True},
-                                    {"name": "현재 강화 수치", "value": f"{weapon_enhanced}강 ➜ {weapon_enhanced + 1}강", "inline": True},
-                                    {"name": "사용한 아이템", "value": ', '.join(used_items) if used_items else "없음", "inline": False},
-                                    {"name": "성공 확률", "value": f"{enhancement_rate}%", "inline": True},
-                                ],
-                                "footer": {"text": "무기 강화 시스템"},
-                            }
-                        ]
-                    }
-                    await enhance_message.edit(embed=discord.Embed.from_dict(embed_data["embeds"][0]))
+#                     embed_data = {
+#                         "embeds": [
+#                             {
+#                                 "title": status_text,
+#                                 "color": embed_color,
+#                                 "fields": [
+#                                     {"name": "무기 이름", "value": f"`{weapon_name}`", "inline": True},
+#                                     {"name": "강화 종류", "value": selected_enhance_type, "inline": True},
+#                                     {"name": "현재 강화 수치", "value": f"{weapon_enhanced}강 ➜ {weapon_enhanced + 1}강", "inline": True},
+#                                     {"name": "사용한 아이템", "value": ', '.join(used_items) if used_items else "없음", "inline": False},
+#                                     {"name": "성공 확률", "value": f"{enhancement_rate}%", "inline": True},
+#                                 ],
+#                                 "footer": {"text": "무기 강화 시스템"},
+#                             }
+#                         ]
+#                     }
+#                     await enhance_message.edit(embed=discord.Embed.from_dict(embed_data["embeds"][0]))
                                     
             
-            enhance_button.callback = enhance_callback
-            weapon_view = discord.ui.View()
-            weapon_view.add_item(select)
-            weapon_view.add_item(enhance_button)
-            weapon_view.add_item(polish_button)
-            weapon_view.add_item(speacial_polish_button)
+#             enhance_button.callback = enhance_callback
+#             weapon_view = discord.ui.View()
+#             weapon_view.add_item(select)
+#             weapon_view.add_item(enhance_button)
+#             weapon_view.add_item(polish_button)
+#             weapon_view.add_item(speacial_polish_button)
 
-            def chunked_stat_lines(stat_lines, chunk_size=3):
-                return [
-                    ", ".join(stat_lines[i:i+chunk_size])
-                    for i in range(0, len(stat_lines), chunk_size)
-                ]
+#             def chunked_stat_lines(stat_lines, chunk_size=3):
+#                 return [
+#                     ", ".join(stat_lines[i:i+chunk_size])
+#                     for i in range(0, len(stat_lines), chunk_size)
+#                 ]
             
-            def generate_enhance_descriptions(enhancement_options):
-                fixed_descriptions = {
-                    "공격 강화": "공격력을 강화합니다!",
-                    "치명타 확률 강화": "치명타 확률을 강화합니다!",
-                    "치명타 대미지 강화": "치명타 대미지를 강화합니다!",
-                    "속도 강화": "스피드를 강화합니다!",
-                    "명중 강화": "명중을 강화합니다!",
-                    "방어 강화": "방어력을 강화합니다!",
-                    "내구도 강화": "내구도를 강화합니다!",
-                    "스킬 강화": "스킬 대미지를 강화합니다!",
-                    "밸런스 강화": "모든 스탯을 강화합니다!",
-                }
+#             def generate_enhance_descriptions(enhancement_options):
+#                 fixed_descriptions = {
+#                     "공격 강화": "공격력을 강화합니다!",
+#                     "치명타 확률 강화": "치명타 확률을 강화합니다!",
+#                     "치명타 대미지 강화": "치명타 대미지를 강화합니다!",
+#                     "속도 강화": "스피드를 강화합니다!",
+#                     "명중 강화": "명중을 강화합니다!",
+#                     "방어 강화": "방어력을 강화합니다!",
+#                     "내구도 강화": "내구도를 강화합니다!",
+#                     "스킬 강화": "스킬 대미지를 강화합니다!",
+#                     "밸런스 강화": "모든 스탯을 강화합니다!",
+#                 }
                 
 
-                enhance_description = {}
+#                 enhance_description = {}
 
                 
-                for name, stats in enhancement_options.items():
+#                 for name, stats in enhancement_options.items():
                     
-                    # 고정 문구 유지
-                    fixed_line = fixed_descriptions.get(name, f"{name} 효과!")
+#                     # 고정 문구 유지
+#                     fixed_line = fixed_descriptions.get(name, f"{name} 효과!")
 
-                    # 스탯 설명 부분 자동 생성
-                    stat_lines = []
-                    for stat_name, value in stats['stats'].items():
-                        if stat_name in ["치명타 확률", "치명타 대미지"]:
-                            stat_lines.append(f"{stat_name} + {round(value * 100)}%")
-                        else:
-                            stat_lines.append(f"{stat_name} + {value}")
+#                     # 스탯 설명 부분 자동 생성
+#                     stat_lines = []
+#                     for stat_name, value in stats['stats'].items():
+#                         if stat_name in ["치명타 확률", "치명타 대미지"]:
+#                             stat_lines.append(f"{stat_name} + {round(value * 100)}%")
+#                         else:
+#                             stat_lines.append(f"{stat_name} + {value}")
 
-                    # 3개마다 줄바꿈
-                    chunked_lines = chunked_stat_lines(stat_lines, 3)
-                    full_description = fixed_line + "\n" + "\n".join(chunked_lines)
+#                     # 3개마다 줄바꿈
+#                     chunked_lines = chunked_stat_lines(stat_lines, 3)
+#                     full_description = fixed_line + "\n" + "\n".join(chunked_lines)
 
-                    enhance_description[name] = full_description
+#                     enhance_description[name] = full_description
 
-                return enhance_description
+#                 return enhance_description
             
-            ref_weapon_enhance = db.reference(f"무기/강화")
-            enhancement_options = ref_weapon_enhance.get() or {}
-            enhance_description = generate_enhance_descriptions(enhancement_options)
+#             ref_weapon_enhance = db.reference(f"무기/강화")
+#             enhancement_options = ref_weapon_enhance.get() or {}
+#             enhance_description = generate_enhance_descriptions(enhancement_options)
 
-            global enhancement_probabilities
-            enhancement_rate = enhancement_probabilities[weapon_enhanced]
-            if polish_state:
-                enhancement_rate += 5
-            if speacial_polish_state:
-                enhancement_rate += 50
-            enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
-            enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
-            enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
-            enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} → +{weapon_enhanced + 1})**", inline=False)
-            enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
-            await interaction.response.edit_message(embed=enhance_embed, view=weapon_view)
+#             global enhancement_probabilities
+#             enhancement_rate = enhancement_probabilities[weapon_enhanced]
+#             if polish_state:
+#                 enhancement_rate += 5
+#             if speacial_polish_state:
+#                 enhancement_rate += 50
+#             enhance_embed = discord.Embed(title="무기 강화", color=0xff00ff)
+#             enhance_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
+#             enhance_embed.add_field(name="강화 설명", value=enhance_description[selected_enhance_type], inline=False)
+#             enhance_embed.add_field(name="성공 확률", value = f"**{enhancement_rate}%(+{weapon_enhanced} → +{weapon_enhanced + 1})**", inline=False)
+#             enhance_embed.add_field(name="보유 재료", value=f"**{weapon_parts}개**", inline=False)
+#             await interaction.response.edit_message(embed=enhance_embed, view=weapon_view)
 
-        select.callback = select_callback
+#         select.callback = select_callback
 
-        global enhancement_probabilities
-        enhancement_rate = enhancement_probabilities[weapon_enhanced]
-        weapon_embed.add_field(name="현재 강화 확률", value=f"**{enhancement_rate}%**", inline=False)
-        await interaction.response.send_message(embed=weapon_embed, view=discord.ui.View().add_item(select), ephemeral=True)
+#         global enhancement_probabilities
+#         enhancement_rate = enhancement_probabilities[weapon_enhanced]
+#         weapon_embed.add_field(name="현재 강화 확률", value=f"**{enhancement_rate}%**", inline=False)
+#         await interaction.response.send_message(embed=weapon_embed, view=discord.ui.View().add_item(select), ephemeral=True)
 
-    @app_commands.command(name="무기생성",description="무기를 생성합니다")
-    @app_commands.choices(무기타입=[
-    Choice(name='활', value='활'),
-    Choice(name='대검', value='대검'),
-    Choice(name='단검', value='단검'),
-    Choice(name='조총', value='조총'),
-    Choice(name='창', value='창'),
-    Choice(name='낫', value='낫'),
-    Choice(name='스태프-화염', value='스태프-화염'),
-    Choice(name='스태프-냉기', value='스태프-냉기'),
-    Choice(name='스태프-신성', value='스태프-신성'),
-    Choice(name='태도', value='태도'),
-    ])
-    @app_commands.describe(이름 = "무기의 이름을 입력하세요", 무기타입 = "무기의 타입을 선택하세요")
-    async def create_weapon(self,interaction: discord.Interaction, 이름: str, 무기타입: str):
-        nickname = interaction.user.name
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
+#     @app_commands.command(name="무기생성",description="무기를 생성합니다")
+#     @app_commands.choices(무기타입=[
+#     Choice(name='활', value='활'),
+#     Choice(name='대검', value='대검'),
+#     Choice(name='단검', value='단검'),
+#     Choice(name='조총', value='조총'),
+#     Choice(name='창', value='창'),
+#     Choice(name='낫', value='낫'),
+#     Choice(name='스태프-화염', value='스태프-화염'),
+#     Choice(name='스태프-냉기', value='스태프-냉기'),
+#     Choice(name='스태프-신성', value='스태프-신성'),
+#     Choice(name='태도', value='태도'),
+#     ])
+#     @app_commands.describe(이름 = "무기의 이름을 입력하세요", 무기타입 = "무기의 타입을 선택하세요")
+#     async def create_weapon(self,interaction: discord.Interaction, 이름: str, 무기타입: str):
+#         nickname = interaction.user.name
+#         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+#         current_predict_season = cur_predict_seasonref.get()
 
-        ref_weapon = db.reference(f"무기/강화/{nickname}")
-        weapon_data = ref_weapon.get() or {}
+#         ref_weapon = db.reference(f"무기/강화/{nickname}")
+#         weapon_data = ref_weapon.get() or {}
 
-        weapon_name = weapon_data.get("이름", "")
-        if weapon_name == "":
-            ref_weapon_base = db.reference(f"무기/기본 스탯")
-            base_weapon_stats = ref_weapon_base.get() or {}
-            ref_weapon = db.reference(f"무기/강화/{nickname}")
-            ref_weapon.update(base_weapon_stats[무기타입])
-            ref_weapon.update({
-                "이름" : 이름,
-                "무기타입" : 무기타입,
-                "강화내역" : ""
-            })
-            weapon_data = ref_weapon.get() or {}
+#         weapon_name = weapon_data.get("이름", "")
+#         if weapon_name == "":
+#             ref_weapon_base = db.reference(f"무기/기본 스탯")
+#             base_weapon_stats = ref_weapon_base.get() or {}
+#             ref_weapon = db.reference(f"무기/강화/{nickname}")
+#             ref_weapon.update(base_weapon_stats[무기타입])
+#             ref_weapon.update({
+#                 "이름" : 이름,
+#                 "무기타입" : 무기타입,
+#                 "강화내역" : ""
+#             })
+#             weapon_data = ref_weapon.get() or {}
 
-            weapon_name = weapon_data.get("이름", "")
-            weapon_enhanced = weapon_data.get("강화",0)
-            weapon_embed = discord.Embed(title="무기 생성 완료!", color=0xff00ff)
-            weapon_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
-            weapon_embed.add_field(name="무기 타입", value=f"{무기타입}", inline=False)
-            weapon_embed.add_field(name="내구도", value=f"{weapon_data.get('내구도', 0)}", inline=False)
-            weapon_embed.add_field(name="공격력", value=f"{weapon_data.get('공격력', 0)}", inline=True)
-            weapon_embed.add_field(name="스킬 증폭", value=f"{weapon_data.get('스킬 증폭', 0)}", inline=True)
-            weapon_embed.add_field(name="방어력", value=f"{weapon_data.get('방어력', 0)}", inline=True)
-            weapon_embed.add_field(name="스피드", value=f"{weapon_data.get('스피드', 0)}", inline=True)
-            weapon_embed.add_field(name="명중", value=f"{weapon_data.get('명중', 0)}", inline=True)
-            weapon_embed.add_field(name="사거리", value=f"{weapon_data.get('사거리', 0)}", inline=True)
-            weapon_embed.add_field(name="치명타 확률", value=f"{weapon_data.get('치명타 확률', 0) * 100:.1f}%", inline=True)
-            weapon_embed.add_field(name="치명타 대미지", value=f"{weapon_data.get('치명타 대미지', 0) * 100:.1f}%", inline=True)
+#             weapon_name = weapon_data.get("이름", "")
+#             weapon_enhanced = weapon_data.get("강화",0)
+#             weapon_embed = discord.Embed(title="무기 생성 완료!", color=0xff00ff)
+#             weapon_embed.add_field(name="무기 이름", value=f"{weapon_name} **(+{weapon_enhanced})**", inline=False)
+#             weapon_embed.add_field(name="무기 타입", value=f"{무기타입}", inline=False)
+#             weapon_embed.add_field(name="내구도", value=f"{weapon_data.get('내구도', 0)}", inline=False)
+#             weapon_embed.add_field(name="공격력", value=f"{weapon_data.get('공격력', 0)}", inline=True)
+#             weapon_embed.add_field(name="스킬 증폭", value=f"{weapon_data.get('스킬 증폭', 0)}", inline=True)
+#             weapon_embed.add_field(name="방어력", value=f"{weapon_data.get('방어력', 0)}", inline=True)
+#             weapon_embed.add_field(name="스피드", value=f"{weapon_data.get('스피드', 0)}", inline=True)
+#             weapon_embed.add_field(name="명중", value=f"{weapon_data.get('명중', 0)}", inline=True)
+#             weapon_embed.add_field(name="사거리", value=f"{weapon_data.get('사거리', 0)}", inline=True)
+#             weapon_embed.add_field(name="치명타 확률", value=f"{weapon_data.get('치명타 확률', 0) * 100:.1f}%", inline=True)
+#             weapon_embed.add_field(name="치명타 대미지", value=f"{weapon_data.get('치명타 대미지', 0) * 100:.1f}%", inline=True)
             
-        else:
-            weapon_enhanced = weapon_data.get("강화",0)
-            weapon_embed = discord.Embed(title="무기 생성 불가!", color=0xff0000)
-            weapon_embed.add_field(name="", value=f"이미 [**{weapon_name}**(+{weapon_enhanced})] 무기를 보유중입니다!", inline=False)
+#         else:
+#             weapon_enhanced = weapon_data.get("강화",0)
+#             weapon_embed = discord.Embed(title="무기 생성 불가!", color=0xff0000)
+#             weapon_embed.add_field(name="", value=f"이미 [**{weapon_name}**(+{weapon_enhanced})] 무기를 보유중입니다!", inline=False)
 
-        await interaction.response.send_message(embed=weapon_embed)
+#         await interaction.response.send_message(embed=weapon_embed)
     
-# 컨텍스트 메뉴 명령어 등록 (메시지 대상)
-    @app_commands.command(name="무기배틀",description="각자의 무기로 대결합니다")
-    @app_commands.describe(상대 = "상대를 고르세요")
-    async def weapon_battle(self, interaction: discord.Interaction, 상대 : discord.Member):
-        await interaction.response.defer()
+# # 컨텍스트 메뉴 명령어 등록 (메시지 대상)
+#     @app_commands.command(name="무기배틀",description="각자의 무기로 대결합니다")
+#     @app_commands.describe(상대 = "상대를 고르세요")
+#     async def weapon_battle(self, interaction: discord.Interaction, 상대 : discord.Member):
+#         await interaction.response.defer()
 
-        nickname = interaction.user.name
+#         nickname = interaction.user.name
 
-        ref_weapon_challenger = db.reference(f"무기/유저/{nickname}")
-        weapon_data_challenger = ref_weapon_challenger.get() or {}
+#         ref_weapon_challenger = db.reference(f"무기/유저/{nickname}")
+#         weapon_data_challenger = ref_weapon_challenger.get() or {}
 
-        weapon_name_challenger = weapon_data_challenger.get("이름", "")
-        if weapon_name_challenger == "":
-            await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
-            return
+#         weapon_name_challenger = weapon_data_challenger.get("이름", "")
+#         if weapon_name_challenger == "":
+#             await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+#             return
         
-        ref_weapon_opponent = db.reference(f"무기/유저/{상대.name}")
-        weapon_data_opponent = ref_weapon_opponent.get() or {}
+#         ref_weapon_opponent = db.reference(f"무기/유저/{상대.name}")
+#         weapon_data_opponent = ref_weapon_opponent.get() or {}
 
-        weapon_name_opponent = weapon_data_opponent.get("이름", "")
-        if weapon_name_opponent == "":
-            await interaction.followup.send("상대가 무기를 가지고 있지 않습니다!",ephemeral=True)
-            return
+#         weapon_name_opponent = weapon_data_opponent.get("이름", "")
+#         if weapon_name_opponent == "":
+#             await interaction.followup.send("상대가 무기를 가지고 있지 않습니다!",ephemeral=True)
+#             return
 
-        # battle_ref = db.reference("승부예측/대결진행여부")
-        # is_battle = battle_ref.get() or {}
-        # if is_battle:
-        #         warnembed = discord.Embed(title="실패",color = discord.Color.red())
-        #         warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-        #         await interaction.followup.send(embed = warnembed)
-        #         return
-        # battle_ref.set(True)
+#         # battle_ref = db.reference("승부예측/대결진행여부")
+#         # is_battle = battle_ref.get() or {}
+#         # if is_battle:
+#         #         warnembed = discord.Embed(title="실패",color = discord.Color.red())
+#         #         warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+#         #         await interaction.followup.send(embed = warnembed)
+#         #         return
+#         # battle_ref.set(True)
 
-        # 임베드 생성
-        embed = discord.Embed(
-            title=f"{interaction.user.display_name} vs {상대.display_name} 무기 대결",
-            description="대결이 시작되었습니다!",
-            color=discord.Color.blue()  # 원하는 색상 선택
-        )
-        await interaction.followup.send(embed=embed)
-        await Battle(channel = interaction.channel,challenger_m= interaction.user, opponent_m = 상대, raid = False, practice = False)
+#         # 임베드 생성
+#         embed = discord.Embed(
+#             title=f"{interaction.user.display_name} vs {상대.display_name} 무기 대결",
+#             description="대결이 시작되었습니다!",
+#             color=discord.Color.blue()  # 원하는 색상 선택
+#         )
+#         await interaction.followup.send(embed=embed)
+#         await Battle(channel = interaction.channel,challenger_m= interaction.user, opponent_m = 상대, raid = False, practice = False)
 
-        battle_ref = db.reference("승부예측/대결진행여부")
-        battle_ref.set(False)
+#         battle_ref = db.reference("승부예측/대결진행여부")
+#         battle_ref.set(False)
 
-    @app_commands.command(name = "계승", description = "최고 강화에 도달한 무기의 힘을 이어받습니다.")
-    async def inherit(self, interaction:discord.Interaction):
-        nickname = interaction.user.name
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
+#     @app_commands.command(name = "계승", description = "최고 강화에 도달한 무기의 힘을 이어받습니다.")
+#     async def inherit(self, interaction:discord.Interaction):
+#         nickname = interaction.user.name
+#         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+#         current_predict_season = cur_predict_seasonref.get()
 
-        ref_weapon = db.reference(f"무기/유저/{nickname}")
-        weapon_data = ref_weapon.get() or {}
+#         ref_weapon = db.reference(f"무기/유저/{nickname}")
+#         weapon_data = ref_weapon.get() or {}
 
-        weapon_enhanced = weapon_data.get("강화")
-        if weapon_enhanced < 15: # 강화가 15단계 이상이 아닐 경우
-            warn_embed = discord.Embed(title="계승 불가!", color=0xff0000)
-            warn_embed.add_field(name="", value=f"아직 무기가 15단계에 도달하지 않았습니다.", inline=False)
-            await interaction.response.send_message(embed = warn_embed,ephemeral=True)
-            return
+#         weapon_enhanced = weapon_data.get("강화")
+#         if weapon_enhanced < 15: # 강화가 15단계 이상이 아닐 경우
+#             warn_embed = discord.Embed(title="계승 불가!", color=0xff0000)
+#             warn_embed.add_field(name="", value=f"아직 무기가 15단계에 도달하지 않았습니다.", inline=False)
+#             await interaction.response.send_message(embed = warn_embed,ephemeral=True)
+#             return
         
-        inherit_embed = discord.Embed(
-        title=f"🎯 {weapon_enhanced}강 달성! 계승 가능!",
-        description=(
-            "계승 시:\n"
-            "- 새로운 무기 종류를 선택합니다.\n"
-            "- 강화 단계가 초기화됩니다.\n"
-            "- +15 이후 강화한 횟수만큼 기존 강화 내역을 계승합니다.\n"
-            "- 계승 보상 1종을 획득합니다.\n\n"
-            "👉 아래 **계승 진행** 버튼을 눌러 계승을 완료하세요."
-        ),
-        color=0x00ff99
-        )
+#         inherit_embed = discord.Embed(
+#         title=f"🎯 {weapon_enhanced}강 달성! 계승 가능!",
+#         description=(
+#             "계승 시:\n"
+#             "- 새로운 무기 종류를 선택합니다.\n"
+#             "- 강화 단계가 초기화됩니다.\n"
+#             "- +15 이후 강화한 횟수만큼 기존 강화 내역을 계승합니다.\n"
+#             "- 계승 보상 1종을 획득합니다.\n\n"
+#             "👉 아래 **계승 진행** 버튼을 눌러 계승을 완료하세요."
+#         ),
+#         color=0x00ff99
+#         )
 
-        select = discord.ui.Select(
-            placeholder="무기 타입을 선택하세요.",
-            options = [
-                discord.SelectOption(label="활", description="스피드를 통한 연사"),
-                discord.SelectOption(label="대검", description="높은 공격력과 보호막 파괴"),
-                discord.SelectOption(label="단검", description="높은 회피와 암살 능력"),
-                discord.SelectOption(label="조총", description="치명타를 통한 스킬 연속 사용"),
-                discord.SelectOption(label="창", description="꿰뚫림 스택을 통한 누적 피해"),
-                discord.SelectOption(label="낫", description="흡혈을 통한 유지력"),
-                discord.SelectOption(label="스태프-화염", description="강력한 화력과 지속적 화상 피해"),
-                discord.SelectOption(label="스태프-냉기", description="얼음과 관련된 군중제어기 보유"),
-                discord.SelectOption(label="스태프-신성", description="치유 능력과 침묵 부여"),
-                discord.SelectOption(label="태도", description="명중에 따른 공격 능력 증가, 출혈을 통한 피해"),
-            ]
-        )
+#         select = discord.ui.Select(
+#             placeholder="무기 타입을 선택하세요.",
+#             options = [
+#                 discord.SelectOption(label="활", description="스피드를 통한 연사"),
+#                 discord.SelectOption(label="대검", description="높은 공격력과 보호막 파괴"),
+#                 discord.SelectOption(label="단검", description="높은 회피와 암살 능력"),
+#                 discord.SelectOption(label="조총", description="치명타를 통한 스킬 연속 사용"),
+#                 discord.SelectOption(label="창", description="꿰뚫림 스택을 통한 누적 피해"),
+#                 discord.SelectOption(label="낫", description="흡혈을 통한 유지력"),
+#                 discord.SelectOption(label="스태프-화염", description="강력한 화력과 지속적 화상 피해"),
+#                 discord.SelectOption(label="스태프-냉기", description="얼음과 관련된 군중제어기 보유"),
+#                 discord.SelectOption(label="스태프-신성", description="치유 능력과 침묵 부여"),
+#                 discord.SelectOption(label="태도", description="명중에 따른 공격 능력 증가, 출혈을 통한 피해"),
+#             ]
+#         )
 
-        async def select_callback(interaction: discord.Interaction):
-            selected_weapon_type = select.values[0]
+#         async def select_callback(interaction: discord.Interaction):
+#             selected_weapon_type = select.values[0]
 
-            # 강화 버튼을 추가하고 콜백 설정
-            inherit_button = discord.ui.Button(label="계승 진행", style=discord.ButtonStyle.green)
+#             # 강화 버튼을 추가하고 콜백 설정
+#             inherit_button = discord.ui.Button(label="계승 진행", style=discord.ButtonStyle.green)
 
-            async def inherit_callback(interaction: discord.Interaction):
-                chance = random.random()  # 0 ~ 1 사이 랜덤 값
+#             async def inherit_callback(interaction: discord.Interaction):
+#                 chance = random.random()  # 0 ~ 1 사이 랜덤 값
 
-                if chance < 0.7:
-                    inherit_type = "기본 스탯 증가"
-                else:
-                    inherit_type = "기본 스킬 레벨 증가"
+#                 if chance < 0.7:
+#                     inherit_type = "기본 스탯 증가"
+#                 else:
+#                     inherit_type = "기본 스킬 레벨 증가"
 
-                modal = InheritWeaponNameModal(user_id=interaction.user.id, selected_weapon_type=selected_weapon_type, weapon_data=weapon_data, inherit_type = inherit_type)
-                await interaction.response.send_modal(modal)
+#                 modal = InheritWeaponNameModal(user_id=interaction.user.id, selected_weapon_type=selected_weapon_type, weapon_data=weapon_data, inherit_type = inherit_type)
+#                 await interaction.response.send_modal(modal)
                 
-            inherit_button.callback = inherit_callback
-            inherit_view = discord.ui.View()
-            inherit_view.add_item(select)
-            inherit_view.add_item(inherit_button)
+#             inherit_button.callback = inherit_callback
+#             inherit_view = discord.ui.View()
+#             inherit_view.add_item(select)
+#             inherit_view.add_item(inherit_button)
             
     
-            await interaction.response.edit_message(view=inherit_view)
+#             await interaction.response.edit_message(view=inherit_view)
 
-        select.callback = select_callback
-        await interaction.response.send_message(embed=inherit_embed, view=discord.ui.View().add_item(select), ephemeral=True)
+#         select.callback = select_callback
+#         await interaction.response.send_message(embed=inherit_embed, view=discord.ui.View().add_item(select), ephemeral=True)
 
-    @app_commands.command(name="레이드",description="레이드 보스와의 전투를 실행합니다.")
-    async def raid(self, interaction: discord.Interaction):
-        await interaction.response.defer()
+#     @app_commands.command(name="레이드",description="레이드 보스와의 전투를 실행합니다.")
+#     async def raid(self, interaction: discord.Interaction):
+#         await interaction.response.defer()
 
-        nickname = interaction.user.name
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
+#         nickname = interaction.user.name
+#         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+#         current_predict_season = cur_predict_seasonref.get()
 
-        ref_weapon_challenger = db.reference(f"무기/유저/{nickname}")
-        weapon_data_challenger = ref_weapon_challenger.get() or {}
+#         ref_weapon_challenger = db.reference(f"무기/유저/{nickname}")
+#         weapon_data_challenger = ref_weapon_challenger.get() or {}
 
-        weapon_name_challenger = weapon_data_challenger.get("이름", "")
-        if weapon_name_challenger == "":
-            await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
-            return
+#         weapon_name_challenger = weapon_data_challenger.get("이름", "")
+#         if weapon_name_challenger == "":
+#             await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+#             return
         
-        ref_current_boss = db.reference(f"레이드/현재 레이드 보스")
-        boss_name = ref_current_boss.get()
+#         ref_current_boss = db.reference(f"레이드/현재 레이드 보스")
+#         boss_name = ref_current_boss.get()
         
-        ref_weapon_opponent = db.reference(f"레이드/보스/{boss_name}")
-        weapon_data_opponent = ref_weapon_opponent.get() or {}
+#         ref_weapon_opponent = db.reference(f"레이드/보스/{boss_name}")
+#         weapon_data_opponent = ref_weapon_opponent.get() or {}
 
-        weapon_name_opponent = weapon_data_opponent.get("이름", "")
-        if weapon_name_opponent == "":
-            await interaction.followup.send("상대가 없습니다!",ephemeral=True)
-            return
+#         weapon_name_opponent = weapon_data_opponent.get("이름", "")
+#         if weapon_name_opponent == "":
+#             await interaction.followup.send("상대가 없습니다!",ephemeral=True)
+#             return
         
         
-        battle_ref = db.reference("승부예측/대결진행여부")
-        is_battle = battle_ref.get() or {}
-        if is_battle:
-            warnembed = discord.Embed(title="실패",color = discord.Color.red())
-            warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-            await interaction.followup.send(embed = warnembed)
-            return
+#         battle_ref = db.reference("승부예측/대결진행여부")
+#         is_battle = battle_ref.get() or {}
+#         if is_battle:
+#             warnembed = discord.Embed(title="실패",color = discord.Color.red())
+#             warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+#             await interaction.followup.send(embed = warnembed)
+#             return
 
-        ref_raid = db.reference(f"레이드/내역/{nickname}")
-        raid_data = ref_raid.get() or {}
-        raid_damage = raid_data.get("대미지", 0)
-        raid_boss_name = raid_data.get("보스","")
-        raid_bool = raid_data.get("레이드여부", False)
+#         ref_raid = db.reference(f"레이드/내역/{nickname}")
+#         raid_data = ref_raid.get() or {}
+#         raid_damage = raid_data.get("대미지", 0)
+#         raid_boss_name = raid_data.get("보스","")
+#         raid_bool = raid_data.get("레이드여부", False)
         
-        result = False
-        if weapon_data_opponent.get("내구도", 0) <= 0:
-            if not raid_bool: # 레이드 참여 안했을 경우
-                retry_embed = discord.Embed(
-                    title="레이드 추가 도전",
-                    description="오늘의 레이드보스는 이미 처치되었습니다!",
-                    color=discord.Color.orange()
-                )
-                retry_embed.add_field(
-                    name="",
-                    value="**레이드를 추가 도전하시겠습니까?**",
-                    inline=False
-                )
-                retry_embed.set_footer(text="모의전 진행 후 넣은 대미지 비율만큼의 보상을 받습니다!")
+#         result = False
+#         if weapon_data_opponent.get("내구도", 0) <= 0:
+#             if not raid_bool: # 레이드 참여 안했을 경우
+#                 retry_embed = discord.Embed(
+#                     title="레이드 추가 도전",
+#                     description="오늘의 레이드보스는 이미 처치되었습니다!",
+#                     color=discord.Color.orange()
+#                 )
+#                 retry_embed.add_field(
+#                     name="",
+#                     value="**레이드를 추가 도전하시겠습니까?**",
+#                     inline=False
+#                 )
+#                 retry_embed.set_footer(text="모의전 진행 후 넣은 대미지 비율만큼의 보상을 받습니다!")
                 
-                class AfterRaidView(discord.ui.View):
-                    def __init__(self, user_id):
-                        super().__init__(timeout=60)  # 60초 후 자동 종료
-                        self.user_id = user_id
-                        self.future = asyncio.Future()  # 버튼 결과 저장 (True/False)
+#                 class AfterRaidView(discord.ui.View):
+#                     def __init__(self, user_id):
+#                         super().__init__(timeout=60)  # 60초 후 자동 종료
+#                         self.user_id = user_id
+#                         self.future = asyncio.Future()  # 버튼 결과 저장 (True/False)
 
-                    def disable_all_buttons(self):
-                        """모든 버튼을 비활성화 상태로 변경"""
-                        for child in self.children:
-                            if isinstance(child, discord.ui.Button):
-                                child.disabled = True
+#                     def disable_all_buttons(self):
+#                         """모든 버튼을 비활성화 상태로 변경"""
+#                         for child in self.children:
+#                             if isinstance(child, discord.ui.Button):
+#                                 child.disabled = True
 
-                    @discord.ui.button(label="도전하기", style=discord.ButtonStyle.green)
-                    async def after_raid(self, interaction: discord.Interaction, button: discord.ui.Button):
-                        # 버튼 비활성화 처리
-                        if interaction.user.id != self.user_id:
-                            await interaction.response.send_message("이 버튼은 당신의 것이 아닙니다.", ephemeral=True)
-                            return
-                        await interaction.response.defer()
-                        self.disable_all_buttons()
-                        self.future.set_result(True)
-                        await interaction.edit_original_response(view = self)
+#                     @discord.ui.button(label="도전하기", style=discord.ButtonStyle.green)
+#                     async def after_raid(self, interaction: discord.Interaction, button: discord.ui.Button):
+#                         # 버튼 비활성화 처리
+#                         if interaction.user.id != self.user_id:
+#                             await interaction.response.send_message("이 버튼은 당신의 것이 아닙니다.", ephemeral=True)
+#                             return
+#                         await interaction.response.defer()
+#                         self.disable_all_buttons()
+#                         self.future.set_result(True)
+#                         await interaction.edit_original_response(view = self)
                         
-                view = AfterRaidView(interaction.user.id)
-                await interaction.followup.send(embed=retry_embed, view=view, ephemeral=True)
+#                 view = AfterRaidView(interaction.user.id)
+#                 await interaction.followup.send(embed=retry_embed, view=view, ephemeral=True)
 
-                # ✅ 버튼 클릭 결과 대기 (True = 진행, False = 중단)
-                result = await view.future
+#                 # ✅ 버튼 클릭 결과 대기 (True = 진행, False = 중단)
+#                 result = await view.future
 
-                if not result:
-                    return  # 안했으면 return
+#                 if not result:
+#                     return  # 안했으면 return
 
-                # 임베드 생성
-                embed = discord.Embed(
-                    title=f"{interaction.user.display_name}의 {weapon_data_opponent.get('이름', '')} 레이드 (추가 도전)",
-                    description="대결이 시작되었습니다!",
-                    color=discord.Color.blue()  # 원하는 색상 선택
-                )
-                if result:
-                    await interaction.channel.send(embed = embed)
-                else:
-                    await interaction.followup.send(embed=embed)
-                await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = boss_name, raid = True, practice = True, raid_ended= True)
+#                 # 임베드 생성
+#                 embed = discord.Embed(
+#                     title=f"{interaction.user.display_name}의 {weapon_data_opponent.get('이름', '')} 레이드 (추가 도전)",
+#                     description="대결이 시작되었습니다!",
+#                     color=discord.Color.blue()  # 원하는 색상 선택
+#                 )
+#                 if result:
+#                     await interaction.channel.send(embed = embed)
+#                 else:
+#                     await interaction.followup.send(embed=embed)
+#                 await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = boss_name, raid = True, practice = True, raid_ended= True)
 
-                return
-            else: # 레이드 참여했을 경우
-                warn_embed = discord.Embed(
-                    title="격파 완료",
-                    description="오늘의 레이드보스는 이미 처치되었습니다!",
-                    color=discord.Color.red()
-                )
-                await interaction.followup.send(embed=warn_embed, ephemeral=True)
-                return
+#                 return
+#             else: # 레이드 참여했을 경우
+#                 warn_embed = discord.Embed(
+#                     title="격파 완료",
+#                     description="오늘의 레이드보스는 이미 처치되었습니다!",
+#                     color=discord.Color.red()
+#                 )
+#                 await interaction.followup.send(embed=warn_embed, ephemeral=True)
+#                 return
 
-        result = False
-        ref_item = db.reference(f"무기/아이템/{nickname}")
-        item_data = ref_item.get() or {}
-        raid_refresh = item_data.get("레이드 재도전", 0)
-        if raid_bool:
-            if raid_refresh: # 레이드 재도전권 있다면?
-                retry_embed = discord.Embed(
-                    title="레이드 재도전🔄 ",
-                    description="이미 레이드를 참여하셨습니다.",
-                    color=discord.Color.orange()
-                )
-                retry_embed.add_field(
-                    name="도전한 보스",
-                    value=f"**{raid_boss_name} **",
-                    inline=False
-                )
-                retry_embed.add_field(
-                    name="넣은 대미지",
-                    value=f"**{raid_damage}💥 **",
-                    inline=False
-                )
-                retry_embed.add_field(
-                    name="",
-                    value="**재도전권을 사용하시겠습니까?**",
-                    inline=False
-                )
-                retry_embed.set_footer(text="재도전시 기존 기록이 삭제됩니다!")
+#         result = False
+#         ref_item = db.reference(f"무기/아이템/{nickname}")
+#         item_data = ref_item.get() or {}
+#         raid_refresh = item_data.get("레이드 재도전", 0)
+#         if raid_bool:
+#             if raid_refresh: # 레이드 재도전권 있다면?
+#                 retry_embed = discord.Embed(
+#                     title="레이드 재도전🔄 ",
+#                     description="이미 레이드를 참여하셨습니다.",
+#                     color=discord.Color.orange()
+#                 )
+#                 retry_embed.add_field(
+#                     name="도전한 보스",
+#                     value=f"**{raid_boss_name} **",
+#                     inline=False
+#                 )
+#                 retry_embed.add_field(
+#                     name="넣은 대미지",
+#                     value=f"**{raid_damage}💥 **",
+#                     inline=False
+#                 )
+#                 retry_embed.add_field(
+#                     name="",
+#                     value="**재도전권을 사용하시겠습니까?**",
+#                     inline=False
+#                 )
+#                 retry_embed.set_footer(text="재도전시 기존 기록이 삭제됩니다!")
                 
-                class RaidRetryView(discord.ui.View):
-                    def __init__(self, user_id):
-                        super().__init__(timeout=60)  # 60초 후 자동 종료
-                        self.user_id = user_id
-                        self.future = asyncio.Future()  # 버튼 결과 저장 (True/False)
+#                 class RaidRetryView(discord.ui.View):
+#                     def __init__(self, user_id):
+#                         super().__init__(timeout=60)  # 60초 후 자동 종료
+#                         self.user_id = user_id
+#                         self.future = asyncio.Future()  # 버튼 결과 저장 (True/False)
 
-                    def disable_all_buttons(self):
-                        """모든 버튼을 비활성화 상태로 변경"""
-                        for child in self.children:
-                            if isinstance(child, discord.ui.Button):
-                                child.disabled = True
+#                     def disable_all_buttons(self):
+#                         """모든 버튼을 비활성화 상태로 변경"""
+#                         for child in self.children:
+#                             if isinstance(child, discord.ui.Button):
+#                                 child.disabled = True
 
-                    @discord.ui.button(label="사용하기", style=discord.ButtonStyle.green)
-                    async def use_retry(self, interaction: discord.Interaction, button: discord.ui.Button):
-                        if interaction.user.id != self.user_id:
-                            await interaction.response.send_message("이 버튼은 당신의 것이 아닙니다.", ephemeral=True)
-                            return
+#                     @discord.ui.button(label="사용하기", style=discord.ButtonStyle.green)
+#                     async def use_retry(self, interaction: discord.Interaction, button: discord.ui.Button):
+#                         if interaction.user.id != self.user_id:
+#                             await interaction.response.send_message("이 버튼은 당신의 것이 아닙니다.", ephemeral=True)
+#                             return
 
-                        await interaction.response.defer()
-                        # 레이드 재도전권 사용 로직
-                        ref_item = db.reference(f"무기/아이템/{interaction.user.name}")
-                        item_data = ref_item.get() or {}
-                        raid_refresh = item_data.get("레이드 재도전", 0)
+#                         await interaction.response.defer()
+#                         # 레이드 재도전권 사용 로직
+#                         ref_item = db.reference(f"무기/아이템/{interaction.user.name}")
+#                         item_data = ref_item.get() or {}
+#                         raid_refresh = item_data.get("레이드 재도전", 0)
 
-                        # 버튼 비활성화 처리
-                        self.disable_all_buttons()
+#                         # 버튼 비활성화 처리
+#                         self.disable_all_buttons()
                         
-                        if raid_refresh > 0:
-                            ref_item.update({"레이드 재도전": raid_refresh - 1})  # 사용 후 갱신
+#                         if raid_refresh > 0:
+#                             ref_item.update({"레이드 재도전": raid_refresh - 1})  # 사용 후 갱신
 
-                            refraid = db.reference(f"레이드/내역/{interaction.user.name}")
-                            refraid.delete() 
+#                             refraid = db.reference(f"레이드/내역/{interaction.user.name}")
+#                             refraid.delete() 
 
-                            ref_boss = db.reference(f"레이드/보스/{boss_name}")
-                            boss_data = ref_boss.get() or {}
-                            Boss_HP = boss_data.get("내구도", 0)
-                            ref_boss.update({"내구도" : Boss_HP + raid_damage})
+#                             ref_boss = db.reference(f"레이드/보스/{boss_name}")
+#                             boss_data = ref_boss.get() or {}
+#                             Boss_HP = boss_data.get("내구도", 0)
+#                             ref_boss.update({"내구도" : Boss_HP + raid_damage})
 
-                            self.future.set_result(True)  # ✅ True 반환 (재도전 성공)
-                            await interaction.edit_original_response(view = self)
-                        else:
-                            await interaction.edit_original_response(content="레이드 재도전권이 없습니다!", view=None)
-                            self.future.set_result(False)  # ✅ False 반환 (재도전 불가)
+#                             self.future.set_result(True)  # ✅ True 반환 (재도전 성공)
+#                             await interaction.edit_original_response(view = self)
+#                         else:
+#                             await interaction.edit_original_response(content="레이드 재도전권이 없습니다!", view=None)
+#                             self.future.set_result(False)  # ✅ False 반환 (재도전 불가)
                 
-                view = RaidRetryView(interaction.user.id)
-                await interaction.followup.send(embed=retry_embed, view=view, ephemeral=True)
+#                 view = RaidRetryView(interaction.user.id)
+#                 await interaction.followup.send(embed=retry_embed, view=view, ephemeral=True)
 
-                # ✅ 버튼 클릭 결과 대기 (True = 진행, False = 중단)
-                result = await view.future
+#                 # ✅ 버튼 클릭 결과 대기 (True = 진행, False = 중단)
+#                 result = await view.future
 
-                if not result:
-                    return  # 재도전 불가면 함수 종료
-            else: # 재도전권 없다면
-                warn_embed = discord.Embed(
-                    title="도전 완료",
-                    description="오늘의 레이드보스에 이미 도전했습니다!",
-                    color=discord.Color.red()
-                )
-                await interaction.followup.send(embed=warn_embed, ephemeral=True)
-                return
-        battle_ref.set(True)
+#                 if not result:
+#                     return  # 재도전 불가면 함수 종료
+#             else: # 재도전권 없다면
+#                 warn_embed = discord.Embed(
+#                     title="도전 완료",
+#                     description="오늘의 레이드보스에 이미 도전했습니다!",
+#                     color=discord.Color.red()
+#                 )
+#                 await interaction.followup.send(embed=warn_embed, ephemeral=True)
+#                 return
+#         battle_ref.set(True)
 
-        # 임베드 생성
-        embed = discord.Embed(
-            title=f"{interaction.user.display_name}의 {weapon_data_opponent.get('이름', '')} 레이드",
-            description="대결이 시작되었습니다!",
-            color=discord.Color.blue()  # 원하는 색상 선택
-        )
-        if result:
-            await interaction.channel.send(embed = embed)
-        else:
-            await interaction.followup.send(embed=embed)
-        await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = boss_name, raid = True, practice = False)
+#         # 임베드 생성
+#         embed = discord.Embed(
+#             title=f"{interaction.user.display_name}의 {weapon_data_opponent.get('이름', '')} 레이드",
+#             description="대결이 시작되었습니다!",
+#             color=discord.Color.blue()  # 원하는 색상 선택
+#         )
+#         if result:
+#             await interaction.channel.send(embed = embed)
+#         else:
+#             await interaction.followup.send(embed=embed)
+#         await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = boss_name, raid = True, practice = False)
 
-        battle_ref = db.reference("승부예측/대결진행여부")
-        battle_ref.set(False)
+#         battle_ref = db.reference("승부예측/대결진행여부")
+#         battle_ref.set(False)
 
-    @app_commands.command(name="레이드현황",description="현재 레이드 현황을 보여줍니다.")
-    async def raid_status(self, interaction: discord.Interaction):
-        await interaction.response.defer()
+#     @app_commands.command(name="레이드현황",description="현재 레이드 현황을 보여줍니다.")
+#     async def raid_status(self, interaction: discord.Interaction):
+#         await interaction.response.defer()
         
-        max_reward = 20
+#         max_reward = 20
 
-        ref_current_boss = db.reference(f"레이드/현재 레이드 보스")
-        boss_name = ref_current_boss.get()
+#         ref_current_boss = db.reference(f"레이드/현재 레이드 보스")
+#         boss_name = ref_current_boss.get()
 
-        refraid = db.reference(f"레이드/내역")
-        raid_all_data = refraid.get() or {}
+#         refraid = db.reference(f"레이드/내역")
+#         raid_all_data = refraid.get() or {}
 
-        raid_data = {key:value for key, value in raid_all_data.items() if value['보스'] == boss_name and not value['모의전']}
-        # 전체 대미지 합산
-        total_damage = sum(data['대미지'] for data in raid_data.values())
+#         raid_data = {key:value for key, value in raid_all_data.items() if value['보스'] == boss_name and not value['모의전']}
+#         # 전체 대미지 합산
+#         total_damage = sum(data['대미지'] for data in raid_data.values())
 
-        raid_data_sorted = sorted(raid_data.items(), key=lambda x: x[1]['대미지'], reverse=True)
+#         raid_data_sorted = sorted(raid_data.items(), key=lambda x: x[1]['대미지'], reverse=True)
 
-        # 순위별로 대미지 항목을 생성
-        rankings = []
-        for idx, (nickname, data) in enumerate(raid_data_sorted, start=1):
-            damage = data['대미지']
-            if data.get('막타', False):
-                rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지 🎯")
-            else:
-                rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지")
+#         # 순위별로 대미지 항목을 생성
+#         rankings = []
+#         for idx, (nickname, data) in enumerate(raid_data_sorted, start=1):
+#             damage = data['대미지']
+#             if data.get('막타', False):
+#                 rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지 🎯")
+#             else:
+#                 rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지")
 
-        refraidboss = db.reference(f"레이드/보스/{boss_name}")
-        raid_boss_data = refraidboss.get() or {}
-        cur_dur = raid_boss_data.get("내구도", 0)
-        total_dur = raid_boss_data.get("총 내구도",0)
+#         refraidboss = db.reference(f"레이드/보스/{boss_name}")
+#         raid_boss_data = refraidboss.get() or {}
+#         cur_dur = raid_boss_data.get("내구도", 0)
+#         total_dur = raid_boss_data.get("총 내구도",0)
         
-        # 내구도 비율 계산
-        if total_dur > 0:
-            durability_ratio = (total_dur - cur_dur) / total_dur  # 0과 1 사이의 값
-            reward_count = math.floor(max_reward * durability_ratio)  # 총 20개의 재료 중, 내구도에 비례한 개수만큼 지급
-        else:
-            reward_count = 0  # 보스가 이미 처치된 경우
+#         # 내구도 비율 계산
+#         if total_dur > 0:
+#             durability_ratio = (total_dur - cur_dur) / total_dur  # 0과 1 사이의 값
+#             reward_count = math.floor(max_reward * durability_ratio)  # 총 20개의 재료 중, 내구도에 비례한 개수만큼 지급
+#         else:
+#             reward_count = 0  # 보스가 이미 처치된 경우
 
 
-        remain_durability_ratio = round(cur_dur / total_dur * 100, 2)
+#         remain_durability_ratio = round(cur_dur / total_dur * 100, 2)
 
-        raid_after_data = {key:value for key, value in raid_all_data.items() if value['보스'] == boss_name and value['모의전']} # 격파 이후
-        raid_after_data_sorted = sorted(raid_after_data.items(), key=lambda x: x[1]['대미지'], reverse=True)
+#         raid_after_data = {key:value for key, value in raid_all_data.items() if value['보스'] == boss_name and value['모의전']} # 격파 이후
+#         raid_after_data_sorted = sorted(raid_after_data.items(), key=lambda x: x[1]['대미지'], reverse=True)
 
-        # 순위별로 대미지 항목을 생성
-        after_rankings = []
-        for idx, (nickname, data) in enumerate(raid_after_data_sorted, start=1):
-            damage = data['대미지']
-            damage_ratio = round(damage/total_dur * 100)
-            reward_number = int(round(max_reward * 0.75))
-            after_rankings.append(f"{nickname} - {damage} 대미지 ({damage_ratio}%)\n(강화재료 {reward_number}개 지급 예정!)")
+#         # 순위별로 대미지 항목을 생성
+#         after_rankings = []
+#         for idx, (nickname, data) in enumerate(raid_after_data_sorted, start=1):
+#             damage = data['대미지']
+#             damage_ratio = round(damage/total_dur * 100)
+#             reward_number = int(round(max_reward * 0.75))
+#             after_rankings.append(f"{nickname} - {damage} 대미지 ({damage_ratio}%)\n(강화재료 {reward_number}개 지급 예정!)")
 
 
-        # 디스코드 임베드 생성
-        embed = discord.Embed(title="🎯 레이드 현황", color=0x00ff00)
-        embed.add_field(name="현재 레이드 보스", value=f"[{boss_name}]", inline=False)
-        embed.add_field(name="레이드 보스의 현재 체력", value=f"[{cur_dur}/{total_dur}] {remain_durability_ratio}%", inline=False)
-        embed.add_field(name="현재 대미지", value="\n".join(rankings), inline=False)
-        embed.add_field(name="보상 현황", value=f"강화재료 **{reward_count}개** 지급 예정!", inline=False)
-        if cur_dur <= 0: # 보스가 처치된 경우
-            if boss_name == "카이사":
-                embed.add_field(name = "", value = f"카이사 토벌로 랜덤박스 1개 지급 예정!")
-            elif boss_name == "스우":
-                embed.add_field(name = "", value = f"스우 토벌로 연마제 2개 지급 예정!")
-            elif boss_name == "브라움":
-                embed.add_field(name = "", value = f"브라움 토벌로 운명 왜곡의 룬 3개 지급 예정!")
-            elif boss_name == "팬텀":
-                embed.add_field(name = "", value = f"팬텀 토벌로 강화재료 3개 지급 예정!")
-            else:
-                embed.add_field(name = "", value = f"보스 토벌로 강화재료 3개 지급 예정!")
-        if cur_dur <= 0:
-            embed.add_field(name="레이드 종료 이후 도전 인원", value="\n".join(after_rankings), inline=False)
-        await interaction.followup.send(embed = embed)
+#         # 디스코드 임베드 생성
+#         embed = discord.Embed(title="🎯 레이드 현황", color=0x00ff00)
+#         embed.add_field(name="현재 레이드 보스", value=f"[{boss_name}]", inline=False)
+#         embed.add_field(name="레이드 보스의 현재 체력", value=f"[{cur_dur}/{total_dur}] {remain_durability_ratio}%", inline=False)
+#         embed.add_field(name="현재 대미지", value="\n".join(rankings), inline=False)
+#         embed.add_field(name="보상 현황", value=f"강화재료 **{reward_count}개** 지급 예정!", inline=False)
+#         if cur_dur <= 0: # 보스가 처치된 경우
+#             if boss_name == "카이사":
+#                 embed.add_field(name = "", value = f"카이사 토벌로 랜덤박스 1개 지급 예정!")
+#             elif boss_name == "스우":
+#                 embed.add_field(name = "", value = f"스우 토벌로 연마제 2개 지급 예정!")
+#             elif boss_name == "브라움":
+#                 embed.add_field(name = "", value = f"브라움 토벌로 운명 왜곡의 룬 3개 지급 예정!")
+#             elif boss_name == "팬텀":
+#                 embed.add_field(name = "", value = f"팬텀 토벌로 강화재료 3개 지급 예정!")
+#             else:
+#                 embed.add_field(name = "", value = f"보스 토벌로 강화재료 3개 지급 예정!")
+#         if cur_dur <= 0:
+#             embed.add_field(name="레이드 종료 이후 도전 인원", value="\n".join(after_rankings), inline=False)
+#         await interaction.followup.send(embed = embed)
 
-    @app_commands.command(name="수치조정", description="무기에 밸런스 패치로 인해 변경된 스탯을 적용합니다")
-    async def stat_change(self, interaction: discord.Interaction):
-        await interaction.response.defer()
+#     @app_commands.command(name="수치조정", description="무기에 밸런스 패치로 인해 변경된 스탯을 적용합니다")
+#     async def stat_change(self, interaction: discord.Interaction):
+#         await interaction.response.defer()
 
-        ref_users = db.reference(f"무기/유저").get()
-        if not ref_users:
-            await interaction.response.send_message("업데이트할 유저 데이터가 없습니다.", ephemeral=True)
-            return
+#         ref_users = db.reference(f"무기/유저").get()
+#         if not ref_users:
+#             await interaction.response.send_message("업데이트할 유저 데이터가 없습니다.", ephemeral=True)
+#             return
 
-        embed = discord.Embed(title=f"⚔️ 스탯 조정 완료!", color=discord.Color.green())
+#         embed = discord.Embed(title=f"⚔️ 스탯 조정 완료!", color=discord.Color.green())
 
-        for nickname in ref_users.keys():
-            weapon_name, stat_changes = apply_stat_change(nickname)
-            if weapon_name and stat_changes:
-                embed.add_field(
-                    name=f"🛠️ {weapon_name}의 변경된 스탯",
-                    value="\n".join(stat_changes),
-                    inline=False
-                )
+#         for nickname in ref_users.keys():
+#             weapon_name, stat_changes = apply_stat_change(nickname)
+#             if weapon_name and stat_changes:
+#                 embed.add_field(
+#                     name=f"🛠️ {weapon_name}의 변경된 스탯",
+#                     value="\n".join(stat_changes),
+#                     inline=False
+#                 )
 
-        await interaction.followup.send(embed=embed)
+#         await interaction.followup.send(embed=embed)
 
-    @app_commands.command(name="탑",description="탑을 등반하여 탑 코인을 획득합니다.")
-    @app_commands.describe(층수 = "도전할 층수를 선택하세요")
-    async def infinity_tower(self, interaction: discord.Interaction, 층수 : app_commands.Range[int, 1] = None):
-        await interaction.response.defer()
-        nickname = interaction.user.name
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
+#     @app_commands.command(name="탑",description="탑을 등반하여 탑 코인을 획득합니다.")
+#     @app_commands.describe(층수 = "도전할 층수를 선택하세요")
+#     async def infinity_tower(self, interaction: discord.Interaction, 층수 : app_commands.Range[int, 1] = None):
+#         await interaction.response.defer()
+#         nickname = interaction.user.name
+#         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+#         current_predict_season = cur_predict_seasonref.get()
 
-        ref_weapon_challenger = db.reference(f"무기/유저/{nickname}")
-        weapon_data_challenger = ref_weapon_challenger.get() or {}
+#         ref_weapon_challenger = db.reference(f"무기/유저/{nickname}")
+#         weapon_data_challenger = ref_weapon_challenger.get() or {}
 
-        weapon_name_challenger = weapon_data_challenger.get("이름", "")
-        if weapon_name_challenger == "":
-            await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
-            return
+#         weapon_name_challenger = weapon_data_challenger.get("이름", "")
+#         if weapon_name_challenger == "":
+#             await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+#             return
         
-        ref_current_floor = db.reference(f"탑/유저/{nickname}")
-        tower_data = ref_current_floor.get() or {}
-        if not tower_data:
-            ref_current_floor.set({"층수": 1})
-            current_floor = 1
-        else:
-            current_floor = tower_data.get("층수", 1)
+#         ref_current_floor = db.reference(f"탑/유저/{nickname}")
+#         tower_data = ref_current_floor.get() or {}
+#         if not tower_data:
+#             ref_current_floor.set({"층수": 1})
+#             current_floor = 1
+#         else:
+#             current_floor = tower_data.get("층수", 1)
         
-        if 층수 is None:
-            target_floor = current_floor
+#         if 층수 is None:
+#             target_floor = current_floor
             
-        else:
-            if 층수 < current_floor: # 현재 층수보다 낮은 곳을 입력한다면?
-                warnembed = discord.Embed(title="실패",color = discord.Color.red())
-                warnembed.add_field(name="",value="다음 층수보다 낮은 층수를 입력했습니다! ❌")
-                await interaction.followup.send(embed = warnembed)
-                return
-            target_floor = 층수
+#         else:
+#             if 층수 < current_floor: # 현재 층수보다 낮은 곳을 입력한다면?
+#                 warnembed = discord.Embed(title="실패",color = discord.Color.red())
+#                 warnembed.add_field(name="",value="다음 층수보다 낮은 층수를 입력했습니다! ❌")
+#                 await interaction.followup.send(embed = warnembed)
+#                 return
+#             target_floor = 층수
 
-        weapon_data_opponent = generate_tower_weapon(target_floor)
+#         weapon_data_opponent = generate_tower_weapon(target_floor)
 
-        weapon_name_opponent = weapon_data_opponent.get("이름", "")
-        if weapon_name_opponent == "":
-            await interaction.followup.send("상대가 없습니다!",ephemeral=True)
-            return
+#         weapon_name_opponent = weapon_data_opponent.get("이름", "")
+#         if weapon_name_opponent == "":
+#             await interaction.followup.send("상대가 없습니다!",ephemeral=True)
+#             return
         
-        ref_item = db.reference(f"무기/아이템/{nickname}")
-        item_data = ref_item.get() or {}
-        tower_refesh = item_data.get("탑 재도전", 0)
+#         ref_item = db.reference(f"무기/아이템/{nickname}")
+#         item_data = ref_item.get() or {}
+#         tower_refesh = item_data.get("탑 재도전", 0)
 
-        battle_ref = db.reference("승부예측/대결진행여부")
-        is_battle = battle_ref.get() or {}
-        if is_battle:
-            warnembed = discord.Embed(title="실패",color = discord.Color.red())
-            warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-            await interaction.followup.send(embed = warnembed)
-            return
-        battle_ref.set(True)
-        tower_bool = tower_data.get("등반여부", False)
-        if tower_bool:
-            if tower_refesh:
-                userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
-                userembed.add_field(name="",value=f"{interaction.user.display_name}님이 아이템을 사용하여 탑에 재도전했습니다!", inline=False)
-                ref_item.update({"탑 재도전": tower_refesh - 1})
-                ref_current_floor = db.reference(f"탑/유저/{nickname}")
-                ref_current_floor.update({"등반여부": False}) # 등반여부 초기화
-                channel = interaction.client.get_channel(int(CHANNEL_ID))
-                await channel.send(embed=userembed)
-            else:
-                warnembed = discord.Embed(title="실패",color = discord.Color.red())
-                warnembed.add_field(name="",value="오늘의 도전 기회를 다 사용했습니다! ❌")
-                await interaction.followup.send(embed = warnembed)
-                return
+#         battle_ref = db.reference("승부예측/대결진행여부")
+#         is_battle = battle_ref.get() or {}
+#         if is_battle:
+#             warnembed = discord.Embed(title="실패",color = discord.Color.red())
+#             warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+#             await interaction.followup.send(embed = warnembed)
+#             return
+#         battle_ref.set(True)
+#         tower_bool = tower_data.get("등반여부", False)
+#         if tower_bool:
+#             if tower_refesh:
+#                 userembed = discord.Embed(title=f"알림", color=discord.Color.light_gray())
+#                 userembed.add_field(name="",value=f"{interaction.user.display_name}님이 아이템을 사용하여 탑에 재도전했습니다!", inline=False)
+#                 ref_item.update({"탑 재도전": tower_refesh - 1})
+#                 ref_current_floor = db.reference(f"탑/유저/{nickname}")
+#                 ref_current_floor.update({"등반여부": False}) # 등반여부 초기화
+#                 channel = interaction.client.get_channel(int(CHANNEL_ID))
+#                 await channel.send(embed=userembed)
+#             else:
+#                 warnembed = discord.Embed(title="실패",color = discord.Color.red())
+#                 warnembed.add_field(name="",value="오늘의 도전 기회를 다 사용했습니다! ❌")
+#                 await interaction.followup.send(embed = warnembed)
+#                 return
         
        
 
-        # ====================  [미션]  ====================
-        # 일일미션 : 탑 1회 도전
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-        current_predict_season = cur_predict_seasonref.get()
-        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/탑 1회 도전")
-        mission_data = ref.get() or {}
-        mission_bool = mission_data.get('완료', False)
-        if not mission_bool:
-            ref.update({"완료": True})
-            print(f"{interaction.user.display_name}의 [탑 1회 도전] 미션 완료")
+#         # ====================  [미션]  ====================
+#         # 일일미션 : 탑 1회 도전
+#         cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+#         current_predict_season = cur_predict_seasonref.get()
+#         ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/탑 1회 도전")
+#         mission_data = ref.get() or {}
+#         mission_bool = mission_data.get('완료', False)
+#         if not mission_bool:
+#             ref.update({"완료": True})
+#             print(f"{interaction.user.display_name}의 [탑 1회 도전] 미션 완료")
 
-        # ====================  [미션]  ====================
+#         # ====================  [미션]  ====================
                     
-        # 임베드 생성
-        embed = discord.Embed(
-            title=f"{interaction.user.display_name}의 탑 등반({target_floor}층)",
-            description="전투가 시작되었습니다!",
-            color=discord.Color.blue()  # 원하는 색상 선택
-        )
-        await interaction.followup.send(embed=embed)
-        await Battle(channel = interaction.channel,challenger_m = interaction.user, tower = True, tower_floor=target_floor)
+#         # 임베드 생성
+#         embed = discord.Embed(
+#             title=f"{interaction.user.display_name}의 탑 등반({target_floor}층)",
+#             description="전투가 시작되었습니다!",
+#             color=discord.Color.blue()  # 원하는 색상 선택
+#         )
+#         await interaction.followup.send(embed=embed)
+#         await Battle(channel = interaction.channel,challenger_m = interaction.user, tower = True, tower_floor=target_floor)
 
-        battle_ref = db.reference("승부예측/대결진행여부")
-        battle_ref.set(False)
+#         battle_ref = db.reference("승부예측/대결진행여부")
+#         battle_ref.set(False)
 
 
 
-    @app_commands.command(name="탑모의전",description="탑의 상대와 모의전투를 진행합니다.")
-    @app_commands.describe(층수 = "도전할 층수를 선택하세요.")
-    async def infinity_tower_practice(self, interaction: discord.Interaction,층수 : app_commands.Range[int, 1], 상대 : discord.Member = None, 시뮬레이션 : bool = False):
-        if 상대 is None:
-            상대 = interaction.user  # 자기 자신을 대상으로 설정
+#     @app_commands.command(name="탑모의전",description="탑의 상대와 모의전투를 진행합니다.")
+#     @app_commands.describe(층수 = "도전할 층수를 선택하세요.")
+#     async def infinity_tower_practice(self, interaction: discord.Interaction,층수 : app_commands.Range[int, 1], 상대 : discord.Member = None, 시뮬레이션 : bool = False):
+#         if 상대 is None:
+#             상대 = interaction.user  # 자기 자신을 대상으로 설정
         
-        ref_weapon_challenger = db.reference(f"무기/유저/{상대.name}")
-        weapon_data_challenger = ref_weapon_challenger.get() or {}
+#         ref_weapon_challenger = db.reference(f"무기/유저/{상대.name}")
+#         weapon_data_challenger = ref_weapon_challenger.get() or {}
 
-        weapon_name_challenger = weapon_data_challenger.get("이름", "")
-        if weapon_name_challenger == "":
-            await interaction.response.send_message("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
-            return
+#         weapon_name_challenger = weapon_data_challenger.get("이름", "")
+#         if weapon_name_challenger == "":
+#             await interaction.response.send_message("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+#             return
         
-        current_floor = 층수
+#         current_floor = 층수
         
-        weapon_data_opponent = generate_tower_weapon(current_floor)
+#         weapon_data_opponent = generate_tower_weapon(current_floor)
 
-        weapon_name_opponent = weapon_data_opponent.get("이름", "")
-        if weapon_name_opponent == "":
-            await interaction.response.send_message("상대가 없습니다!",ephemeral=True)
-            return
+#         weapon_name_opponent = weapon_data_opponent.get("이름", "")
+#         if weapon_name_opponent == "":
+#             await interaction.response.send_message("상대가 없습니다!",ephemeral=True)
+#             return
 
-        if 시뮬레이션:
-            await interaction.response.defer()
-            ref_skill_data = db.reference("무기/스킬")
-            skill_data_firebase = ref_skill_data.get() or {}
+#         if 시뮬레이션:
+#             await interaction.response.defer()
+#             ref_skill_data = db.reference("무기/스킬")
+#             skill_data_firebase = ref_skill_data.get() or {}
 
-            ref_weapon_challenger = db.reference(f"무기/유저/{상대.name}")
-            weapon_data_challenger = ref_weapon_challenger.get() or {}
+#             ref_weapon_challenger = db.reference(f"무기/유저/{상대.name}")
+#             weapon_data_challenger = ref_weapon_challenger.get() or {}
 
-            ref_skill = db.reference(f"무기/스킬")
-            skill_common_data = ref_skill.get() or {}
+#             ref_skill = db.reference(f"무기/스킬")
+#             skill_common_data = ref_skill.get() or {}
 
-            win_count = 0
-            for i in range(1000):
-                result = await Battle(channel = interaction.channel,challenger_m= 상대, raid = False, practice = False, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data)
-                if result:  # True면 승리
-                    win_count += 1
+#             win_count = 0
+#             for i in range(1000):
+#                 result = await Battle(channel = interaction.channel,challenger_m= 상대, raid = False, practice = False, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data)
+#                 if result:  # True면 승리
+#                     win_count += 1
 
-            result_embed = discord.Embed(title="시뮬레이션 결과",color = discord.Color.blue())
-            win_probability = round((win_count / 1000) * 100, 2)
-            weapon_types = ["대검","스태프-화염", "조총", "스태프-냉기", "태도", "활", "스태프-신성", "단검", "낫", "창"]
-            weapon_type = weapon_types[(층수 - 1) % len(weapon_types)]  # 1층부터 시작
-            result_embed.add_field(name=f"{weapon_data_challenger.get('이름','')}의 {층수}층({weapon_type}) 기대 승률",value=f"{win_probability}%")
-            await interaction.followup.send(embed = result_embed)
-            return
+#             result_embed = discord.Embed(title="시뮬레이션 결과",color = discord.Color.blue())
+#             win_probability = round((win_count / 1000) * 100, 2)
+#             weapon_types = ["대검","스태프-화염", "조총", "스태프-냉기", "태도", "활", "스태프-신성", "단검", "낫", "창"]
+#             weapon_type = weapon_types[(층수 - 1) % len(weapon_types)]  # 1층부터 시작
+#             result_embed.add_field(name=f"{weapon_data_challenger.get('이름','')}의 {층수}층({weapon_type}) 기대 승률",value=f"{win_probability}%")
+#             await interaction.followup.send(embed = result_embed)
+#             return
         
-        # battle_ref = db.reference("승부예측/대결진행여부")
-        # is_battle = battle_ref.get() or {}
-        # if is_battle:
-        #     warnembed = discord.Embed(title="실패",color = discord.Color.red())
-        #     warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-        #     await interaction.response.send_message(embed = warnembed)
-        #     return
+#         # battle_ref = db.reference("승부예측/대결진행여부")
+#         # is_battle = battle_ref.get() or {}
+#         # if is_battle:
+#         #     warnembed = discord.Embed(title="실패",color = discord.Color.red())
+#         #     warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+#         #     await interaction.response.send_message(embed = warnembed)
+#         #     return
         
-        # battle_ref.set(True)
+#         # battle_ref.set(True)
                     
-        # 임베드 생성
-        embed = discord.Embed(
-            title=f"{상대.display_name}의 탑 등반({current_floor}층)(모의전)",
-            description="전투가 시작되었습니다!",
-            color=discord.Color.blue()  # 원하는 색상 선택
-        )
-        await interaction.response.send_message(embed=embed)
-        await Battle(channel = interaction.channel,challenger_m = 상대, tower = True, practice= True, tower_floor= 층수)
+#         # 임베드 생성
+#         embed = discord.Embed(
+#             title=f"{상대.display_name}의 탑 등반({current_floor}층)(모의전)",
+#             description="전투가 시작되었습니다!",
+#             color=discord.Color.blue()  # 원하는 색상 선택
+#         )
+#         await interaction.response.send_message(embed=embed)
+#         await Battle(channel = interaction.channel,challenger_m = 상대, tower = True, practice= True, tower_floor= 층수)
 
-        battle_ref = db.reference("승부예측/대결진행여부")
-        battle_ref.set(False)
+#         battle_ref = db.reference("승부예측/대결진행여부")
+#         battle_ref.set(False)
 
-    @app_commands.command(name="랜덤박스", description="랜덤 박스를 열어 아이템을 얻습니다!")
-    @app_commands.describe(개수="개봉할 랜덤박스 개수 (기본값: 1)")
-    async def 랜덤박스(self, interaction: discord.Interaction, 개수: int = 1):
-        nickname = interaction.user.name
-        reward_pool = [
-            ("강화재료", 3, 15),         # 15% 확률로 강화재료 3개
-            ("강화재료", 5, 15),         # 15% 확률로 강화재료 5개
-            ("강화재료", 10, 5),         # 5% 확률로 강화재료 10개
-            ("레이드 재도전", 1, 15),    # 15% 확률로 레이드 재도전권 1개
-            ("탑 재도전", 1, 15),        # 15% 확률로 탑 재도전권 1개
-            ("연마제", 1, 15),           # 15% 확률로 연마제 1개
-            ("연마제", 3, 5),            # 5% 확률로 연마제 3개
-            ("특수 연마제", 1, 1),       # 1% 확률로 특수 연마제 1개
-            ("스킬 각성의 룬", 1, 2),     # 2% 확률로 스킬 각성의 룬 1개
-            ("운명 왜곡의 룬", 3, 10),   # 10% 확률로 운명 왜곡의 룬 3개
-            ("꽝", 0, 2),                # 2% 확률로 꽝 (아이템 없음)
-        ]
+#     @app_commands.command(name="랜덤박스", description="랜덤 박스를 열어 아이템을 얻습니다!")
+#     @app_commands.describe(개수="개봉할 랜덤박스 개수 (기본값: 1)")
+#     async def 랜덤박스(self, interaction: discord.Interaction, 개수: int = 1):
+#         nickname = interaction.user.name
+#         reward_pool = [
+#             ("강화재료", 3, 15),         # 15% 확률로 강화재료 3개
+#             ("강화재료", 5, 15),         # 15% 확률로 강화재료 5개
+#             ("강화재료", 10, 5),         # 5% 확률로 강화재료 10개
+#             ("레이드 재도전", 1, 15),    # 15% 확률로 레이드 재도전권 1개
+#             ("탑 재도전", 1, 15),        # 15% 확률로 탑 재도전권 1개
+#             ("연마제", 1, 15),           # 15% 확률로 연마제 1개
+#             ("연마제", 3, 5),            # 5% 확률로 연마제 3개
+#             ("특수 연마제", 1, 1),       # 1% 확률로 특수 연마제 1개
+#             ("스킬 각성의 룬", 1, 2),     # 2% 확률로 스킬 각성의 룬 1개
+#             ("운명 왜곡의 룬", 3, 10),   # 10% 확률로 운명 왜곡의 룬 3개
+#             ("꽝", 0, 2),                # 2% 확률로 꽝 (아이템 없음)
+#         ]
         
-        ref = db.reference(f"무기/아이템/{nickname}")
-        current_data = ref.get() or {}
-        random_box = current_data.get("랜덤박스", 0)
+#         ref = db.reference(f"무기/아이템/{nickname}")
+#         current_data = ref.get() or {}
+#         random_box = current_data.get("랜덤박스", 0)
 
-        if random_box < 개수:
-            embed = discord.Embed(
-                title="사용 불가!",
-                description=f"❌ 랜덤박스가 {개수}개 필요합니다. 현재 보유: {random_box}개",
-                color=discord.Color.red()
-            )
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
+#         if random_box < 개수:
+#             embed = discord.Embed(
+#                 title="사용 불가!",
+#                 description=f"❌ 랜덤박스가 {개수}개 필요합니다. 현재 보유: {random_box}개",
+#                 color=discord.Color.red()
+#             )
+#             await interaction.response.send_message(embed=embed, ephemeral=True)
+#             return
         
-        # 결과 누적용
-        result_summary = {}
-        꽝_횟수 = 0
-        last_reward = None
+#         # 결과 누적용
+#         result_summary = {}
+#         꽝_횟수 = 0
+#         last_reward = None
 
-        for _ in range(개수):
-            roll = random.randint(1, 100)
-            current = 0
-            for name, amount, chance in reward_pool:
-                current += chance
-                if roll <= current:
-                    if name == "꽝":
-                        꽝_횟수 += 1
-                    else:
-                        result_summary[name] = result_summary.get(name, 0) + amount
-                        last_reward = (name, amount)
-                    break
+#         for _ in range(개수):
+#             roll = random.randint(1, 100)
+#             current = 0
+#             for name, amount, chance in reward_pool:
+#                 current += chance
+#                 if roll <= current:
+#                     if name == "꽝":
+#                         꽝_횟수 += 1
+#                     else:
+#                         result_summary[name] = result_summary.get(name, 0) + amount
+#                         last_reward = (name, amount)
+#                     break
 
-        # DB 업데이트
-        ref.update({"랜덤박스": random_box - 개수})
-        for name, total_amount in result_summary.items():
-            previous = current_data.get(name, 0)
-            ref.update({name: previous + total_amount})
+#         # DB 업데이트
+#         ref.update({"랜덤박스": random_box - 개수})
+#         for name, total_amount in result_summary.items():
+#             previous = current_data.get(name, 0)
+#             ref.update({name: previous + total_amount})
 
-        # ✅ 결과 출력
-        if 개수 == 1:
-            if last_reward:
-                name, amount = last_reward
-                embed = discord.Embed(title=f"🎁 랜덤박스 개봉 결과", color=discord.Color.gold())
-                embed.add_field(name=f"", value=f"🎉 **{interaction.user.mention}님이 랜덤박스를 열어 `{name} {amount}개`를 획득하셨습니다!**", inline=False)
-                await interaction.response.send_message(embed = embed)
-            else:
-                embed.add_field(name=f"", value=f"😭 아쉽게도 아무것도 얻지 못했습니다!", inline=False)
-                await interaction.response.send_message(embed = embed)
-        else:
-            embed = discord.Embed(title=f"🎁 랜덤박스 {개수}개 개봉 결과", color=discord.Color.gold())
+#         # ✅ 결과 출력
+#         if 개수 == 1:
+#             if last_reward:
+#                 name, amount = last_reward
+#                 embed = discord.Embed(title=f"🎁 랜덤박스 개봉 결과", color=discord.Color.gold())
+#                 embed.add_field(name=f"", value=f"🎉 **{interaction.user.mention}님이 랜덤박스를 열어 `{name} {amount}개`를 획득하셨습니다!**", inline=False)
+#                 await interaction.response.send_message(embed = embed)
+#             else:
+#                 embed.add_field(name=f"", value=f"😭 아쉽게도 아무것도 얻지 못했습니다!", inline=False)
+#                 await interaction.response.send_message(embed = embed)
+#         else:
+#             embed = discord.Embed(title=f"🎁 랜덤박스 {개수}개 개봉 결과", color=discord.Color.gold())
 
-            if result_summary:
-                for name, amount in result_summary.items():
-                    embed.add_field(name=f"🧧 {name}", value=f"{amount}개", inline=False)
+#             if result_summary:
+#                 for name, amount in result_summary.items():
+#                     embed.add_field(name=f"🧧 {name}", value=f"{amount}개", inline=False)
 
-            if 꽝_횟수 > 0:
-                embed.add_field(name="😢 꽝", value=f"{꽝_횟수}번", inline=False)
+#             if 꽝_횟수 > 0:
+#                 embed.add_field(name="😢 꽝", value=f"{꽝_횟수}번", inline=False)
 
-            await interaction.response.send_message(embed=embed)
+#             await interaction.response.send_message(embed=embed)
     
-    @app_commands.command(name="탑순위", description="탑 층수 순위를 보여줍니다.")
-    async def tower_ranking(self,interaction: discord.Interaction):
-        await interaction.response.defer()
+#     @app_commands.command(name="탑순위", description="탑 층수 순위를 보여줍니다.")
+#     async def tower_ranking(self,interaction: discord.Interaction):
+#         await interaction.response.defer()
 
-        ref_all_users = db.reference("탑/유저").get()
-        if not ref_all_users:
-            await interaction.followup.send("탑 도전 기록이 없습니다.", ephemeral=True)
-            return
+#         ref_all_users = db.reference("탑/유저").get()
+#         if not ref_all_users:
+#             await interaction.followup.send("탑 도전 기록이 없습니다.", ephemeral=True)
+#             return
 
-        # 유저 이름과 층수 데이터 모음
-        user_floors = []
-        for name, data in ref_all_users.items():
-            floor = data.get("층수", 0)
-            user_floors.append((name, floor))
+#         # 유저 이름과 층수 데이터 모음
+#         user_floors = []
+#         for name, data in ref_all_users.items():
+#             floor = data.get("층수", 0)
+#             user_floors.append((name, floor))
 
-        # 내림차순 정렬 (높은 층 우선)
-        user_floors.sort(key=lambda x: x[1], reverse=True)
+#         # 내림차순 정렬 (높은 층 우선)
+#         user_floors.sort(key=lambda x: x[1], reverse=True)
 
-        # Embed 생성
-        embed = discord.Embed(
-            title="🏆 탑 도전 순위",
-            description="이번 주 탑 순위!",
-            color=discord.Color.gold()
-        )
+#         # Embed 생성
+#         embed = discord.Embed(
+#             title="🏆 탑 도전 순위",
+#             description="이번 주 탑 순위!",
+#             color=discord.Color.gold()
+#         )
 
-        for i, (name, floor) in enumerate(user_floors[:10], start=1):
-            top = ""
-            if i == 1:
-                rank_emoji = "🥇"
-                top = "👑"
-            elif i == 2:
-                rank_emoji = "🥈"
-            elif i == 3:
-                rank_emoji = "🥉"
-            else:
-                rank_emoji = ""
-            if floor >= 2:
-                embed.add_field(name=f"", value=f"{rank_emoji} {i}위 - {name} : **{floor - 1}층 {top}** ", inline=False)
+#         for i, (name, floor) in enumerate(user_floors[:10], start=1):
+#             top = ""
+#             if i == 1:
+#                 rank_emoji = "🥇"
+#                 top = "👑"
+#             elif i == 2:
+#                 rank_emoji = "🥈"
+#             elif i == 3:
+#                 rank_emoji = "🥉"
+#             else:
+#                 rank_emoji = ""
+#             if floor >= 2:
+#                 embed.add_field(name=f"", value=f"{rank_emoji} {i}위 - {name} : **{floor - 1}층 {top}** ", inline=False)
 
-        await interaction.followup.send(embed=embed)
+#         await interaction.followup.send(embed=embed)
 
 
-    @app_commands.command(name="배틀테스트",description="두 명을 싸움 붙힙니다.")
-    @app_commands.describe(상대1 = "상대를 고르세요", 상대2 = "상대를 고르세요")
-    async def battleTest(self,interaction: discord.Interaction, 상대1 : discord.Member, 상대2 : discord.Member, 시뮬레이션 : bool = False):
-        await interaction.response.defer()
+#     @app_commands.command(name="배틀테스트",description="두 명을 싸움 붙힙니다.")
+#     @app_commands.describe(상대1 = "상대를 고르세요", 상대2 = "상대를 고르세요")
+#     async def battleTest(self,interaction: discord.Interaction, 상대1 : discord.Member, 상대2 : discord.Member, 시뮬레이션 : bool = False):
+#         await interaction.response.defer()
 
-        ref_weapon_challenger = db.reference(f"무기/유저/{상대1.name}")
-        weapon_data_challenger = ref_weapon_challenger.get() or {}
+#         ref_weapon_challenger = db.reference(f"무기/유저/{상대1.name}")
+#         weapon_data_challenger = ref_weapon_challenger.get() or {}
 
-        weapon_name_challenger = weapon_data_challenger.get("이름", "")
-        if weapon_name_challenger == "":
-            await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
-            return
+#         weapon_name_challenger = weapon_data_challenger.get("이름", "")
+#         if weapon_name_challenger == "":
+#             await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+#             return
         
-        ref_weapon_opponent = db.reference(f"무기/유저/{상대2.name}")
-        weapon_data_opponent = ref_weapon_opponent.get() or {}
+#         ref_weapon_opponent = db.reference(f"무기/유저/{상대2.name}")
+#         weapon_data_opponent = ref_weapon_opponent.get() or {}
 
-        weapon_name_opponent = weapon_data_opponent.get("이름", "")
-        if weapon_name_opponent == "":
-            await interaction.followup.send("상대가 무기를 가지고 있지 않습니다!",ephemeral=True)
-            return
+#         weapon_name_opponent = weapon_data_opponent.get("이름", "")
+#         if weapon_name_opponent == "":
+#             await interaction.followup.send("상대가 무기를 가지고 있지 않습니다!",ephemeral=True)
+#             return
         
-        if 시뮬레이션:
-            ref_skill_data = db.reference("무기/스킬")
-            skill_data_firebase = ref_skill_data.get() or {}
+#         if 시뮬레이션:
+#             ref_skill_data = db.reference("무기/스킬")
+#             skill_data_firebase = ref_skill_data.get() or {}
 
-            ref_weapon_challenger = db.reference(f"무기/유저/{상대1.name}")
-            weapon_data_challenger = ref_weapon_challenger.get() or {}
+#             ref_weapon_challenger = db.reference(f"무기/유저/{상대1.name}")
+#             weapon_data_challenger = ref_weapon_challenger.get() or {}
 
-            ref_weapon_opponent = db.reference(f"무기/유저/{상대2.name}")
-            weapon_data_opponent = ref_weapon_opponent.get() or {}
+#             ref_weapon_opponent = db.reference(f"무기/유저/{상대2.name}")
+#             weapon_data_opponent = ref_weapon_opponent.get() or {}
 
-            ref_skill = db.reference(f"무기/스킬")
-            skill_common_data = ref_skill.get() or {}
+#             ref_skill = db.reference(f"무기/스킬")
+#             skill_common_data = ref_skill.get() or {}
 
-            win_count = 0
-            for i in range(1000):
-                result = await Battle(channel = interaction.channel,challenger_m= 상대1, opponent_m = 상대2, raid = False, practice = False, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data)
-                if result:  # True면 승리
-                    win_count += 1
+#             win_count = 0
+#             for i in range(1000):
+#                 result = await Battle(channel = interaction.channel,challenger_m= 상대1, opponent_m = 상대2, raid = False, practice = False, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data)
+#                 if result:  # True면 승리
+#                     win_count += 1
 
-            result_embed = discord.Embed(title="시뮬레이션 결과",color = discord.Color.blue())
-            result_embed.add_field(name=f"{weapon_data_challenger.get('이름','')} vs {weapon_data_opponent.get('이름','')}",value=f"{weapon_data_challenger.get('이름','')} {win_count}승, {weapon_data_opponent.get('이름','')} {1000 - win_count}승")
-            await interaction.followup.send(embed = result_embed)
-            return
+#             result_embed = discord.Embed(title="시뮬레이션 결과",color = discord.Color.blue())
+#             result_embed.add_field(name=f"{weapon_data_challenger.get('이름','')} vs {weapon_data_opponent.get('이름','')}",value=f"{weapon_data_challenger.get('이름','')} {win_count}승, {weapon_data_opponent.get('이름','')} {1000 - win_count}승")
+#             await interaction.followup.send(embed = result_embed)
+#             return
 
-        # battle_ref = db.reference("승부예측/대결진행여부")
-        # is_battle = battle_ref.get() or {}
-        # if is_battle:
-        #     warnembed = discord.Embed(title="실패",color = discord.Color.red())
-        #     warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-        #     await interaction.followup.send(embed = warnembed)
-        #     return
-        # battle_ref.set(True)
+#         # battle_ref = db.reference("승부예측/대결진행여부")
+#         # is_battle = battle_ref.get() or {}
+#         # if is_battle:
+#         #     warnembed = discord.Embed(title="실패",color = discord.Color.red())
+#         #     warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+#         #     await interaction.followup.send(embed = warnembed)
+#         #     return
+#         # battle_ref.set(True)
 
-        # 임베드 생성
-        embed = discord.Embed(
-            title=f"{상대1.display_name} vs {상대2.display_name} 무기 대결",
-            description="대결이 시작되었습니다!",
-            color=discord.Color.blue()  # 원하는 색상 선택
-        )
-        await interaction.followup.send(embed=embed)
-        await Battle(channel = interaction.channel,challenger_m= 상대1, opponent_m = 상대2, raid = False, practice = False)
+#         # 임베드 생성
+#         embed = discord.Embed(
+#             title=f"{상대1.display_name} vs {상대2.display_name} 무기 대결",
+#             description="대결이 시작되었습니다!",
+#             color=discord.Color.blue()  # 원하는 색상 선택
+#         )
+#         await interaction.followup.send(embed=embed)
+#         await Battle(channel = interaction.channel,challenger_m= 상대1, opponent_m = 상대2, raid = False, practice = False)
 
-        battle_ref = db.reference("승부예측/대결진행여부")
-        battle_ref.set(False)
+#         battle_ref = db.reference("승부예측/대결진행여부")
+#         battle_ref.set(False)
 
-    @app_commands.command(name="테스트레이드",description="유저를 골라 레이드 보스를 상대로 모의전투를 시킵니다")
-    @app_commands.choices(보스=[
-    Choice(name='스우', value='스우'),
-    Choice(name='브라움', value='브라움'),
-    Choice(name='카이사', value='카이사'),
-    Choice(name='팬텀', value = '팬텀'),
-    Choice(name='허수아비', value = '허수아비'),
-    ])
-    @app_commands.describe(보스 = "전투할 보스를 선택하세요")
-    async def raid_practice_test(self, interaction: discord.Interaction, 보스: str, 상대1 : discord.Member = None, 시뮬레이션 : bool = False):
-        await interaction.response.defer()
+#     @app_commands.command(name="테스트레이드",description="유저를 골라 레이드 보스를 상대로 모의전투를 시킵니다")
+#     @app_commands.choices(보스=[
+#     Choice(name='스우', value='스우'),
+#     Choice(name='브라움', value='브라움'),
+#     Choice(name='카이사', value='카이사'),
+#     Choice(name='팬텀', value = '팬텀'),
+#     Choice(name='허수아비', value = '허수아비'),
+#     ])
+#     @app_commands.describe(보스 = "전투할 보스를 선택하세요")
+#     async def raid_practice_test(self, interaction: discord.Interaction, 보스: str, 상대1 : discord.Member = None, 시뮬레이션 : bool = False):
+#         await interaction.response.defer()
 
-        if 상대1 == None:
-            상대1 = interaction.user
-        ref_weapon_challenger = db.reference(f"무기/유저/{상대1.name}")
-        weapon_data_challenger = ref_weapon_challenger.get() or {}
+#         if 상대1 == None:
+#             상대1 = interaction.user
+#         ref_weapon_challenger = db.reference(f"무기/유저/{상대1.name}")
+#         weapon_data_challenger = ref_weapon_challenger.get() or {}
 
-        weapon_name_challenger = weapon_data_challenger.get("이름", "")
-        if weapon_name_challenger == "":
-            await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
-            return
+#         weapon_name_challenger = weapon_data_challenger.get("이름", "")
+#         if weapon_name_challenger == "":
+#             await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!",ephemeral=True)
+#             return
         
-        boss_name = 보스
+#         boss_name = 보스
         
-        ref_weapon_opponent = db.reference(f"레이드/보스/{boss_name}")
-        weapon_data_opponent = ref_weapon_opponent.get() or {}
+#         ref_weapon_opponent = db.reference(f"레이드/보스/{boss_name}")
+#         weapon_data_opponent = ref_weapon_opponent.get() or {}
 
-        weapon_name_opponent = weapon_data_opponent.get("이름", "")
-        if weapon_name_opponent == "":
-            await interaction.followup.send("상대가 없습니다!",ephemeral=True)
-            return
+#         weapon_name_opponent = weapon_data_opponent.get("이름", "")
+#         if weapon_name_opponent == "":
+#             await interaction.followup.send("상대가 없습니다!",ephemeral=True)
+#             return
         
-        if 시뮬레이션:
-            ref_skill_data = db.reference("무기/스킬")
-            skill_data_firebase = ref_skill_data.get() or {}
+#         if 시뮬레이션:
+#             ref_skill_data = db.reference("무기/스킬")
+#             skill_data_firebase = ref_skill_data.get() or {}
 
-            ref_weapon_challenger = db.reference(f"무기/유저/{상대1.name}")
-            weapon_data_challenger = ref_weapon_challenger.get() or {}
+#             ref_weapon_challenger = db.reference(f"무기/유저/{상대1.name}")
+#             weapon_data_challenger = ref_weapon_challenger.get() or {}
 
-            ref_weapon_opponent = db.reference(f"레이드/보스/{boss_name}")
-            weapon_data_opponent = ref_weapon_opponent.get() or {}
+#             ref_weapon_opponent = db.reference(f"레이드/보스/{boss_name}")
+#             weapon_data_opponent = ref_weapon_opponent.get() or {}
 
-            ref_skill = db.reference(f"무기/스킬")
-            skill_common_data = ref_skill.get() or {}
+#             ref_skill = db.reference(f"무기/스킬")
+#             skill_common_data = ref_skill.get() or {}
 
-            damage_total = 0
-            damage_results = []
-            for i in range(1000):
-                result = await Battle(channel = interaction.channel,challenger_m = 상대1, boss = boss_name, raid = True, practice = True, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data)
-                if result:
-                    damage_total += result  # 숫자 반환됨
-                    damage_results.append(result)
+#             damage_total = 0
+#             damage_results = []
+#             for i in range(1000):
+#                 result = await Battle(channel = interaction.channel,challenger_m = 상대1, boss = boss_name, raid = True, practice = True, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data)
+#                 if result:
+#                     damage_total += result  # 숫자 반환됨
+#                     damage_results.append(result)
 
-            average_damage = round(sum(damage_results) / len(damage_results))
-            max_damage = max(damage_results)
-            min_damage = min(damage_results)
+#             average_damage = round(sum(damage_results) / len(damage_results))
+#             max_damage = max(damage_results)
+#             min_damage = min(damage_results)
 
-            result_embed = discord.Embed(title="시뮬레이션 결과", color=discord.Color.blue())
-            result_embed.add_field(
-                name="",
-                value=(
-                    f"**{weapon_data_challenger.get('이름', '')}**의 {boss_name} 상대 평균 대미지 : **{average_damage}**\n"
-                    f"최대 대미지 : **{max_damage}**\n"
-                    f"최소 대미지 : **{min_damage}**"
-                )
-            )
-            await interaction.followup.send(embed = result_embed)
-            return
+#             result_embed = discord.Embed(title="시뮬레이션 결과", color=discord.Color.blue())
+#             result_embed.add_field(
+#                 name="",
+#                 value=(
+#                     f"**{weapon_data_challenger.get('이름', '')}**의 {boss_name} 상대 평균 대미지 : **{average_damage}**\n"
+#                     f"최대 대미지 : **{max_damage}**\n"
+#                     f"최소 대미지 : **{min_damage}**"
+#                 )
+#             )
+#             await interaction.followup.send(embed = result_embed)
+#             return
         
-        # battle_ref = db.reference("승부예측/대결진행여부")
-        # is_battle = battle_ref.get() or {}
-        # if is_battle:
-        #     warnembed = discord.Embed(title="실패",color = discord.Color.red())
-        #     warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
-        #     await interaction.followup.send(embed = warnembed)
-        #     return
+#         # battle_ref = db.reference("승부예측/대결진행여부")
+#         # is_battle = battle_ref.get() or {}
+#         # if is_battle:
+#         #     warnembed = discord.Embed(title="실패",color = discord.Color.red())
+#         #     warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+#         #     await interaction.followup.send(embed = warnembed)
+#         #     return
         
-        # battle_ref.set(True)
+#         # battle_ref.set(True)
 
-        # 임베드 생성
-        embed = discord.Embed(
-            title=f"{상대1.display_name}의 {weapon_data_opponent.get('이름', '')} 레이드 모의전",
-            description="모의전이 시작되었습니다!",
-            color=discord.Color.blue()  # 원하는 색상 선택
-        )
-        await interaction.followup.send(embed=embed)
-        await Battle(channel = interaction.channel,challenger_m = 상대1, boss = boss_name, raid = True, practice = True)
+#         # 임베드 생성
+#         embed = discord.Embed(
+#             title=f"{상대1.display_name}의 {weapon_data_opponent.get('이름', '')} 레이드 모의전",
+#             description="모의전이 시작되었습니다!",
+#             color=discord.Color.blue()  # 원하는 색상 선택
+#         )
+#         await interaction.followup.send(embed=embed)
+#         await Battle(channel = interaction.channel,challenger_m = 상대1, boss = boss_name, raid = True, practice = True)
 
-        battle_ref = db.reference("승부예측/대결진행여부")
-        battle_ref.set(False)
+#         battle_ref = db.reference("승부예측/대결진행여부")
+#         battle_ref.set(False)
 
 
-    @app_commands.command(name="거울", description="자신과 같은 강화 수치를 가진 상대를 만나 전투합니다.")
-    async def Mirror(self, interaction: discord.Interaction):
-        await interaction.response.defer()
+#     @app_commands.command(name="거울", description="자신과 같은 강화 수치를 가진 상대를 만나 전투합니다.")
+#     async def Mirror(self, interaction: discord.Interaction):
+#         await interaction.response.defer()
 
-        user_name = interaction.user.name
-        ref_weapon = db.reference(f"무기/유저/{user_name}")
-        weapon_data_challenger = ref_weapon.get() or {}
+#         user_name = interaction.user.name
+#         ref_weapon = db.reference(f"무기/유저/{user_name}")
+#         weapon_data_challenger = ref_weapon.get() or {}
 
-        if not weapon_data_challenger.get("이름"):
-            await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!", ephemeral=True)
-            return
+#         if not weapon_data_challenger.get("이름"):
+#             await interaction.followup.send("무기를 가지고 있지 않습니다! 무기를 생성해주세요!", ephemeral=True)
+#             return
 
-        ref_mirror = db.reference(f"무기/거울/{interaction.user.name}")
-        mirror_data = ref_mirror.get() or {}
-        mirror_bool = mirror_data.get("참여 여부", False)
+#         ref_mirror = db.reference(f"무기/거울/{interaction.user.name}")
+#         mirror_data = ref_mirror.get() or {}
+#         mirror_bool = mirror_data.get("참여 여부", False)
 
-        if mirror_bool:
-            win_count = mirror_data.get("승수", 0)
+#         if mirror_bool:
+#             win_count = mirror_data.get("승수", 0)
 
-            final_embed = discord.Embed(
-                title="📉 최종 결과",
-                description=f"오늘 이미 도전을 완료하셨습니다!\n\n🏁 **{win_count}승 / 10승**\n탑코인 **{win_count}개** 지급 완료!",
-                color=discord.Color.gold()
-            )
-            final_embed.set_footer(text="같은 날에는 한 번만 도전할 수 있습니다.")
+#             final_embed = discord.Embed(
+#                 title="📉 최종 결과",
+#                 description=f"오늘 이미 도전을 완료하셨습니다!\n\n🏁 **{win_count}승 / 10승**\n탑코인 **{win_count}개** 지급 완료!",
+#                 color=discord.Color.gold()
+#             )
+#             final_embed.set_footer(text="같은 날에는 한 번만 도전할 수 있습니다.")
             
-            await interaction.followup.send(embed=final_embed, ephemeral=True)
-            return
-        else:
-            ref_mirror.update({
-                "참여 여부": True,
-                "승수": 0  # 아직 승수 없음
-            })
-            # ====================  [미션]  ====================
-            # 일일미션 : 거울의 전장 도전
-            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-            current_predict_season = cur_predict_seasonref.get()
-            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/일일미션/거울의 전장 도전")
-            mission_data = ref.get() or {}
-            mission_bool = mission_data.get('완료',0)
-            if not mission_bool:
-                ref.update({"완료": True})
-                print(f"{interaction.user.display_name}의 [거울의 전장 도전] 미션 완료")
+#             await interaction.followup.send(embed=final_embed, ephemeral=True)
+#             return
+#         else:
+#             ref_mirror.update({
+#                 "참여 여부": True,
+#                 "승수": 0  # 아직 승수 없음
+#             })
+#             # ====================  [미션]  ====================
+#             # 일일미션 : 거울의 전장 도전
+#             cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+#             current_predict_season = cur_predict_seasonref.get()
+#             ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/일일미션/거울의 전장 도전")
+#             mission_data = ref.get() or {}
+#             mission_bool = mission_data.get('완료',0)
+#             if not mission_bool:
+#                 ref.update({"완료": True})
+#                 print(f"{interaction.user.display_name}의 [거울의 전장 도전] 미션 완료")
 
-            # ====================  [미션]  ====================
+#             # ====================  [미션]  ====================
 
-        # 강화 보정 적용
-        ref_weapon_enhance = db.reference(f"무기/강화")
-        enhance_types_dict = ref_weapon_enhance.get() or {}
-        enhance_types = list(enhance_types_dict.keys())  # dict_keys -> list 변환
+#         # 강화 보정 적용
+#         ref_weapon_enhance = db.reference(f"무기/강화")
+#         enhance_types_dict = ref_weapon_enhance.get() or {}
+#         enhance_types = list(enhance_types_dict.keys())  # dict_keys -> list 변환
 
-        # 기존 강화 내역
-        original_enhance_log = weapon_data_challenger.get("강화내역", {})
-        total_enhancement = sum(original_enhance_log.values())
+#         # 기존 강화 내역
+#         original_enhance_log = weapon_data_challenger.get("강화내역", {})
+#         total_enhancement = sum(original_enhance_log.values())
 
-        # 랜덤 분배 함수
-        def random_redistribute(total_points, keys):
-            assigned = {key: 0 for key in keys}
-            for _ in range(total_points):
-                selected = random.choice(keys)
-                assigned[selected] += 1
-            return assigned
+#         # 랜덤 분배 함수
+#         def random_redistribute(total_points, keys):
+#             assigned = {key: 0 for key in keys}
+#             for _ in range(total_points):
+#                 selected = random.choice(keys)
+#                 assigned[selected] += 1
+#             return assigned
 
-        # 랜덤 분배 실행
-        new_enhance_log = random_redistribute(total_enhancement, enhance_types)
+#         # 랜덤 분배 실행
+#         new_enhance_log = random_redistribute(total_enhancement, enhance_types)
 
-        weapon_data_opponent = weapon_data_challenger.copy()
-        weapon_data_opponent["강화내역"] = new_enhance_log
+#         weapon_data_opponent = weapon_data_challenger.copy()
+#         weapon_data_opponent["강화내역"] = new_enhance_log
 
-        # 가장 많이 강화된 항목 찾기
-        max_enhance_type = max(new_enhance_log, key=new_enhance_log.get)
+#         # 가장 많이 강화된 항목 찾기
+#         max_enhance_type = max(new_enhance_log, key=new_enhance_log.get)
 
-        # 이름 앞 글자 추출 (예: "스킬 강화" -> "스킬형")
-        prefix = max_enhance_type.split()[0] + "형"
+#         # 이름 앞 글자 추출 (예: "스킬 강화" -> "스킬형")
+#         prefix = max_enhance_type.split()[0] + "형"
 
-        # 이름 변경
-        original_name = weapon_data_challenger["이름"]
-        weapon_data_opponent["이름"] = f"{original_name}-{prefix}"
+#         # 이름 변경
+#         original_name = weapon_data_challenger["이름"]
+#         weapon_data_opponent["이름"] = f"{original_name}-{prefix}"
 
-        # 스탯 반영
-        enhancement_options = db.reference(f"무기/강화").get() or {}
-        base_weapon_stats = db.reference(f"무기/기본 스탯").get() or {}
-        weapon_data_opponent = apply_stat_to_weapon_data(
-            weapon_data_opponent,
-            enhancement_options,
-            base_weapon_stats
-        )
+#         # 스탯 반영
+#         enhancement_options = db.reference(f"무기/강화").get() or {}
+#         base_weapon_stats = db.reference(f"무기/기본 스탯").get() or {}
+#         weapon_data_opponent = apply_stat_to_weapon_data(
+#             weapon_data_opponent,
+#             enhancement_options,
+#             base_weapon_stats
+#         )
 
-        skill_data_firebase = db.reference("무기/스킬").get() or {}
+#         skill_data_firebase = db.reference("무기/스킬").get() or {}
 
-        # 쓰레드 생성
-        thread = await interaction.channel.create_thread(
-            name=f"{interaction.user.display_name}의 거울의 전장",
-            type=discord.ChannelType.public_thread
-        )
+#         # 쓰레드 생성
+#         thread = await interaction.channel.create_thread(
+#             name=f"{interaction.user.display_name}의 거울의 전장",
+#             type=discord.ChannelType.public_thread
+#         )
 
-        # 임베드 생성
-        embed = discord.Embed(
-            title=f"{interaction.user.display_name}의 거울의 전장",
-            description="도전이 시작되었습니다!",
-            color=discord.Color.blue()  # 원하는 색상 선택
-        )
+#         # 임베드 생성
+#         embed = discord.Embed(
+#             title=f"{interaction.user.display_name}의 거울의 전장",
+#             description="도전이 시작되었습니다!",
+#             color=discord.Color.blue()  # 원하는 색상 선택
+#         )
 
-        result_view = ResultButton(interaction.user, weapon_data_challenger, weapon_data_opponent, skill_data_firebase)
-        msg = await thread.send(
-            content="💡 강화된 무기 비교 및 시뮬레이션 결과를 확인해보세요!",
-            embeds=[
-                get_stat_embed(weapon_data_challenger, weapon_data_opponent),
-                get_enhance_embed(weapon_data_challenger, weapon_data_opponent)
-            ],
-            view=result_view
-        )
-        result_view.message = msg  # 메시지 저장
+#         result_view = ResultButton(interaction.user, weapon_data_challenger, weapon_data_opponent, skill_data_firebase)
+#         msg = await thread.send(
+#             content="💡 강화된 무기 비교 및 시뮬레이션 결과를 확인해보세요!",
+#             embeds=[
+#                 get_stat_embed(weapon_data_challenger, weapon_data_opponent),
+#                 get_enhance_embed(weapon_data_challenger, weapon_data_opponent)
+#             ],
+#             view=result_view
+#         )
+#         result_view.message = msg  # 메시지 저장
 
-        await interaction.followup.send(embed = embed, ephemeral=True)
+#         await interaction.followup.send(embed = embed, ephemeral=True)
 
 
-    # 명령어 정의
-    @app_commands.command(name="룬사용", description="룬을 사용합니다.")
-    @app_commands.choices(룬=[
-        Choice(name='스킬 각성의 룬', value='스킬 각성의 룬'),
-        Choice(name='운명 왜곡의 룬', value='운명 왜곡의 룬'),
-        Choice(name='회귀의 룬', value='회귀의 룬'),
-    ])
-    @app_commands.describe(룬 = "사용할 룬을 선택하세요")
-    async def rune(self, interaction: discord.Interaction, 룬: str):
-        await interaction.response.defer()
+#     # 명령어 정의
+#     @app_commands.command(name="룬사용", description="룬을 사용합니다.")
+#     @app_commands.choices(룬=[
+#         Choice(name='스킬 각성의 룬', value='스킬 각성의 룬'),
+#         Choice(name='운명 왜곡의 룬', value='운명 왜곡의 룬'),
+#         Choice(name='회귀의 룬', value='회귀의 룬'),
+#     ])
+#     @app_commands.describe(룬 = "사용할 룬을 선택하세요")
+#     async def rune(self, interaction: discord.Interaction, 룬: str):
+#         await interaction.response.defer()
 
-        nickname = interaction.user.name
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
+#         nickname = interaction.user.name
+#         cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
+#         current_predict_season = cur_predict_seasonref.get()
 
-        ref_item = db.reference(f"무기/아이템/{nickname}")
-        item_data = ref_item.get() or {}
-        rune_count = item_data.get(룬, 0)
+#         ref_item = db.reference(f"무기/아이템/{nickname}")
+#         item_data = ref_item.get() or {}
+#         rune_count = item_data.get(룬, 0)
 
-        if rune_count <= 0:
-            await interaction.followup.send("보유한 해당 룬이 없습니다.", ephemeral=True)
-            return
+#         if rune_count <= 0:
+#             await interaction.followup.send("보유한 해당 룬이 없습니다.", ephemeral=True)
+#             return
 
         
-        # 임베드 생성
-        rune_embed = discord.Embed(title=f"{룬} 사용 준비", color=discord.Color.orange())
-        if 룬 == "스킬 각성의 룬":
-            ref_inherit_log = db.reference(f"무기/유저/{nickname}/계승 내역")
-            inherit_log = ref_inherit_log.get() or {}
-            base_stat_increase = inherit_log.get("기본 스탯 증가", 0)
-            if base_stat_increase <= 1: # 기본 스탯 증가가 1이라면 사용 불가
-                warning_embed = discord.Embed(title=f"{룬} 사용 실패!", color=discord.Color.red())
-                warning_embed.description = (
-                    f"{interaction.user.display_name}님의 **기본 스탯 증가**가 2 미만이기 때문에 발동이 **실패**하였습니다!\n"
-                )
-                await interaction.followup.send(embed=warning_embed)
-                return
-            rune_embed.description = (
-                f"🔮 {interaction.user.display_name}님의 손에 **스킬 각성의 룬**이 반응합니다...\n\n"
-                f"사용 시, 고유한 힘이 **기본 스탯 증가 2**만큼을 태워\n"
-                f"**기본 스킬 레벨 증가 1**로 재구성합니다."
-            )
-        elif 룬 == "운명 왜곡의 룬":
-            ref_inherit_log = db.reference(f"무기/유저/{nickname}/계승 내역")
-            inherit_log = ref_inherit_log.get() or {}
-            additional_enhance = inherit_log.get("추가강화", {})
-            enhance_count = sum(additional_enhance.values())
-            if enhance_count <= 0: # 추가강화 수치가 0이라면 사용 불가 
-                warning_embed = discord.Embed(title=f"{룬} 사용 실패!", color=discord.Color.red())
-                warning_embed.description = (
-                    f"{interaction.user.display_name}님의 **추가 강화**수치가 부족하여 발동이 **실패**하였습니다!\n"
-                )
-                await interaction.followup.send(embed=warning_embed)
-                return
+#         # 임베드 생성
+#         rune_embed = discord.Embed(title=f"{룬} 사용 준비", color=discord.Color.orange())
+#         if 룬 == "스킬 각성의 룬":
+#             ref_inherit_log = db.reference(f"무기/유저/{nickname}/계승 내역")
+#             inherit_log = ref_inherit_log.get() or {}
+#             base_stat_increase = inherit_log.get("기본 스탯 증가", 0)
+#             if base_stat_increase <= 1: # 기본 스탯 증가가 1이라면 사용 불가
+#                 warning_embed = discord.Embed(title=f"{룬} 사용 실패!", color=discord.Color.red())
+#                 warning_embed.description = (
+#                     f"{interaction.user.display_name}님의 **기본 스탯 증가**가 2 미만이기 때문에 발동이 **실패**하였습니다!\n"
+#                 )
+#                 await interaction.followup.send(embed=warning_embed)
+#                 return
+#             rune_embed.description = (
+#                 f"🔮 {interaction.user.display_name}님의 손에 **스킬 각성의 룬**이 반응합니다...\n\n"
+#                 f"사용 시, 고유한 힘이 **기본 스탯 증가 2**만큼을 태워\n"
+#                 f"**기본 스킬 레벨 증가 1**로 재구성합니다."
+#             )
+#         elif 룬 == "운명 왜곡의 룬":
+#             ref_inherit_log = db.reference(f"무기/유저/{nickname}/계승 내역")
+#             inherit_log = ref_inherit_log.get() or {}
+#             additional_enhance = inherit_log.get("추가강화", {})
+#             enhance_count = sum(additional_enhance.values())
+#             if enhance_count <= 0: # 추가강화 수치가 0이라면 사용 불가 
+#                 warning_embed = discord.Embed(title=f"{룬} 사용 실패!", color=discord.Color.red())
+#                 warning_embed.description = (
+#                     f"{interaction.user.display_name}님의 **추가 강화**수치가 부족하여 발동이 **실패**하였습니다!\n"
+#                 )
+#                 await interaction.followup.send(embed=warning_embed)
+#                 return
             
-            # 여기서 보유한 룬 수량 확인
-            owned_rune_count = item_data.get("운명 왜곡의 룬", 0)
+#             # 여기서 보유한 룬 수량 확인
+#             owned_rune_count = item_data.get("운명 왜곡의 룬", 0)
 
-            if owned_rune_count >= 50:
-                rune_embed.description = (
-                    f"🔮 {interaction.user.display_name}님의 손에 **운명 왜곡의 룬**이 반응합니다...\n\n"
-                    f"사용 시, 알 수 없는 힘이 발현되어\n"
-                    f"**추가 강화 수치가 랜덤하게 재구성**됩니다.\n\n"
-                    f"운명 왜곡의 룬이 50개 이상일 경우,\n이를 융합하여 **회귀의 룬**으로 변환이 가능합니다."
-                )
-            else:
-                rune_embed.description = (
-                    f"🔮 {interaction.user.display_name}님의 손에 **운명 왜곡의 룬**이 반응합니다...\n\n"
-                    f"사용 시, 알 수 없는 힘이 발현되어\n"
-                    f"**추가 강화 수치가 랜덤하게 재구성**됩니다."
-                )
-        elif 룬 == "회귀의 룬":
-            ref_inherit_log = db.reference(f"무기/유저/{nickname}/계승 내역")
-            inherit_log = ref_inherit_log.get() or {}
-            additional_enhance = inherit_log.get("추가강화", {})
-            enhance_count = sum(additional_enhance.values())
-            if enhance_count <= 0: # 추가강화 수치가 0이라면 사용 불가 
-                warning_embed = discord.Embed(title=f"{룬} 사용 실패!", color=discord.Color.red())
-                warning_embed.description = (
-                    f"{interaction.user.display_name}님의 **추가 강화**수치가 부족하여 발동이 **실패**하였습니다!\n"
-                )
-                await interaction.followup.send(embed=warning_embed)
-                return
-            rune_embed.description = (
-                f"🔮 {interaction.user.display_name}님의 손에 **회귀의 룬**이 반응합니다...\n\n"
-                f"사용 시, 시간을 거슬러, 강화의 흔적을 지워냅니다.\n"
-                f"사라진 힘은 **특수 연마제**의 형태로 응축됩니다. \n"
-                f"계승 수치를 모두 제거하고, 추가 강화 수치만큼 **특수 연마제**를 연성합니다."
-            )
+#             if owned_rune_count >= 50:
+#                 rune_embed.description = (
+#                     f"🔮 {interaction.user.display_name}님의 손에 **운명 왜곡의 룬**이 반응합니다...\n\n"
+#                     f"사용 시, 알 수 없는 힘이 발현되어\n"
+#                     f"**추가 강화 수치가 랜덤하게 재구성**됩니다.\n\n"
+#                     f"운명 왜곡의 룬이 50개 이상일 경우,\n이를 융합하여 **회귀의 룬**으로 변환이 가능합니다."
+#                 )
+#             else:
+#                 rune_embed.description = (
+#                     f"🔮 {interaction.user.display_name}님의 손에 **운명 왜곡의 룬**이 반응합니다...\n\n"
+#                     f"사용 시, 알 수 없는 힘이 발현되어\n"
+#                     f"**추가 강화 수치가 랜덤하게 재구성**됩니다."
+#                 )
+#         elif 룬 == "회귀의 룬":
+#             ref_inherit_log = db.reference(f"무기/유저/{nickname}/계승 내역")
+#             inherit_log = ref_inherit_log.get() or {}
+#             additional_enhance = inherit_log.get("추가강화", {})
+#             enhance_count = sum(additional_enhance.values())
+#             if enhance_count <= 0: # 추가강화 수치가 0이라면 사용 불가 
+#                 warning_embed = discord.Embed(title=f"{룬} 사용 실패!", color=discord.Color.red())
+#                 warning_embed.description = (
+#                     f"{interaction.user.display_name}님의 **추가 강화**수치가 부족하여 발동이 **실패**하였습니다!\n"
+#                 )
+#                 await interaction.followup.send(embed=warning_embed)
+#                 return
+#             rune_embed.description = (
+#                 f"🔮 {interaction.user.display_name}님의 손에 **회귀의 룬**이 반응합니다...\n\n"
+#                 f"사용 시, 시간을 거슬러, 강화의 흔적을 지워냅니다.\n"
+#                 f"사라진 힘은 **특수 연마제**의 형태로 응축됩니다. \n"
+#                 f"계승 수치를 모두 제거하고, 추가 강화 수치만큼 **특수 연마제**를 연성합니다."
+#             )
 
-        # 버튼 뷰 구성
-        view = RuneUseButton(user=interaction.user, rune_name=룬, nickname=nickname, item_ref=ref_item, item_data=item_data)
-        await interaction.followup.send(embed=rune_embed, view=view)
+#         # 버튼 뷰 구성
+#         view = RuneUseButton(user=interaction.user, rune_name=룬, nickname=nickname, item_ref=ref_item, item_data=item_data)
+#         await interaction.followup.send(embed=rune_embed, view=view)
                     
 
-    @app_commands.command(name="이모지", description="이모지 테스트")
-    async def emoji(self, interaction: discord.Interaction, 이모지 : str):
-        await interaction.response.send_message(이모지)
+#     @app_commands.command(name="이모지", description="이모지 테스트")
+#     async def emoji(self, interaction: discord.Interaction, 이모지 : str):
+#         await interaction.response.send_message(이모지)
 
 
-    @app_commands.command(name="각인", description="인장을 확인하고 장착 또는 해제합니다.")
-    async def handle_insignia(self, interaction: discord.Interaction):
-        await interaction.response.defer(thinking=True)
-        nickname = interaction.user.name
+#     @app_commands.command(name="각인", description="인장을 확인하고 장착 또는 해제합니다.")
+#     async def handle_insignia(self, interaction: discord.Interaction):
+#         await interaction.response.defer(thinking=True)
+#         nickname = interaction.user.name
 
-        ref_item_insignia = db.reference(f"무기/각인/{nickname}")
-        ref_user_insignia = db.reference(f"무기/유저/{nickname}/각인")
-        inventory = ref_item_insignia.get() or {}
-        equipped = ref_user_insignia.get() or []
+#         ref_item_insignia = db.reference(f"무기/각인/{nickname}")
+#         ref_user_insignia = db.reference(f"무기/유저/{nickname}/각인")
+#         inventory = ref_item_insignia.get() or {}
+#         equipped = ref_user_insignia.get() or []
 
-        if not inventory:
-            await interaction.followup.send("보유한 인장이 없습니다.", ephemeral=True)
-            return
+#         if not inventory:
+#             await interaction.followup.send("보유한 인장이 없습니다.", ephemeral=True)
+#             return
 
-        embed = discord.Embed(title="🔹 인장 관리", color=discord.Color.blue())
+#         embed = discord.Embed(title="🔹 인장 관리", color=discord.Color.blue())
 
-        desc_lines = []
-        for i in range(3):
-            name = equipped[i] if i < len(equipped) and equipped[i] else "-"
-            if name and name != "-" and name in inventory:
-                data = inventory[name]
-                level = data.get("레벨", "N/A")
-                stat = data.get("주스탯", "N/A")
-                value = data.get("초기 수치",0) + data.get("증가 수치", 0) * level
-                percent_names = ['강철의 맹세', '바람의 잔상', '약점 간파', '타오르는 혼']
+#         desc_lines = []
+#         for i in range(3):
+#             name = equipped[i] if i < len(equipped) and equipped[i] else "-"
+#             if name and name != "-" and name in inventory:
+#                 data = inventory[name]
+#                 level = data.get("레벨", "N/A")
+#                 stat = data.get("주스탯", "N/A")
+#                 value = data.get("초기 수치",0) + data.get("증가 수치", 0) * level
+#                 percent_names = ['강철의 맹세', '바람의 잔상', '약점 간파', '타오르는 혼']
 
-                if name in percent_names:
-                    value = f"{float(value) * 100:.0f}%"
-                else:
-                    value = f"{value}"
+#                 if name in percent_names:
+#                     value = f"{float(value) * 100:.0f}%"
+#                 else:
+#                     value = f"{value}"
 
-                desc_lines.append(f"{i+1}번: {name} (Lv.{level}, {stat} +{value})")
-            else:
-                desc_lines.append(f"{i+1}번: -")
+#                 desc_lines.append(f"{i+1}번: {name} (Lv.{level}, {stat} +{value})")
+#             else:
+#                 desc_lines.append(f"{i+1}번: -")
 
-        embed.add_field(name="📌 장착 중", value="\n".join(desc_lines), inline=False)
-        embed.set_footer(text="버튼을 눌러 인장을 장착하거나 해제하세요.")
+#         embed.add_field(name="📌 장착 중", value="\n".join(desc_lines), inline=False)
+#         embed.set_footer(text="버튼을 눌러 인장을 장착하거나 해제하세요.")
 
-        view = InsigniaView(
-            user=interaction.user,
-            nickname=nickname,
-            inventory=inventory,
-            equipped=equipped,
-            ref_user_insignia=ref_user_insignia,
-        )
-        msg = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-        await asyncio.sleep(60)
-        await msg.delete()
+#         view = InsigniaView(
+#             user=interaction.user,
+#             nickname=nickname,
+#             inventory=inventory,
+#             equipped=equipped,
+#             ref_user_insignia=ref_user_insignia,
+#         )
+#         msg = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
+#         await asyncio.sleep(60)
+#         await msg.delete()
 
 async def setup(bot: commands.Bot) -> None:
     # await bot.add_cog(

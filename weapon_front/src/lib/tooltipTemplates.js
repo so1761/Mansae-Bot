@@ -269,80 +269,73 @@ export const tooltipTemplates = {
     );
   },
   skill_tooltip_v5: (params) => {
-    const 방관증가 = params.레벨 * params.은신공격_레벨당_방관_증가;
-    const 추가피해배율 = params.은신공격_기본_피해_배율 + params.레벨 * params.은신공격_레벨당_피해_배율;
-    const 출혈확률 = params.레벨 * params.은신공격_레벨당_출혈_확률;
-    const 출혈피해 = params.은신공격_출혈_기본_지속피해 + params.레벨 * params.은신공격_출혈_레벨당_지속피해;
+    const 회피증가 = params.기본_회피_증가 + params.레벨 * params.레벨당_회피_증가;
+    const 공격력계수 = params.기본_공격력_계수 + params.레벨당_공격력_계수 * params.레벨;
+    const 스피드계수 = params.기본_스피드_계수 + params.레벨당_스피드_계수 * params.레벨;
+    const 스킬대미지 = params.기본_피해량 + (params.레벨 * params.레벨당_피해량);
   
     return (
       <div className="space-y-2 text-sm text-gray-600">
-        {/* 은신 상태 효과 */}
+        {/* 턴 행동 */}
         <div>
-          {params.지속시간}턴간{" "}
+          이번 턴은 공격하지 않고, 
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
             data-tooltip-html={`
               <div style="font-size: 13px; line-height: 1.5;">
                 <span style="color: #60a5fa;">🎯 은신 상태</span><br />
-                · 회피율이 100% 증가합니다<br />
+                · 회피 수치 +${params.기본_회피_증가}<br />
+                · 레벨당 +${params.레벨당_회피_증가} → 총 +${회피증가}
               </div>
             `}
             data-tooltip-place="top"
           >
-            은신
-          </span>{" "}
-          상태가 되어 회피율이 증가합니다.
-        </div>
-  
-        {/* 은신 중 공격 효과 */}
-        <div>
-          은신 중 공격 시{" "}
-          <span
-            className="text-indigo-500"
-            data-tooltip-id="tooltip-hit"
-            data-tooltip-html={`
-              <div style="font-size: 13px; line-height: 1.5;">
-                <span style="color: #fbbf24;">🗡 방어력 관통 증가</span><br />
-                · 레벨당: +${params.은신공격_레벨당_방관_증가}<br />
-                → 총 +${방관증가}
-                <hr />
-                <span style="color: #34d399;">📈 추가 피해 배율</span><br />
-                · 기본: ${params.은신공격_기본_피해_배율 * 100}%<br />
-                · 레벨당: +${params.은신공격_레벨당_피해_배율 * 100}%<br />
-                → 총: ${추가피해배율.toFixed(1)* 100}%
-              </div>
-            `}
-            data-tooltip-place="top"
-          >
-            방어력 관통, 추가 피해
+            은신 상태
           </span>
-          를 입힙니다.
+          에 돌입합니다.
         </div>
   
-        {/* 출혈 효과 */}
+  
+        {/* 다음 턴 효과 */}
         <div>
-          또한{" "}
+          다음 턴, 일반 공격 대신
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
             data-tooltip-html={`
               <div style="font-size: 13px; line-height: 1.5;">
-                <span style="color: #f87171;">💉 출혈 확률</span><br />
-                · 레벨당: +${(params.은신공격_레벨당_출혈_확률 * 100).toFixed(0)}%<br />
-                → 총: ${(출혈확률 * 100).toFixed(0)}%
-                <hr />
-                <span style="color: #ef4444;">🩸 출혈 피해</span><br />
-                · 기본: ${params.은신공격_출혈_기본_지속피해}<br />
-                · 레벨당: +${params.은신공격_출혈_레벨당_지속피해}<br />
-                → 매턴 ${출혈피해} 피해, ${params.은신공격_출혈_지속시간}턴 지속
+                <span style="color: #34d399;">🗡 스킬 대미지 계산</span><br />
+                · 기본: ${params.기본_피해량} + (레벨 × ${params.레벨당_피해량}) = ${스킬대미지}<br />
+                · 공격력 × (${공격력계수.toFixed(1)})<br />
+                · 스피드 × (${스피드계수.toFixed(1)})
               </div>
             `}
             data-tooltip-place="top"
           >
-            출혈
+            {스킬대미지}
+          </span>
+          의 스킬 대미지를 입힙니다.
+        </div>
+  
+        {/* 침묵 효과 */}
+        <div>
+          은신 상태에서 <span className="text-red-500 font-medium">회피에 성공했다면</span>,<br/>
+          해당 공격에 2턴간{" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <div style="font-size: 13px; line-height: 1.5;">
+                <span style="color: #818cf8;">🔇 침묵</span><br />
+                · 스킬 사용 불가
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+            침묵
           </span>{" "}
-          상태이상을 확률적으로 부여합니다.
+          효과가 추가됩니다.
         </div>
       </div>
     );
