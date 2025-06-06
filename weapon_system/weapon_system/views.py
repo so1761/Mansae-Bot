@@ -654,7 +654,7 @@ def enhance_weapon_batch(request):
 
         def format_logs(logs):
             merged = []
-
+            formatted_logs = []
             for log in logs:
                 from_lv = log["from"]
                 to_lv = log["to"]
@@ -677,8 +677,6 @@ def enhance_weapon_batch(request):
                         "success": log["success"]
                     })
 
-            # 로그 포맷팅
-            formatted_logs = format_logs(logs)
             for m in merged:
                 message = f"{m['from']}강 → {m['to']}강 {'성공 🎉' if m['success'] else '실패 ❌'}"
                 if m["count"] > 1:
@@ -692,7 +690,8 @@ def enhance_weapon_batch(request):
 
             return formatted_logs
 
-        formatted_logs = []
+        # 로그 포맷팅
+        formatted_logs = format_logs(logs)
 
         return JsonResponse({
             "result": f"{weapon_data.get('이름', '무기')} {previous_enhancement}강 → {current_enhancement}강",

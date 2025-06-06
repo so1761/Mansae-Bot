@@ -17,8 +17,8 @@ export default function EnhanceWeaponPage() {
   const [isRefreshing, setIsRefreshing] = useState(false); // 새로고침 중인지
   const [enhanceResult, setEnhanceResult] = useState(null);
   const [enhanceResultBatch, setEnhanceResultBatch] = useState(null); // 연속 강화용
-  const [showEnhanceBatchModal, setShowEnhanceBatchModal] = useState(false); // 연속 강화 모달을 띄움
   const [targetEnhancement, setTargetEnhancement] = useState(1);
+  const [showEnhanceBatchModal, setShowEnhanceBatchModal] = useState(false); // 연속 강화 모달을 띄움
   const [usePolishLimit, setUsePolishLimit] = useState(0);
   const [useHighPolishLimit, setUseHighPolishLimit] = useState(0);
   const [useWeaponPartsLimit, setUseWeaponPartsLimit] = useState(0);
@@ -194,6 +194,13 @@ export default function EnhanceWeaponPage() {
       setSelectedStats(savedStats);
     }
   }, []);
+
+  // 기본 강화 수치를 현재 강화 수치에 따라 변경
+  useEffect(() => {
+    if (weaponData && weaponData.enhancements) {
+      setTargetEnhancement(weaponData.enhancements.enhancement_level + 1);
+    }
+  }, [weaponData]);
 
   // 선택된 강화 상태를 로컬 스토리지에 저장
   useEffect(() => {
@@ -413,7 +420,6 @@ export default function EnhanceWeaponPage() {
   const maxWeaponParts = itemData.강화재료;
   const maxPolish = itemData.연마제;
   const maxHighPolish = itemData["특수 연마제"];
-
   return (
     <div className="px-6 py-0 max-w-3xl mx-auto">
       <h2 className="text-3xl font-bold text-indigo-600 mb-6 text-center">⚒️ 무기 강화</h2>
@@ -676,28 +682,62 @@ export default function EnhanceWeaponPage() {
             <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
               <h2 className="text-xl font-bold mb-4">연속 강화 설정</h2>
 
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {/* 목표 강화 수치 */}
                 <div>
                   <label className="block text-sm font-medium mb-1">목표 강화 수치</label>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setTargetEnhancement(enhancementLevel + 1)}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      min
+                    </button>
+                    <button
+                      onClick={() => setTargetEnhancement((prev) => Math.max(prev - 10, enhancementLevel + 1))}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      -10
+                    </button>
+                    <button
+                      onClick={() => setTargetEnhancement((prev) => Math.max(prev - 1, enhancementLevel + 1))}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      -1
+                    </button>
+
                     <input
                       type="number"
                       min={enhancementLevel + 1}
                       max={20}
                       value={targetEnhancement}
-                      onChange={(e) => setTargetEnhancement(Number(e.target.value))}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      onChange={(e) => {
+                        let val = Number(e.target.value);
+                        if (val < enhancementLevel + 1) val = enhancementLevel + 1;
+                        if (val > 20) val = 20;
+                        setTargetEnhancement(val);
+                      }}
+                      className="w-20 text-center border border-gray-300 rounded px-2 py-1 text-sm"
                     />
-                    {[15, 18, 20].map((value) => (
-                      <button
-                        key={value}
-                        onClick={() => setTargetEnhancement(value)}
-                        className="text-xs bg-gray-200 px-2 py-1 rounded hover:bg-gray-300"
-                      >
-                        {value}강
-                      </button>
-                    ))}
+
+                    <button
+                      onClick={() => setTargetEnhancement((prev) => Math.min(prev + 1, 20))}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      +1
+                    </button>
+                    <button
+                      onClick={() => setTargetEnhancement((prev) => Math.min(prev + 10, 20))}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      +10
+                    </button>
+                    <button
+                      onClick={() => setTargetEnhancement(20)}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      max
+                    </button>
                   </div>
                 </div>
 
@@ -705,20 +745,57 @@ export default function EnhanceWeaponPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">강화재료 사용 제한</label>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setUseWeaponPartsLimit(1)}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      min
+                    </button>
+                    <button
+                      onClick={() => setUseWeaponPartsLimit((prev) => Math.max(prev - 10, 1))}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      -10
+                    </button>
+                    <button
+                      onClick={() => setUseWeaponPartsLimit((prev) => Math.max(prev - 1, 1))}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      -1
+                    </button>
+
                     <input
                       type="number"
                       min={1}
                       max={maxWeaponParts}
                       value={useWeaponPartsLimit}
                       onChange={(e) => {
-                        const val = Math.min(Number(e.target.value), maxWeaponParts);
+                        let val = Number(e.target.value);
+                        if (val < 1) val = 1;
+                        if (val > maxWeaponParts) val = maxWeaponParts;
                         setUseWeaponPartsLimit(val);
                       }}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      className="w-20 text-center border border-gray-300 rounded px-2 py-1 text-sm"
                     />
-                    <button onClick={() => setUseWeaponPartsLimit((prev) => Math.min(prev + 1, maxWeaponParts))} className="text-xs bg-gray-200 px-2 py-1 rounded">+1</button>
-                    <button onClick={() => setUseWeaponPartsLimit((prev) => Math.min(prev + 10, maxWeaponParts))} className="text-xs bg-gray-200 px-2 py-1 rounded">+10</button>
-                    <button onClick={() => setUseWeaponPartsLimit(maxWeaponParts)} className="text-xs bg-gray-200 px-2 py-1 rounded">최대</button>
+
+                    <button
+                      onClick={() => setUseWeaponPartsLimit((prev) => Math.min(prev + 1, maxWeaponParts))}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      +1
+                    </button>
+                    <button
+                      onClick={() => setUseWeaponPartsLimit((prev) => Math.min(prev + 10, maxWeaponParts))}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      +10
+                    </button>
+                    <button
+                      onClick={() => setUseWeaponPartsLimit(maxWeaponParts)}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      max
+                    </button>
                   </div>
                 </div>
 
@@ -726,20 +803,57 @@ export default function EnhanceWeaponPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">연마제 사용 수량</label>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setUsePolishLimit(0)}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      min
+                    </button>
+                    <button
+                      onClick={() => setUsePolishLimit((prev) => Math.max(prev - 10, 0))}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      -10
+                    </button>
+                    <button
+                      onClick={() => setUsePolishLimit((prev) => Math.max(prev - 1, 0))}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      -1
+                    </button>
+
                     <input
                       type="number"
                       min={0}
                       max={maxPolish}
                       value={usePolishLimit}
                       onChange={(e) => {
-                        const val = Math.min(Number(e.target.value), maxPolish);
+                        let val = Number(e.target.value);
+                        if (val < 0) val = 0;
+                        if (val > maxPolish) val = maxPolish;
                         setUsePolishLimit(val);
                       }}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      className="w-20 text-center border border-gray-300 rounded px-2 py-1 text-sm"
                     />
-                    <button onClick={() => setUsePolishLimit((prev) => Math.min(prev + 1, maxPolish))} className="text-xs bg-gray-200 px-2 py-1 rounded">+1</button>
-                    <button onClick={() => setUsePolishLimit((prev) => Math.min(prev + 10, maxPolish))} className="text-xs bg-gray-200 px-2 py-1 rounded">+10</button>
-                    <button onClick={() => setUsePolishLimit(maxPolish)} className="text-xs bg-gray-200 px-2 py-1 rounded">최대</button>
+
+                    <button
+                      onClick={() => setUsePolishLimit((prev) => Math.min(prev + 1, maxPolish))}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      +1
+                    </button>
+                    <button
+                      onClick={() => setUsePolishLimit((prev) => Math.min(prev + 10, maxPolish))}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      +10
+                    </button>
+                    <button
+                      onClick={() => setUsePolishLimit(maxPolish)}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      max
+                    </button>
                   </div>
                 </div>
 
@@ -747,20 +861,57 @@ export default function EnhanceWeaponPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">특수 연마제 사용 수량</label>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setUseHighPolishLimit(0)}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      min
+                    </button>
+                    <button
+                      onClick={() => setUseHighPolishLimit((prev) => Math.max(prev - 10, 0))}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      -10
+                    </button>
+                    <button
+                      onClick={() => setUseHighPolishLimit((prev) => Math.max(prev - 1, 0))}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      -1
+                    </button>
+
                     <input
                       type="number"
                       min={0}
                       max={maxHighPolish}
                       value={useHighPolishLimit}
                       onChange={(e) => {
-                        const val = Math.min(Number(e.target.value), maxHighPolish);
+                        let val = Number(e.target.value);
+                        if (val < 0) val = 0;
+                        if (val > maxHighPolish) val = maxHighPolish;
                         setUseHighPolishLimit(val);
                       }}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      className="w-20 text-center border border-gray-300 rounded px-2 py-1 text-sm"
                     />
-                    <button onClick={() => setUseHighPolishLimit((prev) => Math.min(prev + 1, maxHighPolish))} className="text-xs bg-gray-200 px-2 py-1 rounded">+1</button>
-                    <button onClick={() => setUseHighPolishLimit((prev) => Math.min(prev + 10, maxHighPolish))} className="text-xs bg-gray-200 px-2 py-1 rounded">+10</button>
-                    <button onClick={() => setUseHighPolishLimit(maxHighPolish)} className="text-xs bg-gray-200 px-2 py-1 rounded">최대</button>
+
+                    <button
+                      onClick={() => setUseHighPolishLimit((prev) => Math.min(prev + 1, maxHighPolish))}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      +1
+                    </button>
+                    <button
+                      onClick={() => setUseHighPolishLimit((prev) => Math.min(prev + 10, maxHighPolish))}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      +10
+                    </button>
+                    <button
+                      onClick={() => setUseHighPolishLimit(maxHighPolish)}
+                      className="text-xs bg-gray-200 px-2 py-1 rounded"
+                    >
+                      max
+                    </button>
                   </div>
                 </div>
               </div>
