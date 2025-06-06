@@ -653,40 +653,61 @@ def enhance_weapon_batch(request):
 
 
         def format_logs(logs):
-            merged = []
             formatted_logs = []
-            for log in logs:
-                from_lv = log["from"]
-                to_lv = log["to"]
+            if not logs:
+                return formatted_logs
 
-                if merged and merged[-1]["from"] == from_lv and merged[-1]["to"] == to_lv:
-                    last = merged[-1]
-                    last["count"] += 1
-                    last["used_parts"] += log["used_parts"]
-                    last["used_polish"] += log["used_polish"]
-                    last["used_high_polish"] += log["used_high_polish"]
-                    last["success"] = log["success"]  # 마지막 결과 기준
+            current = {
+                "from": logs[0]["from"],
+                "to": logs[0]["to"],
+                "count": 0,
+                "used_parts": 0,
+                "used_polish": 0,
+                "used_high_polish": 0,
+                "success": False,
+            }
+
+            for i, log in enumerate(logs):
+                # 같은 강화 목표면 누적
+                if log["from"] == current["from"] and log["to"] == current["to"]:
+                    current["count"] += 1
+                    current["used_parts"] += log["used_parts"]
+                    current["used_polish"] += log["used_polish"]
+                    current["used_high_polish"] += log["used_high_polish"]
+                    current["success"] = log["success"]  # 항상 마지막 결과로 갱신
                 else:
-                    merged.append({
-                        "from": from_lv,
-                        "to": to_lv,
+                    # 이전 결과 정리
+                    message = f"{current['from']}강 → {current['to']}강 {'성공 🎉' if current['success'] else '실패 ❌'}"
+                    if current["count"] > 1:
+                        message += f" ({current['count']}회 시도)"
+                    costs = {
+                        "강화재료": current["used_parts"],
+                        "연마제": current["used_polish"],
+                        "특수 연마제": current["used_high_polish"],
+                    }
+                    formatted_logs.append({"message": message, "costs": costs})
+
+                    # 새 로그 시작
+                    current = {
+                        "from": log["from"],
+                        "to": log["to"],
                         "count": 1,
                         "used_parts": log["used_parts"],
                         "used_polish": log["used_polish"],
                         "used_high_polish": log["used_high_polish"],
-                        "success": log["success"]
-                    })
+                        "success": log["success"],
+                    }
 
-            for m in merged:
-                message = f"{m['from']}강 → {m['to']}강 {'성공 🎉' if m['success'] else '실패 ❌'}"
-                if m["count"] > 1:
-                    message += f" ({m['count']}회 시도)"
-                costs = {
-                    "강화재료": m["used_parts"],
-                    "연마제": m["used_polish"],
-                    "특수 연마제": m["used_high_polish"],
-                }
-                formatted_logs.append({"message": message, "costs": costs})
+            # 마지막 강화 결과 추가
+            message = f"{current['from']}강 → {current['to']}강 {'성공 🎉' if current['success'] else '실패 ❌'}"
+            if current["count"] > 1:
+                message += f" ({current['count']}회 시도)"
+            costs = {
+                "강화재료": current["used_parts"],
+                "연마제": current["used_polish"],
+                "특수 연마제": current["used_high_polish"],
+            }
+            formatted_logs.append({"message": message, "costs": costs})
 
             return formatted_logs
 
