@@ -129,7 +129,6 @@ def get_weapon_data(request, discord_username):
     base_durability = weapon_base_data.get("내구도", 0)
     base_accuracy = weapon_base_data.get("명중", 0)
     base_defense = weapon_base_data.get("방어력", 0)
-    base_range = weapon_base_data.get("사거리", 0)
     base_speed = weapon_base_data.get("스피드", 0)
     base_skill_enhance = weapon_base_data.get("스킬 증폭", 0)
     base_critical_damage = weapon_base_data.get("치명타 대미지", 0)
@@ -153,7 +152,6 @@ def get_weapon_data(request, discord_username):
         base_durability = base_durability,
         base_accuracy = base_accuracy,
         base_defense = base_defense,
-        base_range = base_range,
         base_speed = base_speed,
         base_skill_enhance = base_skill_enhance,
         base_critical_damage = base_critical_damage,
@@ -189,13 +187,10 @@ def get_weapon_data(request, discord_username):
     enhancement = Enhancement.objects.create(
         weapon=weapon,
         attack_enhance=enhancement_data.get('공격 강화', 0),
-        durability_enhance=enhancement_data.get('내구도 강화', 0),
         accuracy_enhance=enhancement_data.get('명중 강화', 0),
         speed_enhance=enhancement_data.get('속도 강화', 0),
         defense_enhance=enhancement_data.get('방어 강화', 0),
         skill_enhance=enhancement_data.get('스킬 강화', 0),
-        critical_damage_enhance=enhancement_data.get('치명타 대미지 강화', 0),
-        critical_hit_chance_enhance=enhancement_data.get('치명타 확률 강화', 0),
         balance_enhance=enhancement_data.get('밸런스 강화', 0),
         enhancement_level=weapon_data.get('강화', 0),
     )
@@ -281,11 +276,6 @@ def get_weapon_data(request, discord_username):
                 'inheritance': weapon.get_inheritance_value("defense"),
                 'enhancement': weapon.get_enhancement_value("defense"),
             },
-            'range': {
-                'base': weapon.base_range,
-                'inheritance': weapon.get_inheritance_value("range"),
-                'enhancement': weapon.get_enhancement_value("range"),
-            },
             'speed': {
                 'base': weapon.base_speed,
                 'inheritance': weapon.get_inheritance_value("speed"),
@@ -309,9 +299,11 @@ def get_weapon_data(request, discord_username):
         },
         'enhancements': {
             'attack_enhance': enhancement.attack_enhance,
-            'durability_enhance': enhancement.durability_enhance,
+            'defense_enhance': enhancement.defense_enhance,
             'accuracy_enhance': enhancement.accuracy_enhance,
             'speed_enhance': enhancement.speed_enhance,
+            'balance_enhance': enhancement.balance_enhance,
+            'skill_enhance': enhancement.skill_enhance,
             'enhancement_level': enhancement.enhancement_level,
         },
         'inheritance': {

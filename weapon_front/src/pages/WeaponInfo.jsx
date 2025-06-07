@@ -118,19 +118,14 @@ function WeaponInfo() {
     { key: "speed", label: "스피드" },
     { key: "critical_damage", label: "치명타 대미지", isPercent: true },
     { key: "critical_hit_chance", label: "치명타 확률", isPercent: true },
-    { key: "range", label: "사거리" },
   ];
 
   const calculateAccuracyRate = (accuracy) => {
-    return Math.min(0.99, 1 - 50 / (50 + accuracy));
+    return Math.min(0.99, 1 - 30 / (30 + accuracy));
   };
 
   function calculateDamageReduction(defense) {
     return Math.min(0.99, 1 - (100 / (100 + defense)));
-  }
-  
-  function calculateMoveChance(speed) {
-    return Math.min(0.99, 1 - Math.exp(-speed / 70));
   }
   
 
@@ -192,14 +187,20 @@ function WeaponInfo() {
 
     if (key === "speed") {
       const tooltipId = `tooltip-${key}`;
-      const moveChance = Math.round(calculateMoveChance(total) * 100);
+      const accelerationChance = Math.floor(total / 5);
+      const overdriveChance = Math.max(0, Math.floor((total - 200) / 5));
+      const evasionScore = Math.floor(total / 5);
     
       return (
         <p
           key={key}
           className="text-gray-700"
           data-tooltip-id={tooltipId}
-          data-tooltip-content={`이동 확률: ${moveChance}%`}
+          data-tooltip-html={`
+            가속 확률: ${accelerationChance}%<br/>
+            초가속 확률: ${overdriveChance}%<br/>
+            회피 수치: ${evasionScore}
+          `}
           data-tooltip-place="left"
         >
           {label}: {displayValue}
@@ -233,6 +234,7 @@ function WeaponInfo() {
   const renderTabContent = () => {
     switch (activeTab) {
       case "weapon":
+        console.log(weaponData.enhancements)
         return <WeaponInfo w={weaponData.weapon} />;
         case "enhancements":
           const enhancementEntries = Object.entries(weaponData.enhancements || {}).filter(

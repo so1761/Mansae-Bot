@@ -65,8 +65,8 @@ export const tooltipTemplates = {
   
         {/* 꿰뚫림 2스택 효과 */}
         <div>
-          이미 꿰뚫림이 2스택일 경우, <br />
-          꿰뚫림 상태를 제거하고 창격 피해가 <span className="text-indigo-500">2배</span>, 대상은 1턴간 <span className="text-indigo-500">기절</span>합니다.
+          이미 꿰뚫림이 2스택일 경우, 꿰뚫림 상태를 제거하고<br />
+          창격 피해가 <span className="text-indigo-500">2배</span>, 대상은 1턴간 <span className="text-indigo-500">기절</span>합니다.
         </div>
       </div>
     );
@@ -272,13 +272,14 @@ export const tooltipTemplates = {
     const 회피증가 = params.기본_회피_증가 + params.레벨 * params.레벨당_회피_증가;
     const 공격력계수 = params.기본_공격력_계수 + params.레벨당_공격력_계수 * params.레벨;
     const 스피드계수 = params.기본_스피드_계수 + params.레벨당_스피드_계수 * params.레벨;
-    const 스킬대미지 = params.기본_피해량 + (params.레벨 * params.레벨당_피해량);
-  
+    const 피해량 = params.기본_피해량 + (params.레벨 * params.레벨당_피해량);
+    const 스킬대미지 = Math.round(피해량 + params.공격력 * 공격력계수 + params.스피드 * 스피드계수)
+
     return (
       <div className="space-y-2 text-sm text-gray-600">
         {/* 턴 행동 */}
         <div>
-          이번 턴은 공격하지 않고, 
+          이번 턴은 공격하지 않고,{" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
@@ -296,31 +297,44 @@ export const tooltipTemplates = {
           에 돌입합니다.
         </div>
   
-  
         {/* 다음 턴 효과 */}
         <div>
-          다음 턴, 일반 공격 대신
+          다음 턴, 일반 공격 대신{" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
             data-tooltip-html={`
-              <div style="font-size: 13px; line-height: 1.5;">
-                <span style="color: #34d399;">🗡 스킬 대미지 계산</span><br />
-                · 기본: ${params.기본_피해량} + (레벨 × ${params.레벨당_피해량}) = ${스킬대미지}<br />
-                · 공격력 × (${공격력계수.toFixed(1)})<br />
-                · 스피드 × (${스피드계수.toFixed(1)})
-              </div>
+              스킬 피해 = 
+              <span style="color: #facc15;">${피해량}</span> + 
+              (공격력 <span style="color: #f97316;">${params.공격력}</span> × <span style="color: #f97316;">${공격력계수.toFixed(2)}</span>) + 
+              (스피드 <span style="color: #34d399;">${params.스피드}</span> × <span style="color: #34d399;">${스피드계수.toFixed(2)}</span>)
             `}
             data-tooltip-place="top"
           >
             {스킬대미지}
           </span>
-          의 스킬 대미지를 입힙니다.
+          의 피해를 입힙니다.
+          {/* 정보 아이콘 */}
+          <span
+            className="text-gray-400 cursor-help"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+            <div style="font-size: 13px; line-height: 1.5;">
+              <span style="color: #60a5fa;">📊 피해 계산 상세</span><br />
+              <span style="color: #facc15;">· 기본 피해량:</span> <span style="color: #fff;">${params.기본_피해량} + (${params.레벨당_피해량} × 레벨)</span><br />
+              <span style="color: #f97316;">· 공격력 계수:</span> <span style="color: #fff;">${params.기본_공격력_계수.toFixed(2)} + (${params.레벨당_공격력_계수.toFixed(2)} × 레벨)</span><br />
+              <span style="color: #34d399;">· 스피드 계수:</span> <span style="color: #fff;">${params.기본_스피드_계수.toFixed(2)} + (${params.레벨당_스피드_계수.toFixed(2)} × 레벨)</span>
+            </div>
+          `}
+            data-tooltip-place="top"
+          >
+            ℹ️
+          </span>
         </div>
   
         {/* 침묵 효과 */}
         <div>
-          은신 상태에서 <span className="text-red-500 font-medium">회피에 성공했다면</span>,<br/>
+          은신 상태에서 <span className="text-indigo-500 font-medium">회피에 성공했을 경우</span>,<br/>
           해당 공격에 2턴간{" "}
           <span
             className="text-indigo-500"
