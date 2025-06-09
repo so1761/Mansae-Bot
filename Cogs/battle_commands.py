@@ -1,34 +1,18 @@
-import requests
 import discord
-import platform
 import random
 import copy
-import matplotlib.pyplot as plt
-import concurrent.futures
 import asyncio
-import aiohttp
-import pandas as pd
-import mplfinance as mpf
-import prediction_vote as p
-import subprocess
-import os
 import math
-import secrets
-import matplotlib.dates as mdates
-from discord.ui import Modal, TextInput
-from discord import TextStyle
 from firebase_admin import db
 from discord.app_commands import Choice
 from discord import app_commands
 from discord.ext import commands
 from discord import Interaction
-from discord import Object
 from datetime import datetime
-from matplotlib import font_manager, rc
 from dotenv import load_dotenv
 from collections import Counter
 from .battle import Battle
-
+from .battle_utils import get_user_insignia_stat
 API_KEY = None
 
 ENHANCEMENT_CHANNEL = 1350434647149908070
@@ -75,12 +59,13 @@ class ResultButton(discord.ui.View):
         "낫":         (["스킬 강화", "속도 강화"], ["공격 강화"]),
     }
 
-    def __init__(self, user: discord.User, wdc: dict, wdo: dict, skill_data: dict):
+    def __init__(self, user: discord.User, wdc: dict, wdo: dict, skill_data: dict, insignia: dict):
         super().__init__(timeout=None)
         self.user = user
         self.wdc = wdc            # 원본 무기 데이터 (강화 전)
         self.wdo = wdo            # 강화 후 무기 데이터
         self.skill_data = skill_data
+        self.insignia = insignia
         self.reroll_count = 0     # 재구성 시도 횟수
         self.win_count = 0        # 시뮬레이션 승리 횟수
         self.message = None       # 나중에 메세지 저장
@@ -164,8 +149,8 @@ class ResultButton(discord.ui.View):
         await interaction.response.defer()
         win_count = 0
 
-        # 1000회 시뮬레이션 (비동기 Battle 함수 사용)
-        for _ in range(1000):
+        # 100회 시뮬레이션 (비동기 Battle 함수 사용)
+        for _ in range(100):
             result = await Battle(
                 channel=interaction.channel,
                 challenger_m=self.user,
@@ -176,13 +161,14 @@ class ResultButton(discord.ui.View):
                 skill_data=self.skill_data,
                 wdc=self.wdc,
                 wdo=self.wdo,
-                scd=self.skill_data
+                scd=self.skill_data,
+                insignia=self.insignia
             )
             if result:
                 win_count += 1
 
         
-        win_rate = win_count / 1000 * 100
+        win_rate = win_count / 100 * 100
         outcome = f"🏆 **승리!**[{self.win_count + 1}승!]" if win_rate >= 50 else "❌ **패배!**"
 
         embed = discord.Embed(title="시뮬레이션 결과", color=discord.Color.gold())
@@ -190,7 +176,7 @@ class ResultButton(discord.ui.View):
             name=f"{self.wdc['이름']} vs {self.wdo['이름']}",
             value=(
                 f"{self.wdc['이름']} {win_count}승\n"
-                f"{self.wdo['이름']} {1000 - win_count}승\n\n"
+                f"{self.wdo['이름']} {100 - win_count}승\n\n"
                 f"**승률**: {win_rate:.1f}%\n"
                 f"{outcome}"
             )
@@ -253,7 +239,7 @@ class ResultButton(discord.ui.View):
                 name=f"{self.wdc['이름']} vs {self.wdo['이름']}",
                 value=(
                     f"{self.wdc['이름']} {win_count}승\n"
-                    f"{self.wdo['이름']} {1000 - win_count}승\n\n"
+                    f"{self.wdo['이름']} {100 - win_count}승\n\n"
                     f"**승률**: {win_rate:.1f}%\n"
                     f"{outcome}"
                 )
@@ -304,9 +290,15 @@ class InsigniaView(discord.ui.View):
             if name and name != "-" and name in self.inventory:
                 data = self.inventory[name]
                 level = data.get("레벨", "N/A")
-                stat = data.get("주스탯", "N/A")
-                value = data.get("초기 수치",0) + data.get("증가 수치", 0) * level
-                percent_names = ['강철의 맹세', '바람의 잔상', '약점 간파', '타오르는 혼']
+                # 각인 주스탯 정보 불러오기
+                ref_item_insignia_stat = db.reference(f"무기/각인/스탯/{name}")
+                insignia_stat = ref_item_insignia_stat.get() or {}
+
+                stat = insignia_stat.get("주스탯", "N/A")
+                base_value = insignia_stat.get("초기 수치", 0)
+                per_level = insignia_stat.get("증가 수치", 0)
+                value = base_value + per_level * level
+                percent_names = ['강철의 맹세','약점 간파', '타오르는 혼']
 
                 if name in percent_names:
                     value_str = f"{float(value) * 100:.1f}%"
@@ -471,8 +463,15 @@ def get_stat_embed(challenger: dict, opponent: dict) -> discord.Embed:
         o_val_display = f"{round(o_val * 100)}%" if is_percent else str(o_val)
         diff_val = round((o_val - c_val) * 100) if is_percent else o_val - c_val
 
-        emoji = "🟢" if diff_val > 0 else "🔴"
-        sign = "+" if diff_val > 0 else "-"
+        if diff_val > 0:
+            emoji = "🟢"
+            sign = "+"
+        elif diff_val < 0:
+            emoji = "🔴"
+            sign = "-"
+        else:
+            emoji = "⚪️"
+            sign = "±"
         diff_display = f"{sign}{abs(diff_val)}{'%' if is_percent else ''}"
 
         label = stat_name_map.get(key, key)
@@ -2371,13 +2370,11 @@ class hello(commands.Cog):
 
         # ====================  [미션]  ====================
         # 일일미션 : 탑 1회 도전
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-        current_predict_season = cur_predict_seasonref.get()
-        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/탑 1회 도전")
-        mission_data = ref.get() or {}
+        ref_mission = db.reference(f"미션/미션진행상태/{nickname}/일일미션/탑 1회 도전")
+        mission_data = ref_mission.get() or {}
         mission_bool = mission_data.get('완료', False)
         if not mission_bool:
-            ref.update({"완료": True})
+            ref_mission.update({"완료": True})
             print(f"{interaction.user.display_name}의 [탑 1회 도전] 미션 완료")
 
         # ====================  [미션]  ====================
@@ -2428,9 +2425,11 @@ class hello(commands.Cog):
             ref_skill = db.reference(f"무기/스킬")
             skill_common_data = ref_skill.get() or {}
 
+            challenger_insignia = get_user_insignia_stat(상대.name, role="challenger")
+
             win_count = 0
             for i in range(1000):
-                result = await Battle(channel = interaction.channel,challenger_m= 상대, raid = False, practice = False, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data)
+                result = await Battle(channel = interaction.channel,challenger_m= 상대, raid = False, practice = False, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data, insignia=challenger_insignia)
                 if result:  # True면 승리
                     win_count += 1
 
@@ -2616,9 +2615,18 @@ class hello(commands.Cog):
             ref_skill = db.reference(f"무기/스킬")
             skill_common_data = ref_skill.get() or {}
 
+            challenger_insignia = get_user_insignia_stat(상대1.name, role="challenger")
+            opponent_insignia = get_user_insignia_stat(상대2.name, role="opponent")
+
+            # 병합하려면:
+            insignia = {
+                **challenger_insignia,
+                **opponent_insignia
+            }
+
             win_count = 0
             for i in range(1000):
-                result = await Battle(channel = interaction.channel,challenger_m= 상대1, opponent_m = 상대2, raid = False, practice = False, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data)
+                result = await Battle(channel = interaction.channel,challenger_m= 상대1, opponent_m = 상대2, raid = False, practice = False, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data, insignia = insignia)
                 if result:  # True면 승리
                     win_count += 1
 
@@ -2693,10 +2701,12 @@ class hello(commands.Cog):
             ref_skill = db.reference(f"무기/스킬")
             skill_common_data = ref_skill.get() or {}
 
+            challenger_insignia = get_user_insignia_stat(상대1.name, role="challenger")
+
             damage_total = 0
             damage_results = []
             for i in range(1000):
-                result = await Battle(channel = interaction.channel,challenger_m = 상대1, boss = boss_name, raid = True, practice = True, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data)
+                result = await Battle(channel = interaction.channel,challenger_m = 상대1, boss = boss_name, raid = True, practice = True, simulate = True, skill_data = skill_data_firebase, wdc = weapon_data_challenger, wdo = weapon_data_opponent, scd = skill_common_data, insignia=challenger_insignia)
                 if result:
                     damage_total += result  # 숫자 반환됨
                     damage_results.append(result)
@@ -2775,13 +2785,11 @@ class hello(commands.Cog):
             })
             # ====================  [미션]  ====================
             # 일일미션 : 거울의 전장 도전
-            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-            current_predict_season = cur_predict_seasonref.get()
-            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{interaction.user.name}/미션/일일미션/거울의 전장 도전")
-            mission_data = ref.get() or {}
+            ref_mission = db.reference(f"미션/미션진행상태/{interaction.user.name}/일일미션/거울의 전장 도전")
+            mission_data = ref_mission.get() or {}
             mission_bool = mission_data.get('완료',0)
             if not mission_bool:
-                ref.update({"완료": True})
+                ref_mission.update({"완료": True})
                 print(f"{interaction.user.display_name}의 [거울의 전장 도전] 미션 완료")
 
             # ====================  [미션]  ====================
@@ -2843,7 +2851,14 @@ class hello(commands.Cog):
             color=discord.Color.blue()  # 원하는 색상 선택
         )
 
-        result_view = ResultButton(interaction.user, weapon_data_challenger, weapon_data_opponent, skill_data_firebase)
+        challenger_insignia = get_user_insignia_stat(user_name, role="challenger")
+        opponent_insignia = get_user_insignia_stat(user_name, role="opponent")
+
+        insignia = {
+            **challenger_insignia,
+            **opponent_insignia
+        }
+        result_view = ResultButton(interaction.user, weapon_data_challenger, weapon_data_opponent, skill_data_firebase, insignia)
         msg = await thread.send(
             content="💡 강화된 무기 비교 및 시뮬레이션 결과를 확인해보세요!",
             embeds=[
@@ -2955,7 +2970,7 @@ class hello(commands.Cog):
         await interaction.response.defer(thinking=True)
         nickname = interaction.user.name
 
-        ref_item_insignia = db.reference(f"무기/각인/{nickname}")
+        ref_item_insignia = db.reference(f"무기/각인/유저/{nickname}")
         ref_user_insignia = db.reference(f"무기/유저/{nickname}/각인")
         inventory = ref_item_insignia.get() or {}
         equipped = ref_user_insignia.get() or []
@@ -2972,9 +2987,11 @@ class hello(commands.Cog):
             if name and name != "-" and name in inventory:
                 data = inventory[name]
                 level = data.get("레벨", "N/A")
-                stat = data.get("주스탯", "N/A")
-                value = data.get("초기 수치",0) + data.get("증가 수치", 0) * level
-                percent_names = ['강철의 맹세', '바람의 잔상', '약점 간파', '타오르는 혼']
+                ref_item_insignia_stat = db.reference(f"무기/각인/스탯/{name}")
+                insignia_stat = ref_item_insignia_stat.get() or {}
+                stat = insignia_stat.get("주스탯", "N/A")
+                value = insignia_stat.get("초기 수치",0) + insignia_stat.get("증가 수치", 0) * level
+                percent_names = ['강철의 맹세','약점 간파','타오르는 혼']
 
                 if name in percent_names:
                     value = f"{float(value) * 100:.0f}%"
@@ -2996,8 +3013,8 @@ class hello(commands.Cog):
             ref_user_insignia=ref_user_insignia,
         )
         msg = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-        await asyncio.sleep(60)
-        await msg.delete()
+        # await asyncio.sleep(60)
+        # await msg.delete()
 
 async def setup(bot: commands.Bot) -> None:
     # await bot.add_cog(

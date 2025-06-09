@@ -3,14 +3,49 @@ from .battle_utils import calculate_accuracy, calculate_evasion_score
 from .status import apply_status_for_turn
 from .battle_utils import calculate_damage_reduction
 
+skill_emojis = {
+    "기습": "<:surprise:1380504593317888053>",
+    "화염 마법": "<:flare:1380503684567273552><:meteor:1380503739307393035>",
+    "플레어": "<:flare:1380503684567273552>",
+    "메테오": "<:meteor:1380503739307393035>",
+    "냉기 마법": "<:frost:1380504246436233226><:blizzard:1380504269823803392>",
+    "프로스트": "<:frost:1380504246436233226>",
+    "블리자드": "<:blizzard:1380504269823803392>",
+    "신성 마법": "<:bless:1380504375276867605><:judgement:1380504404263829565>",
+    "블레스": "<:bless:1380504375276867605>",
+    "저지먼트": "<:judgement:1380504404263829565>",
+    "명상": "<:meditation:1380504431992373431>",
+    "헤드샷": "<:headShot:1380504463516893235>",
+    "수확": "<:reap:1380504495720759399>",
+    "속사": "<:rapid_fire:1380504532043300904>",
+    "강타": "<:smash:1380504562766712893>",
+    "창격": "<:spearShot:1380512916406796358>",
+    "일섬": "<:issen:1380504641451593878>",
+    "동상": "<:braum_Q:1381436009539178536>",
+    "뇌진탕 펀치": "<:braum_P:1380505175973695538>",
+    "불굴": "<:braum_E:1380505187160035378>",
+    "빙하 균열": "<:braum_R:1380505216688062464>",
+    "이케시아 폭우": "<:kaisa_Q:1380505235503448176>",
+    "공허추적자": "<:kaisa_W:1380505250892480592>",
+    "두번째 피부": "<:kaisa_P:1380505278109454417>",
+    "고속충전": "<:kaisa_E:1380505268898631803>",
+    "사냥본능": "<:kaisa_R:1380505334707392693>",
+    "전선더미 방출": "<:siu_Q:1380505352025538601>",
+    "보호막": "<:siu_E:1380505365791244338>",
+    "전깃줄": "<:siu_R:1380505375412850698>",
+    "저주받은 바디": "<:cursed_body:1381440391106007070>",
+    "불꽃 펀치": "<:fire_punch:1381448312669868104>",
+    "병상첨병": "<:Hex:1381440966690607276>",
+    "섀도볼": "<:shadow_ball:1381447997501734932>",
+    "독찌르기": "<:poision_jab:1381448941874184272>",
+    "타이머": "⏱️"
+}
+
 def invisibility(attacker, defender, evasion, skill_level, skill_data_firebase, mode = "buff"):
     if mode == "buff":
         # 은신 상태에서 회피율 증가
         invisibility_data = skill_data_firebase['기습']['values']
-        DefenseIgnore_increase_level =  invisibility_data['은신공격_레벨당_방관_증가']
-        DefenseIgnore_increase = DefenseIgnore_increase_level * skill_level
         invisibility_values = invisibility_data['기본_회피_증가'] + invisibility_data['레벨당_회피_증가'] * skill_level
-        attacker["DefenseIgnore"] += DefenseIgnore_increase
         attacker["Evasion"] += invisibility_values
         invisibility_turns = invisibility_data['지속시간']
         apply_status_for_turn(attacker, "은신", duration=invisibility_turns, value = invisibility_values)  # 은신 상태 지속시간만큼 지속
@@ -30,15 +65,15 @@ def invisibility(attacker, defender, evasion, skill_level, skill_data_firebase, 
             speed_multiplier = (invisibility_data['기본_스피드_계수'] + invisibility_data['레벨당_스피드_계수'] * skill_level)
 
             skill_damage = base_damage + attack_multiplier * attacker['Attack'] + speed_multiplier * attacker['Speed']
-            message = f"\n**<:surprise:1380504593317888053>기습** 사용! {round(skill_damage)}의 피해를 입힙니다!\n"
+            message = f"\n**{skill_emojis['기습']}기습** 사용! {round(skill_damage)}의 피해를 입힙니다!\n"
 
             evaded = attacker.get('evaded', False)
             if evaded: # 피격 X
-                message += f"회피 추가 효과!, 상대에게 2턴간 침묵 부여!"
+                message += f"회피 추가 효과!, 상대에게 2턴간 침묵 부여!\n"
                 apply_status_for_turn(defender, "침묵", 2)
         else:
             skill_damage = 0
-            message = f"**<:surprise:1380504593317888053>기습**이 빗나갔습니다!\n"
+            message = f"**{skill_emojis['기습']}기습**이 빗나갔습니다!\n"
 
         return message, skill_damage
 
@@ -67,14 +102,14 @@ def smash(attacker, defender, evasion, skill_level, skill_data_firebase):
 
         # 메시지
         message = (
-            f"**<:smash:1380504562766712893>강타** 사용! **{int(skill_damage)}**의 피해!\n{break_message}{stun_message}"
+            f"**{skill_emojis['강타']}강타** 사용! **{int(skill_damage)}**의 피해!\n{break_message}{stun_message}"
         )
 
     else:
         # 회피 시
         skill_damage = 0
-        message = "**<:smash:1380504562766712893>강타**가 빗나갔습니다!\n반동으로 한 턴간 **기절**!"
-        apply_status_for_turn(attacker,"기절",1)
+        message = f"**{skill_emojis['강타']}강타**가 빗나갔습니다!\n반동으로 한 턴간 **기절**!\n"
+        apply_status_for_turn(attacker,"기절",1, source_id = defender['Id'])
         critical_bool = False
 
     return message, skill_damage, critical_bool
@@ -84,7 +119,7 @@ def issen(attacker, defender, skill_level, skill_data_firebase):
     # 출혈 상태일 경우, 출혈 상태 해제 후 남은 피해의 150%를 즉시 입히고, 해당 피해의 50%를 고정 피해로 변환
 
     apply_status_for_turn(defender, "일섬", duration=2)
-    message = f"**<:issen:1380504641451593878>일섬** 사용!\n엄청난 속도로 적을 벤 후, 다음 턴에 날카로운 참격을 가합니다.\n회피를 무시하고 명중에 비례하는 대미지를 입힙니다.\n" 
+    message = f"**{skill_emojis['일섬']}일섬** 사용!\n엄청난 속도로 적을 벤 후, 다음 턴에 날카로운 참격을 가합니다.\n회피를 무시하고 명중에 비례하는 대미지를 입힙니다.\n" 
     return message, 0
 
 def headShot(attacker, evasion, skill_level, skill_data_firebase):
@@ -109,7 +144,7 @@ def headShot(attacker, evasion, skill_level, skill_data_firebase):
 
         # 메시지
         message = (
-            f"**<:headShot:1380504463516893235>헤드샷** 사용! 치명타 확률 +{int(round(crit_bonus * 100))}%! {int(skill_damage)}의 피해!\n{cooldown_message}"
+            f"**{skill_emojis['헤드샷']}헤드샷** 사용! 치명타 확률 +{int(round(crit_bonus * 100))}%! {int(skill_damage)}의 피해!\n{cooldown_message}"
         )
 
         # 장전 상태 부여
@@ -119,7 +154,7 @@ def headShot(attacker, evasion, skill_level, skill_data_firebase):
     else:
         # 회피 시
         skill_damage = 0
-        message = "**<:headShot:1380504463516893235>헤드샷**이 빗나갔습니다!\n"
+        message = f"**{skill_emojis['헤드샷']}헤드샷**이 빗나갔습니다!\n"
         critical_bool = False
 
     return message, skill_damage, critical_bool
@@ -134,7 +169,7 @@ def spearShot(attacker,defender,evasion,skill_level, skill_data_firebase):
         base_damage = spearShot_data['기본_피해량'] + spearShot_data['레벨당_피해량_증가'] * skill_level
         attack_multiplier = (spearShot_data['기본_공격력_계수'] + spearShot_data['레벨당_공격력_계수_증가'] * skill_level)
         skill_damage = base_damage + attacker["Attack"] * attack_multiplier
-        message = f"\n**<:spearShot:1380512916406796358>창격** 사용! {round(skill_damage)} 대미지!\n"
+        message = f"\n**{skill_emojis['창격']}창격** 사용! {round(skill_damage)} 대미지!\n"
         if "꿰뚫림" in defender["Status"]:
             pierce_stack = defender["Status"]["꿰뚫림"]["value"]
             if pierce_stack == 2: # 2스택이 이미 쌓여있었다면?
@@ -150,7 +185,7 @@ def spearShot(attacker,defender,evasion,skill_level, skill_data_firebase):
             apply_status_for_turn(defender,"꿰뚫림",4,1)
             message += f"꿰뚫림 스택 부여(**1**스택)! 받는 피해 30% 증가!\n"
     else:
-        message = f"\n**<:spearShot:1380512916406796358>창격**이 빗나갔습니다!\n"
+        message = f"\n**{skill_emojis['창격']}창격**이 빗나갔습니다!\n"
         skill_damage = 0
 
 
@@ -169,10 +204,10 @@ def mech_Arm(attacker,defender, evasion, skill_level, skill_data_firebase):
             defender["Speed"] = 0
         debuff_turns = mech_Arm_data['디버프_지속시간']
         apply_status_for_turn(defender, "둔화", duration=debuff_turns, value = speed_decrease)
-        message = f"\n**<:siu_Q:1380505352025538601>전선더미 방출** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해를 입힙니다!\n상대의 속도가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소합니다!\n"
+        message = f"\n**{skill_emojis['전선더미 방출']}전선더미 방출** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해를 입힙니다!\n상대의 속도가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소합니다!\n"
     else:
         skill_damage = 0
-        message = f"\n**<:siu_Q:1380505352025538601>전선더미 방출이 빗나갔습니다!**\n"
+        message = f"\n**{skill_emojis['전선더미 방출']}전선더미 방출이 빗나갔습니다!**\n"
 
     return message,skill_damage
 
@@ -182,7 +217,7 @@ def Shield(attacker, skill_level, skill_data_firebase):
     skill_multiplier = int(round((Shield_data['기본_스킬증폭_계수'] + Shield_data['레벨당_스킬증폭_계수'] * skill_level) * 100))
     shield_amount = int(round((skill_multiplier / 100) * attacker['Spell']))
     apply_status_for_turn(attacker,"보호막",3,shield_amount)
-    message = f"\n**<:siu_E:1380505365791244338>보호막** 사용!\n{shield_amount}만큼의 보호막을 2턴간 얻습니다!\n"
+    message = f"\n**{skill_emojis['보호막']}보호막** 사용!\n{shield_amount}만큼의 보호막을 2턴간 얻습니다!\n"
 
     return message
 
@@ -193,7 +228,7 @@ def electronic_line(attacker,defender,skill_level, skill_data_firebase):
     skill_multiplier = (electronic_line_data['기본_스킬증폭_계수'] + electronic_line_data['레벨당_스킬증폭_계수_증가'] * skill_level)
     skill_damage = base_damage + attacker["Spell"] * skill_multiplier
     apply_status_for_turn(defender,"기절",1)
-    message = f"\n**<:siu_R:1380505375412850698>전깃줄** 사용!\n상대에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n1턴간 기절 부여!"
+    message = f"\n**{skill_emojis['전깃줄']}전깃줄** 사용!\n상대에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n1턴간 기절 부여!\n"
     
     return message,skill_damage
 
@@ -205,19 +240,19 @@ def Reap(attacker, evasion, skill_level, skill_data_firebase):
         skill_multiplier = (Reap_data['기본_스킬증폭_계수'] + Reap_data['레벨당_스킬증폭_계수_증가'] * skill_level)
         attack_multiplier = (Reap_data['기본_공격력_계수'] + Reap_data['레벨당_공격력_계수_증가'] * skill_level)
         skill_damage = base_damage + attacker["Spell"] * skill_multiplier + attacker["Attack"] * attack_multiplier
-        message = f"\n**<:reap:1380504495720759399>수확** 사용!\n상대에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%) + (공격력 {int(attack_multiplier * 100)}%)의 스킬 피해!\n"
+        message = f"\n**{skill_emojis['수확']}수확** 사용!\n상대에게 {base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%) + (공격력 {int(attack_multiplier * 100)}%)의 스킬 피해!\n"
     else:
         skill_damage = 0
-        message = f"\n**<:reap:1380504495720759399>수확**이 빗나갔습니다!\n" 
+        message = f"\n**{skill_emojis['수확']}수확**이 빗나갔습니다!\n" 
     return message, skill_damage
 
-def unyielding(defender, skill_level, skill_data_firebase):
+def unyielding(attacker, defender, skill_level, skill_data_firebase):
     """불굴: 받는 대미지를 감소시킴"""
     unyielding_data = skill_data_firebase['불굴']['values']
     damage_reduction = min(unyielding_data['최대_피해감소율'], unyielding_data['기본_피해감소'] + unyielding_data['레벨당_피해감소'] * skill_level)  # 최대 90% 감소 제한
-    apply_status_for_turn(defender, "불굴", 2)
-    defender["DamageReduction"] = damage_reduction
-    message = f"\n**<:braum_E:1380505187160035378>불굴** 발동!\n방패를 들어 2턴간 받는 대미지 {int(damage_reduction * 100)}% 감소!\n"
+    apply_status_for_turn(attacker, "불굴", 2, source_id= defender['Id'])
+    attacker["DamageReduction"] = damage_reduction
+    message = f"\n**{skill_emojis['불굴']}불굴** 발동!\n방패를 들어 2턴간 받는 대미지 {int(damage_reduction * 100)}% 감소!\n"
     damage = 0
     return message, damage
 
@@ -225,12 +260,12 @@ def concussion_punch(target):
     """패시브 - 뇌진탕 펀치: 공격 적중 시 뇌진탕 스택 부여, 4스택 시 기절"""
     target["뇌진탕"] = target.get("뇌진탕", 0) + 1
 
-    message = f"**<:braum_P:1380505175973695538>뇌진탕 펀치** 효과로 뇌진탕 스택 {target['뇌진탕']}/4 부여!"
+    message = f"**{skill_emojis['뇌진탕 펀치']}뇌진탕 펀치** 효과로 뇌진탕 스택 {target['뇌진탕']}/4 부여!\n"
     
     if target["뇌진탕"] >= 4:
         target["뇌진탕"] = 0
         apply_status_for_turn(target, "기절", duration=1)
-        message += f"\n**<:braum_P:1380505175973695538>뇌진탕 폭발!** {target['name']} 1턴간 기절!\n"
+        message += f"\n**{skill_emojis['뇌진탕 펀치']}뇌진탕 폭발!** {target['name']} 1턴간 기절!\n"
     return message
 
 def frostbite(attacker, target, evasion, skill_level, skill_data_firebase):
@@ -242,21 +277,21 @@ def frostbite(attacker, target, evasion, skill_level, skill_data_firebase):
         skill_multiplier = (frostbite_data['기본_스킬증폭_계수'] + frostbite_data['레벨당_스킬증폭_계수_증가'] * skill_level)
         skill_damage = base_damage + attacker["Spell"] * skill_multiplier
         debuff_turns = frostbite_data['디버프_지속시간']
-        apply_status_for_turn(target, "동상", duration=debuff_turns)
+        apply_status_for_turn(target, "둔화", duration=debuff_turns)
         speed_decrease = frostbite_data['속도감소_기본수치'] + (frostbite_data['레벨당_속도감소_증가'] * skill_level)
         target["Speed"] *= (1- speed_decrease)
         target["뇌진탕"] = target.get("뇌진탕", 0) + 1
 
-        message = f"\n**<:braum_Q:1380505142033645590>동상** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n뇌진탕을 부여하고, 스피드가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소!\n뇌진탕 스택 {target['뇌진탕']}/4 부여!\n"
+        message = f"\n**{skill_emojis['동상']}동상** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n뇌진탕을 부여하고, 스피드가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소!\n뇌진탕 스택 {target['뇌진탕']}/4 부여!\n"
         
         if target["뇌진탕"] >= 4:
             target["뇌진탕"] = 0
             apply_status_for_turn(target, "기절", duration=1)
-            message += f"\n**뇌진탕 폭발!** {target['name']} 1턴간 **기절!**\n"
+            message += f"\n**{skill_emojis['뇌진탕 펀치']}뇌진탕 폭발!** {target['name']} 1턴간 **기절!**\n"
 
     else:
         skill_damage = 0
-        message = f"\n**<:braum_Q:1380505142033645590>동상이 빗나갔습니다!**\n"
+        message = f"\n**{skill_emojis['동상']}동상이 빗나갔습니다!**\n"
     return message, skill_damage
 
 def glacial_fissure(attacker, target, evasion,skill_level, skill_data_firebase):
@@ -268,11 +303,11 @@ def glacial_fissure(attacker, target, evasion,skill_level, skill_data_firebase):
         skill_damage = base_damage + attacker["Spell"] * skill_multiplier
         apply_status_for_turn(target,"기절",1)
 
-        message = f"\n**<:braum_R:1380505216688062464>빙하 균열** 사용!\n{base_damage} + (스킬 증폭 {int(round(skill_multiplier * 100))}%)의 스킬 피해!\n{target['name']} 1턴간 기절!\n"
+        message = f"\n**{skill_emojis['빙하 균열']}빙하 균열** 사용!\n{base_damage} + (스킬 증폭 {int(round(skill_multiplier * 100))}%)의 스킬 피해!\n{target['name']} 1턴간 기절!\n"
 
     else:
         skill_damage = 0
-        message = f"\n**<:braum_R:1380505216688062464>빙하 균열이 빗나갔습니다!**\n"
+        message = f"\n**{skill_emojis['빙하 균열']}빙하 균열이 빗나갔습니다!**\n"
     return message, skill_damage
 
 def rapid_fire(attacker, defender, skill_level, skill_data_firebase):
@@ -320,10 +355,10 @@ def rapid_fire(attacker, defender, skill_level, skill_data_firebase):
         
         total_damage += damage
     
-    message += f"<:rapid_fire:1380504532043300904>**속사**로 {hit_count}연타 공격! 총 {total_damage} 피해!"
+    message += f"{skill_emojis['속사']}**속사**로 {hit_count}연타 공격! 총 {total_damage} 피해!\n"
     return message,total_damage
 
-def meditate(attacker, skill_level,skill_data_firebase):
+def meditate(attacker, defender, skill_level,skill_data_firebase):
     # 명상 : 모든 스킬 쿨타임 감소 + 스킬 증폭 비례 보호막 획득, 명상 스택 획득
     meditate_data = skill_data_firebase['명상']['values']
     shield_amount = int(round(attacker['Spell'] * (meditate_data['스킬증폭당_보호막_계수'] + meditate_data['레벨당_보호막_계수_증가'] * skill_level)))
@@ -331,8 +366,8 @@ def meditate(attacker, skill_level,skill_data_firebase):
         if cooldown_data["현재 쿨타임"] > 0 and skill != "명상":
             attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 현재 쿨타임 감소
     attacker['명상'] = attacker.get("명상", 0) + 1 # 명상 스택 + 1 추가
-    apply_status_for_turn(attacker,"보호막",1,shield_amount)
-    message = f"**<:meditation:1380504431992373431>명상** 사용!(현재 명상 스택 : {attacker['명상']})\n 모든 스킬의 현재 쿨타임이 1턴 감소하고 1턴간 {shield_amount}의 보호막 생성!\n"
+    apply_status_for_turn(attacker,"보호막",1,shield_amount, source_id= defender['Id'])
+    message = f"**{skill_emojis['명상']}명상** 사용!(현재 명상 스택 : {attacker['명상']})\n 모든 스킬의 현재 쿨타임이 1턴 감소하고 1턴간 {shield_amount}의 보호막 생성!\n"
 
     skill_damage = 0
     return message,skill_damage
@@ -355,11 +390,11 @@ def fire(attacker, defender, evasion, skill_level, skill_data_firebase):
             burn_damage = round(fire_data['화상_대미지'] * skill_level + attacker['Spell'] * burn_skill_multiplier)
             apply_status_for_turn(defender, "기절", 1)
             apply_status_for_turn(defender, "화상", 3, burn_damage)
-            apply_status_for_turn(defender, "치유 감소", 4, fire_data['화상_치유감소_수치'])
-            message = f"**<:meteor:1380503739307393035>메테오** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 기절 부여 및 3턴간 화상 부여!"
+            apply_status_for_turn(defender, "치유 감소", 3, fire_data['화상_치유감소_수치'])
+            message = f"**{skill_emojis['메테오']}메테오** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 기절 부여 및 3턴간 화상 부여!\n"
         else:
             skill_damage = 0
-            message = f"**<:meteor:1380503739307393035>메테오**가 빗나갔습니다!\n"
+            message = f"**{skill_emojis['메테오']}메테오**가 빗나갔습니다!\n"
     else:
         # 플레어
         if not evasion:
@@ -369,11 +404,11 @@ def fire(attacker, defender, evasion, skill_level, skill_data_firebase):
             burn_skill_multiplier = fire_data['화상_기본_스킬증폭_계수'] + fire_data['화상_레벨당_스킬증폭_계수_증가'] * skill_level
             burn_damage = round(fire_data['화상_대미지'] * skill_level + attacker['Spell'] * burn_skill_multiplier)
             apply_status_for_turn(defender, "화상", 1, burn_damage)
-            apply_status_for_turn(defender, "치유 감소", 2, fire_data['화상_치유감소_수치'])
-            message = f"**<:flare:1380503684567273552>플레어** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 화상 부여!"
+            apply_status_for_turn(defender, "치유 감소", 1, fire_data['화상_치유감소_수치'])
+            message = f"**{skill_emojis['플레어']}플레어** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 화상 부여!\n"
         else:
             skill_damage = 0
-            message = f"**<:flare:1380503684567273552>플레어**가 빗나갔습니다!\n"
+            message = f"**{skill_emojis['플레어']}플레어**가 빗나갔습니다!\n"
     return message,skill_damage
 
 def ice(attacker,defender, evasion, skill_level, skill_data_firebase):
@@ -393,10 +428,10 @@ def ice(attacker,defender, evasion, skill_level, skill_data_firebase):
             slow_amount = int(round((ice_data['강화_둔화율'] + ice_data['강화_레벨당_둔화율'] * skill_level) * 100))
             apply_status_for_turn(defender, "빙결", 3)
             apply_status_for_turn(defender, "둔화", 5, slow_amount / 100)
-            message = f"**<:blizzard:1380504269823803392>블리자드** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n3턴간 빙결 부여!, 5턴간 {slow_amount}% 둔화 부여!"
+            message = f"**{skill_emojis['블리자드']}블리자드** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n3턴간 빙결 부여!, 5턴간 {slow_amount}% 둔화 부여!\n"
         else:
             skill_damage = 0
-            message = f"**<:blizzard:1380504269823803392>블리자드**가 빗나갔습니다!\n"
+            message = f"**{skill_emojis['블리자드']}블리자드**가 빗나갔습니다!\n"
     else:
         # 프로스트
         if not evasion:
@@ -404,10 +439,10 @@ def ice(attacker,defender, evasion, skill_level, skill_data_firebase):
             skill_multiplier = ice_data['기본_스킬증폭_계수'] + ice_data['레벨당_스킬증폭_계수_증가'] * skill_level
             skill_damage = base_damage + attacker['Spell'] * skill_multiplier
             apply_status_for_turn(defender, "빙결", 1)
-            message = f"**<:frost:1380504246436233226>프로스트** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 빙결 부여!"
+            message = f"**{skill_emojis['프로스트']}프로스트** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 빙결 부여!\n"
         else:
             skill_damage = 0
-            message = f"**<:frost:1380504246436233226>프로스트**가 빗나갔습니다!\n"
+            message = f"**{skill_emojis['프로스트']}프로스트**가 빗나갔습니다!\n"
     return message,skill_damage
 
 def holy(attacker,defender, evasion, skill_level, skill_data_firebase):
@@ -425,10 +460,10 @@ def holy(attacker,defender, evasion, skill_level, skill_data_firebase):
             skill_multiplier = holy_data['강화_기본_스킬증폭_계수'] + holy_data['레벨당_강화_스킬증폭_계수_증가'] * skill_level
             skill_damage = base_damage + attacker['Spell'] * skill_multiplier
             apply_status_for_turn(defender, "침묵", 3)
-            message = f"**<:judgement:1380504404263829565>저지먼트** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n3턴간 침묵 부여!"
+            message = f"**{skill_emojis['저지먼트']}저지먼트** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n3턴간 침묵 부여!\n"
         else:
             skill_damage = 0
-            message = f"**<:judgement:1380504404263829565>저지먼트**가 빗나갔습니다!\n"
+            message = f"**{skill_emojis['저지먼트']}저지먼트**가 빗나갔습니다!\n"
     else:
         # 블레스
         if not evasion:
@@ -453,27 +488,27 @@ def holy(attacker,defender, evasion, skill_level, skill_data_firebase):
 
             # 메시지 출력
             if "치유 감소" in attacker["Status"]:
-                message = f"**<:bless:1380504375276867605>블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}(-{reduced_heal})만큼 내구도 회복!\n내구도: [{initial_HP}] → [{final_HP}] ❤️ (+{final_HP - initial_HP})"
+                message = f"**{skill_emojis['블레스']}블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}(-{reduced_heal})만큼 내구도 회복!\n내구도: [{initial_HP} → {final_HP}] ❤️ (+{final_HP - initial_HP})"
             else:
-                message = f"**<:bless:1380504375276867605>블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}만큼 내구도 회복!\n내구도: [{initial_HP}] → [{final_HP}] ❤️ (+{final_HP - initial_HP})"
+                message = f"**{skill_emojis['블레스']}블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}만큼 내구도 회복!\n내구도: [{initial_HP} → {final_HP}] ❤️ (+{final_HP - initial_HP})"
         else:
             skill_damage = 0
-            message = f"**<:bless:1380504375276867605>블레스**가 빗나갔습니다!\n"
+            message = f"**{skill_emojis['블레스']}블레스**가 빗나갔습니다!\n"
     return message,skill_damage
 
 def second_skin(target, skill_level, value, skill_data_firebase):
-    """패시브 - 두번째 피부: 공격 적중 시 플라즈마 중첩 부여, 5스택 시 현재 체력 비례 10% 대미지"""
+    """패시브 - 두번째 피부: 공격 적중 시 플라즈마 중첩 부여, 5스택 시 전체 체력 비례 10% 대미지"""
     target["플라즈마 중첩"] = target.get("플라즈마 중첩", 0) + value
-    message = f"<:kaisa_P:1380505278109454417>**두번째 피부** 효과로 플라즈마 중첩 {target['플라즈마 중첩']}/5 부여!"
+    message = f"{skill_emojis['두번째 피부']}**두번째 피부** 효과로 플라즈마 중첩 {target['플라즈마 중첩']}/5 부여!\n"
 
     second_skin_data = skill_data_firebase['두번째 피부']['values']
     skill_damage = 0
     
     if target["플라즈마 중첩"] >= 5:
         target["플라즈마 중첩"] = 0
-        skill_damage = round(target['HP'] * (second_skin_data['기본_대미지'] + second_skin_data['레벨당_추가_대미지'] * skill_level))
+        skill_damage = round(target['BaseHP'] * (second_skin_data['기본_대미지'] + second_skin_data['레벨당_추가_대미지'] * skill_level))
         damage_value = round((second_skin_data['기본_대미지'] + second_skin_data['레벨당_추가_대미지'] * skill_level) * 100)
-        message += f"\n<:kaisa_P:1380505278109454417>**플라즈마 폭발!** 현재 내구도의 {damage_value}% 대미지!\n"
+        message += f"\n{skill_emojis['두번째 피부']}**플라즈마 폭발!** 전체 내구도의 {damage_value}% 대미지!\n"
     return message, skill_damage
 
 def icathian_rain(attacker, defender, skill_level, skill_data_firebase):
@@ -528,7 +563,7 @@ def icathian_rain(attacker, defender, skill_level, skill_data_firebase):
     damage_reduction = calculate_damage_reduction(defense)
     defend_damage = explosion_damage * (1 - damage_reduction)
     final_damage = defend_damage * (1 - defender['DamageReduction'])
-    message += f"<:kaisa_Q:1380505235503448176>이케시아 폭우로 {hit_count}연타 공격! 총 {total_damage} 피해!\n"
+    message += f"{skill_emojis['이케시아 폭우']}이케시아 폭우로 {hit_count}연타 공격! 총 {total_damage} 피해!\n"
     message += passive_message
     total_damage += final_damage
     return message,total_damage
@@ -539,9 +574,9 @@ def voidseeker(attacker, defender, evasion, skill_level, skill_data_firebase):
         voidseeker_data = skill_data_firebase['공허추적자']['values']       
         skill_multiplier = (voidseeker_data['기본_스킬증폭_계수'] + voidseeker_data['레벨당_스킬증폭_계수_증가'] * skill_level)
         skill_damage = attacker["Spell"] * skill_multiplier
-        apply_status_for_turn(defender,"속박",1)
+        apply_status_for_turn(defender,"속박",1, source_id=defender['Id'])
 
-        message = f"\n<:kaisa_W:1380505250892480592>**공허추적자** 사용!\n스킬 증폭 {int(round(skill_multiplier * 100))}%의 스킬 피해를 입히고 1턴간 속박!\n"
+        message = f"\n{skill_emojis['공허추적자']}**공허추적자** 사용!\n스킬 증폭 {int(round(skill_multiplier * 100))}%의 스킬 피해를 입히고 1턴간 속박!\n"
         passive_skill_data = attacker["Skills"].get("두번째 피부", None)   
         passive_skill_level = passive_skill_data["레벨"]
         passive_message, explosion_damage = second_skin(defender, passive_skill_level, 2, skill_data_firebase)
@@ -549,22 +584,23 @@ def voidseeker(attacker, defender, evasion, skill_level, skill_data_firebase):
         skill_damage += explosion_damage
     else:
         skill_damage = 0
-        message = f"\n**<:kaisa_W:1380505250892480592>공허추적자**가 빗나갔습니다!\n"
+        message = f"\n**{skill_emojis['공허추적자']}공허추적자**가 빗나갔습니다!\n"
     return message, skill_damage
 
 def supercharger(attacker, skill_level, skill_data_firebase):
-    # 고속충전: 1턴간 회피율 증가, 3턴간 스피드 증가
+    # 고속충전: 1턴간 회피 증가, 3턴간 스피드 증가
     supercharger_data = skill_data_firebase['고속충전']['values']
     attacker["Evasion"] = 1
     invisibility_turns = supercharger_data['은신_지속시간']
-    apply_status_for_turn(attacker, "은신", duration=invisibility_turns)  # 은신 상태 지속시간만큼 지속
+    invisibility_values = supercharger_data['은신_기본_회피증가'] + supercharger_data['은신_레벨당_회피증가']
+    apply_status_for_turn(attacker, "은신", duration=invisibility_turns, value = invisibility_values)  # 은신 상태 지속시간만큼 지속
     speedup_turns = supercharger_data['속도증가_지속시간']
     base_speedup = supercharger_data['속도증가_기본수치']
     speedup_level = supercharger_data['속도증가_레벨당']
     speedup_value = base_speedup + speedup_level * skill_level
     attacker["Speed"] += speedup_value
     apply_status_for_turn(attacker, "고속충전_속도증가", duration=speedup_turns)
-    return f"<:kaisa_E:1380505268898631803>**고속충전** 사용! {invisibility_turns}턴간 은신 상태에 돌입합니다!\n{speedup_turns}턴간 스피드가 {speedup_value} 증가합니다!\n"
+    return f"{skill_emojis['고속충전']}**고속충전** 사용! {invisibility_turns}턴간 은신 상태에 돌입합니다!\n{speedup_turns}턴간 스피드가 {speedup_value} 증가합니다!\n"
 
 def killer_instinct(attacker, defender, skill_level, skill_data_firebase):
     # 사냥본능: 2턴간 보호막을 얻음.
@@ -572,15 +608,15 @@ def killer_instinct(attacker, defender, skill_level, skill_data_firebase):
 
     shield_amount = killer_instinct_data['기본_보호막량'] + killer_instinct_data['레벨당_보호막량'] * skill_level
     apply_status_for_turn(attacker,"보호막",3,shield_amount)
-    return f"**<:kaisa_E:1380505268898631803>사냥본능** 사용! 2턴간 {shield_amount}의 보호막을 얻습니다!\n"
+    return f"**{skill_emojis['사냥본능']}사냥본능** 사용! 2턴간 {shield_amount}의 보호막을 얻습니다!\n"
 
-def cursed_body(attacker, skill_level, skill_data_firebase):
+def cursed_body(attacker, defender, skill_level, skill_data_firebase):
     #저주받은 바디: 공격당하면 확률에 따라 공격자를 둔화
     cursed_body_data = skill_data_firebase['저주받은 바디']['values']
     if random.random() < cursed_body_data['둔화_확률'] + cursed_body_data['레벨당_둔화_확률'] * skill_level: # 확률에 따라 둔화 부여
         slow_amount = cursed_body_data['둔화량'] + cursed_body_data['레벨당_둔화량'] * skill_level
-        apply_status_for_turn(attacker,"둔화",2, slow_amount)
-        return f"**저주받은 바디** 발동!\n공격자에게 1턴간 {round(slow_amount * 100)}% 둔화 부여!\n"
+        apply_status_for_turn(attacker,"둔화",1, slow_amount, source_id = defender['Id'])
+        return f"{skill_emojis['저주받은 바디']}**저주받은 바디** 발동!\n공격자에게 1턴간 {round(slow_amount * 100)}% **둔화** 부여!\n"
     else:
         return ""
 
@@ -591,16 +627,16 @@ def shadow_ball(attacker,defender,evasion,skill_level, skill_data_firebase):
         skill_multiplier = (shadow_ball_data['기본_스킬증폭_계수'] + shadow_ball_data['레벨당_스킬증폭_계수_증가'] * skill_level)
         skill_damage = attacker["Spell"] * skill_multiplier
 
-        message = f"\n**섀도볼** 사용!\n스킬 증폭 {int(round(skill_multiplier * 100))}%의 스킬 피해!\n"
+        message = f"\n{skill_emojis['섀도볼']}**섀도볼** 사용!\n스킬 증폭 {int(round(skill_multiplier * 100))}%의 스킬 피해!\n"
 
         cc_probability = shadow_ball_data['침묵_확률'] + shadow_ball_data['레벨당_침묵_확률'] * skill_level
         if random.random() < cc_probability: # 확룰에 따라 침묵 부여
             apply_status_for_turn(defender,"침묵",2)
-            message += f"침묵 상태이상 2턴간 부여!(확률 : {round(cc_probability * 100)}%)"
+            message += f"**침묵** 2턴간 부여!(확률 : {round(cc_probability * 100)}%)\n"
         
     else:
         skill_damage = 0
-        message = f"\n**섀도볼**이 빗나갔습니다!\n"
+        message = f"\n{skill_emojis['섀도볼']}**섀도볼**이 빗나갔습니다!\n"
     return message, skill_damage
 
 def Hex(attacker,defender,evasion,skill_level, skill_data_firebase):
@@ -610,15 +646,15 @@ def Hex(attacker,defender,evasion,skill_level, skill_data_firebase):
         skill_multiplier = (Hex_data['기본_스킬증폭_계수'] + Hex_data['레벨당_스킬증폭_계수_증가'] * skill_level)
         skill_damage = attacker["Spell"] * skill_multiplier
         
-        message = f"\n**병상첨병** 사용!\n스킬 증폭 {int(round(skill_multiplier * 100))}%의 스킬 피해!\n"
-        cc_status = ['빙결', '화상', '침묵', '기절', '속박', '독', '둔화']
+        message = f"\n{skill_emojis['병상첨병']}**병상첨병** 사용!\n스킬 증폭 {int(round(skill_multiplier * 100))}%의 스킬 피해!\n"
+        cc_status = ['빙결', '화상', '침묵', '기절', '독', '둔화']
         if any(status in cc_status for status in defender['Status']): # 상태이상 적용상태라면
             skill_damage *= 2
-            message = f"\n**병상첨병** 사용!\n스킬 증폭 {int(round(skill_multiplier * 100))}%의 스킬 피해!\n**상태이상으로 인해 대미지 2배!**\n"
+            message = f"\n{skill_emojis['병상첨병']}**병상첨병** 사용!\n스킬 증폭 {int(round(skill_multiplier * 100))}%의 스킬 피해!\n**상태이상으로 인해 대미지 2배!**\n"
     
     else:
         skill_damage = 0
-        message = f"\n**병상첨병**이 빗나갔습니다!\n"
+        message = f"\n{skill_emojis['병상첨병']}**병상첨병**이 빗나갔습니다!\n"
     return message, skill_damage
 
 def poison_jab(attacker,defender,evasion,skill_level, skill_data_firebase):
@@ -628,15 +664,15 @@ def poison_jab(attacker,defender,evasion,skill_level, skill_data_firebase):
         attack_multiplier = (poison_jab_data['기본_공격력_계수'] + poison_jab_data['레벨당_공격력_계수_증가'] * skill_level)
         skill_damage = attacker["Attack"] * attack_multiplier
         
-        message = f"\n**독찌르기** 사용!\n공격력 {int(round(attack_multiplier * 100))}%의 스킬 피해!\n"
+        message = f"\n{skill_emojis['독찌르기']}**독찌르기** 사용!\n공격력 {int(round(attack_multiplier * 100))}%의 스킬 피해!\n"
         cc_probability = poison_jab_data['독_확률'] + poison_jab_data['레벨당_독_확률'] * skill_level
         if random.random() < cc_probability: # 확룰에 따라 독 부여
             apply_status_for_turn(defender,"독",3)
-            message += f"독 상태이상 3턴간 부여!(확률 : {round(cc_probability * 100)}%)"
+            message += f"**독** 3턴간 부여!(확률 : {round(cc_probability * 100)}%)\n"
 
     else:
         skill_damage = 0
-        message = f"\n**독찌르기**가 빗나갔습니다!\n"
+        message = f"\n{skill_emojis['독찌르기']}**독찌르기**가 빗나갔습니다!\n"
     return message, skill_damage
 
 def fire_punch(attacker,defender,evasion,skill_level, skill_data_firebase):
@@ -646,17 +682,17 @@ def fire_punch(attacker,defender,evasion,skill_level, skill_data_firebase):
         attack_multiplier = (poison_jab_data['기본_공격력_계수'] + poison_jab_data['레벨당_공격력_계수_증가'] * skill_level)
         skill_damage = attacker["Attack"] * attack_multiplier
         
-        message = f"\n**불꽃 펀치** 사용!\n공격력 {int(round(attack_multiplier * 100))}%의 스킬 피해!\n"
+        message = f"\n{skill_emojis['불꽃 펀치']}**불꽃 펀치** 사용!\n공격력 {int(round(attack_multiplier * 100))}%의 스킬 피해!\n"
         cc_probability = poison_jab_data['화상_확률'] + poison_jab_data['레벨당_화상_확률'] * skill_level
         if random.random() < cc_probability: # 확룰에 따라 화상 부여
             burn_damage = poison_jab_data['화상_대미지'] + poison_jab_data['레벨당_화상_대미지'] * skill_level
             apply_status_for_turn(defender,"화상",2, burn_damage)
-            apply_status_for_turn(defender,"치유 감소", 4, 0.3)
-            message += f"화상 상태이상 3턴간 부여!(확률 : {round(cc_probability * 100)}%)"
+            apply_status_for_turn(defender,"치유 감소", 2, 0.4)
+            message += f"화상 상태이상 2턴간 부여!(확률 : {round(cc_probability * 100)}%)"
 
     else:
         skill_damage = 0
-        message = f"\n**불꽃 펀치**가 빗나갔습니다!\n"
+        message = f"\n{skill_emojis['불꽃 펀치']}**불꽃 펀치**가 빗나갔습니다!\n"
     return message, skill_damage
 
 def timer():

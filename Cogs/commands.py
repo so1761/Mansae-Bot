@@ -361,7 +361,7 @@ class InsigniaView(discord.ui.View):
                 level = data.get("레벨", "N/A")
                 stat = data.get("주스탯", "N/A")
                 value = data.get("초기 수치",0) + data.get("증가 수치", 0) * level
-                percent_names = ['강철의 맹세', '바람의 잔상', '약점 간파', '타오르는 혼']
+                percent_names = ['강철의 맹세', '약점 간파', '타오르는 혼']
 
                 if name in percent_names:
                     value_str = f"{float(value) * 100:.1f}%"
@@ -1667,13 +1667,11 @@ class DiceRevealView(discord.ui.View):
 
                 # ====================  [미션]  ====================
                 # 일일미션 : 승부예측 1회 적중
-                cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                current_predict_season = cur_predict_seasonref.get()
-                ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name'].name}/미션/일일미션/승부예측 1회 적중")
-                mission_data = ref.get() or {}
+                ref_mission = db.reference(f"미션/미션진행상태/{winner['name'].name}/일일미션/승부예측 1회 적중")
+                mission_data = ref_mission.get() or {}
                 mission_bool = mission_data.get('완료', False)
                 if not mission_bool:
-                    ref.update({"완료": True})
+                    ref_mission.update({"완료": True})
                     print(f"{winner['name'].display_name}의 [승부예측 1회 적중] 미션 완료")
 
                 # ====================  [미션]  ====================
@@ -4629,13 +4627,11 @@ class hello(commands.Cog):
 
             # ====================  [미션]  ====================
             # 일일미션 : 승부예측 1회 적중
-            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-            current_predict_season = cur_predict_seasonref.get()
-            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{이름.name}/미션/일일미션/승부예측 1회 적중")
-            mission_data = ref.get() or {}
+            ref_mission = db.reference(f"미션/미션진행상태/{이름.name}/일일미션/승부예측 1회 적중")
+            mission_data = ref_mission.get() or {}
             mission_bool = mission_data.get('완료', False)
             if not mission_bool:
-                ref.update({"완료": True})
+                ref_mission.update({"완료": True})
                 print(f"{이름.display_name}의 [승부예측 1회 적중] 미션 완료")
 
             # ====================  [미션]  ====================
@@ -5287,13 +5283,11 @@ class hello(commands.Cog):
         
             # ====================  [미션]  ====================
             # 일일미션 : 주사위 굴리기
-            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-            current_predict_season = cur_predict_seasonref.get()
-            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/주사위 굴리기")
-            mission_data = ref.get() or {}
+            ref_mission = db.reference(f"미션/미션진행상태/{nickname}/일일미션/주사위 굴리기")
+            mission_data = ref_mission.get() or {}
             mission_bool = mission_data.get('완료',0)
             if not mission_bool:
-                ref.update({"완료": True})
+                ref_mission.update({"완료": True})
                 print(f"{nickname}의 [주사위 굴리기] 미션 완료")
 
             # ====================  [미션]  ====================
@@ -5337,9 +5331,7 @@ class hello(commands.Cog):
         if not yacht_bool:  # 주사위를 아직 안 굴렸다면
             # ====================  [미션]  ====================
             # 일일미션 : 야추 1회
-            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-            current_predict_season = cur_predict_seasonref.get()
-            ref_mission = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션/야추 1회")
+            ref_mission = db.reference(f"미션/미션진행상태/{nickname}/일일미션/야추 1회")
             mission_data = ref_mission.get() or {}
             mission_bool = mission_data.get('완료',0)
             if not mission_bool:
@@ -5983,10 +5975,8 @@ class hello(commands.Cog):
 
                         # ====================  [미션]  ====================
                         # 일일미션 : 승부예측 1회 적중
-                        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                        current_predict_season = cur_predict_seasonref.get()
-                        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name'].name}/미션/일일미션/승부예측 1회 적중")
-                        mission_data = ref.get() or {}
+                        ref_mission = db.reference(f"미션/미션진행상태/{winner['name'].name}/일일미션/승부예측 1회 적중")
+                        mission_data = ref_mission.get() or {}
                         mission_bool = mission_data.get('완료', False)
                         if not mission_bool:
                             ref.update({"완료": True})

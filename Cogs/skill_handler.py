@@ -4,6 +4,7 @@ from .skills import *
 # 예시로 몇 개의 스킬만 간략하게 구현
 # 실제로는 각각의 스킬 함수 (charging_shot, Shield, etc.)를 import 하거나 이 파일에 포함해야 함
 
+
 def process_skill(
     attacker, defender, skill_name, slienced, evasion, attacked,
     skill_data_firebase,
@@ -38,7 +39,9 @@ def process_skill(
                     used_skill.append(skill_name)
                     skill_attack_names.append(skill_name)
     else:
-        cooldown_message.append(f"⏳{skill_name}의 남은 쿨타임 : {skill_cooldown_current}턴")
+        emoji = skill_emojis.get(skill_name, "")  # 없으면 공백 or skill_name로 대체 가능
+        cooldown_message.append(f"{emoji}**{skill_cooldown_current}턴**")
+
     return result_message
 
 def process_all_skills(
@@ -72,7 +75,7 @@ def process_all_skills(
             attacker, defender, skill_name, slienced, evasion, attacked,
             skill_data_firebase, result_message, used_skill, skill_attack_names, cooldown_message
         )
-       
+
     return result_message, used_skill, skill_attack_names, cooldown_message
 
 def process_on_hit_effects(
@@ -84,10 +87,11 @@ def process_on_hit_effects(
         if not evasion:
             skill_level = defender["Skills"]["불굴"]["레벨"]
             unyielding_data = skill_data_firebase['불굴']['values']
-            damage_reduction = min(unyielding_data['최대_피해감소율'], unyielding_data['기본_피해감소'] + unyielding_data['레벨당_피해감소'] * skill_level)  # 최대 90% 감소 제한
-            defender["DamageReduction"] = damage_reduction
+            damage_reduction_value = min(unyielding_data['최대_피해감소율'], unyielding_data['기본_피해감소'] + unyielding_data['레벨당_피해감소'] * skill_level)  # 최대 90% 감소 제한
+            damage_reduction = defender.get("DamageReduction", 0)
+            defender["DamageReduction"] = damage_reduction + damage_reduction_value
             
-            result_message += f"**<:braum_E:1370258314666971236>불굴**의 효과로 받는 대미지 {int(damage_reduction * 100)}% 감소!\n"
+            result_message += f"**<:braum_E:1380505187160035378>불굴**의 효과로 받는 대미지 {int(damage_reduction * 100)}% 감소!\n"
 
     # 뇌진탕 펀치 (공격자)
     if "뇌진탕 펀치" in attacker["Status"]:
@@ -106,7 +110,7 @@ def process_on_hit_effects(
     if "저주받은 바디" in defender["Status"]:
         if not evasion:
             skill_level = defender["Skills"]["저주받은 바디"]["레벨"]
-            result_message += cursed_body(attacker, skill_level, skill_data_firebase)
+            result_message += cursed_body(attacker, defender, skill_level, skill_data_firebase)
 
     # 일섬 (공격자 스킬 목록)
     if "일섬" in attacker["Skills"]:
@@ -151,7 +155,7 @@ def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebas
             skill_message, damage= glacial_fissure(attacker,defender,evasion,skill_level, skill_data_firebase)
             result_message += skill_message
         elif skill_name == "불굴":
-            skill_message, damage = unyielding(attacker, skill_level, skill_data_firebase)
+            skill_message, damage = unyielding(attacker, defender, skill_level, skill_data_firebase)
             result_message += skill_message
         elif skill_name == "헤드샷":
             skill_message, damage, critical_bool = headShot(attacker,evasion,skill_level, skill_data_firebase)
@@ -161,7 +165,7 @@ def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebas
                 apply_status_for_turn(attacker, "장전", duration=1)
                 return None, result_message, critical_bool
         elif skill_name == "명상":
-            skill_message, damage= meditate(attacker,skill_level, skill_data_firebase)
+            skill_message, damage= meditate(attacker,defender, skill_level, skill_data_firebase)
             result_message += skill_message
         elif skill_name == "기습":
             if "기습" in attacker['Status']:

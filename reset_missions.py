@@ -424,10 +424,17 @@ users = ref.get()
 
 if users:
     for nickname, data in users.items():
-        mission_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/미션/일일미션")
+        mission_ref = db.reference(f"미션/미션진행상태")
         dice_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/")
         yacht_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/야추")
         daily_missions = mission_ref.get()
+
+        all_users = mission_ref.get()  # 전체 사용자 데이터 불러오기
+
+        if all_users:
+            for nickname in all_users.keys():
+                daily_mission_ref = mission_ref.child(f"{nickname}/일일미션")
+                daily_mission_ref.delete()
 
         dice_ref.update({"주사위" : 0})
         yacht_ref.update({"족보" : ""})
@@ -452,11 +459,7 @@ if users:
 
         p.votes['배틀']['name']['challenger'] = ""
         p.votes['배틀']['name']['상대'] = ""
-        if daily_missions:
-            update_data = {mission_name + "/완료": 0 for mission_name in daily_missions}
-            update_data2 = {mission_name + "/보상수령": 0 for mission_name in daily_missions}
-            mission_ref.update(update_data)  # 모든 미션 초기화
-            mission_ref.update(update_data2)
+        
 
 print(f"{date_str} 모든 사용자의 일일미션이 초기화되었습니다.")
 

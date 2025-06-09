@@ -9,7 +9,7 @@ from .skill_handler import process_all_skills, process_on_hit_effects, use_skill
 from .skills import *
 
 
-async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = False, practice = False, tower = False, tower_floor = 1, raid_ended = False, simulate = False, skill_data = None, wdc = None, wdo = None, scd = None):
+async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = False, practice = False, tower = False, tower_floor = 1, raid_ended = False, simulate = False, skill_data = None, wdc = None, wdo = None, scd = None, insignia = None):
     weapon_battle_thread = None
     if simulate:
         skill_data_firebase = skill_data
@@ -178,7 +178,9 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
     async def attack(attacker, defender, evasion, reloading, skills = None):
 
         remove_status_effects(attacker, skill_data_firebase)
-        update_status(attacker)  # 공격자의 상태 업데이트 (은신 등)
+        # attacker 턴일 때 attacker 상태 갱신
+        update_status(attacker, current_turn_id=attacker["Id"])
+        update_status(defender, current_turn_id=attacker["Id"])
 
         skill_message = ""
         if reloading:
@@ -260,10 +262,15 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         "Speed": weapon_data_challenger.get("스피드", 0),
         "BaseSpeed": weapon_data_challenger.get("스피드", 0),
         "DefenseIgnore": 0,
+        "BaseDefenseIgnore": 0,
         "Evasion" : 0,
+        "BaseEvasion" : 0,
         "DamageEnhance" : 0, # 피해 증폭
+        "BaseDamageEnhance" : 0, # 피해 감소
         "DamageReduction" : 0, # 피해 감소
-        "Tenacity" : 0,
+        "BaseDamageReduction" : 0, # 피해 감소
+        "Resilience" : 0, # 강인함
+        "BaseResilience" : 0,
         "Id": 0, # Id를 통해 도전자와 상대 파악 도전자 = 0, 상대 = 1
         "Accuracy": weapon_data_challenger.get("명중", 0),
         "BaseAccuracy": weapon_data_challenger.get("명중", 0),
@@ -271,72 +278,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         "Skills": challenger_merged_skills,
         "Status" : {}
     }
-
-    if not simulate:
-        # 유저 각인 정보 가져오기
-        ref_user_insignia = db.reference(f"무기/유저/{challenger_m.name}/각인")  # 예: 'nickname' 변수는 해당 유저명
-        user_insignia = ref_user_insignia.get() or {}
-
-        # 0,1,2 슬롯 중 인장 찾기
-        if isinstance(user_insignia, dict):
-            # 딕셔너리일 경우 한 번만 슬롯 돌기
-            for slot_key in ['0', '1', '2']:
-                insignia_name = user_insignia.get(slot_key, "")
-                if not insignia_name:
-                    continue
-                
-                # 인장 상세 정보 가져오기
-                ref_insignia_detail = db.reference(f"무기/각인/{challenger_m.name}/{insignia_name}")
-                insignia_detail = ref_insignia_detail.get() or {}
-
-                level = insignia_detail.get("레벨", 1)
-                base_value = insignia_detail.get("초기 수치", 0)
-                increase_per_level = insignia_detail.get("증가 수치", 0)
-
-                total_bonus = base_value + (increase_per_level * level)
-
-                if insignia_name == "약점 간파":
-                    challenger["CritChance"] += total_bonus
-                elif insignia_name == "꿰뚫는 집념":
-                    challenger["DefenseIgnore"] += total_bonus
-                elif insignia_name == "강철의 맹세":
-                    challenger["DamageReduction"] += total_bonus
-                elif insignia_name == "불굴의 심장":
-                    challenger["Tenacity"] += total_bonus
-                elif insignia_name == "타오르는 혼":
-                    challenger["DamageEnhance"] += total_bonus
-                elif insignia_name == "바람의 잔상":
-                    challenger["Evaison"] += total_bonus
-
-        elif isinstance(user_insignia, list):
-            # 리스트일 경우에도 한 번만 슬롯 돌기
-            for slot_key in [0, 1, 2]:
-                insignia_name = user_insignia[slot_key] if slot_key < len(user_insignia) else ""
-                if not insignia_name:
-                    continue
-
-                ref_insignia_detail = db.reference(f"무기/각인/{challenger_m.name}/{insignia_name}")
-                insignia_detail = ref_insignia_detail.get() or {}
-
-                level = insignia_detail.get("레벨", 1)
-                base_value = insignia_detail.get("초기 수치", 0)
-                increase_per_level = insignia_detail.get("증가 수치", 0)
-
-                total_bonus = base_value + (increase_per_level * level)
-
-                if insignia_name == "약점 간파":
-                    challenger["CritChance"] += total_bonus
-                elif insignia_name == "꿰뚫는 집념":
-                    challenger["DefenseIgnore"] += total_bonus
-                elif insignia_name == "강철의 맹세":
-                    challenger["DamageReduction"] += total_bonus
-                elif insignia_name == "불굴의 심장":
-                    challenger["Tenacity"] += total_bonus
-                elif insignia_name == "타오르는 혼":
-                    challenger["DamageEnhance"] += total_bonus
-                elif insignia_name == "바람의 잔상":
-                    challenger["Evasion"] += total_bonus
-    
     skills_data = weapon_data_opponent.get("스킬", {})
     opponent_merged_skills = {}
 
@@ -375,10 +316,15 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         "Speed": weapon_data_opponent.get("스피드", 0),
         "BaseSpeed": weapon_data_opponent.get("스피드", 0),
         "DefenseIgnore": 0,
+        "BaseDefenseIgnore": 0,
         "Evasion" : 0,
-        "DamageEnhance" : 0,
-        "DamageReduction" : 0,
-        "Tenacity" : 0,
+        "BaseEvasion" : 0,
+        "DamageEnhance" : 0, # 피해 증폭
+        "BaseDamageEnhance" : 0, # 피해 감소
+        "DamageReduction" : 0, # 피해 감소
+        "BaseDamageReduction" : 0, # 피해 감소
+        "Resilience" : 0, # 강인함
+        "BaseResilience" : 0,
         "Id" : 1, # Id를 통해 도전자와 상대 파악 도전자 = 0, 상대 = 1
         "Accuracy": weapon_data_opponent.get("명중", 0),
         "BaseAccuracy": weapon_data_opponent.get("명중", 0),
@@ -387,6 +333,29 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         "Status" : {}
     }
 
+    if not simulate:
+        challenger_insignia = get_user_insignia_stat(challenger_m.name, role="challenger")
+
+        if not tower and not raid:
+            opponent_insignia = get_user_insignia_stat(opponent_m.name, role="opponent")
+            insignia = {
+                **challenger_insignia,
+                **opponent_insignia
+            }
+        else:
+            insignia = {
+                **challenger_insignia
+            }
+
+    base_stats = ["CritChance", "DefenseIgnore", "DamageReduction", "Resilience", "DamageEnhance", "Evasion"]
+    all_stats = base_stats + [f"Base{stat}" for stat in base_stats]
+
+    for stat in all_stats:
+        challenger[stat] += insignia.get("challenger", {}).get(stat, 0)
+        # 타워/레이드가 아닌 경우에만 opponent 스탯 적용
+        if not tower and not raid:
+            opponent[stat] += insignia.get("opponent", {}).get(stat, 0)
+    
     # 비동기 전투 시뮬레이션
     attacker, defender = random.choice([(challenger, opponent), (opponent, challenger)]) if challenger["Speed"] == opponent["Speed"] else \
                     (challenger, opponent) if challenger["Speed"] > opponent["Speed"] else \
@@ -421,71 +390,156 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 type=discord.ChannelType.public_thread
             )
 
-    # 챌린저 무기 스탯 정보 추가
-    challenger_embed = discord.Embed(title="🟦 도전자 스탯", color=discord.Color.blue())
-
-    challenger_embed.add_field(
-        name=f"[{challenger['name']}](+{weapon_data_challenger.get('강화', 0)}) [{challenger['Weapon']}]",
-        value=(
-            f"대미지        : `{round(challenger['Attack'] * calculate_accuracy(challenger['Accuracy']))} ~ {challenger['Attack']}`\n"
-            f"내구도        : `{challenger['HP']}`\n"
-            f"공격력        : `{challenger['Attack']}`\n"
-            f"스킬 증폭     : `{challenger['Spell']}`\n"
-            f"치명타 확률   : `{round(challenger['CritChance'] * 100, 2)}%`\n"
-            f"치명타 대미지 : `{round(challenger['CritDamage'] * 100, 2)}%`\n"
-            f"스피드        : `{challenger['Speed']}` (회피: `{round(calculate_evasion_score(challenger['Speed']))}`)\n"
-            f"명중          : `{challenger['Accuracy']}` (명중률: `{round(calculate_accuracy(challenger['Accuracy']) * 100, 2)}%`)\n"
-            f"방어력        : `{challenger['Defense']}` (피해 감소: `{round(calculate_damage_reduction(challenger['Defense']) * 100, 2)}%`)\n"
-        ),
-        inline=False
-    )
-
-    # 스킬 정보 따로 아래에 추가
-    skills_text_challenger = "\n".join(
-        f"• {skill_name} Lv{skill_data['레벨']}" for skill_name, skill_data in challenger['Skills'].items()
-    )
-    challenger_embed.add_field(
-        name="📘 스킬",
-        value=skills_text_challenger or "없음",
-        inline=False
-)
-
-    # 상대 스탯 임베드
-    opponent_embed = discord.Embed(title="🟥 상대 스탯", color=discord.Color.red())
-
-    opponent_embed.add_field(
-        name=f"[{opponent['name']}](+{weapon_data_opponent.get('강화', 0)}) [{opponent['Weapon']}]",
-        value=(
-            f"대미지        : `{round(opponent['Attack'] * calculate_accuracy(opponent['Accuracy']))} ~ {opponent['Attack']}`\n"
-            f"내구도        : `{opponent['HP']}`\n"
-            f"공격력        : `{opponent['Attack']}`\n"
-            f"스킬 증폭     : `{opponent['Spell']}`\n"
-            f"치명타 확률   : `{round(opponent['CritChance'] * 100, 2)}%`\n"
-            f"치명타 대미지 : `{round(opponent['CritDamage'] * 100, 2)}%`\n"
-            f"스피드        : `{opponent['Speed']}` (회피: `{round(calculate_evasion_score(opponent['Speed']))}`)\n"
-            f"명중          : `{opponent['Accuracy']}` (명중률: `{round(calculate_accuracy(opponent['Accuracy']) * 100, 2)}%`)\n"
-            f"방어력        : `{opponent['Defense']}` (피해 감소: `{round(calculate_damage_reduction(opponent['Defense']) * 100, 2)}%`)\n"
-        ),
-        inline=False
-    )
-
-    # 스킬 정보 따로 아래에 깔끔하게 추가
-    skills_text_opponent = "\n".join(
-        f"• {skill_name} Lv{skill_data['레벨']}" for skill_name, skill_data in opponent['Skills'].items()
-    )
-    opponent_embed.add_field(
-        name="📘 스킬",
-        value=skills_text_opponent or "없음",
-        inline=False
-)
-
     if not simulate:
+        # 챌린저 무기 스탯 정보 추가
+        challenger_embed = discord.Embed(title="🟦 도전자 스탯", color=discord.Color.blue())
+
+        challenger_embed.add_field(
+            name=f"[{challenger['name']}](+{weapon_data_challenger.get('강화', 0)}) [{challenger['Weapon']}]",
+            value=(
+                f"대미지        : `{round(challenger['Attack'] * calculate_accuracy(challenger['Accuracy']))} ~ {challenger['Attack']}`\n"
+                f"내구도        : `{challenger['HP']}`\n"
+                f"공격력        : `{challenger['Attack']}`\n"
+                f"스킬 증폭     : `{challenger['Spell']}`\n"
+                f"치명타 확률   : `{round(challenger['CritChance'] * 100, 2)}%`\n"
+                f"치명타 대미지 : `{round(challenger['CritDamage'] * 100, 2)}%`\n"
+                f"스피드        : `{challenger['Speed']}` (회피: `{round(calculate_evasion_score(challenger['Speed']))}`)\n"
+                f"명중          : `{challenger['Accuracy']}` (명중률: `{round(calculate_accuracy(challenger['Accuracy']) * 100, 2)}%`)\n"
+                f"방어력        : `{challenger['Defense']}` (피해 감소: `{round(calculate_damage_reduction(challenger['Defense']) * 100, 2)}%`)\n"
+            ),
+            inline=False
+        )
+
+        # 스킬 정보 따로 아래에 추가
+        skills_text_challenger = "\n".join(
+            f"• {skill_name} Lv{skill_data['레벨']}" for skill_name, skill_data in challenger['Skills'].items()
+        )
+        challenger_embed.add_field(
+            name="📘 스킬",
+            value=skills_text_challenger or "없음",
+            inline=False
+        )
+
+        ref_user_insignia = db.reference(f"무기/유저/{challenger_m.name}/각인")  # 예: 'nickname' 변수는 해당 유저명
+        user_insignia = ref_user_insignia.get() or {}
+
+        equipped = user_insignia  # 이미 위에서 불러온 각인 목록
+
+        
+        # 인장 상세 정보 가져오기
+        ref_insignia_level_detail = db.reference(f"무기/각인/유저/{challenger_m.name}")
+        insignia_level_detail = ref_insignia_level_detail.get() or {}
+        inventory = insignia_level_detail  # {인장명: {"레벨": x, ...}} 형태라고 가정
+
+        desc_lines = []
+        for i in range(3):
+            name = equipped[i] if i < len(equipped) and equipped[i] else "-"
+            if name and name != "-" and name in inventory:
+                data = inventory[name]
+                level = data.get("레벨", 1)
+                
+                # 각인 주스탯 정보 불러오기
+                ref_item_insignia_stat = db.reference(f"무기/각인/스탯/{name}")
+                insignia_stat = ref_item_insignia_stat.get() or {}
+
+                stat = insignia_stat.get("주스탯", "N/A")
+                base_value = insignia_stat.get("초기 수치", 0)
+                per_level = insignia_stat.get("증가 수치", 0)
+                value = base_value + per_level * level
+
+                # %로 표시할 각인인지 판별
+                percent_names = ['강철의 맹세', '약점 간파', '타오르는 혼']
+                if name in percent_names:
+                    value_str = f"{value * 100:.0f}%"
+                else:
+                    value_str = f"{value}"
+
+                desc_lines.append(f"{i+1}번: {name} (Lv.{level}, {stat} +{value_str})")
+            else:
+                desc_lines.append(f"{i+1}번: -")
+
+        challenger_embed.add_field(
+            name="📙 각인",
+            value="\n".join(desc_lines),
+            inline=False
+        )
+
+        # 상대 스탯 임베드
+        opponent_embed = discord.Embed(title="🟥 상대 스탯", color=discord.Color.red())
+
+        opponent_embed.add_field(
+            name=f"[{opponent['name']}](+{weapon_data_opponent.get('강화', 0)}) [{opponent['Weapon']}]",
+            value=(
+                f"대미지        : `{round(opponent['Attack'] * calculate_accuracy(opponent['Accuracy']))} ~ {opponent['Attack']}`\n"
+                f"내구도        : `{opponent['HP']}`\n"
+                f"공격력        : `{opponent['Attack']}`\n"
+                f"스킬 증폭     : `{opponent['Spell']}`\n"
+                f"치명타 확률   : `{round(opponent['CritChance'] * 100, 2)}%`\n"
+                f"치명타 대미지 : `{round(opponent['CritDamage'] * 100, 2)}%`\n"
+                f"스피드        : `{opponent['Speed']}` (회피: `{round(calculate_evasion_score(opponent['Speed']))}`)\n"
+                f"명중          : `{opponent['Accuracy']}` (명중률: `{round(calculate_accuracy(opponent['Accuracy']) * 100, 2)}%`)\n"
+                f"방어력        : `{opponent['Defense']}` (피해 감소: `{round(calculate_damage_reduction(opponent['Defense']) * 100, 2)}%`)\n"
+            ),
+            inline=False
+        )
+
+        # 스킬 정보 따로 아래에 깔끔하게 추가
+        skills_text_opponent = "\n".join(
+            f"• {skill_name} Lv{skill_data['레벨']}" for skill_name, skill_data in opponent['Skills'].items()
+        )
+        opponent_embed.add_field(
+            name="📘 스킬",
+            value=skills_text_opponent or "없음",
+            inline=False
+        )
+
+        if not raid and not tower:
+            ref_user_insignia = db.reference(f"무기/유저/{opponent_m.name}/각인")  # 예: 'nickname' 변수는 해당 유저명
+            user_insignia = ref_user_insignia.get() or {}
+
+            equipped = user_insignia  # 이미 위에서 불러온 각인 목록
+
+        
+            # 인장 상세 정보 가져오기
+            ref_insignia_level_detail = db.reference(f"무기/각인/유저/{opponent_m.name}")
+            insignia_level_detail = ref_insignia_level_detail.get() or {}
+            inventory = insignia_level_detail  # {인장명: {"레벨": x, ...}} 형태라고 가정
+
+            desc_lines = []
+            for i in range(3):
+                name = equipped[i] if i < len(equipped) and equipped[i] else "-"
+                if name and name != "-" and name in inventory:
+                    data = inventory[name]
+                    level = data.get("레벨", 1)
+                    
+                    # 각인 주스탯 정보 불러오기
+                    ref_item_insignia_stat = db.reference(f"무기/각인/스탯/{name}")
+                    insignia_stat = ref_item_insignia_stat.get() or {}
+
+                    stat = insignia_stat.get("주스탯", "N/A")
+                    base_value = insignia_stat.get("초기 수치", 0)
+                    per_level = insignia_stat.get("증가 수치", 0)
+                    value = base_value + per_level * level
+
+                    # %로 표시할 각인인지 판별
+                    percent_names = ['강철의 맹세', '약점 간파', '타오르는 혼']
+                    if name in percent_names:
+                        value_str = f"{value * 100:.0f}%"
+                    else:
+                        value_str = f"{value}"
+
+                    desc_lines.append(f"{i+1}번: {name} (Lv.{level}, {stat} +{value_str})")
+                else:
+                    desc_lines.append(f"{i+1}번: -")
+
+            opponent_embed.add_field(
+                name="📙 각인",
+                value="\n".join(desc_lines),
+                inline=False
+            )
+
         await weapon_battle_thread.send(embed=challenger_embed)
         await weapon_battle_thread.send(embed=opponent_embed)
-
-    def create_bar(value: int, max_val: int = 50, bar_length: int = 10):
-        filled_len = round((value / max_val) * bar_length)
-        return "■" * filled_len
 
     embed = discord.Embed(title="⚔️ 무기 강화 내역", color=discord.Color.green())
 
@@ -543,8 +597,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
         if turn >= 30:
             healban_amount = round((turn - 20) * 0.01,1)
-            apply_status_for_turn(attacker, "치유 감소", 100, healban_amount)
-            apply_status_for_turn(defender, "치유 감소", 100, healban_amount)
+            apply_status_for_turn(attacker, "치유 감소", 1, healban_amount, source_id = attacker['Id'])
+            apply_status_for_turn(defender, "치유 감소", 1, healban_amount, source_id = defender['Id'])
 
         attacked = False
 
@@ -648,16 +702,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     shield_amount_opponent = 0
                 
 
-                if raid:
-                    bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
-                    battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
-                    bar = durability_bar(opponent['HP'], opponent['FullHP'], shield_amount_opponent)
-                    battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
-                else:
-                    bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
-                    battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
-                    bar = durability_bar(opponent['HP'], opponent['BaseHP'], shield_amount_opponent)
-                    battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
+                show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
 
                 if attacker["HP"] <= 0:
                     result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
@@ -707,16 +752,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             else:
                 shield_amount_opponent = 0
 
-            if raid:
-                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
-                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
-                bar = durability_bar(opponent['HP'], opponent['FullHP'], shield_amount_opponent)
-                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
-            else:
-                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
-                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
-                bar = durability_bar(opponent['HP'], opponent['BaseHP'], shield_amount_opponent)
-                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
+            show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
 
             if attacker["HP"] <= 0:
                 result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
@@ -766,16 +802,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             else:
                 shield_amount_opponent = 0
 
-            if raid:
-                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
-                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
-                bar = durability_bar(opponent['HP'], opponent['FullHP'], shield_amount_opponent)
-                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
-            else:
-                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
-                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
-                bar = durability_bar(opponent['HP'], opponent['BaseHP'], shield_amount_opponent)
-                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
+            show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
 
             if attacker["HP"] <= 0:
                 result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
@@ -809,16 +836,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             else:
                 shield_amount_opponent = 0
             
-            if raid:
-                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
-                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
-                bar = durability_bar(opponent['HP'], opponent['FullHP'], shield_amount_opponent)
-                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
-            else:
-                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
-                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
-                bar = durability_bar(opponent['HP'], opponent['BaseHP'], shield_amount_opponent)
-                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
+            show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
 
             if attacker["HP"] <= 0:
                 result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
@@ -836,7 +854,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             if "장전" in attacker["Status"]:  # 장전이 있는지 확인
                 attacker["Status"]["장전"]["duration"] += 1
             remove_status_effects(attacker, skill_data_firebase)
-            update_status(attacker)  # 공격자의 상태 업데이트 (은신 등)
+            update_status(attacker, current_turn_id=attacker["Id"])
+            update_status(defender, current_turn_id=attacker["Id"])
             attacker, defender = defender, attacker
             if not simulate:
                 await weapon_battle_thread.send(embed = battle_embed)
@@ -853,7 +872,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             if "장전" in attacker["Status"]:  # 장전이 있는지 확인
                 attacker["Status"]["장전"]["duration"] += 1
             remove_status_effects(attacker, skill_data_firebase)
-            update_status(attacker)  # 공격자의 상태 업데이트 (은신 등)
+            update_status(attacker, current_turn_id=attacker["Id"])
+            update_status(defender, current_turn_id=attacker["Id"])
             attacker, defender = defender, attacker
             if not simulate:
                 await weapon_battle_thread.send(embed = battle_embed)
@@ -867,54 +887,58 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         speed = attacker.get("Speed", 0)
         acceleration_chance = speed // 5  # 예: 스피드 50이면 10%
         overdrive_chance = max(0, (speed - 200) // 5)  # 초가속: 200 초과부터 5당 1%
-
-        skill_names = list(attacker["Skills"].keys())
-        used_skill = []
-        skill_attack_names = []
         result_message = ""
-        cooldown_message = ""
 
-        for skill, cooldown_data in attacker["Skills"].items():
-            if cooldown_data["현재 쿨타임"] > 0:
-                if acceleration_chance > 0 and random.randint(1, 100) <= acceleration_chance:
-                    # 기본 가속 성공 시
-                    cooldown_reduction = 1
-                    overdrive_triggered = False
+        # 가속 판정 1회
+        acceleration_triggered = False
+        overdrive_triggered = False
+        cooldown_reduction = 0
 
-                    # 초가속 판정
-                    if overdrive_chance > 0 and random.randint(1, 100) <= overdrive_chance:
-                        cooldown_reduction += 1
-                        overdrive_triggered = True
+        if "속박" not in attacker["Status"]: # 속박 상태가 아니라면
+            if acceleration_chance > 0 and random.randint(1, 100) <= acceleration_chance:
+                cooldown_reduction = 1
+                acceleration_triggered = True
 
-                    # 쿨타임 감소 적용
-                    attacker["Skills"][skill]["현재 쿨타임"] = max(0, cooldown_data["현재 쿨타임"] - cooldown_reduction)
+                # 초가속 판정
+                if overdrive_chance > 0 and random.randint(1, 100) <= overdrive_chance:
+                    cooldown_reduction += 1
+                    overdrive_triggered = True
 
-                    # 메시지 처리
-                    if overdrive_triggered:
-                        result_message += f"⚡**초가속!** {skill}의 쿨타임이 **{cooldown_reduction} 감소**했습니다!\n"
-                    else:
-                        result_message += f"💨가속! {skill}의 쿨타임이 1 감소했습니다!\n"
+            # 가속이 발동한 경우: 모든 쿨다운 감소 처리
+            if acceleration_triggered:
+                for skill, cooldown_data in attacker["Skills"].items():
+                    if cooldown_data["현재 쿨타임"] > 0:
+                        attacker["Skills"][skill]["현재 쿨타임"] = max(0, cooldown_data["현재 쿨타임"] - cooldown_reduction)
 
-                    # 헤드샷이라면 장전 지속시간도 감소
-                    if skill == "헤드샷" and "장전" in attacker["Status"]:
-                        attacker["Status"]["장전"]["duration"] -= cooldown_reduction
-                        if attacker["Status"]["장전"]["duration"] <= 0:
-                            del attacker["Status"]["장전"]
+                        # 헤드샷 장전 감소
+                        if skill == "헤드샷" and "장전" in attacker["Status"]:
+                            attacker["Status"]["장전"]["duration"] -= cooldown_reduction
+                            if attacker["Status"]["장전"]["duration"] <= 0:
+                                del attacker["Status"]["장전"]
+
+                # 결과 메시지 출력
+                if overdrive_triggered:
+                    result_message = f"⚡**초가속!** 모든 스킬의 쿨타임이 **{cooldown_reduction} 감소**했습니다!\n"
+                else:
+                    result_message = f"💨가속! 모든 스킬의 쿨타임이 1 감소했습니다!\n"
         
         slienced = False
         if '침묵' in attacker['Status']:
             slienced = True
 
-        evasion = False # 회피 
+        evasion = False # 회피
 
-        evasion_score = calculate_evasion_score(defender["Speed"])
-        accuracy = calculate_accuracy(attacker["Accuracy"] - (evasion_score + defender["Evasion"])) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
-        accuracy = max(accuracy, 0.1)  # 최소 명중률 10%
-        if random.random() > accuracy: # 회피
-        # if random.random() > accuracy:
-            evasion = True
+        if "속박" in defender["Status"]: # 속박 시 회피 불가
+            attacked = True 
         else:
-            attacked = True
+            evasion_score = calculate_evasion_score(defender["Speed"])
+            accuracy = calculate_accuracy(attacker["Accuracy"] - (evasion_score + defender["Evasion"])) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
+            accuracy = max(accuracy, 0.1)  # 최소 명중률 10%
+            if random.random() > accuracy: # 회피
+            # if random.random() > accuracy:
+                evasion = True
+            else:
+                attacked = True
 
         if "기습" in defender["Status"]:
             if evasion: # 기습 스킬 시전 후 회피했다면?
@@ -966,9 +990,17 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     del defender['Status']['빙결']
                     battle_embed.add_field(name="❄️빙결 상태 해제!", value = f"공격을 받아 빙결 상태가 해제되었습니다!\n")
 
+        # 강인함 로그 처리 - attacker, defender 모두 포함
+        for char in (attacker, defender):
+            logs = char.get("Log", [])
+            if logs:
+                result_message += "\n".join(logs) + "\n"
+                char["Log"].clear()  # 로그 초기화
+
         if cooldown_messages:
-            result_message += "\n" + "\n".join(cooldown_messages)
-        result_message += f"\n{cooldown_message}"
+            final_cooldown_text = "⏳:" + " ".join(cooldown_messages)
+            result_message += final_cooldown_text + "\n"
+
         # 공격 후, 각 스킬의 현재 쿨타임을 감소시키는 부분
         for skill, cooldown_data in attacker["Skills"].items():
             if cooldown_data["현재 쿨타임"] > 0 and skill not in used_skill:
@@ -1011,18 +1043,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 shield_amount_opponent = opponent["Status"]["보호막"]["value"]
             else:
                 shield_amount_opponent = 0
-            
 
-            if raid:
-                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
-                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
-                bar = durability_bar(opponent['HP'], opponent['FullHP'], shield_amount_opponent)
-                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
-            else:
-                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
-                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
-                bar = durability_bar(opponent['HP'], opponent['BaseHP'], shield_amount_opponent)
-                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
+            show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
         else:
             # 크리티컬 또는 회피 여부에 따라 메시지 추가
             crit_text = "💥" if critical else ""
@@ -1062,17 +1084,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             else:
                 shield_amount_opponent = 0
             
-
-            if raid:
-                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
-                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
-                bar = durability_bar(opponent['HP'], opponent['FullHP'], shield_amount_opponent)
-                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
-            else:
-                bar = durability_bar(challenger['HP'], challenger['BaseHP'], shield_amount_challenger)
-                battle_embed.add_field(name = f"{challenger['name']}", value=f"**{bar}**",inline = False)
-                bar = durability_bar(opponent['HP'], opponent['BaseHP'], shield_amount_opponent)
-                battle_embed.add_field(name = f"{opponent['name']}", value=f"**{bar}**",inline = False)
+            show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
 
         if defender["HP"] <= 0:
             result = await end(attacker,defender,"attacker",raid,simulate,winner_id = attacker['Id'])

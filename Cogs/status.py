@@ -1,9 +1,74 @@
-def apply_status_for_turn(character, status_name, duration=1, value=None):
+import random
+
+STATUS_EMOJIS = {
+    "빙결": "❄️",
+    "출혈": "🩸",
+    "화상": "🔥",
+    "기절": "💫",
+    "독": "🫧",
+    "둔화": "🐌",
+    "꿰뚫림": "<:spearShot:1380512916406796358>",
+    "침묵": "🔇",
+    "은신": "🌫️",
+    "불굴": "<:braum_E:1380505187160035378>",
+    "치유 감소": "❤️‍🩹",
+    "속박": "⛓️"
+}
+
+SUBSCRIPT_MAP = {
+    "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄",
+    "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉"
+}
+
+def to_subscript(number):
+    return ''.join(SUBSCRIPT_MAP.get(d, d) for d in str(number))
+
+def format_status_effects(status_dict):
+    result = []
+    value_status = ["꿰뚫림", "치유 감소", "둔화", "은신"]
+    percent_status = ["치유 감소", "둔화"]
+    for status, info in status_dict.items():
+        emoji = STATUS_EMOJIS.get(status, "")
+        duration = info.get("duration", 0)
+        if emoji and duration > 0:
+            if status in value_status:
+                values = info.get("value", 0)
+                if status in percent_status:
+                    values = int(values * 100)
+                result.append(f"{emoji}{to_subscript(values)}{duration}")
+            else:
+                result.append(f"{emoji}{duration}")
+    return " ".join(result)
+
+def apply_status_for_turn(character, status_name, duration=1, value=None, source_id = None):
+    debuffs_resistable = {
+        "hard_cc": ["기절", "침묵", "빙결"],
+        "soft_cc": ["둔화", "출혈", "화상", "독", "속박"]
+    }
+
+    resilience = character.get("Resilience", 0)
+
+    if status_name in debuffs_resistable["hard_cc"]:
+        resist_chance = min(resilience * 5, 80)  # 하드 CC는 저항 확률 낮게
+    elif status_name in debuffs_resistable["soft_cc"]:
+        resist_chance = min(resilience * 10, 80)  # 일반 CC는 저항 확률 높게
+    else:
+        resist_chance = 0
+
+    if resist_chance > 0 and random.randint(1, 100) <= resist_chance:
+        character.setdefault("Log", []).append(f"💪{status_name} 상태이상을 강인함으로 막아냈습니다!")
+        return  # 상태이상 적용 막음
+        
     # 상태 적용 및 갱신
+    if source_id is None:
+        source_id = character.get("Id", None)  # character의 id를 바로 꺼내서
+
     if status_name not in character["Status"]:
         character["Status"][status_name] = {"duration": duration}
         if value is not None:
             character["Status"][status_name]["value"] = value
+        if source_id is not None:
+            character["Status"][status_name]["source"] = source_id
     else:
         if status_name in ["출혈", "화상"]:
             character["Status"][status_name]["duration"] += duration
@@ -14,12 +79,19 @@ def apply_status_for_turn(character, status_name, duration=1, value=None):
             current_value = character["Status"][status_name].get("value", None)
             if current_value is None or value > current_value:
                 character["Status"][status_name]["value"] = value
+        if source_id is not None:
+            character["Status"][status_name]["source"] = source_id
 
-def update_status(character):
+def update_status(character, current_turn_id):
     for status, data in list(character["Status"].items()):
-        character["Status"][status]["duration"] -= 1
-        if data["duration"] <= 0:
-            del character["Status"][status]
+        # source가 없으면 기본으로 duration 감소
+        source = data.get("source", None)
+        # 내 턴이 아니고, 상태 부여자가 현재 턴 주체가 아니라면 감소
+        # 즉, 상대 턴일 때만 줄임
+        if source is None or source != current_turn_id:
+            character["Status"][status]["duration"] -= 1
+            if character["Status"][status]["duration"] <= 0:
+                del character["Status"][status]
 
 def remove_status_effects(character, skill_data_firebase):
 
@@ -28,16 +100,16 @@ def remove_status_effects(character, skill_data_firebase):
     """
     
     # 기본값으로 초기화
-    character["Evasion"] = 0
+    character["Evasion"] = character["BaseEvasion"]
     character["CritDamage"] = character["BaseCritDamage"]
     character["CritChance"] = character["BaseCritChance"]
     character["Attack"] = character["BaseAttack"]
     character["Accuracy"] = character["BaseAccuracy"]
     character["Speed"] = character["BaseSpeed"]
-    character["DamageEnhance"] = 0
-    character["DefenseIgnore"] = 0
+    character["DamageEnhance"] = character["BaseDamageEnhance"]
+    character["DefenseIgnore"] = character["BaseDefenseIgnore"]
     character["HealBan"] = 0
-    character["DamageReduction"] = 0
+    character["DamageReduction"] = character["BaseDamageReduction"]
 
     # 현재 적용 중인 상태 효과를 확인하고 반영
     if "은신" in character["Status"]:
@@ -61,17 +133,6 @@ def remove_status_effects(character, skill_data_firebase):
             slow_amount = 1
         character["Speed"] *= (1 - slow_amount)
         character["Speed"] = int(character["Speed"])
-
-    if "차징샷" in character["Status"]:
-        skill_level = character["Skills"]["차징샷"]["레벨"]
-        charging_shot_data = skill_data_firebase['차징샷']['values']
-
-        attack_increase_level = charging_shot_data['적정거리_공격력증가']
-        accuracy_increase_level = charging_shot_data['적정거리_명중증가']
-        attack_increase = (attack_increase_level * skill_level)
-        accuracy_increase = (accuracy_increase_level * skill_level)
-        character["Attack"] += attack_increase
-        character["Accuracy"] += accuracy_increase
 
     if "피해 감소" in character["Status"]:
         reduce_amount = character['Status']['피해 감소']['value']

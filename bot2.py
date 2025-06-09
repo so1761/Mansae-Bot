@@ -314,13 +314,20 @@ class CheckDailyMissionButton(Button):
         embed = discord.Embed(title="📜 미션 목록", color=discord.Color.green())
         for mission in mission_data:
             status = "✅ 완료" if mission["completed"] else "❌ 미완료"
-            embed.add_field(name=f"{mission['name']} ({mission['points']}p)", value=status, inline=False)
+            reward_text = f"{mission['item']} x{mission['amount']}" if mission['item'] else "보상 없음"
+            embed.add_field(
+                name=f"{mission['name']} - {reward_text}",
+                value=status,
+                inline=False
+            )
 
-        # 완료한 미션만 선택할 수 있도록 View 생성
-        completed_missions = [m for m in mission_data if m["completed"] and not m["reward_claimed"]]
-        view = MissionRewardView(completed_missions,"일일미션")
+        # 완료했지만 아직 보상 안 받은 미션만 필터링
+        completed_missions = [
+            m for m in mission_data if m["completed"] and not m["reward_claimed"]
+        ]
+        view = MissionRewardView(completed_missions, "일일미션")
 
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after = 30)
 
 class CheckEnhanceSiteButton(Button):
     def __init__(self):
@@ -336,22 +343,32 @@ class CheckSeasonMissionButton(Button):
 
         mission_data = get_mission_data(user_name, "시즌미션")  # 유저별 미션 상태 불러오기
 
-        embed = discord.Embed(title="📜 미션 목록", color=discord.Color.green())
+        embed = discord.Embed(title="📜 시즌 미션 목록", color=discord.Color.green())
         for mission in mission_data:
             status = "✅ 완료" if mission["completed"] else "❌ 미완료"
-            embed.add_field(name=f"{mission['name']} ({mission['points']}p)", value=status, inline=False)
+            reward_text = f"{mission['item']} x{mission['amount']}" if mission["item"] else "보상 없음"
+            embed.add_field(
+                name=f"{mission['name']} - {reward_text}",
+                value=status,
+                inline=False
+            )
 
-        # 완료한 미션만 선택할 수 있도록 View 생성
-        completed_missions = [m for m in mission_data if m["completed"] and not m["reward_claimed"]]
-        view = MissionRewardView(completed_missions,"시즌미션")
+        # 완료했지만 아직 보상 안 받은 미션만 필터링
+        completed_missions = [
+            m for m in mission_data if m["completed"] and not m["reward_claimed"]
+        ]
+        view = MissionRewardView(completed_missions, "시즌미션")
 
-        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True, delete_after = 30)
 
 class MissionSelect(discord.ui.Select):
     def __init__(self, completed_missions, mission_type):
         self.mission_type = mission_type
         options = [
-            discord.SelectOption(label=f"{mission['name']} ({mission['points']}p)", value=mission['name'])
+            discord.SelectOption(
+                label=f"{mission['name']} - {mission['item']} x{mission['amount']}", 
+                value=mission['name']
+            )
             for mission in completed_missions
         ]
         super().__init__(
@@ -360,7 +377,7 @@ class MissionSelect(discord.ui.Select):
             max_values=1,
             options=options
         )
-    
+
     async def callback(self, interaction: discord.Interaction):
         selected_mission = self.values[0]  # 선택한 미션
 
@@ -398,11 +415,11 @@ class MissionRewardButton(discord.ui.Button):
         if claim_reward(user_name, self.mission_name, self.mission_type):       
             # 버튼 비활성화
             self.disabled = True  
-            await interaction.response.send_message(f"🎉 {self.mission_name} 보상을 받았습니다!", ephemeral=True)
+            await interaction.response.send_message(f"🎉 {self.mission_name} 보상을 받았습니다!", ephemeral=True, delete_after=5)
             # `self.view`를 직접 설정하지 않고, interaction에서 가져옴
             view = self.view 
         else:
-            await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True)
+            await interaction.response.send_message("이미 보상을 받았습니다.", ephemeral=True, delete_after = 5)
     def update_label(self):
         if self.mission_name:
             self.label = f"🎁 [{self.mission_name}] 보상 받기"
@@ -424,9 +441,13 @@ class MissionRewardAllButton(discord.ui.Button):
         await interaction.response.defer()
         if claim_all_reward(user_name,self.mission_type):
             self.disabled = True
-            await interaction.followup.send(f"🎉 {self.mission_type} 보상을 모두 받았습니다!",ephemeral=True)
+            msg = await interaction.followup.send(f"🎉 {self.mission_type} 보상을 모두 받았습니다!",ephemeral=True)
+            await asyncio.sleep(5)
+            await msg.delete()
         else:
-            await interaction.followup.send("이미 보상을 받았습니다.",ephemeral=True)
+            msg = await interaction.followup.send("이미 보상을 받았습니다.",ephemeral=True)
+            await asyncio.sleep(5)
+            await msg.delete()
     def update_status(self, completed):
         if completed:
             self.disabled = False
@@ -446,104 +467,84 @@ class MissionRewardView(discord.ui.View):
         self.add_item(self.all_reward_button) # 보상 모두받기 버튼 추가
 
 def get_mission_data(user_name, mission_type):
-    """데이터베이스에서 미션 상태 불러오기"""
-    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")  # 현재 진행 중인 예측 시즌 가져오기
-    current_predict_season = cur_predict_seasonref.get()
+    """
+    해당 유저의 미션 상태와 함께 각 미션의 보상(아이템 및 수량) 정보를 포함하여 반환.
+    """
+    # 미션 정의 (보상 정보 포함)
+    ref_mission_def = db.reference(f"미션/{mission_type}")
+    mission_def = ref_mission_def.get() or {}
 
-    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}")
-    mission_data = ref.get()
-    
-    if not mission_data:
-        return []
+    # 유저의 진행 상태 (완료 여부, 보상수령 여부)
+    ref_user_status = db.reference(f"미션/미션진행상태/{user_name}/{mission_type}")
+    user_status = ref_user_status.get() or {}
 
-    return [
-        {"name": mission_name, "completed": mission["완료"], "reward_claimed": mission["보상수령"], "points": mission["포인트"]}
-        for mission_name, mission in mission_data.items()
-    ]
+    result = []
 
-def claim_reward(user_name, mission_name, mission_type):
-    """보상 지급 처리"""
-    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-    current_predict_season = cur_predict_seasonref.get()
+    for mission_name, mission_info in mission_def.items():
+        user_info = user_status.get(mission_name, {})
+        reward_info = mission_info.get("보상", {})
 
-    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}")
-    mission_data = ref.get()
-
-    ref1 = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}/{mission_name}")
-    mission_data1 = ref1.get()
-    mission_point = mission_data1.get("포인트", 0)  # '포인트'가 없을 경우 기본값 0을 설정
-
-    ref2 = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}")
-    user_data = ref2.get()
-    point = user_data.get("포인트", 0)  # '포인트'가 없을 경우 기본값 0을 설정
-    ref2.update({"포인트" : point + mission_point})
-
-    current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
-    current_date = current_datetime.strftime("%Y-%m-%d")
-    current_time = current_datetime.strftime("%H:%M:%S")
-    change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{user_name}")
-    change_ref.push({
-        "시간": current_time,
-        "포인트": point + mission_point,
-        "포인트 변동": mission_point,
-        "사유": f"{mission_name} 미션 달성"
-    })
-
-    if mission_data and mission_name in mission_data and not mission_data[mission_name]["보상수령"]:
-        ref.child(mission_name).update({"보상수령": True})
-        if mission_type == "시즌미션":
-            give_item(user_name,"강화재료",10)
-        elif mission_type == "일일미션":
-            give_item(user_name,"강화재료",1)
-        return True
-    
-    return False
-
-def claim_all_reward(user_name, mission_type):
-    """보상 일괄 지급 처리"""
-    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-    current_predict_season = cur_predict_seasonref.get()
-
-    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}")
-    user_missions = ref.get() or {}
-
-    unrewarded_missions = []
-    for mission_name, mission_data in user_missions.items():
-        if not mission_data.get("보상수령",False) and mission_data.get("완료",False):
-            unrewarded_missions.append(mission_name)
-
-    for mission_name in unrewarded_missions:
-        ref1 = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}/미션/{mission_type}/{mission_name}")
-        mission_data1 = ref1.get()
-        mission_point = mission_data1.get("포인트", 0)  # '포인트'가 없을 경우 기본값 0을 설정
-
-        ref2 = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_name}")
-        user_data = ref2.get()
-        point = user_data.get("포인트", 0)  # '포인트'가 없을 경우 기본값 0을 설정
-        ref2.update({"포인트" : point + mission_point})
-
-        current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
-        current_date = current_datetime.strftime("%Y-%m-%d")
-        current_time = current_datetime.strftime("%H:%M:%S")
-        change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{user_name}")
-        change_ref.push({
-            "시간": current_time,
-            "포인트": point + mission_point,
-            "포인트 변동": mission_point,
-            "사유": f"{mission_name} 미션 달성"
+        result.append({
+            "name": mission_name,
+            "completed": user_info.get("완료", False),
+            "reward_claimed": user_info.get("보상수령", False),
+            "item": reward_info.get("아이템", ""),
+            "amount": reward_info.get("수량", 0),
         })
 
-        if user_missions and mission_name in user_missions and not user_missions[mission_name]["보상수령"]:
-            ref.child(mission_name).update({"보상수령": True})
-            if mission_type == "시즌미션":
-                give_item(user_name,"강화재료",10)
-            elif mission_type == "일일미션":
-                give_item(user_name,"강화재료",1)
-    
-    if unrewarded_missions:
-        return True
-    else:
-        return False
+    return result
+
+def claim_reward(user_name, mission_name, mission_type):
+    """
+    특정 미션 하나에 대해 보상을 수령 처리하고 아이템만 지급.
+    포인트 지급 부분은 제거됨.
+    """
+    ref_mission_cleared = db.reference(f"미션/미션진행상태/{user_name}/{mission_type}/{mission_name}")
+
+    mission_data = ref_mission_cleared.get() or {}
+    if mission_data and not mission_data.get("보상수령", False):
+        # 보상수령 표시
+        ref_mission_cleared.update({"보상수령": True})
+
+        # 아이템 지급
+        ref_mission_reward = db.reference(f"미션/{mission_type}/{mission_name}/보상")
+        reward_data = ref_mission_reward.get() or {}
+        reward_item = reward_data.get("아이템", "")
+        reward_number = reward_data.get("수량", 0)
+
+        if reward_item and reward_number > 0:
+            give_item(user_name, reward_item, reward_number)
+
+        return True  # 성공
+    return False  # 실패 또는 이미 수령한 경우
+
+def claim_all_reward(user_name, mission_type):
+    """
+    특정 유저의 특정 미션 타입에 대해 미수령 보상을 전부 수령 처리하고 아이템 지급.
+    포인트 지급은 하지 않음.
+    """
+    ref_mission_status = db.reference(f"미션/미션진행상태/{user_name}/{mission_type}")
+    mission_status = ref_mission_status.get() or {}
+
+    claimed_count = 0
+
+    for mission_name, data in mission_status.items():
+        if not data.get("보상수령", False):
+            # 보상수령 표시
+            ref_mission_status.child(mission_name).update({"보상수령": True})
+
+            # 아이템 보상 지급
+            ref_reward = db.reference(f"미션/{mission_type}/{mission_name}/보상")
+            reward_data = ref_reward.get() or {}
+            reward_item = reward_data.get("아이템", "")
+            reward_number = reward_data.get("수량", 0)
+
+            if reward_item and reward_number > 0:
+                give_item(user_name, reward_item, reward_number)
+
+            claimed_count += 1
+
+    return claimed_count
 
 async def fake_nowgame(puuid):
     print("🧪 fake_nowgame 호출됨!")
@@ -1178,13 +1179,11 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
                     # ====================  [미션]  ====================
                     # 일일미션 : 승부예측 1회 적중
-                    cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-                    current_predict_season = cur_predict_seasonref.get()
-                    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name'].name}/미션/일일미션/승부예측 1회 적중")
+                    ref_mission = db.reference(f"미션/미션진행상태/{winner['name'].name}/일일미션/승부예측 1회 적중")
                     mission_data = ref.get()
                     mission_bool = mission_data.get('완료',False)
                     if not mission_bool:
-                        ref.update({"완료": True})
+                        ref_mission.update({"완료": True})
                         print(f"{winner['name'].display_name}의 [승부예측 1회 적중] 미션 완료")
 
                     # ====================  [미션]  ====================
@@ -1702,12 +1701,12 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
 
                     # ====================  [미션]  ====================
                     # 미션 : 승부예측 1회
-
-                    ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname.name}/미션/일일미션/승부예측 1회")
-                    mission_data = ref.get()
+                    
+                    ref_mission = db.reference(f"미션/미션진행상태/{nickname.name}/일일미션/승부예측 1회")
+                    mission_data = ref_mission.get()
                     mission_bool = mission_data.get('완료',False)
                     if not mission_bool:
-                        ref.update({"완료" : True})
+                        ref_mission.update({"완료" : True})
                         print(f"{nickname.display_name}의 [승부예측 1회] 미션 완료")
 
                     # ====================  [미션]  ====================
@@ -2107,7 +2106,17 @@ async def update_mission_message():
         hours, remainder = divmod(remaining_time.seconds, 3600)
         minutes = remainder // 60
 
-        season_end_date = datetime(2025, 6, 1, 0, 0, 0)
+        def get_next_month_first_day():
+            now = datetime.now()
+
+            # 다음 달 계산
+            year = now.year + (1 if now.month == 12 else 0)
+            month = 1 if now.month == 12 else now.month + 1
+
+            # 다음 달 1일 00:00:00
+            return datetime(year, month, 1, 0, 0, 0)
+
+        season_end_date = get_next_month_first_day()
         time_difference = season_end_date - now
         
         # 시간 차이를 한글로 변환하여 출력
