@@ -158,7 +158,7 @@ def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebas
             skill_message, damage = unyielding(attacker, defender, skill_level, skill_data_firebase)
             result_message += skill_message
         elif skill_name == "헤드샷":
-            skill_message, damage, critical_bool = headShot(attacker,evasion,skill_level, skill_data_firebase)
+            skill_message, damage, critical_bool = headShot(attacker,defender, evasion,skill_level, skill_data_firebase)
             result_message += skill_message
             if evasion:
                 # 스킬 쿨타임 적용

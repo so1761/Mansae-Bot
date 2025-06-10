@@ -84,7 +84,8 @@ def smash(attacker, defender, evasion, skill_level, skill_data_firebase):
         attack_multiplier = (smash_data['기본_공격력_계수'] + smash_data['레벨당_공격력_계수_증가'] * skill_level)
         attack_value = base_damage + attacker["Attack"] * attack_multiplier
         
-        accuracy = calculate_accuracy(attacker["Accuracy"])
+        evasion_score = calculate_evasion_score(defender["Speed"])
+        accuracy = calculate_accuracy(attacker["Accuracy"], evasion_score + defender['Evasion'])
         skill_damage = random.uniform(attack_value * accuracy, attack_value)
         critical_bool = False
         stun_message = ""
@@ -122,7 +123,7 @@ def issen(attacker, defender, skill_level, skill_data_firebase):
     message = f"**{skill_emojis['일섬']}일섬** 사용!\n엄청난 속도로 적을 벤 후, 다음 턴에 날카로운 참격을 가합니다.\n회피를 무시하고 명중에 비례하는 대미지를 입힙니다.\n" 
     return message, 0
 
-def headShot(attacker, evasion, skill_level, skill_data_firebase):
+def headShot(attacker, defender, evasion, skill_level, skill_data_firebase):
     """액티브 - 헤드샷"""
     if not evasion:
         headShot_data = skill_data_firebase['헤드샷']['values']
@@ -132,7 +133,8 @@ def headShot(attacker, evasion, skill_level, skill_data_firebase):
         attack_value = base_damage + attacker["Attack"] * attack_multiplier
         
         # 공격력, 치명타 확률을 보정한 공격
-        accuracy = calculate_accuracy(attacker["Accuracy"])
+        evasion_score = calculate_evasion_score(defender["Speed"])
+        accuracy = calculate_accuracy(attacker["Accuracy"], evasion_score + defender["Evasion"])
         skill_damage = random.uniform(attack_value * accuracy, attack_value)
         critical_bool = False
         cooldown_message = ""
@@ -319,13 +321,12 @@ def rapid_fire(attacker, defender, skill_level, skill_data_firebase):
     total_damage = 0
 
     def calculate_damage(attacker,defender, damage, multiplier):
-        accuracy = calculate_accuracy(attacker["Accuracy"]) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
+        evasion_score = calculate_evasion_score(defender["Speed"])
+        accuracy = calculate_accuracy(attacker["Accuracy"], evasion_score + defender["Evasion"]) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
         base_damage = random.uniform(damage * accuracy, damage)  # 최소 ~ 최대 피해
         critical_bool = False
         evasion_bool = False
 
-        evasion_score = calculate_evasion_score(defender["Speed"])
-        accuracy = calculate_accuracy(attacker["Accuracy"] - (evasion_score + defender['Evasion'])) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
         accuracy = max(accuracy, 0.1)  # 최소 명중률 10%
         if random.random() > accuracy: # 회피
         #if random.random() > accuracy:
@@ -488,9 +489,9 @@ def holy(attacker,defender, evasion, skill_level, skill_data_firebase):
 
             # 메시지 출력
             if "치유 감소" in attacker["Status"]:
-                message = f"**{skill_emojis['블레스']}블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}(-{reduced_heal})만큼 내구도 회복!\n내구도: [{initial_HP} → {final_HP}] ❤️ (+{final_HP - initial_HP})"
+                message = f"**{skill_emojis['블레스']}블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}(-{reduced_heal})만큼 내구도 회복!\n내구도: [{initial_HP} → {final_HP}] ❤️ (+{final_HP - initial_HP}\n)"
             else:
-                message = f"**{skill_emojis['블레스']}블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}만큼 내구도 회복!\n내구도: [{initial_HP} → {final_HP}] ❤️ (+{final_HP - initial_HP})"
+                message = f"**{skill_emojis['블레스']}블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}만큼 내구도 회복!\n내구도: [{initial_HP} → {final_HP}] ❤️ (+{final_HP - initial_HP}\n)"
         else:
             skill_damage = 0
             message = f"**{skill_emojis['블레스']}블레스**가 빗나갔습니다!\n"
@@ -520,12 +521,12 @@ def icathian_rain(attacker, defender, skill_level, skill_data_firebase):
     total_damage = 0
 
     def calculate_damage(attacker,defender,multiplier):
-        accuracy = calculate_accuracy(attacker["Accuracy"]) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
+        evasion_score = calculate_evasion_score(defender["Speed"])
+        accuracy = calculate_accuracy(attacker["Accuracy"], evasion_score + defender["Evasion"]) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
         base_damage = random.uniform(attacker["Attack"] * accuracy, attacker["Attack"])  # 최소 ~ 최대 피해
         critical_bool = False
         evasion_bool = False
         evasion_score = calculate_evasion_score(defender["Speed"])
-        accuracy = calculate_accuracy(attacker["Accuracy"] - (evasion_score + defender['Evasion'])) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
         accuracy = max(accuracy, 0.1)  # 최소 명중률 10%
         if random.random() > accuracy: # 회피
         # if random.random() > accuracy: # 회피

@@ -125,8 +125,6 @@ export const tooltipTemplates = {
     const 피해량_기본 = params.기본_대미지 + params.레벨당_대미지 * params.레벨;
     
     const 스피드_계수 = 1 + Number((params.스피드당_계수 * params.스피드).toFixed(2));
-    const 명중률 = Math.min(0.99, 1 - 30 / (30 + params.명중));
-    const 최소피해 = Math.round(피해량_기본 + params.공격력 * 공격력계수 * 스피드_계수 * 명중률);
     const 최대피해 = Math.round(피해량_기본 + params.공격력 * 공격력계수 * 스피드_계수);
   
     return (
@@ -154,7 +152,7 @@ export const tooltipTemplates = {
   
         {/* 피해량 설명 */}
         <div className="flex items-center gap-1">
-          각 타격은{" "}
+          각 타격은 최대{" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
@@ -167,7 +165,7 @@ export const tooltipTemplates = {
             `}
             data-tooltip-place="top"
           >
-            {최소피해} ~ {최대피해}
+            {최대피해}
           </span>
           의 피해를 입힙니다.
   
@@ -209,15 +207,13 @@ export const tooltipTemplates = {
     const base_damage = 기본_피해량 + 레벨 * 레벨당_피해량_증가;
     const multiplier = 기본_공격력_계수 + 레벨 * 레벨당_공격력_계수_증가;
     const total_damage = base_damage + 공격력 * multiplier;
-    const 명중률 = Math.min(0.99, 1 - 30 / (30 + params.명중));
-    const 최소피해 = Math.round(total_damage * 명중률);
     const 최대피해 = Math.round(total_damage);
   
     return (
       <div className="space-y-2 text-sm text-gray-600">
         {/* 피해량 */}
         <div className="flex items-center gap-1">
-          적에게{" "}
+          적에게 최대{" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
@@ -229,7 +225,7 @@ export const tooltipTemplates = {
             `}
             data-tooltip-place="top"
           >
-            {최소피해} ~ {최대피해}
+            {최대피해}
           </span>
           의 피해를 입힙니다.
           {/* 정보 아이콘 */}
@@ -313,7 +309,7 @@ export const tooltipTemplates = {
           >
             {스킬대미지}
           </span>
-          의 피해를 입힙니다.
+          의 스킬피해를 입힙니다.
           {/* 정보 아이콘 */}
           <span
             className="text-gray-400 cursor-help"
@@ -369,15 +365,13 @@ export const tooltipTemplates = {
     const base_damage = 기본_피해량 + 레벨 * 레벨당_피해량_증가;
     const multiplier = 기본_공격력_계수 + 레벨 * 레벨당_공격력_계수_증가;
     const 피해량 = Math.round(base_damage + 공격력 * multiplier);
-    const 명중률 = Math.min(0.99, 1 - 30 / (30 + 명중));
-    const 최소피해 = Math.round(피해량 * 명중률);
     const 최대피해 = 피해량;
   
     return (
       <div className="space-y-2 text-sm text-gray-700">
         {/* 피해량 */}
         <div>
-          적에게{" "}
+          적에게 최대{" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
@@ -389,9 +383,9 @@ export const tooltipTemplates = {
             `}
             data-tooltip-place="top"
           >
-            {최소피해} ~ {최대피해}
+            {최대피해}
           </span>{" "}
-          의 스킬 피해를 입힙니다.
+          의 피해를 입힙니다.
           <span
             className="ml-1 text-gray-400 cursor-help"
             data-tooltip-id="tooltip-hit"
@@ -761,11 +755,7 @@ export const tooltipTemplates = {
       params.명중 * 명중반영비율
     );
     const 명중반영비율_퍼센트 = (명중반영비율 * 100).toFixed(0);
-    const 명중률 = Math.min(0.99, 1 - 30 / (30 + params.명중));
     const 치명타확률_퍼센트 = (params.치명타_확률 * 100).toFixed(0);
-    const 최소피해 = Math.round(
-      (params.공격력 + params.명중 * 명중반영비율) * 명중률
-    );
     const 최대피해 = Math.round(
       (params.공격력 + params.명중 * 명중반영비율)
     );
@@ -774,7 +764,7 @@ export const tooltipTemplates = {
     return (
       <div className="space-y-2 text-sm text-gray-600">
         <div>
-          <span className="text-red-500">🗡️ 일섬</span> : 대상에게 한 턴 뒤{" "}
+          <span className="text-red-500">🗡️ 일섬</span> : 대상에게 한 턴 뒤 최대{" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
@@ -786,7 +776,7 @@ export const tooltipTemplates = {
             `}
             data-tooltip-place="top"
           >
-            {최소피해} ~ {최대피해}
+            {최대피해}
           </span>
           의 피해를 입힙니다.<br />
           적이 <span className="text-rose-500">출혈 상태</span>일 경우, 출혈 상태를 없앤 뒤,<br />

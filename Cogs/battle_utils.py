@@ -110,17 +110,11 @@ def show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent,
 def calculate_damage_reduction(defense):
     return min(0.99, 1 - (100 / (100 + defense)))
 
-def calculate_accuracy(accuracy):
-    return min(0.99, 1 - (30 / (30 + accuracy)))
+def calculate_accuracy(accuracy, opponent_speed):
+    return min(0.99, accuracy / (accuracy + opponent_speed * 1.5))
 
 def calculate_evasion_score(speed):
     return speed // 5
-
-def calculate_move_chance(speed, move_chain=0):
-    penalty_ratio = 0.7 ** move_chain
-    effective_speed = speed * penalty_ratio
-    move_chance = min(0.99, 1 - math.exp(-effective_speed / 70))
-    return move_chance
 
 def generate_tower_weapon(floor: int):
     weapon_types = ["대검","스태프-화염", "조총", "스태프-냉기", "태도", "활", "스태프-신성", "단검", "낫", "창"]

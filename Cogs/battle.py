@@ -224,7 +224,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         if evasion: # 회피
             return 0, False, False, True, ""
 
-        accuracy = calculate_accuracy(attacker["Accuracy"]) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
+        evasion_score = calculate_evasion_score(defender["Speed"])
+        accuracy = calculate_accuracy(attacker["Accuracy"], evasion_score + defender["Evasion"]) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
 
         base_damage = random.uniform(attacker["Attack"] * accuracy, attacker["Attack"])  # 최소 ~ 최대 피해
         distance_bool = False
@@ -422,17 +423,18 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         # 챌린저 무기 스탯 정보 추가
         challenger_embed = discord.Embed(title="🟦 도전자 스탯", color=discord.Color.blue())
 
+        evasion_score = calculate_evasion_score(opponent["Speed"])
         challenger_embed.add_field(
             name=f"[{challenger['name']}](+{weapon_data_challenger.get('강화', 0)}) [{challenger['Weapon']}]",
             value=(
-                f"대미지        : `{round(challenger['Attack'] * calculate_accuracy(challenger['Accuracy']))} ~ {challenger['Attack']}`\n"
+                f"대미지        : `{round(challenger['Attack'] * calculate_accuracy(challenger['Accuracy'], evasion_score + opponent['Evasion']))} ~ {challenger['Attack']}`\n"
                 f"내구도        : `{challenger['HP']}`\n"
                 f"공격력        : `{challenger['Attack']}`\n"
                 f"스킬 증폭     : `{challenger['Spell']}`\n"
                 f"치명타 확률   : `{round(challenger['CritChance'] * 100, 2)}%`\n"
                 f"치명타 대미지 : `{round(challenger['CritDamage'] * 100, 2)}%`\n"
                 f"스피드        : `{challenger['Speed']}` (회피: `{round(calculate_evasion_score(challenger['Speed']))}`)\n"
-                f"명중          : `{challenger['Accuracy']}` (명중률: `{round(calculate_accuracy(challenger['Accuracy']) * 100, 2)}%`)\n"
+                f"명중          : `{challenger['Accuracy']}` (명중률: `{round(calculate_accuracy(challenger['Accuracy'], evasion_score + opponent['Evasion']) * 100, 2)}%`)\n"
                 f"방어력        : `{challenger['Defense']}` (피해 감소: `{round(calculate_damage_reduction(challenger['Defense']) * 100, 2)}%`)\n"
             ),
             inline=False
@@ -495,17 +497,18 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         # 상대 스탯 임베드
         opponent_embed = discord.Embed(title="🟥 상대 스탯", color=discord.Color.red())
 
+        evasion_score = calculate_evasion_score(challenger["Speed"])
         opponent_embed.add_field(
             name=f"[{opponent['name']}](+{weapon_data_opponent.get('강화', 0)}) [{opponent['Weapon']}]",
             value=(
-                f"대미지        : `{round(opponent['Attack'] * calculate_accuracy(opponent['Accuracy']))} ~ {opponent['Attack']}`\n"
+                f"대미지        : `{round(opponent['Attack'] * calculate_accuracy(opponent['Accuracy'], evasion_score + challenger['Evasion']))} ~ {opponent['Attack']}`\n"
                 f"내구도        : `{opponent['HP']}`\n"
                 f"공격력        : `{opponent['Attack']}`\n"
                 f"스킬 증폭     : `{opponent['Spell']}`\n"
                 f"치명타 확률   : `{round(opponent['CritChance'] * 100, 2)}%`\n"
                 f"치명타 대미지 : `{round(opponent['CritDamage'] * 100, 2)}%`\n"
                 f"스피드        : `{opponent['Speed']}` (회피: `{round(calculate_evasion_score(opponent['Speed']))}`)\n"
-                f"명중          : `{opponent['Accuracy']}` (명중률: `{round(calculate_accuracy(opponent['Accuracy']) * 100, 2)}%`)\n"
+                f"명중          : `{opponent['Accuracy']}` (명중률: `{round(calculate_accuracy(opponent['Accuracy'], evasion_score + challenger['Evasion']) * 100, 2)}%`)\n"
                 f"방어력        : `{opponent['Defense']}` (피해 감소: `{round(calculate_damage_reduction(opponent['Defense']) * 100, 2)}%`)\n"
             ),
             inline=False
@@ -637,7 +640,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 accuracy_apply_rate = round((issen_data['기본_명중_반영_비율'] + issen_data['레벨당_명중_반영_비율'] * skill_level) * 100)
 
                 def calculate_damage(attacker,defender,multiplier):
-                    accuracy = calculate_accuracy(attacker["Accuracy"])
+                    evasion_score = calculate_evasion_score(defender["Speed"])
+                    accuracy = calculate_accuracy(attacker["Accuracy"], evasion_score + defender["Evasion"])
                     accuracy_apply_rate = issen_data['기본_명중_반영_비율'] + issen_data['레벨당_명중_반영_비율'] * skill_level
                     base_damage = random.uniform(attacker["Attack"] + (attacker["Accuracy"] * accuracy_apply_rate) * accuracy, attacker["Attack"] + (attacker["Accuracy"] * accuracy_apply_rate))  # 최소 ~ 최대 피해
                     critical_bool = False
@@ -960,7 +964,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             attacked = True 
         else:
             evasion_score = calculate_evasion_score(defender["Speed"])
-            accuracy = calculate_accuracy(attacker["Accuracy"] - (evasion_score + defender["Evasion"])) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
+            accuracy = calculate_accuracy(attacker["Accuracy"], evasion_score + defender["Evasion"]) # 1 - 명중률 수치만큼 빗나갈 확률 상쇄 가능
             accuracy = max(accuracy, 0.1)  # 최소 명중률 10%
             if random.random() > accuracy: # 회피
             # if random.random() > accuracy:

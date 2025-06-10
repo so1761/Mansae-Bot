@@ -120,10 +120,6 @@ function WeaponInfo() {
     { key: "critical_hit_chance", label: "치명타 확률", isPercent: true },
   ];
 
-  const calculateAccuracyRate = (accuracy) => {
-    return Math.min(0.99, 1 - 30 / (30 + accuracy));
-  };
-
   function calculateDamageReduction(defense) {
     return Math.min(0.99, 1 - (100 / (100 + defense)));
   }
@@ -145,26 +141,6 @@ function WeaponInfo() {
       enhancement > 0
         ? ` (+${isPercent ? Math.round(enhancement * 100) + "%" : enhancement})`
         : "";
-
-    if (key === "accuracy") {
-      const tooltipId = `tooltip-${key}`;
-      const accuracyRate = Math.round(calculateAccuracyRate(total) * 100);
-
-      return (
-        <p
-          key={key}
-          className="text-gray-700"
-          data-tooltip-id={tooltipId}
-          data-tooltip-content={`명중률: ${accuracyRate}%`}
-          data-tooltip-place="left"
-        >
-          {label}: {displayValue}
-          {inheritText && <span className="text-orange-500">{inheritText}</span>}
-          {enhanceText && <span className="text-blue-500">{enhanceText}</span>}
-          <Tooltip id={tooltipId} />
-        </p>
-      );
-    }
 
     if (key === "defense") {
       const tooltipId = `tooltip-${key}`;
