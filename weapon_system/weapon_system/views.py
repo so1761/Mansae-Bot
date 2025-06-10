@@ -12,8 +12,30 @@ from firebase_admin import db
 import random
 import json
 import os
+import discord
 from dotenv import load_dotenv
-from Cogs.commands import mission_notice
+
+
+def mission_notice(name, mission):
+    load_dotenv()
+    WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+    title = "시즌 미션 달성!"
+    description = f"{name}님이 [{mission}] 미션을 달성했습니다!"
+
+    embed = {
+        "title": title,
+        "description": description,
+        "color": discord.Color.light_gray().value
+    }
+
+    webhook_data = {
+        "username": "미션 알림",
+        "embeds": [embed]
+    }
+
+    resp = requests.post(WEBHOOK_URL, json=webhook_data)
+    if resp.status_code != 204:
+        print(f"웹후크 전송 실패: {resp.status_code}")
 
 load_dotenv()
 initialize_firebase()
