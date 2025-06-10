@@ -13,6 +13,8 @@ from dotenv import load_dotenv
 from collections import Counter
 from .battle import Battle
 from .battle_utils import get_user_insignia_stat
+from .commands import mission_notice, give_item
+
 API_KEY = None
 
 ENHANCEMENT_CHANNEL = 1350434647149908070
@@ -195,6 +197,17 @@ class ResultButton(discord.ui.View):
                 if self.message:
                     await self.message.edit(view=self)
 
+                # ====================  [미션]  ====================
+                # 시즌미션 : 나는 최강(거울의 전장 10승 달성)
+                ref_mission = db.reference(f"미션/미션진행상태/{interaction.user.name}/시즌미션/나는 최강")
+                mission_data = ref_mission.get() or {}
+                mission_bool = mission_data.get('완료',0)
+                if not mission_bool:
+                    ref_mission.update({"완료": True})
+                    mission_notice(interaction.user.display_name,"나는 최강")
+                    print(f"{interaction.user.display_name}의 [나는 최강] 미션 완료")
+
+                # ====================  [미션]  ====================
                 # 최종 결과 Embed (10승 달성 시)
                 final_embed = discord.Embed(title="🏆 최종 결과 (10승 달성)", color=discord.Color.gold())
                 final_embed.add_field(
@@ -205,8 +218,8 @@ class ResultButton(discord.ui.View):
                 final_embed.add_field(
                     name=f"{self.wdc['이름']} vs {self.wdo['이름']}",
                     value=(
-                        f"{self.wdc['이름']} {self.win_count}승\n"
-                        f"{self.wdo['이름']} {10 - self.win_count}승\n\n"
+                        f"{self.wdc['이름']} {win_count}승\n"
+                        f"{self.wdo['이름']} {100 - win_count}승\n\n"
                         f"**승률**: {win_rate:.1f}%\n"
                     )
                 )
@@ -298,7 +311,7 @@ class InsigniaView(discord.ui.View):
                 base_value = insignia_stat.get("초기 수치", 0)
                 per_level = insignia_stat.get("증가 수치", 0)
                 value = base_value + per_level * level
-                percent_names = ['강철의 맹세','약점 간파', '타오르는 혼']
+                percent_names = ['강철의 맹세','약점 간파', '타오르는 혼', "파멸의 일격"]
 
                 if name in percent_names:
                     value_str = f"{float(value) * 100:.1f}%"
@@ -945,21 +958,6 @@ class RuneUseButton(discord.ui.View):
 
         await interaction.edit_original_response(embed=embed, view=None)
 
-# 아이템 지급
-def give_item(nickname, item_name, amount):
-    cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
-    current_predict_season = cur_predict_seasonref.get()
-
-    weapon_items = ['강화재료','랜덤박스','레이드 재도전','탑 재도전','연마제','특수 연마제','탑코인','스킬 각성의 룬','운명 왜곡의 룬', '회귀의 룬']
-    if item_name in weapon_items:
-        refitem = db.reference(f'무기/아이템/{nickname}')
-    else:
-        # 사용자 아이템 데이터 위치
-        refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템')
-    item_data = refitem.get() or {}
-
-    refitem.update({item_name: item_data.get(item_name, 0) + amount})
-
 class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 입력"):
     weapon_name = discord.ui.TextInput(label="무기 이름", placeholder="새 무기의 이름을 입력하세요", max_length=10)
 
@@ -1577,7 +1575,6 @@ class hello(commands.Cog):
                 enhancement_rate = enhancement_probabilities[weapon_enhanced]
                 if polish_state:
                     enhancement_rate += 5
-                    polish_state = False
                     polish_button.label = "🛠️연마: 미사용"
                     polish_button.style = discord.ButtonStyle.secondary
                     # 연마제 차감
@@ -1588,7 +1585,6 @@ class hello(commands.Cog):
                         item_ref.update({"연마제": polish_count - 1})
                 if speacial_polish_state:
                     enhancement_rate += 50
-                    speacial_polish_state = False
                     speacial_polish_button.label = "💎특수 연마: 미사용"
                     speacial_polish_button.style = discord.ButtonStyle.secondary
                     # 특수 연마제 차감
@@ -1683,8 +1679,10 @@ class hello(commands.Cog):
                         used_items = []
                         if polish_state:
                             used_items.append("연마제")
+                            polish_state = False
                         if speacial_polish_state:
                             used_items.append("특수 연마제")
+                            speacial_polish_state = False
 
                         embed_data = {
                             "embeds": [
@@ -1702,6 +1700,18 @@ class hello(commands.Cog):
                                 }
                             ]
                         }
+                        # ====================  [미션]  ====================
+                        # 시즌미션 : 연마(무기 20강 달성)
+                        if weapon_enhanced == 20:
+                            ref_mission = db.reference(f"미션/미션진행상태/{nickname}/시즌미션/연마")
+                            mission_data = ref_mission.get()
+                            mission_bool = mission_data.get('완료',False)
+                            if not mission_bool:
+                                ref_mission.update({"완료": True})
+                                mission_notice(interaction.user.display_name,"연마")
+                                print(f"{interaction.user.display_name}의 [연마] 미션 완료")
+                        # ====================  [미션]  ====================
+                            
                         await enhance_message.edit(embed=discord.Embed.from_dict(embed_data["embeds"][0]))
                         
                     await enhance_weapon(selected_enhance_type)
@@ -1988,8 +1998,6 @@ class hello(commands.Cog):
         await interaction.response.defer()
 
         nickname = interaction.user.name
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
 
         ref_weapon_challenger = db.reference(f"무기/유저/{nickname}")
         weapon_data_challenger = ref_weapon_challenger.get() or {}
@@ -2991,7 +2999,7 @@ class hello(commands.Cog):
                 insignia_stat = ref_item_insignia_stat.get() or {}
                 stat = insignia_stat.get("주스탯", "N/A")
                 value = insignia_stat.get("초기 수치",0) + insignia_stat.get("증가 수치", 0) * level
-                percent_names = ['강철의 맹세','약점 간파','타오르는 혼']
+                percent_names = ['강철의 맹세','약점 간파','타오르는 혼', "파멸의 일격"]
 
                 if name in percent_names:
                     value = f"{float(value) * 100:.0f}%"
@@ -3013,8 +3021,27 @@ class hello(commands.Cog):
             ref_user_insignia=ref_user_insignia,
         )
         msg = await interaction.followup.send(embed=embed, view=view, ephemeral=True)
-        # await asyncio.sleep(60)
-        # await msg.delete()
+        await asyncio.sleep(120)
+        await msg.delete()
+
+    @app_commands.command(name="인장", description="모든 인장의 종류와 효과를 확인합니다.")
+    async def show_insignias(self, interaction: discord.Interaction):
+        insignia_info = {
+            "약점 간파": "**치명타 확률** `20% + 레벨당 10%`",
+            "파멸의 일격": "**치명타 대미지** `레벨당 30%`",
+            "꿰뚫는 집념": "**방어력 관통** `20 + 레벨당 10`",
+            "강철의 맹세": "**피해 감소** `레벨당 5%`",
+            "불굴의 심장": "**강인함** `레벨당 2`",
+            "타오르는 혼": "**대미지 증폭** `4% + 레벨당 4%`",
+            "바람의 잔상": "**회피** `20 + 레벨당 20`",
+        }
+
+        embed = discord.Embed(title="📜 인장 종류 및 능력치", color=discord.Color.dark_teal())
+
+        for name, desc in insignia_info.items():
+            embed.add_field(name=f"🔹 {name}", value=desc, inline=False)
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
 async def setup(bot: commands.Bot) -> None:
     # await bot.add_cog(

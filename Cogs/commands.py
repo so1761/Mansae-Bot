@@ -22,7 +22,6 @@ from discord.app_commands import Choice
 from discord import app_commands
 from discord.ext import commands
 from discord import Interaction
-from discord import Object
 from datetime import datetime
 from matplotlib import font_manager, rc
 from dotenv import load_dotenv
@@ -1085,19 +1084,41 @@ def number_to_tier2(lp_number): # 레이팅 숫자를 티어로 변환 (DIAMOND 
                 return f"{tier} {rank} {lp}P"
     return None
 
-# 아이템 지급
 def give_item(nickname, item_name, amount):
     cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
     current_predict_season = cur_predict_seasonref.get()
 
-    weapon_items = ['강화재료','랜덤박스','레이드 재도전','탑 재도전','연마제','특수 연마제','탑코인','스킬 각성의 룬','운명 왜곡의 룬', '회귀의 룬']
+    # 각인 아이템 목록
+    insignia_items = [
+        "약점 간파", "파멸의 일격", "꿰뚫는 집념",
+        "강철의 맹세", "불굴의 심장", "타오르는 혼", "바람의 잔상"
+    ]
+
+    # 무기 관련 소비 아이템 목록
+    weapon_items = [
+        "강화재료", "랜덤박스", "레이드 재도전", "연마제",
+        "특수 연마제", "탑코인", "스킬 각성의 룬",
+        "운명 왜곡의 룬", "회귀의 룬"
+    ]
+    # ---------------- 각인 아이템 처리 ----------------
+    if item_name in insignia_items:
+        ref_insignia = db.reference(f"무기/각인/유저/{nickname}/{item_name}")
+        insignia_data = ref_insignia.get()
+
+        if not insignia_data:
+            # 처음 받는 경우
+            ref_insignia.set({"개수": amount, "레벨": 1})
+        else:
+            # 기존에 있던 경우, 개수만 증가
+            new_count = insignia_data.get("개수", 0) + amount
+            ref_insignia.update({"개수": new_count})
+        return  # 종료
     if item_name in weapon_items:
         refitem = db.reference(f'무기/아이템/{nickname}')
     else:
-        # 사용자 아이템 데이터 위치
         refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템')
+    
     item_data = refitem.get() or {}
-
     refitem.update({item_name: item_data.get(item_name, 0) + amount})
 
 # 대결 베팅 모달
@@ -2561,6 +2582,17 @@ class FinalizeButton(discord.ui.Button):
         ref.update({"결과": self.custom_view.rolls})
         ref.update({"족보": hand})
 
+        # ====================  [미션]  ====================
+        # 시즌미션 : 66666(6 Yacht 달성)
+        if self.custom_view.rolls == [6, 6, 6, 6, 6]:
+            ref_mission = db.reference(f"미션/미션진행상태/{interaction.user.name}/시즌미션/66666")
+            mission_data = ref_mission.get()
+            mission_bool = mission_data.get('완료',False)
+            if not mission_bool:
+                ref_mission.update({"완료": True})
+                mission_notice(interaction.user.display_name,"66666")
+                print(f"{interaction.user.display_name}의 [66666] 미션 완료")
+        # ====================  [미션]  ====================
         if self.custom_view.keep_alive_task:
             self.custom_view.keep_alive_task.cancel()
             try:
@@ -3335,37 +3367,26 @@ async def place_bet(bot,which,result,bet_amount):
     userembed.add_field(name="",value=f"누군가가 {which}의 {result}에 {bet_amount}포인트를 베팅했습니다!", inline=False)
     await channel.send(f"\n",embed = userembed)
 
-async def mission_notice(bot, name, mission, rarity):
-    channel = bot.get_channel(int(CHANNEL_ID))
-    
-    # 희귀도에 따라 임베드 색상과 제목 설정
-    color_map = {
-        "일반": discord.Color.light_gray(),
-        "희귀": discord.Color.blue(),
-        "에픽": discord.Color.purple(),
-        "전설": discord.Color.gold(),
-        "신화": discord.Color.dark_red(),
-        "히든": discord.Color.from_rgb(100,198,209)
+def mission_notice(name, mission):
+    load_dotenv()
+    WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+    title = "시즌 미션 달성!"
+    description = f"{name}님이 [{mission}] 미션을 달성했습니다!"
+
+    embed = {
+        "title": title,
+        "description": description,
+        "color": discord.Color.light_gray().value
     }
 
-    title_map = {
-        "일반": "[일반] 미션 달성!",
-        "희귀": "[희귀] 미션 달성!",
-        "에픽": "[에픽] 미션 달성!",
-        "전설": "[전설] 미션 달성!",
-        "신화": "[신화] 미션 달성!",
-        "히든": "[히든] 미션 달성!"
+    webhook_data = {
+        "username": "미션 알림",
+        "embeds": [embed]
     }
 
-    color = color_map.get(rarity, discord.Color.light_gray())  # 기본 색상은 light_gray
-    title = title_map.get(rarity, "미션 달성!")
-
-    # 임베드 메시지 구성
-    userembed = discord.Embed(title=title, color=color)
-    userembed.add_field(name="", value=f"{name}님이 [{mission}] 미션을 달성했습니다!", inline=False)
-    
-    # 메시지 보내기
-    await channel.send(f"\n", embed=userembed)
+    resp = requests.post(WEBHOOK_URL, json=webhook_data)
+    if resp.status_code != 204:
+        print(f"웹후크 전송 실패: {resp.status_code}")
 
 class hello(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
@@ -5050,214 +5071,35 @@ class hello(commands.Cog):
             await interaction.response.send_message(f"{이름}에게 자동예측을 하고 있지 않습니다!",ephemeral=True)
             return      
         
-    @app_commands.command(name="일일미션추가",description="일일미션을 추가합니다(관리자 전용)")
-    async def 일일미션추가(self,interaction: discord.Interaction, 미션이름:str, 포인트:int):
-        await interaction.response.defer()
-        
-        result = await add_missions_to_all_users(미션이름,포인트,"일일미션")
-
-        if result:
-            await interaction.followup.send(f"미션을 추가했습니다.",ephemeral=True)
-        else:
-            await interaction.followup.send("유저가 존재하지 않습니다.",ephemeral=True)
-
-    @app_commands.command(name="시즌미션추가",description="시즌미션을 추가합니다(관리자 전용)")
-    async def 시즌미션추가(self,interaction: discord.Interaction, 미션이름:str, 포인트:int):
-        await interaction.response.defer()
-
-        result = await add_missions_to_all_users(미션이름,포인트,"시즌미션")
-
-        if result:
-            await interaction.followup.send(f"미션을 추가했습니다.",ephemeral=True)
-        else:
-            await interaction.followup.send("유저가 존재하지 않습니다.",ephemeral=True)
-    
-    @app_commands.command(name="미션삭제", description="일일미션 또는 시즌미션을 삭제합니다.(관리자 전용용)")
-    @app_commands.choices(미션종류=[
-    Choice(name='일일미션', value='일일미션'),
-    Choice(name='시즌미션', value='시즌미션')
-    ])
-    async def remove_mission(self, interaction: discord.Interaction, 미션이름: str, 미션종류: str):
-        await interaction.response.defer()
-
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌")  # 현재 진행중인 예측 시즌을 가져옴
-        current_predict_season = cur_predict_seasonref.get()
-        
-        # '예측포인트' 경로 아래의 모든 유저들 가져오기
-        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트")
-        all_users = ref.get()
-
-        if not all_users:
-            await interaction.followup.send("유저가 존재하지 않습니다.", ephemeral=True)
-            return
-
-        deleted = False  # 삭제 여부를 추적
-
-        # 각 유저에서 특정 미션 삭제
-        for user_id, user_data in all_users.items():
-            # 각 유저의 '미션' 경로
-            user_missions_ref = ref.child(user_id).child("미션").child(미션종류)
-
-            # 유저의 미션 목록을 가져옴
-            mission_type_data = user_data.get("미션", {}).get(미션종류, {})
-
-            # 미션 목록에서 미션 이름이 일치하는 미션을 찾아 삭제
-            if 미션이름 in mission_type_data:
-                user_missions_ref.child(미션이름).delete()  # 미션 이름으로 삭제
-                deleted = True
-
-        if deleted:
-            await interaction.followup.send(f"미션 '{미션이름}'을 삭제했습니다.", ephemeral=True)
-        else:
-            await interaction.followup.send(f"미션 '{미션이름}'을 찾을 수 없습니다.", ephemeral=True)
-
     @app_commands.command(name="업적", description="시즌미션의 상세 정보를 확인합니다.")
     async def get_user_missions(self, interaction: discord.Interaction):
         user_id = interaction.user.name
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
 
-        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_id}/미션")
+        ref = db.reference("미션/시즌미션")
         user_missions = ref.get()
 
         if not user_missions:
             await interaction.response.send_message("현재 진행 중인 미션이 없습니다.", ephemeral=True)
-            return  # 중복 응답 방지
-
-        mission_details = {
-            "깜잘알": "지모의 승부예측 50번 적중 🧠. 지모의 게임결과를 정확히 예측하며 진정한 깜잘알로 거듭나자 🎯.",
-            "난 이기는 판만 걸어": "오직 승리예측만으로 5연속 적중 💪. 승리가 아니면 죽음을! ⚔️",
-            "금지된 숫자": "2669 포인트를 베팅하고 적중 💀. 절대 이 숫자의 의미를 말해선 안돼 🔒.",
-            "도파민 중독": "올인으로 연속 3번 베팅 (1000포인트 이상) 🎲. 걸고, 걸고, 또 건다 🔥.",
-            "마이너스의 손": "📉 실패의 끝을 보여줘라. 승부예측 10연속 비적중 달성",
-            "누구에게도 말할 수 없는 비밀": "혼자보기 포인트가 500 이상일 때 예측순위 혼자보기 🤫. 모두에게 보여줄 바엔 혼자만 본다. 🕵️‍♂️.",
-            "쿵쿵따": "두 번 연속 실패 후, 다음 예측에서 적중 💥. 앞선 2번의 실패는 다음 성공을 위한 준비 과정이었다 💪.",
-            "정점": "주사위에서 100을 뽑기 🎲. 주사위의 정점을 달성하자 🏆.",
-            "이럴 줄 알았어": "10데스 이상 판에서 패배를 예측하고 적중 🥲. 난 이 판 질 줄 알았음... 😎",
-            "다중 그림자분신술": "한 게임에서 100포인트 이상 5번 베팅 🌀. 분신술을 쓴 것처럼 계속 베팅하라 🔮.",
-            "졌지만 이겼다": "패배를 예측하고, 퍼펙트를 건 뒤 둘 다 적중 🥇. 게임은 졌지만 난 승리했다 👑.",
-            "0은 곧 무한": "/베팅 명령어로 0포인트 베팅 🔢. 설마 0포인트를 베팅하는 사람이 있겠어? 🤨",
-            "크릴새우": "/베팅 명령어로 1 포인트 베팅 🦐. 이게 크릴새우지 🦑.",
-            "주사위주사위주사위주사위주사위": "하루에 /주사위 명령어를 5번 실행 🎲. 경고 문구는 가볍게 무시한다 🚫.",
-            "이카루스의 추락": "너무 높이 날면 떨어지는 법 🕊️. 단 한 번에 80% 이상의 포인트(1000포인트 이상)를 잃고, 이카루스처럼 추락하는 순간을 경험하라 🪂.",
-            "이 모양은 고양이?!": "/시즌그래프 명령어에서 대상으로 [고양이]를 선택 🐾. 누군가의 그래프에서는 고양이가 보인다는 소문이 있다... 🐱"
-
-        }
+            return
 
         embed = discord.Embed(title="📜 시즌 미션 상세 정보", color=discord.Color.gold())
 
+        for mission_name, mission_data in user_missions.items():
+            # 설명
+            description = mission_data.get("설명", "설명이 없습니다.")
+            # 보상 수량
+            reward_quantity = mission_data.get("보상", {}).get("수량", "-")
+            # 보상 아이템
+            reward_item = mission_data.get("보상", {}).get("아이템", "-")
 
-        ref_unlocked = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_id}/업적해금")
-        achievement_unlocked = ref_unlocked.get() or False  # 값이 없으면 False로 처리
+            value_text = (
+                f"{description}\n"
+                f"🎁 보상: {reward_item} x{reward_quantity}\n"
+            )
 
-        for mission_type, missions in user_missions.items():
-            for mission_name, mission_data in missions.items():
-                if mission_type == "시즌미션":
-                    description = mission_details.get(mission_name, "설명이 없습니다.")
-                    if not mission_data.get("완료", False) and not achievement_unlocked:
-                        description = "??"
-                    embed.add_field(name=mission_name, value=description, inline=False)
+            embed.add_field(name=mission_name, value=value_text, inline=False)
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    @app_commands.command(name="업적공개", description="달성한 업적을 다른 사람들에게 공개합니다.")
-    @app_commands.choices(내용공개=[
-    Choice(name='공개', value='공개'),
-    Choice(name='비공개', value='시즌미션')
-    ])
-    async def show_user_missions(self, interaction: discord.Interaction, 내용공개:str):
-        user_id = interaction.user.name
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
-
-        ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_id}/미션")
-        user_missions = ref.get()
-
-        if not user_missions:
-            await interaction.response.send_message("현재 진행 중인 미션이 없습니다.", ephemeral=True)
-            return  # 중복 응답 방지
-
-        select = discord.ui.Select(placeholder='공개할 업적을 선택하세요')
-
-        mission_details = {
-            "깜잘알": "지모의 승부예측 50번 적중 🧠. 지모의 게임결과를 정확히 예측하며 진정한 깜잘알로 거듭나자 🎯.",
-            "난 이기는 판만 걸어": "오직 승리예측만으로 5연속 적중 💪. 승리가 아니면 죽음을! ⚔️",
-            "금지된 숫자": "2669 포인트를 베팅하고 적중 💀. 절대 이 숫자의 의미를 말해선 안돼 🔒.",
-            "도파민 중독": "올인으로 연속 3번 베팅 (1000포인트 이상) 🎲. 걸고, 걸고, 또 건다 🔥.",
-            "마이너스의 손": "📉 실패의 끝을 보여줘라. 승부예측 10연속 비적중 달성",
-            "누구에게도 말할 수 없는 비밀": "혼자보기 포인트가 500 이상일 때 예측순위 혼자보기 🤫. 모두에게 보여줄 바엔 혼자만 본다. 🕵️‍♂️.",
-            "쿵쿵따": "두 번 연속 실패 후, 다음 예측에서 적중 💥. 앞선 2번의 실패는 다음 성공을 위한 준비 과정이었다 💪.",
-            "정점": "주사위에서 100을 뽑기 🎲. 주사위의 정점을 달성하자 🏆.",
-            "이럴 줄 알았어": "10데스 이상 판에서 패배를 예측하고 적중 🥲. 난 이 판 질 줄 알았음... 😎",
-            "다중 그림자분신술": "한 게임에서 100포인트 이상 5번 베팅 🌀. 분신술을 쓴 것처럼 계속 베팅하라 🔮.",
-            "졌지만 이겼다": "패배를 예측하고, 퍼펙트를 건 뒤 둘 다 적중 🥇. 게임은 졌지만 난 승리했다 👑.",
-            "0은 곧 무한": "/베팅 명령어로 0포인트 베팅 🔢. 설마 0포인트를 베팅하는 사람이 있겠어? 🤨",
-            "크릴새우": "/베팅 명령어로 1 포인트 베팅 🦐. 이게 크릴새우지 🦑.",
-            "주사위주사위주사위주사위주사위": "하루에 /주사위 명령어를 5번 실행 🎲. 경고 문구는 가볍게 무시한다 🚫.",
-            "이카루스의 추락": "너무 높이 날면 떨어지는 법 🕊️. 단 한 번에 80% 이상의 포인트(1000포인트 이상)를 잃고, 이카루스처럼 추락하는 순간을 경험하라 🪂.",
-            "이 모양은 고양이?!": "/시즌그래프 명령어에서 대상으로 [고양이]를 선택 🐾. 누군가의 그래프에서는 고양이가 보인다는 소문이 있다... 🐱"
-        }
-   
-        mission_options = []
-        for mission_type, missions in user_missions.items():
-            for mission_name, mission_data in missions.items():
-                if mission_type == "시즌미션":
-                    if mission_data.get("완료", False):  # 완료된 미션은 "완료"로 표시
-                        # Select 옵션에 추가
-                        description = mission_details.get(mission_name, "설명이 없습니다.")
-                        mission_options.append((mission_name,description))
-
-        # Select 옵션 설정
-        for i, (mission_name, description) in enumerate(mission_options):
-            select.add_option(label=mission_name, value=mission_name, description=description)
-            
-        # Select에 대한 처리하는 이벤트 핸들러를 View에 추가
-        async def select_callback(interaction: discord.Interaction):
-            selected_mission_name = select.values[0]  # 사용자가 선택한 미션명
-
-            # 선택된 미션의 상세 정보를 가져와서 embed에 포함
-            for mission_type, missions in user_missions.items():
-                for mission_name, mission_data in missions.items():
-                    if mission_name == selected_mission_name:
-                        embed = discord.Embed(
-                            title="업적 공개!",
-                            description=f"{interaction.user.display_name}님이 업적을 공개했습니다!",
-                            color=discord.Color.gold()
-                        )
-                        
-                        if 내용공개 == "공개":
-                            embed.add_field(
-                                name=f"",
-                                value="",
-                                inline=False
-                            )
-                            embed.add_field(
-                                name=f"{selected_mission_name}",
-                                value="\u200b\n" + mission_details.get(selected_mission_name, "설명이 없습니다."),
-                                inline=False
-                            )
-                        else:
-                            embed.add_field(
-                                name=f"",
-                                value="",
-                                inline=False
-                            )
-                            embed.add_field(
-                                name=f"{selected_mission_name}",
-                                value="\u200b\n" + "이 업적은 비공개 상태입니다.",
-                                inline=False
-                            )
-                        
-                        await interaction.response.send_message(embed=embed)
-                        return
-
-        # View 생성 후 select 콜백 함수 추가
-        view = discord.ui.View()
-        select.callback = select_callback
-        view.add_item(select)
-
-        # Select 위젯을 포함한 메시지 보내기
-        await interaction.response.send_message("달성한 업적을 선택해주세요.", view=view,ephemeral=True)
     
     @app_commands.command(name="주사위",description="주사위를 굴립니다. 하루에 한 번만 가능합니다.(1 ~ 100)")
     async def 주사위(self, interaction: discord.Interaction):
@@ -5288,7 +5130,20 @@ class hello(commands.Cog):
             mission_bool = mission_data.get('완료',0)
             if not mission_bool:
                 ref_mission.update({"완료": True})
-                print(f"{nickname}의 [주사위 굴리기] 미션 완료")
+                print(f"{interaction.user.display_name}의 [주사위 굴리기] 미션 완료")
+
+            # ====================  [미션]  ====================
+                
+            # ====================  [미션]  ====================
+            # 시즌미션 : 불운(주사위에서 숫자 1 달성)
+            if dice_num == 1:
+                ref_mission = db.reference(f"미션/미션진행상태/{nickname}/시즌미션/불운")
+                mission_data = ref_mission.get() or {}
+                mission_bool = mission_data.get('완료',0)
+                if not mission_bool:
+                    ref_mission.update({"완료": True})
+                    mission_notice(interaction.user.display_name,"불운")
+                    print(f"{interaction.user.display_name}의 [불운] 미션 완료")
 
             # ====================  [미션]  ====================
         else:
@@ -5306,6 +5161,19 @@ class hello(commands.Cog):
                 )
                 embed.add_field(name="🎲 결과", value=f"**{dice_num}**", inline=False)
                 embed.set_footer(text="내일 다시 도전할 수 있습니다!")
+
+                # ====================  [미션]  ====================
+                # 시즌미션 : 불운(주사위에서 숫자 1 달성)
+                if dice_num == 1:
+                    ref_mission = db.reference(f"미션/미션진행상태/{nickname}/시즌미션/불운")
+                    mission_data = ref_mission.get() or {}
+                    mission_bool = mission_data.get('완료',0)
+                    if not mission_bool:
+                        ref_mission.update({"완료": True})
+                        mission_notice(interaction.user.display_name,"불운")
+                        print(f"{interaction.user.display_name}의 [불운] 미션 완료")
+
+                # ====================  [미션]  ====================
             else:
                 embed = discord.Embed(
                     title="🎲 주사위는 하루에 한 번!",

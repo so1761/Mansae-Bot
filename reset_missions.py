@@ -435,6 +435,10 @@ if users:
             for nickname in all_users.keys():
                 daily_mission_ref = mission_ref.child(f"{nickname}/일일미션")
                 daily_mission_ref.delete()
+                
+                seasonal_mission_ref = mission_ref.child(f"{nickname}/시즌미션/선봉장")
+                if seasonal_mission_ref.get() is not None:
+                    seasonal_mission_ref.update({"오늘달성": False})
 
         dice_ref.update({"주사위" : 0})
         yacht_ref.update({"족보" : ""})

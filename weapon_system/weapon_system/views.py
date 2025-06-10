@@ -13,6 +13,7 @@ import random
 import json
 import os
 from dotenv import load_dotenv
+from Cogs.commands import mission_notice
 
 load_dotenv()
 initialize_firebase()
@@ -385,16 +386,12 @@ def enhance_weapon(request):
                 19: 1,   # 19강 - 1% 성공
             }
             nickname = discord_username
-            cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-            current_predict_season = cur_predict_seasonref.get()
 
             ref_weapon = db.reference(f"무기/유저/{nickname}")
             weapon_data = ref_weapon.get() or {}
             ref_item = db.reference(f"무기/아이템/{nickname}")
             item_data = ref_item.get() or {}
             weapon_enhanced = weapon_data.get("강화", 0)
-            weapon_parts = item_data.get("강화재료", 0)
-            
             weapon_parts = item_data.get("강화재료", 0)
 
             # 재료 부족 예외 처리
@@ -424,7 +421,6 @@ def enhance_weapon(request):
                     item_ref.update({"연마제": polish_count - 1})
             if use_high_polish:
                 enhancement_rate += 50
-                use_high_polish = False
                 # 특수 연마제 차감
                 item_ref = db.reference(f"무기/아이템/{nickname}")
                 current_items = item_ref.get() or {}
@@ -441,7 +437,6 @@ def enhance_weapon(request):
 
                 original_enhancement = weapon_log_data.get(enhance_type,0)
                 ref_weapon_log.update({enhance_type : original_enhancement + 1}) # 선택한 강화 + 1
-
                 # 무기의 기존 스탯 가져오기
                 weapon_stats = {key: value for key, value in weapon_data.items() if key not in ["강화","이름", "강화확률", "강화내역"]}
 
@@ -461,6 +456,18 @@ def enhance_weapon(request):
                         weapon_stats[stat] = 1
                     else:
                         weapon_stats[stat] = final_stat
+
+                # ====================  [미션]  ====================
+                # 시즌미션 : 연마(무기 20강 달성)
+                if weapon_enhanced == 20:
+                    ref_mission = db.reference(f"미션/미션진행상태/{nickname}/시즌미션/연마")
+                    mission_data = ref_mission.get()
+                    mission_bool = mission_data.get('완료',False)
+                    if not mission_bool:
+                        ref_mission.update({"완료": True})
+                        mission_notice(nickname,"연마")
+                        print(f"{nickname}의 [연마] 미션 완료")
+                # ====================  [미션]  ====================
                 
                 # 결과 반영
                 ref_weapon.update(weapon_stats)    
@@ -473,8 +480,10 @@ def enhance_weapon(request):
             used_items = []
             if use_polish:
                 used_items.append("연마제")
+                use_polish = False
             if use_high_polish:
                 used_items.append("특수 연마제")
+                use_high_polish = False
 
             embed_data = {
                 "embeds": [
@@ -636,6 +645,19 @@ def enhance_weapon_batch(request):
                 }
             ]
         }
+
+        # ====================  [미션]  ====================
+        # 시즌미션 : 연마(무기 20강 달성)
+        weapon_enhanced = weapon_data.get('강화', 0)
+        if weapon_enhanced == 20:
+            ref_mission = db.reference(f"미션/미션진행상태/{nickname}/시즌미션/연마")
+            mission_data = ref_mission.get()
+            mission_bool = mission_data.get('완료',False)
+            if not mission_bool:
+                ref_mission.update({"완료": True})
+                mission_notice(nickname,"연마")
+                print(f"{nickname}의 [연마] 미션 완료")
+        # ====================  [미션]  ====================
 
         # 실제 전송
         try:

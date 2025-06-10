@@ -18,6 +18,7 @@ from discord import Status
 from discord import Object
 from datetime import datetime,timedelta, timezone
 from dotenv import load_dotenv
+from Cogs.commands import mission_notice, give_item
 
 TARGET_TEXT_CHANNEL_ID = 1289184218135396483
 WARNING_CHANNEL_ID = 1314643507490590731
@@ -286,14 +287,37 @@ def give_item(nickname, item_name, amount):
     cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
     current_predict_season = cur_predict_seasonref.get()
 
-    # 사용자 아이템 데이터 위치
-    weapon_items = ['강화재료','랜덤박스','레이드 재도전','연마제','특수 연마제','탑코인','스킬 각성의 룬','운명 왜곡의 룬','회귀의 룬']
+    # 각인 아이템 목록
+    insignia_items = [
+        "약점 간파", "파멸의 일격", "꿰뚫는 집념",
+        "강철의 맹세", "불굴의 심장", "타오르는 혼", "바람의 잔상"
+    ]
+
+    # 무기 관련 소비 아이템 목록
+    weapon_items = [
+        "강화재료", "랜덤박스", "레이드 재도전", "연마제",
+        "특수 연마제", "탑코인", "스킬 각성의 룬",
+        "운명 왜곡의 룬", "회귀의 룬"
+    ]
+    # ---------------- 각인 아이템 처리 ----------------
+    if item_name in insignia_items:
+        ref_insignia = db.reference(f"무기/각인/유저/{nickname}/{item_name}")
+        insignia_data = ref_insignia.get()
+
+        if not insignia_data:
+            # 처음 받는 경우
+            ref_insignia.set({"개수": amount, "레벨": 1})
+        else:
+            # 기존에 있던 경우, 개수만 증가
+            new_count = insignia_data.get("개수", 0) + amount
+            ref_insignia.update({"개수": new_count})
+        return  # 종료
     if item_name in weapon_items:
         refitem = db.reference(f'무기/아이템/{nickname}')
     else:
         refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템')
-    item_data = refitem.get()
-
+    
+    item_data = refitem.get() or {}
     refitem.update({item_name: item_data.get(item_name, 0) + amount})
 
 class MissionView(View):
@@ -1180,11 +1204,37 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     # ====================  [미션]  ====================
                     # 일일미션 : 승부예측 1회 적중
                     ref_mission = db.reference(f"미션/미션진행상태/{winner['name'].name}/일일미션/승부예측 1회 적중")
-                    mission_data = ref.get()
+                    mission_data = ref_mission.get()
                     mission_bool = mission_data.get('완료',False)
                     if not mission_bool:
                         ref_mission.update({"완료": True})
                         print(f"{winner['name'].display_name}의 [승부예측 1회 적중] 미션 완료")
+
+                    # ====================  [미션]  ====================
+                    
+                    # ====================  [미션]  ====================
+                    # 시즌미션 : 천리안(승부예측 50회 적중)
+                    if predict_data.get("적중 횟수",0) + 1 == 50:
+                        ref_mission = db.reference(f"미션/미션진행상태/{winner['name'].name}/시즌미션/천리안")
+                        mission_data = ref_mission.get()
+                        mission_bool = mission_data.get('완료',False)
+                        if not mission_bool:
+                            ref_mission.update({"완료": True})
+                            await mission_notice(winner['name'].display_name,"천리안")
+                            print(f"{winner['name'].display_name}의 [천리안] 미션 완료")
+
+                    # ====================  [미션]  ====================
+                            
+                    # ====================  [미션]  ====================
+                    # 시즌미션 : 예측의 신(승부예측 8연속 적중)
+                    if predict_data.get("연승",0) + 1 == 8:
+                        ref_mission = db.reference(f"미션/미션진행상태/{winner['name'].name}/시즌미션/예측의 신")
+                        mission_data = ref_mission.get()
+                        mission_bool = mission_data.get('완료',False)
+                        if not mission_bool:
+                            ref_mission.update({"완료": True})
+                            await mission_notice(winner['name'].display_name,"예측의 신")
+                            print(f"{winner['name'].display_name}의 [예측의 신] 미션 완료")
 
                     # ====================  [미션]  ====================
 
@@ -1241,6 +1291,19 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                         f"{prediction_opposite_value}예측연속": 0
                     })
                     
+                    # ====================  [미션]  ====================
+                    # 시즌미션 : 마이너스의 손(승부예측 8연속 비적중)
+                    if predict_data.get("연패",0) + 1 == 8:
+                        ref_mission = db.reference(f"미션/미션진행상태/{loser['name'].name}/시즌미션/마이너스의 손")
+                        mission_data = ref_mission.get()
+                        mission_bool = mission_data.get('완료',False)
+                        if not mission_bool:
+                            ref_mission.update({"완료": True})
+                            await mission_notice(loser['name'].display_name,"마이너스의 손")
+                            print(f"{loser['name'].display_name}의 [마이너스의 손] 미션 완료")
+
+                    # ====================  [미션]  ====================
+                            
                     # 남은 포인트를 배팅한 비율에 따라 환급받음 (30%)
                     betted_rate = round(loser['points'] / loser_total_point, 3) if loser_total_point else 0
                     get_bet = round(betted_rate * remain_loser_total_point * 0.3)
@@ -1311,6 +1374,16 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 point_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{perfect_winner['name'].name}")
                                 change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{perfect_winner['name'].name}")
                                 predict_data = point_ref.get()
+                                # ====================  [미션]  ====================
+                                # 시즌미션 : 완벽(KDA 퍼펙트 예측)
+                                ref_mission = db.reference(f"미션/미션진행상태/{perfect_winner['name'].name}/시즌미션/완벽")
+                                mission_data = ref_mission.get()
+                                mission_bool = mission_data.get('완료',False)
+                                if not mission_bool:
+                                    ref_mission.update({"완료": True})
+                                    await mission_notice(perfect_winner['name'].display_name,"완벽")
+                                    print(f"{perfect_winner['name'].display_name}의 [완벽] 미션 완료")
+                                # ====================  [미션]  ====================
                                 today = datetime.today()
                                 if today.weekday() == 6:
                                     point_ref.update({"포인트": predict_data["포인트"] + round((perfect_point * 2) / perfecter_num)})
@@ -1700,7 +1773,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     #await channel.send(f"\n", embed=userembed)
 
                     # ====================  [미션]  ====================
-                    # 미션 : 승부예측 1회
+                    # 일일미션 : 승부예측 1회
                     
                     ref_mission = db.reference(f"미션/미션진행상태/{nickname.name}/일일미션/승부예측 1회")
                     mission_data = ref_mission.get()

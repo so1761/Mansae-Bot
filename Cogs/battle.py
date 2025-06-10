@@ -1,13 +1,12 @@
 import discord
 import random
 import asyncio
-import math
+from datetime import datetime
 from firebase_admin import db
 from .status import apply_status_for_turn, update_status, remove_status_effects
 from .battle_utils import *
 from .skill_handler import process_all_skills, process_on_hit_effects, use_skill
 from .skills import *
-
 
 async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = False, practice = False, tower = False, tower_floor = 1, raid_ended = False, simulate = False, skill_data = None, wdc = None, wdo = None, scd = None, insignia = None):
     weapon_battle_thread = None
@@ -32,6 +31,35 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
         if raid: #레이드 상황
             if not practice:
+                ref_raid_exist = db.reference(f"레이드/내역/")
+                existing_data = ref_raid_exist.get()
+
+                # ====================  [미션]  ====================
+                # 시즌미션 : 선봉장 (레이드에서 선공 10회 달성)
+                if not existing_data: # 아직 아무도 도전하지 않았다면?
+                    ref_mission = db.reference(f"미션/미션진행상태/{challenger_m.name}/시즌미션/선봉장")
+                    mission_data = ref_mission.get() or {}
+
+                    already_today = mission_data.get('오늘달성', False)
+                    completed = mission_data.get('완료', False)
+                    current_count = mission_data.get('달성횟수', 0)
+
+                    if not completed and not already_today:
+                        new_count = current_count + 1
+                        updates = {
+                            "달성횟수": new_count,
+                            "오늘달성": True
+                        }
+
+                        if new_count >= 10:
+                            from .commands import mission_notice
+                            updates["완료"] = True
+                            mission_notice(challenger_m.display_name,"선봉장")
+                            print(f"{challenger_m.display_name}의 [선봉장] 미션 완료")
+
+                        ref_mission.update(updates)
+                # ====================  [미션]  ====================
+                        
                 ref_raid = db.reference(f"레이드/내역/{challenger_m.name}")
                 ref_raid.update({"레이드여부": True})
                 ref_raid.update({"보스": boss})
@@ -347,7 +375,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 **challenger_insignia
             }
 
-    base_stats = ["CritChance", "DefenseIgnore", "DamageReduction", "Resilience", "DamageEnhance", "Evasion"]
+    base_stats = ["CritChance", "CritDamage", "DefenseIgnore", "DamageReduction", "Resilience", "DamageEnhance", "Evasion"]
     all_stats = base_stats + [f"Base{stat}" for stat in base_stats]
 
     for stat in all_stats:

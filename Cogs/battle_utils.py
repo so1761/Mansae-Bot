@@ -13,7 +13,7 @@ def get_user_insignia_stat(user_name: str, role: str = "challenger") -> dict:
     Returns:
         dict: {role: {스탯명: 값, ...}} 형태의 딕셔너리
     """
-    base_stats = ["CritChance", "DefenseIgnore", "DamageReduction", "Resilience", "DamageEnhance", "Evasion"]
+    base_stats = ["CritChance", "CritDamage", "DefenseIgnore", "DamageReduction", "Resilience", "DamageEnhance", "Evasion"]
 
     insignia_stats = {
         role: {
@@ -47,6 +47,7 @@ def get_user_insignia_stat(user_name: str, role: str = "challenger") -> dict:
         # 각 인장에 따른 스탯 매핑
         stat_map = {
             "약점 간파": "CritChance",
+            "파멸의 일격": "CritDamage",
             "꿰뚫는 집념": "DefenseIgnore",
             "강철의 맹세": "DamageReduction",
             "불굴의 심장": "Resilience",
