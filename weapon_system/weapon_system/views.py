@@ -657,7 +657,7 @@ def enhance_weapon_batch(request):
                         weapon_stats[stat] = 1
                     else:
                         weapon_stats[stat] = final
-                weapon_data.update(weapon_stats)
+                ref_weapon.update(weapon_stats)
 
         # 로그 집계
         success_count = sum(1 for log in logs if log["success"])

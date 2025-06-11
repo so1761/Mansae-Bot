@@ -283,43 +283,6 @@ async def mission_notice(name, mission, rarity):
     # 메시지 보내기
     await channel.send(f"\n", embed=userembed)
 
-def give_item(nickname, item_name, amount):
-    cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
-    current_predict_season = cur_predict_seasonref.get()
-
-    # 각인 아이템 목록
-    insignia_items = [
-        "약점 간파", "파멸의 일격", "꿰뚫는 집념",
-        "강철의 맹세", "불굴의 심장", "타오르는 혼", "바람의 잔상"
-    ]
-
-    # 무기 관련 소비 아이템 목록
-    weapon_items = [
-        "강화재료", "랜덤박스", "레이드 재도전", "연마제",
-        "특수 연마제", "탑코인", "스킬 각성의 룬",
-        "운명 왜곡의 룬", "회귀의 룬"
-    ]
-    # ---------------- 각인 아이템 처리 ----------------
-    if item_name in insignia_items:
-        ref_insignia = db.reference(f"무기/각인/유저/{nickname}/{item_name}")
-        insignia_data = ref_insignia.get()
-
-        if not insignia_data:
-            # 처음 받는 경우
-            ref_insignia.set({"개수": amount, "레벨": 1})
-        else:
-            # 기존에 있던 경우, 개수만 증가
-            new_count = insignia_data.get("개수", 0) + amount
-            ref_insignia.update({"개수": new_count})
-        return  # 종료
-    if item_name in weapon_items:
-        refitem = db.reference(f'무기/아이템/{nickname}')
-    else:
-        refitem = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/아이템')
-    
-    item_data = refitem.get() or {}
-    refitem.update({item_name: item_data.get(item_name, 0) + amount})
-
 class MissionView(View):
     def __init__(self):
         super().__init__(timeout=None)

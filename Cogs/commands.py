@@ -1993,6 +1993,7 @@ class ItemBuyButton(discord.ui.Button):
             "특수 연마제": {"cost": 100, "currency": "TC"},
             "운명 왜곡의 룬": {"cost": 2, "currency": "TC"},
             "랜덤박스": {"cost": 5, "currency": "TC"},
+            "불완전한 인장": {"cost": 200, "currency": "TC"}
         }
 
         item_info = item_menu[self.item_name]

@@ -2968,8 +2968,9 @@ class hello(commands.Cog):
     @app_commands.command(name="각인", description="인장을 확인하고 장착 또는 해제하거나 인장을 개봉합니다.")
     @app_commands.choices(대상=[
         Choice(name='불완전한 인장', value='불완전한 인장'),
+        Choice(name='강화', value = '강화')
     ])
-    @app_commands.describe(대상="불완전한 인장을 개봉해 무작위 인장을 획득합니다.")
+    @app_commands.describe(대상="사용할 기능을 선택하세요")
     async def handle_insignia(self, interaction: discord.Interaction, 대상: str = None):
         await interaction.response.defer(thinking=True)
         nickname = interaction.user.name
@@ -2989,13 +2990,102 @@ class hello(commands.Cog):
 
             # 무작위 인장 지급
             new_insignia = random.choice(insignia_items)
-            give_item(nickname, new_insignia)
+            give_item(nickname, new_insignia, 1)
             embed = discord.Embed(
                 title="✨ 인장 획득!",
                 description=f"{interaction.user.mention}님이 **[{new_insignia}]** 인장을 획득했습니다!",
                 color=discord.Color.gold()
             )
             await interaction.followup.send(embed=embed)
+            return
+        # ------------------------------------------------------
+
+        # ---------------- [강화 로직] ----------------
+        if 대상 == "강화":
+            ref_insignia = db.reference(f"무기/각인/유저/{nickname}")
+            insignia_inventory = ref_insignia.get() or {}
+
+            if not insignia_inventory:
+                await interaction.followup.send("보유 중인 인장이 없습니다.", ephemeral=True)
+                return
+
+            # 강화할 수 있는 인장을 SelectOption으로 구성
+            options = []
+            for name, data in insignia_inventory.items():
+                level = data.get("레벨", 1)
+                count = data.get("개수", 1) - 1
+
+                if level < 5:
+                    required = level
+                    total_needed = required
+                    label = f"{name} (Lv.{level})"
+                    desc = f"필요: {total_needed}개 / 추가 보유: {count}개"
+                    options.append(discord.SelectOption(label=label, description=desc, value=name))
+
+            if not options:
+                await interaction.followup.send("모든 인장이 이미 최대 레벨입니다.", ephemeral=True)
+                return
+
+            class InsigniaSelect(discord.ui.Select):
+                def __init__(self, user, options, ref_insignia, insignia_inventory):
+                    self.ref_insignia = ref_insignia
+                    self.insignia_inventory = insignia_inventory
+                    self.user = user
+
+                    super().__init__(
+                        placeholder="강화할 인장을 선택하세요",
+                        options=options,
+                        min_values=1,
+                        max_values=1
+                    )
+
+                async def callback(self, interaction: discord.Interaction):
+                    if self.user != interaction.user:
+                        await interaction.response.send_message("본인만 조작할 수 있습니다.", ephemeral=True)
+                        return
+                    
+                    selected_insignia = self.values[0]
+                    data = self.insignia_inventory[selected_insignia]
+                    level = data.get("레벨", 1)
+                    count = data.get("개수", 1) - 1
+
+                    results = []
+
+                    if level >= 5:
+                        results.append(f"❌ **[{selected_insignia}]** : 이미 최대 레벨입니다.")
+                    else:
+                        required = level
+                        total_needed = required
+
+                        if count >= total_needed:
+                            new_level = level + 1
+                            new_count = count - required + 1
+
+                            self.ref_insignia.child(selected_insignia).update({
+                                "레벨": new_level,
+                                "개수": new_count
+                            })
+
+                            results.append(f"✅ **[{selected_insignia}]** : Lv.{level} → Lv.{new_level} 강화 성공! (남은 개수: {new_count - 1})")
+                        else:
+                            results.append(f"⚠️ **[{selected_insignia}]** : 강화에 필요한 개수 부족 ({count}/{total_needed})")
+
+                    await interaction.response.edit_message(
+                        content = "",
+                        embed=discord.Embed(
+                            title="🛠 인장 강화 결과",
+                            description="\n".join(results),
+                            color=discord.Color.gold()
+                        ),
+                        view=None
+                    )
+
+            class SelectView(discord.ui.View):
+                def __init__(self, user, options, ref_insignia, insignia_inventory, timeout=60):
+                    super().__init__(timeout=timeout)
+                    self.add_item(InsigniaSelect(user, options, ref_insignia, insignia_inventory))
+
+            await interaction.followup.send("🪶 강화할 인장을 선택하세요:", view=SelectView(interaction.user, options, ref_insignia, insignia_inventory), ephemeral=True)
             return
         # ------------------------------------------------------
 
