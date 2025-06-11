@@ -1,4 +1,3 @@
-import math
 from firebase_admin import db
 from .status import format_status_effects
 
@@ -7,30 +6,54 @@ attack_weapons = ["대검", "창", "활", "단검", "조총", "태도"]
 hybrid_weapons = []
 critical_weapons = ["대검", "조총", "태도"]
 
+# 인장 - 기본 스탯(percent_stat) vs 특수 스탯(flat_stat)
+flat_stat_keys = ["CritChance", "CritDamage", "DefenseIgnore", "DamageReduction", "Resilience", "DamageEnhance", "Evasion"]
+percent_stat_keys = ["Attack", "Spell", "Accuracy", "Speed", "Defense"]
+
+# 각인 아이템 목록
+insignia_items = [
+    "약점 간파", "파멸의 일격", "꿰뚫는 집념",
+    "강철의 맹세", "불굴의 심장", "타오르는 혼", "바람의 잔상",
+    "맹공의 인장", "현자의 인장", "집중의 인장", "신속의 인장", "경화의 인장"
+]
+
+# 무기 관련 소비 아이템 목록
+weapon_items = [
+    "강화재료", "랜덤박스", "레이드 재도전", "연마제",
+    "특수 연마제", "탑코인", "스킬 각성의 룬",
+    "운명 왜곡의 룬", "회귀의 룬", "불완전한 인장"
+]
+
+# percent로 올라가는 인장의 이름
+percent_insignias = ['강철의 맹세','약점 간파','타오르는 혼', "파멸의 일격", "맹공의 인장", "현자의 인장", "집중의 인장", "신속의 인장", "경화의 인장"]
+
 def get_user_insignia_stat(user_name: str, role: str = "challenger") -> dict:
     """
-    주어진 유저의 인장 정보를 기반으로 스탯 보너스를 계산하여 반환합니다.
-
-    Args:
-        user_name (str): 유저 이름
-        role (str): 결과 딕셔너리에서 사용할 역할 키 (예: 'challenger', 'opponent')
-
-    Returns:
-        dict: {role: {스탯명: 값, ...}} 형태의 딕셔너리
+    주어진 유저의 인장 정보를 기반으로 flat 및 percent 스탯 보너스를 계산하여 반환합니다.
     """
-    base_stats = ["CritChance", "CritDamage", "DefenseIgnore", "DamageReduction", "Resilience", "DamageEnhance", "Evasion"]
 
     insignia_stats = {
         role: {
-            stat: 0 for stat in base_stats + [f"Base{stat}" for stat in base_stats]
+            "flat_stats": {stat: 0 for stat in flat_stat_keys + [f"Base{s}" for s in flat_stat_keys]},
+            "percent_stats": {stat: 0 for stat in percent_stat_keys + [f"Base{s}" for s in percent_stat_keys]}
         }
     }
 
-    # 장착된 인장 리스트 가져오기
+    # 2. 인장 이름과 스탯 종류를 매핑하는 딕셔너리 정의
+    FLAT_STAT_MAP = {
+        "약점 간파": "CritChance", "파멸의 일격": "CritDamage", "꿰뚫는 집념": "DefenseIgnore",
+        "강철의 맹세": "DamageReduction", "불굴의 심장": "Resilience", "타오르는 혼": "DamageEnhance",
+        "바람의 잔상": "Evasion"
+    }
+    PERCENT_STAT_MAP = {
+        "맹공의 인장": "Attack", "현자의 인장": "Spell", "집중의 인장": "Accuracy",
+        "신속의 인장": "Speed", "경화의 인장": "Defense"
+    }
+
+    # --- 기존 DB 참조 로직은 그대로 사용 ---
     ref_user_insignia = db.reference(f"무기/유저/{user_name}/각인")
     user_insignia = ref_user_insignia.get() or []
 
-    # 보유한 인장의 레벨 정보
     ref_insignia_level_detail = db.reference(f"무기/각인/유저/{user_name}")
     insignia_level_detail = ref_insignia_level_detail.get() or {}
 
@@ -39,7 +62,6 @@ def get_user_insignia_stat(user_name: str, role: str = "challenger") -> dict:
         if not insignia_name:
             continue
 
-        # 인장 스탯 정보
         ref_insignia_stat_detail = db.reference(f"무기/각인/스탯/{insignia_name}")
         insignia_stat_detail = ref_insignia_stat_detail.get() or {}
 
@@ -49,23 +71,79 @@ def get_user_insignia_stat(user_name: str, role: str = "challenger") -> dict:
 
         total_bonus = base_value + (increase_per_level * level)
 
-        # 각 인장에 따른 스탯 매핑
-        stat_map = {
-            "약점 간파": "CritChance",
-            "파멸의 일격": "CritDamage",
-            "꿰뚫는 집념": "DefenseIgnore",
-            "강철의 맹세": "DamageReduction",
-            "불굴의 심장": "Resilience",
-            "타오르는 혼": "DamageEnhance",
-            "바람의 잔상": "Evasion"
-        }
-
-        if insignia_name in stat_map:
-            stat_key = stat_map[insignia_name]
-            insignia_stats[role][stat_key] += total_bonus
-            base_stat = f"Base{stat_key}"
-            insignia_stats[role][base_stat] += total_bonus
+        # 3. 인장 종류에 따라 분기 처리
+        if insignia_name in FLAT_STAT_MAP:
+            stat_key = FLAT_STAT_MAP[insignia_name]
+            insignia_stats[role]["flat_stats"][stat_key] += total_bonus
+            base_stat_key = f"Base{stat_key}"
+            if base_stat_key in insignia_stats[role]["flat_stats"]:
+                 insignia_stats[role]["flat_stats"][base_stat_key] += total_bonus
+        
+        elif insignia_name in PERCENT_STAT_MAP:
+            stat_key = PERCENT_STAT_MAP[insignia_name]
+            insignia_stats[role]["percent_stats"][stat_key] += total_bonus
+            
     return insignia_stats
+
+# def get_user_insignia_stat(user_name: str, role: str = "challenger") -> dict:
+#     """
+#     주어진 유저의 인장 정보를 기반으로 스탯 보너스를 계산하여 반환합니다.
+
+#     Args:
+#         user_name (str): 유저 이름
+#         role (str): 결과 딕셔너리에서 사용할 역할 키 (예: 'challenger', 'opponent')
+
+#     Returns:
+#         dict: {role: {스탯명: 값, ...}} 형태의 딕셔너리
+#     """
+#     base_stats = ["CritChance", "CritDamage", "DefenseIgnore", "DamageReduction", "Resilience", "DamageEnhance", "Evasion"]
+
+#     insignia_stats = {
+#         role: {
+#             stat: 0 for stat in base_stats + [f"Base{stat}" for stat in base_stats]
+#         }
+#     }
+
+#     # 장착된 인장 리스트 가져오기
+#     ref_user_insignia = db.reference(f"무기/유저/{user_name}/각인")
+#     user_insignia = ref_user_insignia.get() or []
+
+#     # 보유한 인장의 레벨 정보
+#     ref_insignia_level_detail = db.reference(f"무기/각인/유저/{user_name}")
+#     insignia_level_detail = ref_insignia_level_detail.get() or {}
+
+#     for slot_key in range(3):
+#         insignia_name = user_insignia[slot_key] if slot_key < len(user_insignia) else ""
+#         if not insignia_name:
+#             continue
+
+#         # 인장 스탯 정보
+#         ref_insignia_stat_detail = db.reference(f"무기/각인/스탯/{insignia_name}")
+#         insignia_stat_detail = ref_insignia_stat_detail.get() or {}
+
+#         level = insignia_level_detail.get(insignia_name, {}).get("레벨", 1)
+#         base_value = insignia_stat_detail.get("초기 수치", 0)
+#         increase_per_level = insignia_stat_detail.get("증가 수치", 0)
+
+#         total_bonus = base_value + (increase_per_level * level)
+
+#         # 각 인장에 따른 스탯 매핑
+#         stat_map = {
+#             "약점 간파": "CritChance",
+#             "파멸의 일격": "CritDamage",
+#             "꿰뚫는 집념": "DefenseIgnore",
+#             "강철의 맹세": "DamageReduction",
+#             "불굴의 심장": "Resilience",
+#             "타오르는 혼": "DamageEnhance",
+#             "바람의 잔상": "Evasion"
+#         }
+
+#         if insignia_name in stat_map:
+#             stat_key = stat_map[insignia_name]
+#             insignia_stats[role][stat_key] += total_bonus
+#             base_stat = f"Base{stat_key}"
+#             insignia_stats[role][base_stat] += total_bonus
+#     return insignia_stats
 
 def create_bar(value: int, max_val: int = 50, bar_length: int = 10):
         filled_len = round((value / max_val) * bar_length)

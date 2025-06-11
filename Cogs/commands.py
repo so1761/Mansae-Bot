@@ -27,7 +27,7 @@ from matplotlib import font_manager, rc
 from dotenv import load_dotenv
 from collections import Counter
 from .battle import Battle
-
+from .battle_utils import insignia_items, weapon_items
 API_KEY = None
 
 JIMO_NAME = '강지모'
@@ -81,6 +81,7 @@ ANONYM_NAME_WIN = [
 ANONYM_NAME_LOSE = [
  '카카포','케아','카카리키','아프리카회색앵무','유황앵무','뉴기니아앵무', '빗창앵무','유리앵무'
 ]
+
 
 CHANNEL_ID = '938728993329397781'
 
@@ -1088,18 +1089,6 @@ def give_item(nickname, item_name, amount):
     cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
     current_predict_season = cur_predict_seasonref.get()
 
-    # 각인 아이템 목록
-    insignia_items = [
-        "약점 간파", "파멸의 일격", "꿰뚫는 집념",
-        "강철의 맹세", "불굴의 심장", "타오르는 혼", "바람의 잔상"
-    ]
-
-    # 무기 관련 소비 아이템 목록
-    weapon_items = [
-        "강화재료", "랜덤박스", "레이드 재도전", "연마제",
-        "특수 연마제", "탑코인", "스킬 각성의 룬",
-        "운명 왜곡의 룬", "회귀의 룬"
-    ]
     # ---------------- 각인 아이템 처리 ----------------
     if item_name in insignia_items:
         ref_insignia = db.reference(f"무기/각인/유저/{nickname}/{item_name}")
@@ -2110,6 +2099,7 @@ class ItemSelect(discord.ui.Select):
             discord.SelectOption(label = "특수 연마제", value = "특수 연마제", description = "강화 확률을 50% 올립니다. 100TC로 구매 가능합니다."),
             discord.SelectOption(label = "운명 왜곡의 룬", value = "운명 왜곡의 룬", description = "사용 시 추가 강화 수치를 랜덤으로 재구성합니다. 2TC로 구매 가능합니다."),
             discord.SelectOption(label = "랜덤박스", value = "랜덤박스", description = "강화재료, 연마제, 레이드 재도전권, 특수 연마제 등이 들어있는 랜덤박스입니다. 5TC로 구매 가능합니다."),
+            discord.SelectOption(label = "불완전한 인장", value = "불완전한 인장", description = "각인을 통해 어떠한 인장도 될 수 있는 불완전한 인장입니다. 200TC로 구매 가능합니다."),
         ]
         super().__init__(
             placeholder = '구매할 아이템을 선택하세요.',
@@ -2148,6 +2138,7 @@ class ItemSelect(discord.ui.Select):
             "특수 연마제": {"cost": 100, "currency": "TC"},
             "운명 왜곡의 룬": {"cost": 2, "currency": "TC"},
             "랜덤박스": {"cost": 5, "currency": "TC"},
+            "불완전한 인장": {"cost": 200, "currency": "TC"},
         }
 
         description = {
@@ -2168,7 +2159,8 @@ class ItemSelect(discord.ui.Select):
             "연마제" : "다음 강화 확률을 5% 올립니다. 3TC로 구매 가능합니다.",
             "특수 연마제" : "다음 강화 확률을 50% 올립니다. 100TC로 구매 가능합니다.",
             "운명 왜곡의 룬" : "사용 시 추가 강화 수치를 랜덤으로 재구성합니다. 2TC로 구매 가능합니다.",
-            "랜덤박스" : "강화재료, 연마제, 레이드 재도전권, 특수 연마제 등이 들어있는 랜덤박스입니다. 5TC로 구매 가능합니다."
+            "랜덤박스" : "강화재료, 연마제, 레이드 재도전권, 특수 연마제 등이 들어있는 랜덤박스입니다. 5TC로 구매 가능합니다.",
+            "불완전한 인장" : "각인을 통해 어떠한 인장도 될 수 있는 불완전한 인장입니다. 200TC로 구매 가능합니다."
         }
         
         ref_tc = db.reference(f'무기/아이템/{interaction.user.name}')

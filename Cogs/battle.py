@@ -35,7 +35,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 existing_data = ref_raid_exist.get()
 
                 # ====================  [미션]  ====================
-                # 시즌미션 : 선봉장 (레이드에서 선공 10회 달성)
+                # 시즌미션 : 선봉장 (레이드에서 선공 5회 달성)
                 if not existing_data: # 아직 아무도 도전하지 않았다면?
                     ref_mission = db.reference(f"미션/미션진행상태/{challenger_m.name}/시즌미션/선봉장")
                     mission_data = ref_mission.get() or {}
@@ -376,14 +376,51 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 **challenger_insignia
             }
 
-    base_stats = ["CritChance", "CritDamage", "DefenseIgnore", "DamageReduction", "Resilience", "DamageEnhance", "Evasion"]
-    all_stats = base_stats + [f"Base{stat}" for stat in base_stats]
+    # 1. 고정 수치(Flat Stats) 적용
+    all_flat_stats = flat_stat_keys + [f"Base{stat}" for stat in flat_stat_keys]
 
-    for stat in all_stats:
-        challenger[stat] += insignia.get("challenger", {}).get(stat, 0)
-        # 타워/레이드가 아닌 경우에만 opponent 스탯 적용
+    for stat in all_flat_stats:
+        challenger[stat] += insignia.get("challenger", {}).get("flat_stats", {}).get(stat, 0)
         if not tower and not raid:
-            opponent[stat] += insignia.get("opponent", {}).get(stat, 0)
+            opponent[stat] += insignia.get("opponent", {}).get("flat_stats", {}).get(stat, 0)
+
+    # 2. 퍼센트(%) 수치 적용
+    all_percent_stats = percent_stat_keys + [f"Base{stat}" for stat in percent_stat_keys]
+
+    for stat in all_percent_stats:
+        # Challenger
+        percent_bonus_c = insignia.get("challenger", {}).get("percent_stats", {}).get(stat, 0)
+        if percent_bonus_c > 0:
+            challenger[stat] *= (1 + percent_bonus_c)
+            challenger[stat] = round(challenger[stat])
+        # Opponent
+        if not tower and not raid:
+            percent_bonus_o = insignia.get("opponent", {}).get("percent_stats", {}).get(stat, 0)
+            if percent_bonus_o > 0:
+                opponent[stat] *= (1 + percent_bonus_o)
+                opponent[stat] = round(opponent[stat])   
+    # if not simulate:
+    #     challenger_insignia = get_user_insignia_stat(challenger_m.name, role="challenger")
+
+    #     if not tower and not raid:
+    #         opponent_insignia = get_user_insignia_stat(opponent_m.name, role="opponent")
+    #         insignia = {
+    #             **challenger_insignia,
+    #             **opponent_insignia
+    #         }
+    #     else:
+    #         insignia = {
+    #             **challenger_insignia
+    #         }
+
+    # base_stats = ["CritChance", "CritDamage", "DefenseIgnore", "DamageReduction", "Resilience", "DamageEnhance", "Evasion"]
+    # all_stats = base_stats + [f"Base{stat}" for stat in base_stats]
+
+    # for stat in all_stats:
+    #     challenger[stat] += insignia.get("challenger", {}).get(stat, 0)
+    #     # 타워/레이드가 아닌 경우에만 opponent 스탯 적용
+    #     if not tower and not raid:
+    #         opponent[stat] += insignia.get("opponent", {}).get(stat, 0)
     
     # 비동기 전투 시뮬레이션
     attacker, defender = random.choice([(challenger, opponent), (opponent, challenger)]) if challenger["Speed"] == opponent["Speed"] else \
@@ -478,8 +515,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 value = base_value + per_level * level
 
                 # %로 표시할 각인인지 판별
-                percent_names = ['강철의 맹세', '약점 간파', '타오르는 혼']
-                if name in percent_names:
+                if name in percent_insignias:
                     value_str = f"{value * 100:.0f}%"
                 else:
                     value_str = f"{value}"
@@ -553,8 +589,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     value = base_value + per_level * level
 
                     # %로 표시할 각인인지 판별
-                    percent_names = ['강철의 맹세', '약점 간파', '타오르는 혼']
-                    if name in percent_names:
+                    if name in percent_insignias:
                         value_str = f"{value * 100:.0f}%"
                     else:
                         value_str = f"{value}"

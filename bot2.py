@@ -526,7 +526,7 @@ def claim_reward(user_name, mission_name, mission_type):
     ref_mission_cleared = db.reference(f"미션/미션진행상태/{user_name}/{mission_type}/{mission_name}")
 
     mission_data = ref_mission_cleared.get() or {}
-    if mission_data and not mission_data.get("보상수령", False):
+    if mission_data.get("완료",False) and not mission_data.get("보상수령", False):
         # 보상수령 표시
         ref_mission_cleared.update({"보상수령": True})
 
@@ -553,7 +553,7 @@ def claim_all_reward(user_name, mission_type):
     claimed_count = 0
 
     for mission_name, data in mission_status.items():
-        if not data.get("보상수령", False):
+        if data.get("완료", False) and not data.get("보상수령", False):
             # 보상수령 표시
             ref_mission_status.child(mission_name).update({"보상수령": True})
 

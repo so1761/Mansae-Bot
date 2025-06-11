@@ -490,6 +490,39 @@ def enhance_weapon(request):
                         mission_notice(nickname,"연마")
                         print(f"{nickname}의 [연마] 미션 완료")
                 # ====================  [미션]  ====================
+                        
+                # ====================  [미션]  ====================
+                # 시즌미션 : 6종의 인장 미션
+                if weapon_enhanced + 1 == 20:
+                    ref_enhance = db.reference(f"무기/유저/{nickname}/강화내역")
+                    ref_inherit = db.reference(f"무기/유저/{nickname}/계승 내역/추가강화")
+                    
+                    enhance_data = ref_enhance.get() or {}
+                    inherit_data = ref_inherit.get() or {}
+
+                    # 시즌미션 이름 매핑: {강화이름: 미션명}
+                    mission_targets = {
+                        "공격 강화": "맹공",
+                        "스킬 강화": "현자",
+                        "명중 강화": "집중",
+                        "속도 강화": "신속",
+                        "방어 강화": "경화",
+                        "밸런스 강화": "균형"
+                    }
+
+                    for stat_name, mission_name in mission_targets.items():
+                        total = enhance_data.get(stat_name, 0)
+                        inherited = inherit_data.get(stat_name, 0)
+                        actual = total - inherited
+
+                        if actual == 20:
+                            ref_mission = db.reference(f"미션/미션진행상태/{nickname}/시즌미션/{mission_name}")
+                            mission_data = ref_mission.get() or {}
+                            if not mission_data.get("완료", False):
+                                ref_mission.update({"완료": True})
+                                mission_notice(nickname, mission_name)
+                                print(f"{nickname}의 [{mission_name}] 미션 완료")
+                    # ====================  [미션]  ===================
                 
                 # 결과 반영
                 ref_weapon.update(weapon_stats)    
@@ -681,6 +714,39 @@ def enhance_weapon_batch(request):
                 print(f"{nickname}의 [연마] 미션 완료")
         # ====================  [미션]  ====================
 
+        # ====================  [미션]  ====================
+        # 시즌미션 : 6종의 인장 미션
+        weapon_enhanced = weapon_data.get('강화', 0)
+        if weapon_enhanced == 20:
+            ref_enhance = db.reference(f"무기/유저/{nickname}/강화내역")
+            ref_inherit = db.reference(f"무기/유저/{nickname}/계승 내역/추가강화")
+            
+            enhance_data = ref_enhance.get() or {}
+            inherit_data = ref_inherit.get() or {}
+
+            # 시즌미션 이름 매핑: {강화이름: 미션명}
+            mission_targets = {
+                "공격 강화": "맹공",
+                "스킬 강화": "현자",
+                "명중 강화": "집중",
+                "속도 강화": "신속",
+                "방어 강화": "경화",
+                "밸런스 강화": "균형"
+            }
+
+            for stat_name, mission_name in mission_targets.items():
+                total = enhance_data.get(stat_name, 0)
+                inherited = inherit_data.get(stat_name, 0)
+                actual = total - inherited
+
+                if actual == 20:
+                    ref_mission = db.reference(f"미션/미션진행상태/{nickname}/시즌미션/{mission_name}")
+                    mission_data = ref_mission.get() or {}
+                    if not mission_data.get("완료", False):
+                        ref_mission.update({"완료": True})
+                        mission_notice(nickname, mission_name)
+                        print(f"{nickname}의 [{mission_name}] 미션 완료")
+            # ====================  [미션]  ===================
         # 실제 전송
         try:
             requests.post(DISCORD_ENHANCE_WEBHOOK_URL, json=embed_data)
