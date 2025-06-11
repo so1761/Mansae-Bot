@@ -460,7 +460,7 @@ def enhance_weapon(request):
                 original_enhancement = weapon_log_data.get(enhance_type,0)
                 ref_weapon_log.update({enhance_type : original_enhancement + 1}) # 선택한 강화 + 1
                 # 무기의 기존 스탯 가져오기
-                weapon_stats = {key: value for key, value in weapon_data.items() if key not in ["강화","이름", "강화확률", "강화내역"]}
+                weapon_stats = {key: value for key, value in weapon_data.items() if key not in ["강화","이름","강화내역"]}
 
                 # 강화 옵션 가져오기
                 ref_weapon_enhance = db.reference(f"무기/강화")
@@ -471,13 +471,10 @@ def enhance_weapon(request):
                 # 스탯 적용
                 for stat, base_increase in stats.items():
                     # 선택한 스탯은 특화 배율 적용
-                    increase = round(base_increase, 3)  # 기본 배율 적용
-                    final_stat = round(weapon_stats.get(stat, 0) + increase, 3)
+                    increase = base_increase  # 기본 배율 적용
+                    final_stat = weapon_stats.get(stat, 0) + increase
                     
-                    if final_stat >= 1 and stat in ["치명타 확률"]:
-                        weapon_stats[stat] = 1
-                    else:
-                        weapon_stats[stat] = final_stat
+                    weapon_stats[stat] = final_stat
 
                 # ====================  [미션]  ====================
                 # 시즌미션 : 연마(무기 20강 달성)
@@ -606,6 +603,7 @@ def enhance_weapon_batch(request):
         used_parts = used_polish = used_high_polish = 0
         logs = []
 
+        weapon_stats = {k: v for k, v in weapon_data.items() if k not in ["강화", "이름", "강화내역"]}
         while (current_enhancement < target_enhancement and 
                used_parts < weapon_parts_limit and 
                available_parts - used_parts > 0):
@@ -637,7 +635,7 @@ def enhance_weapon_batch(request):
                 "chance": enhancement_rate,
             })
 
-            weapon_stats = {}  # 미리 초기화
+            
             if success:
                 current_enhancement += 1
                 # 스탯 적용 로직 (기존 enhance_weapon에서 그대로 가져오기)
@@ -645,19 +643,14 @@ def enhance_weapon_batch(request):
                 weapon_log_data = ref_weapon_log.get() or {}
                 current_stat_log = weapon_log_data.get(enhance_type, 0)
                 ref_weapon_log.update({enhance_type: current_stat_log + 1})
-
-                weapon_stats = {k: v for k, v in weapon_data.items() if k not in ["강화", "이름", "강화확률", "강화내역"]}
+                
                 enhancement_options = db.reference(f"무기/강화").get() or {}
                 stats = enhancement_options.get(enhance_type, "밸런스 강화")["stats"]
 
                 for stat, base_increase in stats.items():
-                    increase = round(base_increase, 3)
-                    final = round(weapon_stats.get(stat, 0) + increase, 3)
-                    if final >= 1 and stat == "치명타 확률":
-                        weapon_stats[stat] = 1
-                    else:
-                        weapon_stats[stat] = final
-                ref_weapon.update(weapon_stats)
+                    increase = base_increase
+                    final = weapon_stats.get(stat, 0) + increase
+                    weapon_stats[stat] = final
 
         # 로그 집계
         success_count = sum(1 for log in logs if log["success"])
@@ -672,8 +665,6 @@ def enhance_weapon_batch(request):
             "연마제": max(available_polish - used_polish, 0),
             "특수 연마제": max(available_high_polish - used_high_polish, 0),
         })
-
-        
 
         used_items_text = []
         if used_parts: used_items_text.append(f"강화재료 {used_parts}개")
