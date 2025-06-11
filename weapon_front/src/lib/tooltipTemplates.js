@@ -165,10 +165,10 @@ export const tooltipTemplates = {
             `}
             data-tooltip-place="top"
           >
-            {최대피해}
+          {최대피해}
           </span>
           의 피해를 입힙니다.
-  
+
           {/* 정보 아이콘 */}
           <span
             className="ml-1 text-gray-400 cursor-help"
@@ -183,13 +183,19 @@ export const tooltipTemplates = {
                   ${params.기본_공격력_계수.toFixed(2)} + (${params.레벨당_공격력_계수_증가.toFixed(2)} × 레벨)
                 </span><br />
                 <span style="color: #34d399;">· 스피드 계수:</span> <span style="color: #fff;">
-                  1 + (${params.스피드당_계수.toFixed(3)} × 스피드 ${params.스피드})</span>
+                  1 + (${params.스피드당_계수.toFixed(3)} × 스피드 ${params.스피드})
+                </span>
               </div>
             `}
             data-tooltip-place="top"
           >
             ℹ️
           </span>
+        </div>
+
+        {/* 치명타 미적용 안내 */}
+        <div className="text-xs text-gray-400 mt-1">
+          이 공격엔 <span className="text-indigo-500">치명타</span>가 적용되지 않습니다.
         </div>
       </div>
     );
@@ -225,7 +231,7 @@ export const tooltipTemplates = {
             `}
             data-tooltip-place="top"
           >
-            {최대피해}
+          {최대피해}
           </span>
           의 피해를 입힙니다.
           {/* 정보 아이콘 */}
@@ -383,8 +389,8 @@ export const tooltipTemplates = {
             `}
             data-tooltip-place="top"
           >
-            {최대피해}
-          </span>{" "}
+          {최대피해}
+          </span>
           의 피해를 입힙니다.
           <span
             className="ml-1 text-gray-400 cursor-help"
@@ -776,7 +782,7 @@ export const tooltipTemplates = {
             `}
             data-tooltip-place="top"
           >
-            {최대피해}
+          {최대피해}
           </span>
           의 피해를 입힙니다.<br />
           적이 <span className="text-rose-500">출혈 상태</span>일 경우, 출혈 상태를 없앤 뒤,<br />

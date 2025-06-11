@@ -2,6 +2,11 @@ import math
 from firebase_admin import db
 from .status import format_status_effects
 
+skill_weapons = ["스태프-화염", "스태프-냉기", "스태프-신성", "낫"]
+attack_weapons = ["대검", "창", "활", "단검", "조총", "태도"]
+hybrid_weapons = []
+critical_weapons = ["대검", "조총", "태도"]
+
 def get_user_insignia_stat(user_name: str, role: str = "challenger") -> dict:
     """
     주어진 유저의 인장 정보를 기반으로 스탯 보너스를 계산하여 반환합니다.
@@ -111,7 +116,7 @@ def calculate_damage_reduction(defense):
     return min(0.99, 1 - (100 / (100 + defense)))
 
 def calculate_accuracy(accuracy, opponent_speed):
-    return min(0.99, accuracy / (accuracy + opponent_speed * 1.5))
+    return accuracy / (accuracy + opponent_speed * 1.5)
 
 def calculate_evasion_score(speed):
     return speed // 5

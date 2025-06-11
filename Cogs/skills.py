@@ -489,9 +489,9 @@ def holy(attacker,defender, evasion, skill_level, skill_data_firebase):
 
             # 메시지 출력
             if "치유 감소" in attacker["Status"]:
-                message = f"**{skill_emojis['블레스']}블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}(-{reduced_heal})만큼 내구도 회복!\n내구도: [{initial_HP} → {final_HP}] ❤️ (+{final_HP - initial_HP}\n)"
+                message = f"**{skill_emojis['블레스']}블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}(-{reduced_heal})만큼 내구도 회복!\n내구도: [{initial_HP} → {final_HP}] ❤️ (+{final_HP - initial_HP})\n"
             else:
-                message = f"**{skill_emojis['블레스']}블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}만큼 내구도 회복!\n내구도: [{initial_HP} → {final_HP}] ❤️ (+{final_HP - initial_HP}\n)"
+                message = f"**{skill_emojis['블레스']}블레스** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n{heal_amount}만큼 내구도 회복!\n내구도: [{initial_HP} → {final_HP}] ❤️ (+{final_HP - initial_HP})\n"
         else:
             skill_damage = 0
             message = f"**{skill_emojis['블레스']}블레스**가 빗나갔습니다!\n"

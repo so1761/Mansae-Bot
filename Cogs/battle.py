@@ -405,12 +405,12 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         elif tower:
             if practice:
                 weapon_battle_thread = await channel.create_thread(
-                    name=f"{challenger_m.display_name}의 탑 등반 모의전",
+                    name=f"{challenger_m.display_name}의 탑 등반 모의전({current_floor}층)",
                     type=discord.ChannelType.public_thread
                 )
             else:
                 weapon_battle_thread = await channel.create_thread(
-                    name=f"{challenger_m.display_name}의 탑 등반",
+                    name=f"{challenger_m.display_name}의 탑 등반({current_floor}층)",
                     type=discord.ChannelType.public_thread
                 )
         else:
@@ -620,8 +620,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         elif boss == "팬텀":
             apply_status_for_turn(opponent, "저주받은 바디", 2669)
             apply_status_for_turn(opponent, "기술 사용", 2669)
-        elif boss == "허수아비":
-            apply_status_for_turn(opponent, "속박", 2669)
             
     while challenger["HP"] > 0 and opponent["HP"] > 0:
         turn += 1

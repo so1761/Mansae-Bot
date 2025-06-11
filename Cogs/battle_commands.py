@@ -12,7 +12,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from collections import Counter
 from .battle import Battle
-from .battle_utils import get_user_insignia_stat
+from .battle_utils import get_user_insignia_stat, attack_weapons, skill_weapons
 from .commands import mission_notice, give_item
 
 API_KEY = None
@@ -47,20 +47,15 @@ enhancement_probabilities = {
     19: 1,   # 19강 - 1% 성공
 }
 
-class ResultButton(discord.ui.View):
-    weapon_main_unwanted = {
-        "스태프-신성": (["스킬 강화"], ["공격 강화"]),
-        "스태프-화염": (["스킬 강화"], ["공격 강화"]),
-        "스태프-냉기": (["스킬 강화"], ["공격 강화"]),
-        "태도":       (["명중 강화", "속도 강화"], ["스킬 강화"]),
-        "단검":       (["공격 강화", "속도 강화"], ["스킬 강화"]),
-        "대검":       (["공격 강화", "속도 강화"], ["스킬 강화"]),
-        "창":         (["공격 강화", "명중 강화"], ["스킬 강화"]),
-        "활":         (["속도 강화", "공격 강화"], ["스킬 강화"]),
-        "조총":       (["공격 강화"], ["스킬 강화"]),
-        "낫":         (["스킬 강화", "속도 강화"], ["공격 강화"]),
-    }
+# 랜덤 분배 함수
+def random_redistribute(total_points, keys):
+    assigned = {key: 0 for key in keys}
+    for _ in range(total_points):
+        selected = random.choice(keys)
+        assigned[selected] += 1
+    return assigned
 
+class ResultButton(discord.ui.View):
     def __init__(self, user: discord.User, wdc: dict, wdo: dict, skill_data: dict, insignia: dict):
         super().__init__(timeout=None)
         self.user = user
@@ -72,63 +67,21 @@ class ResultButton(discord.ui.View):
         self.win_count = 0        # 시뮬레이션 승리 횟수
         self.message = None       # 나중에 메세지 저장
 
-    def scale_weights_with_main_and_unwanted(self, stats_list, win_count, max_win=10):
-        """
-        승수에 따라 주요 스탯은 곡선 형태로 가중치 증가, 미사용 스탯은 곡선 형태로 감소
-        stats_list: 강화내역의 스탯 리스트
-        win_count: 현재 승수 (0~max_win)
-        """
-        main_stats, unwanted_stats = self.weapon_main_unwanted.get(self.wdc.get("무기타입", ""), ([], []))
-        
-        linear_ratio = min(win_count / max_win, 1)
-        curved_ratio = linear_ratio ** 1.5  # 곡선 적용 (1보다 크면 느리게 시작 → 빠르게 증가)
-        
-        weights = {}
-
-        for stat in stats_list:
-            if stat in main_stats:
-                # 주요 스탯: 기본 1에서 최대 10까지 부드럽게 증가
-                weights[stat] = 1 + 9 * curved_ratio
-            elif stat in unwanted_stats:
-                # 미사용 스탯: 1에서 0까지 곡선 형태로 감소
-                weights[stat] = max(1 - curved_ratio, 0)
-            else:
-                # 기타 스탯: 1에서 0.5까지 곡선 형태로 감소
-                weights[stat] = 1 - 0.5 * curved_ratio
-
-        return weights
-
-    def weighted_redistribute(self, total_points, weights):
-        """
-        가중치 비율에 따라 total_points를 분배
-        """
-        assigned = {k: 0 for k in weights.keys()}
-        weight_sum = sum(weights.values())
-
-        for _ in range(total_points):
-            r = random.uniform(0, weight_sum)
-            upto = 0
-            for stat, w in weights.items():
-                if upto + w >= r:
-                    assigned[stat] += 1
-                    break
-                upto += w
-        return assigned
-
     async def do_reroll(self):
         total_enhancement = sum(self.wdc.get("강화내역", {}).values())
 
         ref_weapon_enhance = db.reference(f"무기/강화")
         enhance_types_dict = ref_weapon_enhance.get() or {}
-        enhance_types = list(enhance_types_dict.keys())  # dict_keys -> list 변환
+        enhance_types = list(enhance_types_dict.keys())
 
-        all_stats = enhance_types
-
-        # 승수 기반으로 가중치 계산
-        scaled_weights = self.scale_weights_with_main_and_unwanted(all_stats, self.win_count)
+        weapon_type = self.wdc.get("무기타입", "")
+        if weapon_type in attack_weapons:
+            enhance_types = [etype for etype in enhance_types_dict.keys() if etype != "스킬 강화"]
+        elif weapon_type in skill_weapons:
+            enhance_types = [etype for etype in enhance_types_dict.keys() if etype != "공격 강화"]
 
         # 강화 점수 재분배
-        random_log = self.weighted_redistribute(total_enhancement, scaled_weights)
+        random_log = random_redistribute(total_enhancement, enhance_types)
 
         self.wdo = self.wdc.copy()
         self.wdo["강화내역"] = random_log
@@ -1916,11 +1869,12 @@ class hello(commands.Cog):
             description="대결이 시작되었습니다!",
             color=discord.Color.blue()  # 원하는 색상 선택
         )
-        await interaction.followup.send(embed=embed)
+        msg = await interaction.followup.send(embed=embed)
         await Battle(channel = interaction.channel,challenger_m= interaction.user, opponent_m = 상대, raid = False, practice = False)
 
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
+        await msg.delete()
 
     @app_commands.command(name = "계승", description = "최고 강화에 도달한 무기의 힘을 이어받습니다.")
     async def inherit(self, interaction:discord.Interaction):
@@ -2087,11 +2041,12 @@ class hello(commands.Cog):
                     color=discord.Color.blue()  # 원하는 색상 선택
                 )
                 if result:
-                    await interaction.channel.send(embed = embed)
+                    msg = await interaction.channel.send(embed = embed)
                 else:
-                    await interaction.followup.send(embed=embed)
+                    msg = await interaction.followup.send(embed=embed)
                 await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = boss_name, raid = True, practice = True, raid_ended= True)
 
+                await msg.delete()
                 return
             else: # 레이드 참여했을 경우
                 warn_embed = discord.Embed(
@@ -2199,13 +2154,14 @@ class hello(commands.Cog):
             color=discord.Color.blue()  # 원하는 색상 선택
         )
         if result:
-            await interaction.channel.send(embed = embed)
+            msg = await interaction.channel.send(embed = embed)
         else:
-            await interaction.followup.send(embed=embed)
+            msg = await interaction.followup.send(embed=embed)
         await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = boss_name, raid = True, practice = False)
 
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
+        await msg.delete()
 
     @app_commands.command(name="레이드현황",description="현재 레이드 현황을 보여줍니다.")
     async def raid_status(self, interaction: discord.Interaction):
@@ -2393,11 +2349,12 @@ class hello(commands.Cog):
             description="전투가 시작되었습니다!",
             color=discord.Color.blue()  # 원하는 색상 선택
         )
-        await interaction.followup.send(embed=embed)
+        msg = await interaction.followup.send(embed=embed)
         await Battle(channel = interaction.channel,challenger_m = interaction.user, tower = True, tower_floor=target_floor)
 
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
+        await msg.delete()
 
     @app_commands.command(name="탑모의전",description="탑의 상대와 모의전투를 진행합니다.")
     @app_commands.describe(층수 = "도전할 층수를 선택하세요.")
@@ -2465,11 +2422,12 @@ class hello(commands.Cog):
             description="전투가 시작되었습니다!",
             color=discord.Color.blue()  # 원하는 색상 선택
         )
-        await interaction.response.send_message(embed=embed)
+        msg = await interaction.response.send_message(embed=embed)
         await Battle(channel = interaction.channel,challenger_m = 상대, tower = True, practice= True, tower_floor= 층수)
 
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
+        await msg.delete()
 
     @app_commands.command(name="랜덤박스", description="랜덤 박스를 열어 아이템을 얻습니다!")
     @app_commands.describe(개수="개봉할 랜덤박스 개수 (기본값: 1)")
@@ -2658,11 +2616,12 @@ class hello(commands.Cog):
             description="대결이 시작되었습니다!",
             color=discord.Color.blue()  # 원하는 색상 선택
         )
-        await interaction.followup.send(embed=embed)
+        msg = await interaction.followup.send(embed=embed)
         await Battle(channel = interaction.channel,challenger_m= 상대1, opponent_m = 상대2, raid = False, practice = False)
 
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
+        await msg.delete()
 
     @app_commands.command(name="테스트레이드",description="유저를 골라 레이드 보스를 상대로 모의전투를 시킵니다")
     @app_commands.choices(보스=[
@@ -2751,12 +2710,12 @@ class hello(commands.Cog):
             description="모의전이 시작되었습니다!",
             color=discord.Color.blue()  # 원하는 색상 선택
         )
-        await interaction.followup.send(embed=embed)
+        msg = await interaction.followup.send(embed=embed)
         await Battle(channel = interaction.channel,challenger_m = 상대1, boss = boss_name, raid = True, practice = True)
 
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
-
+        await msg.delete()
 
     @app_commands.command(name="거울", description="자신과 같은 강화 수치를 가진 상대를 만나 전투합니다.")
     async def Mirror(self, interaction: discord.Interaction):
@@ -2802,22 +2761,20 @@ class hello(commands.Cog):
 
             # ====================  [미션]  ====================
 
+        # 기존 강화 내역
+        original_enhance_log = weapon_data_challenger.get("강화내역", {})
+        total_enhancement = sum(original_enhance_log.values())
+
         # 강화 보정 적용
         ref_weapon_enhance = db.reference(f"무기/강화")
         enhance_types_dict = ref_weapon_enhance.get() or {}
         enhance_types = list(enhance_types_dict.keys())  # dict_keys -> list 변환
 
-        # 기존 강화 내역
-        original_enhance_log = weapon_data_challenger.get("강화내역", {})
-        total_enhancement = sum(original_enhance_log.values())
-
-        # 랜덤 분배 함수
-        def random_redistribute(total_points, keys):
-            assigned = {key: 0 for key in keys}
-            for _ in range(total_points):
-                selected = random.choice(keys)
-                assigned[selected] += 1
-            return assigned
+        weapon_type = weapon_data_challenger.get("무기타입", "")
+        if weapon_type in attack_weapons:
+            enhance_types = [etype for etype in enhance_types_dict.keys() if etype != "스킬 강화"]
+        elif weapon_type in skill_weapons:
+            enhance_types = [etype for etype in enhance_types_dict.keys() if etype != "공격 강화"]
 
         # 랜덤 분배 실행
         new_enhance_log = random_redistribute(total_enhancement, enhance_types)
@@ -2877,7 +2834,9 @@ class hello(commands.Cog):
         )
         result_view.message = msg  # 메시지 저장
 
-        await interaction.followup.send(embed = embed, ephemeral=True)
+        embed_msg = await interaction.followup.send(embed = embed, ephemeral=True)
+        await asyncio.sleep(10)
+        await embed_msg.delete()
 
     # 명령어 정의
     @app_commands.command(name="룬사용", description="룬을 사용합니다.")

@@ -1204,7 +1204,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     # ====================  [미션]  ====================
                     # 일일미션 : 승부예측 1회 적중
                     ref_mission = db.reference(f"미션/미션진행상태/{winner['name'].name}/일일미션/승부예측 1회 적중")
-                    mission_data = ref_mission.get()
+                    mission_data = ref_mission.get() or {}
                     mission_bool = mission_data.get('완료',False)
                     if not mission_bool:
                         ref_mission.update({"완료": True})
@@ -1216,7 +1216,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     # 시즌미션 : 천리안(승부예측 50회 적중)
                     if predict_data.get("적중 횟수",0) + 1 == 50:
                         ref_mission = db.reference(f"미션/미션진행상태/{winner['name'].name}/시즌미션/천리안")
-                        mission_data = ref_mission.get()
+                        mission_data = ref_mission.get() or {}
                         mission_bool = mission_data.get('완료',False)
                         if not mission_bool:
                             ref_mission.update({"완료": True})
@@ -1229,7 +1229,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     # 시즌미션 : 예측의 신(승부예측 8연속 적중)
                     if predict_data.get("연승",0) + 1 == 8:
                         ref_mission = db.reference(f"미션/미션진행상태/{winner['name'].name}/시즌미션/예측의 신")
-                        mission_data = ref_mission.get()
+                        mission_data = ref_mission.get() or {}
                         mission_bool = mission_data.get('완료',False)
                         if not mission_bool:
                             ref_mission.update({"완료": True})
@@ -1295,7 +1295,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                     # 시즌미션 : 마이너스의 손(승부예측 8연속 비적중)
                     if predict_data.get("연패",0) + 1 == 8:
                         ref_mission = db.reference(f"미션/미션진행상태/{loser['name'].name}/시즌미션/마이너스의 손")
-                        mission_data = ref_mission.get()
+                        mission_data = ref_mission.get() or {}
                         mission_bool = mission_data.get('완료',False)
                         if not mission_bool:
                             ref_mission.update({"완료": True})
@@ -1377,7 +1377,7 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
                                 # ====================  [미션]  ====================
                                 # 시즌미션 : 완벽(KDA 퍼펙트 예측)
                                 ref_mission = db.reference(f"미션/미션진행상태/{perfect_winner['name'].name}/시즌미션/완벽")
-                                mission_data = ref_mission.get()
+                                mission_data = ref_mission.get() or {}
                                 mission_bool = mission_data.get('완료',False)
                                 if not mission_bool:
                                     ref_mission.update({"완료": True})
@@ -1776,7 +1776,7 @@ async def open_prediction(name, puuid, votes, channel_id, notice_channel_id, eve
                     # 일일미션 : 승부예측 1회
                     
                     ref_mission = db.reference(f"미션/미션진행상태/{nickname.name}/일일미션/승부예측 1회")
-                    mission_data = ref_mission.get()
+                    mission_data = ref_mission.get() or {}
                     mission_bool = mission_data.get('완료',False)
                     if not mission_bool:
                         ref_mission.update({"완료" : True})

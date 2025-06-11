@@ -5252,64 +5252,6 @@ class hello(commands.Cog):
                 )
                 await interaction.followup.send(embed=embed)
 
-
-    @app_commands.command(name="업적해금", description="1000포인트를 지불하여, 아직 달성하지 않은 시즌미션의 상세 정보까지 전부 확인합니다. 15일 이후만 가능합니다.")
-    async def show_missions(self, interaction: discord.Interaction):
-        user_id = interaction.user.name
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
-
-        point_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트/{user_id}')
-        originr = point_ref.get()
-        point = originr["포인트"]
-        bettingPoint = originr["베팅포인트"]
-        real_point = point - bettingPoint
-        need_point = 1000
-        
-        today = datetime.today().day  # 오늘 날짜의 일(day) 값 가져오기
-        if today >= 15:
-            if real_point < need_point:
-                await interaction.response.send_message(f"포인트가 부족합니다! 현재 포인트: {real_point} (베팅포인트 {bettingPoint} 제외) \n"
-                                                        f"필요 포인트 : {need_point}",ephemeral=True)
-                return
-
-            ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{user_id}")
-            ref_data = ref.get()
-            if ref_data.get("업적해금", False):
-                embed = discord.Embed(
-                title="업적 해금 불가!",
-                description=f"{interaction.user.display_name}님은 이미 업적을 해금했습니다!",
-                color=discord.Color.blue()
-            )
-            ref.update({"업적해금": True})
-
-            embed = discord.Embed(
-                title="업적 해금!",
-                description=f"{interaction.user.display_name}님이 1000포인트를 지불하여 업적 정보를 열람했습니다!",
-                color=discord.Color.blue()
-            )
-
-            point_ref.update({"포인트" : point - need_point})
-            current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
-            current_date = current_datetime.strftime("%Y-%m-%d")
-            current_time = current_datetime.strftime("%H:%M:%S")
-            change_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트변동로그/{current_date}/{interaction.user.name}")
-            change_ref.push({
-                "시간": current_time,
-                "포인트": point - need_point,
-                "포인트 변동": -need_point,
-                "사유": "업적해금 구매"
-            })
-            
-            await interaction.response.send_message(embed=embed)
-        else:
-            embed = discord.Embed(
-                title="해금 실패!",
-                description=f"업적 해금은 15일 이후부터 가능합니다!",
-                color=discord.Color.red()
-            )
-            await interaction.response.send_message(embed=embed, ephemeral = True)
-
     @app_commands.command(name="주사위대결",description="포인트를 걸고 주사위대결을 진행합니다. 하루에 한번만 가능합니다.")
     @app_commands.describe(상대 = "대결할 상대를 고르세요", 포인트 = "기본 베팅으로 걸 포인트를 입력하세요. (100포인트 이상)")
     async def duel(self, interaction:discord.Interaction, 상대: discord.Member, 포인트: int = 100):
