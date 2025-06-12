@@ -25,3 +25,6 @@ weapon_system/db.sqlite3
 
 # 예외: 특정 폴더만 추적 (무시 안 함)
 !weapon_front/**
+Cogs/battle_test_commands.py
+bot_test.py
+Cogs/battle2.py

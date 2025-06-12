@@ -1,14 +1,17 @@
 import discord
 import random
 import asyncio
+import requests
+import os
 from datetime import datetime
+from dotenv import load_dotenv
 from firebase_admin import db
 from .status import apply_status_for_turn, update_status, remove_status_effects
 from .battle_utils import *
 from .skill_handler import process_all_skills, process_on_hit_effects, use_skill
 from .skills import *
 
-async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = False, practice = False, tower = False, tower_floor = 1, raid_ended = False, simulate = False, skill_data = None, wdc = None, wdo = None, scd = None, insignia = None):
+async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = False, remain_HP = None, practice = False, tower = False, tower_floor = 1, simulate = False, skill_data = None, wdc = None, wdo = None, scd = None, insignia = None):
     weapon_battle_thread = None
     if simulate:
         skill_data_firebase = skill_data
@@ -29,7 +32,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 return winner_id == challenger['Id']  # 일반전투일 경우 승리 여부만 반환
         await weapon_battle_thread.send(embed = battle_embed)
 
-        if raid: #레이드 상황
+        if raid:
             if not practice:
                 ref_raid_exist = db.reference(f"레이드/내역/")
                 existing_data = ref_raid_exist.get()
@@ -59,55 +62,97 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                         ref_mission.update(updates)
                 # ====================  [미션]  ====================
-                        
                 ref_raid = db.reference(f"레이드/내역/{challenger_m.name}")
-                ref_raid.update({"레이드여부": True})
-                ref_raid.update({"보스": boss})
-                ref_raid.update({"모의전": False})
-
-            if practice and raid_ended: # 레이드 끝난 이후 도전한 경우
-                ref_raid = db.reference(f"레이드/내역/{challenger_m.name}")
-                ref_raid.update({"레이드여부": True})
-                ref_raid.update({"보스": boss})
-                ref_raid.update({"모의전": True})
-
+                      
             ref_boss = db.reference(f"레이드/보스/{boss}")
-            if winner == "attacker": # 일반적인 상황
-                if defender['Id'] == 0: # 패배한 사람이 플레이어일 경우
-                    final_HP = attacker['HP']
-                    if not practice:
-                        ref_boss.update({"내구도" : final_HP})
-                    total_damage = first_HP - final_HP
-                    await weapon_battle_thread.send(f"**레이드 종료!** 총 대미지 : {total_damage}")
-                else: # 플레이어가 승리한 경우
-                    final_HP = defender['HP']
-                    if final_HP < 0:
-                        final_HP == 0
-                    total_damage = first_HP - final_HP
-                    if not practice:
-                        ref_boss.update({"내구도" : final_HP})
-                        ref_raid.update({"막타": True})
-                    await weapon_battle_thread.send(f"**토벌 완료!** 총 대미지 : {total_damage}")
-                    
-            elif winner == "defender": # 출혈 등특수한 상황
-                if attacker['Id'] == 0: # 패배한 사람이 플레이어일 경우
-                    final_HP = defender['HP']
-                    if not practice:
-                        ref_boss.update({"내구도" : final_HP})
-                    total_damage = first_HP - final_HP
-                    await weapon_battle_thread.send(f"**레이드 종료!** 총 대미지 : {total_damage}")
-                else: # 플레이어가 승리한 경우
-                    final_HP = attacker['HP']
-                    if final_HP < 0:
-                        final_HP == 0
-                    total_damage = first_HP - final_HP
-                    if not practice:
-                        ref_boss.update({"내구도" : final_HP})
-                        ref_raid.update({"막타": True})
-                    await weapon_battle_thread.send(f"**토벌 완료!** 총 대미지 : {total_damage}")
+
+            player_is_winner = (winner == "attacker" and defender['Id'] != 0) or (winner == "defender" and attacker['Id'] != 0)
+
+            if winner == "attacker":
+                final_HP = attacker['HP'] if defender['Id'] == 0 else defender['HP']
+            else:
+                final_HP = defender['HP'] if attacker['Id'] == 0 else attacker['HP']
             
-            if not practice or (practice and raid_ended): # 레이드 끝난 이후 도전한 경우    
-                ref_raid.update({"대미지": total_damage})
+            final_HP = max(final_HP, 0)
+            total_damage = first_HP - final_HP
+
+            if not practice:
+                # 내구도 갱신
+                ref_boss.update({"내구도": final_HP})
+
+                # 기존 기록 가져오기
+                ref_raid = db.reference(f"레이드/내역/{challenger_m.name}")
+                raid_data = ref_raid.get() or {}
+                boss_record = raid_data.get(boss, {})
+                boss_record["대미지"] = total_damage
+                boss_record["남은내구도"] = attacker['HP'] if attacker['Id'] == 0 else defender['HP']
+                # 막타 여부 저장
+                if player_is_winner:
+                    boss_record["막타"] = True
+
+                # 갱신된 기록 저장
+                ref_raid.update({boss: boss_record})
+
+                if player_is_winner:
+                    await weapon_battle_thread.send(f"**토벌 완료!** 총 대미지 : {total_damage}")
+                    # 다음 보스로 진행
+                    ref_current_boss = db.reference("레이드/현재 레이드 보스")
+                    current_boss = ref_current_boss.get()
+
+                    ref_all_bosses = db.reference("레이드/보스목록")
+                    all_boss_order = ref_all_bosses.get()
+
+                    ref_today = db.reference("레이드/순서")
+                    today = ref_today.get() or 0
+
+                    raid_boss_list = [(today + i) % len(all_boss_order) for i in range(4)]
+                    raid_boss_names = [all_boss_order[i] for i in raid_boss_list]
+
+                    try:
+                        current_index = raid_boss_names.index(current_boss)
+                    except ValueError:
+                        current_index = 0
+
+                    next_index = (current_index + 1) % len(raid_boss_names)
+                    next_boss = raid_boss_names[next_index]
+
+                    ref_next_boss = db.reference(f"레이드/보스/{next_boss}")
+                    next_boss_data = ref_next_boss.get() or {}
+                    next_boss_hp = next_boss_data.get("내구도", 0)
+
+                    if next_boss_hp <= 0:
+                        description = "🎉 모든 보스를 토벌했습니다! 레이드 종료!"
+                        title = "토벌 완료"
+                        color = 0x00ff00
+                    else:
+                        description = f"📢 새로운 보스 등장: {next_boss}!"
+                        title = "다음 보스 등장"
+                        color = 0xff0000
+                        ref_current_boss.set(next_boss)
+
+                    data = {
+                        "content": "",
+                        "embeds": [{
+                            "title": title,
+                            "description": description,
+                            "color": color,
+                            "footer": {
+                                "text": "Raid-Bot"
+                            }
+                        }]
+                    }
+
+                    load_dotenv()
+                    WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+                    requests.post(WEBHOOK_URL, json=data)  
+                else:
+                    await weapon_battle_thread.send(f"**레이드 종료!** 총 대미지 : {total_damage}")
+            else:
+                if player_is_winner:
+                    await weapon_battle_thread.send(f"**토벌 완료!** 총 대미지 : {total_damage}")
+                else:
+                    await weapon_battle_thread.send(f"**레이드 종료!** 총 대미지 : {total_damage}")
+
         elif tower:
             ref_current_floor = db.reference(f"탑/유저/{challenger_m.name}")
             tower_data = ref_current_floor.get() or {}
@@ -184,6 +229,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         weapon_data_challenger = ref_weapon_challenger.get() or {}
 
         if raid:
+            if not practice:
+                weapon_data_challenger['내구도'] = remain_HP
             ref_weapon_opponent = db.reference(f"레이드/보스/{boss}")
             weapon_data_opponent = ref_weapon_opponent.get() or {}
         elif tower:
@@ -770,6 +817,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
 
                 if attacker["HP"] <= 0:
+                    attacker["HP"] = 0
                     result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
                     if simulate:
                         return result
@@ -820,6 +868,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
 
             if attacker["HP"] <= 0:
+                attacker["HP"] = 0
                 result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
                 if simulate:
                     return result
@@ -870,6 +919,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
 
             if attacker["HP"] <= 0:
+                attacker["HP"] = 0
                 result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
                 if simulate:
                     return result
@@ -904,6 +954,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
 
             if attacker["HP"] <= 0:
+                attacker["HP"] = 0
                 result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
                 if simulate:
                     return result
@@ -1152,6 +1203,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
 
         if defender["HP"] <= 0:
+            defender["HP"] = 0
             result = await end(attacker,defender,"attacker",raid,simulate,winner_id = attacker['Id'])
             if simulate:
                 return result
@@ -1169,4 +1221,3 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
     if not simulate:
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
-

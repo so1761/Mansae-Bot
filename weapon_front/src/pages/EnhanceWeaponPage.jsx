@@ -21,7 +21,7 @@ export default function EnhanceWeaponPage() {
   const [showEnhanceBatchModal, setShowEnhanceBatchModal] = useState(false); // 연속 강화 모달을 띄움
   const [usePolishLimit, setUsePolishLimit] = useState(0);
   const [useHighPolishLimit, setUseHighPolishLimit] = useState(0);
-  const [useWeaponPartsLimit, setUseWeaponPartsLimit] = useState(0);
+  const [useWeaponPartsLimit, setUseWeaponPartsLimit] = useState(1);
     const enhancementChances = [
     100, 90, 90, 80, 80, 80, 70, 60, 60, 40,
     40, 30, 20, 20, 10, 10, 5, 5, 3, 1
@@ -662,7 +662,17 @@ export default function EnhanceWeaponPage() {
           </button>
 
           <button
-            className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-xl hover:bg-purple-700 transition"
+            className={`flex-1 bg-purple-600 text-white px-4 py-2 rounded-xl transition
+            ${
+              isEnhancing ||
+              enhancementLevel === 20 ||
+              !selectedStats ||
+              selectedStats.length === 0 ||
+              !itemData.강화재료 ||
+              itemData.강화재료 === 0 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'hover:bg-purple-700'
+            }`}
             onClick={() => setShowEnhanceBatchModal(true)}
             disabled={
               isEnhancing ||
@@ -673,7 +683,15 @@ export default function EnhanceWeaponPage() {
               itemData.강화재료 === 0 
             }
           >
-            연속 강화
+            {enhancementLevel === 20
+              ? '최대 강화입니다'
+              : isEnhancing
+              ? '강화 중...'
+              : !selectedStats || selectedStats.length === 0
+              ? '강화 항목을 선택하세요'
+              : itemData.강화재료 === 0 || !itemData.강화재료
+              ? '재료가 부족합니다'
+              : '연속 강화'}
           </button>
         </div>
         

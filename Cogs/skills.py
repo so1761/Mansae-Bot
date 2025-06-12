@@ -279,11 +279,9 @@ def frostbite(attacker, target, evasion, skill_level, skill_data_firebase):
         skill_multiplier = (frostbite_data['기본_스킬증폭_계수'] + frostbite_data['레벨당_스킬증폭_계수_증가'] * skill_level)
         skill_damage = base_damage + attacker["Spell"] * skill_multiplier
         debuff_turns = frostbite_data['디버프_지속시간']
-        apply_status_for_turn(target, "둔화", duration=debuff_turns)
         speed_decrease = frostbite_data['속도감소_기본수치'] + (frostbite_data['레벨당_속도감소_증가'] * skill_level)
-        target["Speed"] *= (1- speed_decrease)
+        apply_status_for_turn(target, "둔화", duration=debuff_turns, value = speed_decrease)
         target["뇌진탕"] = target.get("뇌진탕", 0) + 1
-
         message = f"\n**{skill_emojis['동상']}동상** 사용!\n{base_damage} + (스킬 증폭 {int(skill_multiplier * 100)}%)의 스킬 피해!\n뇌진탕을 부여하고, 스피드가 {debuff_turns}턴간 {int(speed_decrease * 100)}% 감소!\n뇌진탕 스택 {target['뇌진탕']}/4 부여!\n"
         
         if target["뇌진탕"] >= 4:

@@ -4289,7 +4289,8 @@ class hello(commands.Cog):
     async def 대결진행여부초기화(self, interaction: discord.Interaction):
         onoffref = db.reference("승부예측")
         onoffref.update({"대결진행여부" : False})
-
+        raidonoffref = db.reference("레이드")
+        raidonoffref.update({"레이드진행여부" : False})
         embed = discord.Embed(title=f'변경 완료', color = discord.Color.blue())
         embed.add_field(name=f"변경", value=f"대결 진행상태가 초기화되었습니다", inline=False)
         await interaction.response.send_message(embed=embed)
@@ -4840,6 +4841,7 @@ class hello(commands.Cog):
     Choice(name='강화재료', value='강화재료'),
     Choice(name='탑코인', value='탑코인'),
     Choice(name='랜덤박스', value='랜덤박스'),
+    Choice(name='탑 재도전', value='탑 재도전'),
     ])
     async def 아이템지급(self, interaction: discord.Interaction, 이름: discord.Member, 아이템:str, 개수:int):
         if interaction.user.name == "toe_kyung":

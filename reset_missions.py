@@ -136,231 +136,169 @@ yacht_data = {
         }
     ]
 }
-max_reward = 20
 
-ref_current_boss = db.reference(f"레이드/현재 레이드 보스")
-boss_name = ref_current_boss.get()
+# 보스 레이드 결과 처리
+max_reward_per_boss = 15
+ref_boss_list = db.reference("레이드/보스목록")
+all_boss_order = ref_boss_list.get()  # 예: ["스우", "브라움", "카이사", "팬텀", ...]
 
-refraid = db.reference(f"레이드/내역")
-raid_all_data = refraid.get() or {}
+ref_boss_order = db.reference("레이드/순서")
+today = ref_boss_order.get()  # 예: 2
 
-raid_data = {key:value for key, value in raid_all_data.items() if value['보스'] == boss_name and value['모의전'] == False}
-# 전체 대미지 합산
-total_damage = sum(data['대미지'] for data in raid_data.values())
+# 시계방향 순환하며 4마리 선택
+today_bosses = []
+for i in range(4):
+    index = (today + i) % len(all_boss_order)
+    today_bosses.append(all_boss_order[index])
 
-raid_data_sorted = sorted(raid_data.items(), key=lambda x: x[1]['대미지'], reverse=True)
-
-# 순위별로 대미지 항목을 생성
-rankings = []
-for idx, (nickname, data) in enumerate(raid_data_sorted, start=1):
-    damage = data['대미지']
-    if data.get('막타', False):
-        rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지 🎯")
-    else:
-        rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지")
-
-
-refraidboss = db.reference(f"레이드/보스/{boss_name}")
-raid_boss_data = refraidboss.get() or {}
-cur_dur = raid_boss_data.get("내구도", 0)
-total_dur = raid_boss_data.get("총 내구도",0)
-
-# 내구도 비율 계산
-if total_dur > 0:
-    durability_ratio = (total_dur - cur_dur) / total_dur  # 0과 1 사이의 값
-    reward_count = math.floor(max_reward * durability_ratio)  # 총 20개의 재료 중, 내구도에 비례한 개수만큼 지급
-else:
-    reward_count = 0  # 보스가 이미 처치된 경우
-
-cleared = False
-if cur_dur <= 0: # 보스가 처치된 경우
-    cleared = True
-
-
-raid_root = db.reference("레이드/보스")
-raid_bosses = raid_root.get() or {}
-
-
-# 오늘 요일 가져오기 (0=월, 6=일)
-weekday = datetime.now().weekday()
-
-boss_order = ["팬텀", "카이사", "스우", "브라움"]
-
-ref_current_boss = db.reference(f"레이드/현재 레이드 보스")
+ref_current_boss = db.reference("레이드/현재 레이드 보스")
 current_boss = ref_current_boss.get()
-if current_boss is None:
-    current_boss = boss_order[0]  # 없으면 첫 보스부터 시작
 
-# 현재 보스 클리어 여부
-if cleared:
-    # 현재 보스 인덱스를 찾고 다음 보스로 이동
-    current_index = boss_order.index(current_boss)
-    next_index = (current_index + 1) % len(boss_order)  # 순환
-    next_boss = boss_order[next_index]
-    
-    current_boss = next_boss
+# 보스 순서 문자열 생성
+boss_display = []
+for boss in today_bosses:
+    if boss == current_boss:
+        boss_display.append(f"**[{boss}]**")
+    else:
+        boss_display.append(f"[{boss}]")
+boss_order_str = " ➝ ".join(boss_display)
 
+# 유저별 누적 대미지 + 남은 내구도 조회
+ref_all_logs = db.reference("레이드/내역")
+all_logs = ref_all_logs.get() or {}
 
-# Firebase에 현재 보스 업데이트
-raid_boss_root = db.reference("레이드")
-raid_boss_root.update({"현재 레이드 보스": current_boss})
+user_total_damage = {}
+user_last_hp = {}
 
-participants = list(raid_data.keys())
-for participant, data in raid_data.items():
-    ref_item = db.reference(f"무기/아이템/{participant}")
-    item_data = ref_item.get() or {}
-    weapon_parts = item_data.get("강화재료", 0)
-    ref_item.update({"강화재료" : weapon_parts + reward_count})
+for username, bosses in all_logs.items():
+    total_damage = 0
+    for boss_name, record in bosses.items():
+        total_damage += record.get("대미지", 0)
+        if "남은내구도" in record:
+            user_last_hp[username] = record["남은내구도"]
+    if total_damage > 0:
+        user_total_damage[username] = total_damage
 
-    if cleared: # 보스가 처치된 경우
-        if boss_name == "카이사":
-            random_box = item_data.get("랜덤박스") or 0
-            ref_item.update({"랜덤박스": random_box + 1})
-        elif boss_name == "스우":
-            polish = item_data.get("연마제") or 0
-            ref_item.update({"연마제": polish + 2})
-        elif boss_name == "브라움":
-            Rune_of_Twisted_Fate = item_data.get("운명 왜곡의 룬") or 0
-            ref_item.update({"운명 왜곡의 룬": Rune_of_Twisted_Fate + 3})
-        elif boss_name == "팬텀":
-            weapon_parts = item_data.get("강화재료") or 0
-            ref_item.update({"강화재료": weapon_parts + reward_count + 3})
-        else:
-            weapon_parts = item_data.get("강화재료") or 0
-            ref_item.update({"강화재료": weapon_parts + reward_count + 3})
+sorted_users = sorted(user_total_damage.items(), key=lambda x: x[1], reverse=True)
 
-    if data.get('막타',False):
-        raid_retry = item_data.get("레이드 재도전") or 0
-        ref_item.update({"레이드 재도전": raid_retry + 1})
+# 랭킹 정리
+rankings = []
+for i, (username, total_dmg) in enumerate(sorted_users, start=1):
+    remain_hp = user_last_hp.get(username)
+    hp_text = f" [:heart: {remain_hp}]" if remain_hp is not None else ""
+    rankings.append(f"{i}위: {username} - {total_dmg} 대미지{hp_text}")
 
-refraid.set("")
+# 현재 보스 정보
+ref_boss_data = db.reference(f"레이드/보스/{current_boss}")
+boss_data = ref_boss_data.get() or {}
+cur_dur = boss_data.get("내구도", 0)
+total_dur = boss_data.get("총 내구도", 0)
 
-if cleared:
-    for boss, boss_data in raid_bosses.items():
-        # 기존 값 가져오기 (없으면 기본값 0)
-        total_dura = boss_data.get("총 내구도", 0)
-        attack = boss_data.get("공격력", 0)
-        skill_amp = boss_data.get("스킬 증폭", 0)
-        defense = boss_data.get("방어력", 0)
-        speed = boss_data.get("스피드", 0)
-        accuracy = boss_data.get("명중", 0)
+# 현재 보스 체력 비율
+remain_durability_ratio = round(cur_dur / total_dur * 100, 2) if total_dur else 0
 
-        if boss == boss_name:
-            # 업데이트 값 계산
-            updates = {
-                "내구도": total_dura + 1000,
-                "총 내구도": total_dura + 1000,
-                "공격력": attack + 10,
-                "스킬 증폭": skill_amp + 20,
-                "방어력": defense + 15,
-                "스피드": speed + 10,
-                "명중": accuracy + 20,
-            }
-        else:
-            # 나머지 보스는 유지
-            updates = {
-                "내구도": total_dura,
-                "총 내구도": total_dura,
-            }
+# 보상 계산
+current_index = today_bosses.index(current_boss) if current_boss in today_bosses else 0
+base_reward = max_reward_per_boss * current_index
+partial_reward = 0
+if total_dur > 0:
+    durability_ratio = (total_dur - cur_dur) / total_dur
+    partial_reward = math.floor(max_reward_per_boss * durability_ratio)
 
-        # 보스 데이터 업데이트
-        raid_root.child(boss).update(updates)
-else:
-    for boss, boss_data in raid_bosses.items():
-        # 기존 값 가져오기 (없으면 기본값 0)
-        total_dura = boss_data.get("총 내구도", 0)
-        attack = boss_data.get("공격력", 0)
-        skill_amp = boss_data.get("스킬 증폭", 0)
-        defense = boss_data.get("방어력", 0)
-        speed = boss_data.get("스피드", 0)
-        accuracy = boss_data.get("명중", 0)
+total_reward = base_reward + partial_reward
 
+# 현재 보스 정보
+ref_boss = db.reference(f"레이드/보스/")
+raid_bosses = ref_boss.get() or {}
+
+for boss, boss_data in raid_bosses.items():
+    # 기존 값 가져오기 (없으면 기본값 0)
+    total_dura = boss_data.get("총 내구도", 0)
+    current_dura = boss_data.get("내구도", 0)
+    attack = boss_data.get("공격력", 0)
+    skill_amp = boss_data.get("스킬 증폭", 0)
+    defense = boss_data.get("방어력", 0)
+    speed = boss_data.get("스피드", 0)
+    accuracy = boss_data.get("명중", 0)
+
+    if current_dura <= 0: # 토벌당한 보스는 스탯이 오름
+        # 업데이트 값 계산
+        updates = {
+            "내구도": total_dura + 500,
+            "총 내구도": total_dura + 500,
+            "공격력": attack + 10,
+            "스킬 증폭": skill_amp + 20,
+            "방어력": defense + 20,
+            "스피드": speed + 10,
+            "명중": accuracy + 20,
+        }
+    else:
+        # 나머지 보스는 유지
         updates = {
             "내구도": total_dura,
             "총 내구도": total_dura,
         }
 
-        # 보스 데이터 업데이트
-        raid_root.child(boss).update(updates)
+    # 보스 데이터 업데이트
+    ref_boss.child(boss).update(updates)
 
-# 기본 필드 리스트
+ref_all_logs.delete() # 내역 삭제
+
+# 보스 순서 변경
+today = (today + 1) % len(all_boss_order) # 순서의 값을 + 1
+ref_boss_order.set(today)
+ref_current_boss.set(all_boss_order[today]) # 현재 레이드 보스 변경
+
+
+participants = list(all_logs.keys())
+for participant, data in all_logs.items():
+    ref_item = db.reference(f"무기/아이템/{participant}")
+    item_data = ref_item.get() or {}
+    weapon_parts = item_data.get("강화재료", 0)
+    ref_item.update({"강화재료" : weapon_parts + total_reward})
+
+# 필드 정리
 fields = [
     {
-        "name": "결과",
-        "value": "\n".join(rankings)  # 순위표 추가
+        "name": "레이드 보스",
+        "value": boss_order_str,
+        "inline": False
+    },
+    {
+        "name": "보스 내구도",
+        "value": f"[{cur_dur}/{total_dur}] ({remain_durability_ratio}%)",
+        "inline": False
+    },
+    {
+        "name": "대미지 랭킹",
+        "value": "\n".join(rankings) if rankings else "기록 없음",
+        "inline": False
+    },
+    {
+        "name": "보상",
+        "value": f"강화재료 **{total_reward}개** 지급!",
+        "inline": False
     }
 ]
 
-clear_message = ""
-if cleared: # 보스가 처치된 경우
-    if boss_name == "카이사":
-        clear_message = "\n카이사 토벌로 **랜덤박스** 지급!"
-    elif boss_name == "스우":
-        clear_message = "\n스우 토벌로 **연마제 2개** 지급!"
-    elif boss_name == "브라움":
-        clear_message = "\n브라움 토벌로 **운명 왜곡의 룬 3개** 지급!"
-    elif boss_name == "팬텀":
-        clear_message = "\n팬텀 토벌로 **강화재료 3개** 지급!"
-    else:
-        clear_message = "\n보스 토벌로 **강화재료 3개** 지급!"
 
-# 보상 필드 추가
-fields.append({
-    "name": "보상",
-    "value": f"강화 재료 **{reward_count}개** 지급!{clear_message}"
-})
-
-raid_after_data = {key:value for key, value in raid_all_data.items() if value['보스'] == boss_name and value['모의전'] == True}
-raid_after_data_sorted = sorted(raid_after_data.items(), key=lambda x: x[1]['대미지'], reverse=True)
-# 순위별로 대미지 항목을 생성
-after_rankings = []
-for idx, (nickname, data) in enumerate(raid_after_data_sorted, start=1):
-    damage = data['대미지']
-    damage_ratio = round(damage/total_dur * 100)
-    reward_number = int(round(max_reward * 0.75))
-    after_rankings.append(f"{nickname} - {damage} 대미지 ({damage_ratio}%)\n(강화재료 {reward_number}개 지급!)")
-
-    ref_item = db.reference(f"무기/아이템/{nickname}")
-    item_data = ref_item.get() or {}
-    weapon_parts = item_data.get("강화재료", 0)
-    ref_item.update({"강화재료" : weapon_parts + reward_number})
-    if boss_name == "카이사":
-        random_box = item_data.get("랜덤박스") or 0
-        ref_item.update({"랜덤박스": random_box + 1})
-    elif boss_name == "스우":
-        polish = item_data.get("연마제") or 0
-        ref_item.update({"연마제": polish + 2})
-    elif boss_name == "브라움":
-        Rune_of_Twisted_Fate = item_data.get("운명 왜곡의 룬") or 0
-        ref_item.update({"운명 왜곡의 룬": Rune_of_Twisted_Fate + 3})
-    elif boss_name == "팬텀":
-        weapon_parts = item_data.get("강화재료") or 0
-        ref_item.update({"강화재료": weapon_parts + reward_number + 3})
-    else:
-        weapon_parts = item_data.get("강화재료") or 0
-        ref_item.update({"강화재료": weapon_parts + reward_number + 3})
-    
-# 보상 필드 추가
-fields.append({
-    "name": "추가 도전자 보상",
-    "value": "\n".join(after_rankings)
-})
-
-# 임베드 메시지 생성
+# 웹훅 메시지용 JSON
 raid_result = {
-    "content": "",
+    "content": "",  # 여기엔 멘션 등 텍스트 메시지를 쓸 수 있음. 예: "@everyone 레이드 종료!"
     "embeds": [
         {
             "title": "🎯 레이드 정산",
-            "description": f"레이드 보스의 체력 [{cur_dur}/{total_dur}]",
-            "color": 0x00ff00,  # 초록색
+            "description": "",
+            "color": 0x00ff00,
             "fields": fields,
             "footer": {
-                "text": "Raid Bot",
+                "text": "Raid Bot"
             }
         }
     ]
 }
+
+#=========== [레이드] ============
 
 # 포인트 지급
 for winner in best_player:
@@ -412,7 +350,7 @@ if response.status_code == 204:
 else:
     print(f"❌ 메시지 전송 실패! 상태 코드: {response.status_code}")
 
-response = requests.post(WEBHOOK_URL, json=raid_result)
+response = requests.post(WEBHOOK_URL, json=raid_result) # 레이드 메세지
 
 if response.status_code == 204:
     print("✅ 레이드 메시지 전송 성공!")
@@ -424,22 +362,9 @@ users = ref.get()
 
 if users:
     for nickname, data in users.items():
-        mission_ref = db.reference(f"미션/미션진행상태")
         dice_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/")
         yacht_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{nickname}/야추")
-        daily_missions = mission_ref.get()
-
-        all_users = mission_ref.get()  # 전체 사용자 데이터 불러오기
-
-        if all_users:
-            for nickname in all_users.keys():
-                daily_mission_ref = mission_ref.child(f"{nickname}/일일미션")
-                daily_mission_ref.delete()
-                
-                seasonal_mission_ref = mission_ref.child(f"{nickname}/시즌미션/선봉장")
-                if seasonal_mission_ref.get() is not None:
-                    seasonal_mission_ref.update({"오늘달성": False})
-
+        
         dice_ref.update({"주사위" : 0})
         yacht_ref.update({"족보" : ""})
         yacht_ref.update({"결과" : []})
@@ -463,8 +388,22 @@ if users:
 
         p.votes['배틀']['name']['challenger'] = ""
         p.votes['배틀']['name']['상대'] = ""
-        
 
+#====== [미션 초기화] =====
+mission_ref = db.reference(f"미션/미션진행상태")
+daily_missions = mission_ref.get()
+all_users = mission_ref.get()  # 전체 사용자 데이터 불러오기
+
+if all_users:
+    for nickname in all_users.keys():
+        daily_mission_ref = mission_ref.child(f"{nickname}/일일미션")
+        daily_mission_ref.delete()
+        
+        seasonal_mission_ref = mission_ref.child(f"{nickname}/시즌미션/선봉장")
+        if seasonal_mission_ref.get() is not None:
+            seasonal_mission_ref.update({"오늘달성": False})
+
+#===== [미션 초기화] ======
 print(f"{date_str} 모든 사용자의 일일미션이 초기화되었습니다.")
 
 today = datetime.now()

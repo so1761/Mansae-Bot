@@ -8,7 +8,7 @@ from firebase_admin import db
 from discord.app_commands import Choice
 from discord import app_commands
 from discord.ext import commands
-from discord import Interaction
+from discord import Interaction, Object
 from datetime import datetime
 from dotenv import load_dotenv
 from collections import Counter
@@ -1995,191 +1995,181 @@ class hello(commands.Cog):
             return
         
         ref_current_boss = db.reference(f"레이드/현재 레이드 보스")
-        boss_name = ref_current_boss.get()
+        current_boss_name = ref_current_boss.get()
         
-        ref_weapon_opponent = db.reference(f"레이드/보스/{boss_name}")
+        ref_weapon_opponent = db.reference(f"레이드/보스/{current_boss_name}")
         weapon_data_opponent = ref_weapon_opponent.get() or {}
 
         weapon_name_opponent = weapon_data_opponent.get("이름", "")
         if weapon_name_opponent == "":
             await interaction.followup.send("상대가 없습니다!",ephemeral=True)
             return
-        
-        
-        battle_ref = db.reference("승부예측/대결진행여부")
+
+        battle_ref = db.reference("레이드/레이드진행여부")
         is_battle = battle_ref.get() or {}
         if is_battle:
             warnembed = discord.Embed(title="실패",color = discord.Color.red())
-            warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
+            warnembed.add_field(name="",value="다른 레이드가 진행중입니다! ❌")
             await interaction.followup.send(embed = warnembed)
             return
-
-        ref_raid = db.reference(f"레이드/내역/{nickname}")
-        raid_data = ref_raid.get() or {}
-        raid_damage = raid_data.get("대미지", 0)
-        raid_boss_name = raid_data.get("보스","")
-        raid_bool = raid_data.get("레이드여부", False)
         
+        ref_boss_list = db.reference("레이드/보스목록")
+        all_boss_order = ref_boss_list.get()  # 전체 보스 순서 예: ["스우", "브라움", "카이사", "팬텀"]
+
+        ref_boss_order = db.reference("레이드/순서")
+        today_index = ref_boss_order.get()  # 예: 2
+
+        # 오늘의 4마리 보스 추출 (시계방향 순환)
+        today_bosses = []
+        for i in range(4):
+            index = (today_index + i) % len(all_boss_order)
+            today_bosses.append(all_boss_order[index])
+
+        # 현재 보스
+        ref_current_boss = db.reference("레이드/현재 레이드 보스")
+        current_boss = ref_current_boss.get()
+
+        # 시계 반대 방향 순서로 탐색
+        start_index = today_bosses.index(current_boss)
+        search_order = today_bosses[start_index::-1] + today_bosses[:start_index:-1]  # 역순
+
+        # 초기화
+        found_boss = None
+        remain_HP = weapon_data_challenger['내구도']
+        raid_damage = 0
+
+        for boss_name in search_order:
+            ref_boss_log = db.reference(f"레이드/내역/{nickname}/{boss_name}")
+            boss_log = ref_boss_log.get()
+            if boss_log:
+                found_boss = boss_name
+                remain_HP = boss_log.get("남은내구도", weapon_data_challenger['내구도'])
+                raid_damage = boss_log.get("대미지", 0)
+                break  # 가장 최근 도전 보스 찾았으니 탈출
+
         result = False
         if weapon_data_opponent.get("내구도", 0) <= 0:
-            if not raid_bool: # 레이드 참여 안했을 경우
-                retry_embed = discord.Embed(
-                    title="레이드 추가 도전",
-                    description="오늘의 레이드보스는 이미 처치되었습니다!",
-                    color=discord.Color.orange()
-                )
-                retry_embed.add_field(
-                    name="",
-                    value="**레이드를 추가 도전하시겠습니까?**",
-                    inline=False
-                )
-                retry_embed.set_footer(text="모의전 진행 후 넣은 대미지 비율만큼의 보상을 받습니다!")
-                
-                class AfterRaidView(discord.ui.View):
-                    def __init__(self, user_id):
-                        super().__init__(timeout=60)  # 60초 후 자동 종료
-                        self.user_id = user_id
-                        self.future = asyncio.Future()  # 버튼 결과 저장 (True/False)
-
-                    def disable_all_buttons(self):
-                        """모든 버튼을 비활성화 상태로 변경"""
-                        for child in self.children:
-                            if isinstance(child, discord.ui.Button):
-                                child.disabled = True
-
-                    @discord.ui.button(label="도전하기", style=discord.ButtonStyle.green)
-                    async def after_raid(self, interaction: discord.Interaction, button: discord.ui.Button):
-                        # 버튼 비활성화 처리
-                        if interaction.user.id != self.user_id:
-                            await interaction.response.send_message("이 버튼은 당신의 것이 아닙니다.", ephemeral=True)
-                            return
-                        await interaction.response.defer()
-                        self.disable_all_buttons()
-                        self.future.set_result(True)
-                        await interaction.edit_original_response(view = self)
-                        
-                view = AfterRaidView(interaction.user.id)
-                await interaction.followup.send(embed=retry_embed, view=view, ephemeral=True)
-
-                # ✅ 버튼 클릭 결과 대기 (True = 진행, False = 중단)
-                result = await view.future
-
-                if not result:
-                    return  # 안했으면 return
-
-                # 임베드 생성
-                embed = discord.Embed(
-                    title=f"{interaction.user.display_name}의 {weapon_data_opponent.get('이름', '')} 레이드 (추가 도전)",
-                    description="대결이 시작되었습니다!",
-                    color=discord.Color.blue()  # 원하는 색상 선택
-                )
-                if result:
-                    msg = await interaction.channel.send(embed = embed)
-                else:
-                    msg = await interaction.followup.send(embed=embed)
-                await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = boss_name, raid = True, practice = True, raid_ended= True)
-
-                await msg.delete()
-                return
-            else: # 레이드 참여했을 경우
-                warn_embed = discord.Embed(
-                    title="격파 완료",
-                    description="오늘의 레이드보스는 이미 처치되었습니다!",
-                    color=discord.Color.red()
-                )
-                await interaction.followup.send(embed=warn_embed, ephemeral=True)
-                return
+            warn_embed = discord.Embed(
+                title="격파 완료",
+                description="오늘의 레이드보스가 모두 토벌되었습니다!",
+                color=discord.Color.red()
+            )
+            await interaction.followup.send(embed=warn_embed, ephemeral=True)
+            return
 
         result = False
         ref_item = db.reference(f"무기/아이템/{nickname}")
         item_data = ref_item.get() or {}
         raid_refresh = item_data.get("레이드 재도전", 0)
-        if raid_bool:
+        if not remain_HP: # 남은 내구도가 없다면? 재도전권이 있어야함
             if raid_refresh: # 레이드 재도전권 있다면?
-                retry_embed = discord.Embed(
-                    title="레이드 재도전🔄 ",
-                    description="이미 레이드를 참여하셨습니다.",
-                    color=discord.Color.orange()
-                )
-                retry_embed.add_field(
-                    name="도전한 보스",
-                    value=f"**{raid_boss_name} **",
-                    inline=False
-                )
-                retry_embed.add_field(
-                    name="넣은 대미지",
-                    value=f"**{raid_damage}💥 **",
-                    inline=False
-                )
-                retry_embed.add_field(
-                    name="",
-                    value="**재도전권을 사용하시겠습니까?**",
-                    inline=False
-                )
-                retry_embed.set_footer(text="재도전시 기존 기록이 삭제됩니다!")
-                
-                class RaidRetryView(discord.ui.View):
-                    def __init__(self, user_id):
-                        super().__init__(timeout=60)  # 60초 후 자동 종료
-                        self.user_id = user_id
-                        self.future = asyncio.Future()  # 버튼 결과 저장 (True/False)
+                if found_boss == current_boss_name: # 재도전권은 도전한 보스와 현재 보스가 같을때만 사용 가능
+                    retry_embed = discord.Embed(
+                        title="레이드 재도전🔄 ",
+                        description="이미 레이드를 참여하셨습니다.",
+                        color=discord.Color.orange()
+                    )
+                    retry_embed.add_field(
+                        name="도전한 보스",
+                        value=f"**{found_boss} **",
+                        inline=False
+                    )
+                    retry_embed.add_field(
+                        name="넣은 대미지",
+                        value=f"**{raid_damage}💥 **",
+                        inline=False
+                    )
+                    retry_embed.add_field(
+                        name="",
+                        value="**재도전권을 사용하시겠습니까?**",
+                        inline=False
+                    )
+                    retry_embed.set_footer(text="재도전시 기존 기록이 삭제됩니다!")
+                    
+                    class RaidRetryView(discord.ui.View):
+                        def __init__(self, user_id):
+                            super().__init__(timeout=60)  # 60초 후 자동 종료
+                            self.user_id = user_id
+                            self.future = asyncio.Future()  # 버튼 결과 저장 (True/False)
 
-                    def disable_all_buttons(self):
-                        """모든 버튼을 비활성화 상태로 변경"""
-                        for child in self.children:
-                            if isinstance(child, discord.ui.Button):
-                                child.disabled = True
+                        def disable_all_buttons(self):
+                            """모든 버튼을 비활성화 상태로 변경"""
+                            for child in self.children:
+                                if isinstance(child, discord.ui.Button):
+                                    child.disabled = True
 
-                    @discord.ui.button(label="사용하기", style=discord.ButtonStyle.green)
-                    async def use_retry(self, interaction: discord.Interaction, button: discord.ui.Button):
-                        if interaction.user.id != self.user_id:
-                            await interaction.response.send_message("이 버튼은 당신의 것이 아닙니다.", ephemeral=True)
-                            return
+                        @discord.ui.button(label="사용하기", style=discord.ButtonStyle.green)
+                        async def use_retry(self, interaction: discord.Interaction, button: discord.ui.Button):
+                            if interaction.user.id != self.user_id:
+                                await interaction.response.send_message("이 버튼은 당신의 것이 아닙니다.", ephemeral=True)
+                                return
 
-                        await interaction.response.defer()
-                        # 레이드 재도전권 사용 로직
-                        ref_item = db.reference(f"무기/아이템/{interaction.user.name}")
-                        item_data = ref_item.get() or {}
-                        raid_refresh = item_data.get("레이드 재도전", 0)
+                            await interaction.response.defer()
+                            # 레이드 재도전권 사용 로직
+                            ref_item = db.reference(f"무기/아이템/{interaction.user.name}")
+                            item_data = ref_item.get() or {}
+                            raid_refresh = item_data.get("레이드 재도전", 0)
 
-                        # 버튼 비활성화 처리
-                        self.disable_all_buttons()
-                        
-                        if raid_refresh > 0:
-                            ref_item.update({"레이드 재도전": raid_refresh - 1})  # 사용 후 갱신
+                            # 버튼 비활성화 처리
+                            self.disable_all_buttons()
+                            
+                            if raid_refresh > 0:
+                                ref_item.update({"레이드 재도전": raid_refresh - 1})  # 사용 후 갱신
 
-                            refraid = db.reference(f"레이드/내역/{interaction.user.name}")
-                            refraid.delete() 
+                                refraid = db.reference(f"레이드/내역/{interaction.user.name}/{boss_name}")
+                                refraid.delete() 
 
-                            ref_boss = db.reference(f"레이드/보스/{boss_name}")
-                            boss_data = ref_boss.get() or {}
-                            Boss_HP = boss_data.get("내구도", 0)
-                            ref_boss.update({"내구도" : Boss_HP + raid_damage})
+                                ref_boss = db.reference(f"레이드/보스/{boss_name}")
+                                boss_data = ref_boss.get() or {}
+                                Boss_HP = boss_data.get("내구도", 0)
+                                ref_boss.update({"내구도" : Boss_HP + raid_damage})
 
-                            self.future.set_result(True)  # ✅ True 반환 (재도전 성공)
-                            await interaction.edit_original_response(view = self)
-                        else:
-                            await interaction.edit_original_response(content="레이드 재도전권이 없습니다!", view=None)
-                            self.future.set_result(False)  # ✅ False 반환 (재도전 불가)
-                
-                view = RaidRetryView(interaction.user.id)
-                await interaction.followup.send(embed=retry_embed, view=view, ephemeral=True)
+                                self.future.set_result(True)  # ✅ True 반환 (재도전 성공)
+                                await interaction.edit_original_response(view = self)
+                            else:
+                                await interaction.edit_original_response(content="레이드 재도전권이 없습니다!", view=None)
+                                self.future.set_result(False)  # ✅ False 반환 (재도전 불가)
+                    
+                    view = RaidRetryView(interaction.user.id)
+                    await interaction.followup.send(embed=retry_embed, view=view, ephemeral=True)
 
-                # ✅ 버튼 클릭 결과 대기 (True = 진행, False = 중단)
-                result = await view.future
+                    # ✅ 버튼 클릭 결과 대기 (True = 진행, False = 중단)
+                    result = await view.future
 
-                if not result:
-                    return  # 재도전 불가면 함수 종료
+                    if not result:
+                        return  # 재도전 불가면 함수 종료
+                else:
+                    # 이전 보스와 현재 보스가 다르면 사용 불가!
+                    warn_embed = discord.Embed(
+                        title="도전 불가",
+                        description="최근 기록이 다른 레이드보스에 도전한 기록입니다!",
+                        color=discord.Color.red()
+                    )
+                    warn_embed.add_field(name="도전한 보스", value=f"**{found_boss}**")
+                    warn_embed.add_field(name="현재 보스", value=f"**{current_boss_name}**")
+                    await interaction.followup.send(embed=warn_embed, ephemeral=True)
+                    return
             else: # 재도전권 없다면
                 warn_embed = discord.Embed(
-                    title="도전 완료",
-                    description="오늘의 레이드보스에 이미 도전했습니다!",
+                    title="도전 불가",
+                    description="내구도를 모두 소모했습니다!",
                     color=discord.Color.red()
                 )
                 await interaction.followup.send(embed=warn_embed, ephemeral=True)
-                return
-        battle_ref.set(True)
+                return     
 
+        # 초기화
+        remain_HP = weapon_data_challenger['내구도']
+
+        for boss_name in search_order:
+            ref_boss_log = db.reference(f"레이드/내역/{nickname}/{boss_name}")
+            boss_log = ref_boss_log.get()
+            if boss_log:
+                found_boss = boss_name
+                remain_HP = boss_log.get("남은내구도", weapon_data_challenger['내구도'])
+                break  # 가장 최근 도전 보스 찾았으니 탈출
+
+        battle_ref.set(True)
         # 임베드 생성
         embed = discord.Embed(
             title=f"{interaction.user.display_name}의 {weapon_data_opponent.get('이름', '')} 레이드",
@@ -2190,86 +2180,103 @@ class hello(commands.Cog):
             msg = await interaction.channel.send(embed = embed)
         else:
             msg = await interaction.followup.send(embed=embed)
-        await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = boss_name, raid = True, practice = False)
-
-        battle_ref = db.reference("승부예측/대결진행여부")
+        await Battle(channel = interaction.channel,challenger_m = interaction.user, boss = current_boss_name, raid = True, remain_HP = remain_HP, practice = False)
         battle_ref.set(False)
         await msg.delete()
 
-    @app_commands.command(name="레이드현황",description="현재 레이드 현황을 보여줍니다.")
+    @app_commands.command(name="현황_레이드", description="현재 레이드 현황을 보여줍니다.")
     async def raid_status(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        
-        max_reward = 20
 
-        ref_current_boss = db.reference(f"레이드/현재 레이드 보스")
-        boss_name = ref_current_boss.get()
+        max_reward_per_boss = 15
+        ref_boss_list = db.reference("레이드/보스목록")
+        all_boss_order = ref_boss_list.get()  # 예: ["스우", "브라움", "카이사", "팬텀", ...]
 
-        refraid = db.reference(f"레이드/내역")
-        raid_all_data = refraid.get() or {}
+        ref_boss_order = db.reference("레이드/순서")
+        today = ref_boss_order.get()  # 예: 2
 
-        raid_data = {key:value for key, value in raid_all_data.items() if value['보스'] == boss_name and not value['모의전']}
-        # 전체 대미지 합산
-        total_damage = sum(data['대미지'] for data in raid_data.values())
+        # 시계방향 순환하며 4마리 선택
+        today_bosses = []
+        for i in range(4):
+            index = (today + i) % len(all_boss_order)
+            today_bosses.append(all_boss_order[index])
 
-        raid_data_sorted = sorted(raid_data.items(), key=lambda x: x[1]['대미지'], reverse=True)
+        ref_current_boss = db.reference("레이드/현재 레이드 보스")
+        current_boss = ref_current_boss.get()
 
-        # 순위별로 대미지 항목을 생성
+        # 보스 순서 문자열 생성
+        boss_display = []
+        for boss in today_bosses:
+            if boss == current_boss:
+                boss_display.append(f"**[{boss}]**")
+            else:
+                boss_display.append(f"[{boss}]")
+        boss_order_str = " ➝ ".join(boss_display)
+
+        # 유저별 누적 대미지 + 남은 내구도 조회
+        ref_all_logs = db.reference("레이드/내역")
+        all_logs = ref_all_logs.get() or {}
+
+        user_total_damage = {}
+        user_last_hp = {}
+
+        for username, bosses in all_logs.items():
+            total_damage = 0
+            for boss_name, record in bosses.items():
+                total_damage += record.get("대미지", 0)
+                if "남은내구도" in record:
+                    user_last_hp[username] = record["남은내구도"]
+            if total_damage > 0:
+                user_total_damage[username] = total_damage
+
+        sorted_users = sorted(user_total_damage.items(), key=lambda x: x[1], reverse=True)
+
+        # 랭킹 정리
         rankings = []
-        for idx, (nickname, data) in enumerate(raid_data_sorted, start=1):
-            damage = data['대미지']
-            if data.get('막타', False):
-                rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지 🎯")
-            else:
-                rankings.append(f"**{idx}위**: {nickname} - {damage} 대미지")
+        for i, (username, total_dmg) in enumerate(sorted_users, start=1):
+            remain_hp = user_last_hp.get(username)
+            hp_text = f" [:heart: {remain_hp}]" if remain_hp is not None else ""
+            rankings.append(f"{i}위: {username} - {total_dmg} 대미지{hp_text}")
 
-        refraidboss = db.reference(f"레이드/보스/{boss_name}")
-        raid_boss_data = refraidboss.get() or {}
-        cur_dur = raid_boss_data.get("내구도", 0)
-        total_dur = raid_boss_data.get("총 내구도",0)
-        
-        # 내구도 비율 계산
+        # 현재 보스 정보
+        ref_boss_data = db.reference(f"레이드/보스/{current_boss}")
+        boss_data = ref_boss_data.get() or {}
+        cur_dur = boss_data.get("내구도", 0)
+        total_dur = boss_data.get("총 내구도", 0)
+
+        # 현재 보스 체력 비율
+        remain_durability_ratio = round(cur_dur / total_dur * 100, 2) if total_dur else 0
+
+        # 보상 계산
+        current_index = today_bosses.index(current_boss) if current_boss in today_bosses else 0
+        base_reward = max_reward_per_boss * current_index
+        partial_reward = 0
         if total_dur > 0:
-            durability_ratio = (total_dur - cur_dur) / total_dur  # 0과 1 사이의 값
-            reward_count = math.floor(max_reward * durability_ratio)  # 총 20개의 재료 중, 내구도에 비례한 개수만큼 지급
-        else:
-            reward_count = 0  # 보스가 이미 처치된 경우
+            durability_ratio = (total_dur - cur_dur) / total_dur
+            partial_reward = math.floor(max_reward_per_boss * durability_ratio)
 
+        total_reward = base_reward + partial_reward
 
-        remain_durability_ratio = round(cur_dur / total_dur * 100, 2)
-
-        raid_after_data = {key:value for key, value in raid_all_data.items() if value['보스'] == boss_name and value['모의전']} # 격파 이후
-        raid_after_data_sorted = sorted(raid_after_data.items(), key=lambda x: x[1]['대미지'], reverse=True)
-
-        # 순위별로 대미지 항목을 생성
-        after_rankings = []
-        for idx, (nickname, data) in enumerate(raid_after_data_sorted, start=1):
-            damage = data['대미지']
-            damage_ratio = round(damage/total_dur * 100)
-            reward_number = int(round(max_reward * 0.75))
-            after_rankings.append(f"{nickname} - {damage} 대미지 ({damage_ratio}%)\n(강화재료 {reward_number}개 지급 예정!)")
-
-
-        # 디스코드 임베드 생성
+        # 임베드 생성
         embed = discord.Embed(title="🎯 레이드 현황", color=0x00ff00)
-        embed.add_field(name="현재 레이드 보스", value=f"[{boss_name}]", inline=False)
-        embed.add_field(name="레이드 보스의 현재 체력", value=f"[{cur_dur}/{total_dur}] {remain_durability_ratio}%", inline=False)
-        embed.add_field(name="현재 대미지", value="\n".join(rankings), inline=False)
-        embed.add_field(name="보상 현황", value=f"강화재료 **{reward_count}개** 지급 예정!", inline=False)
-        if cur_dur <= 0: # 보스가 처치된 경우
-            if boss_name == "카이사":
-                embed.add_field(name = "", value = f"카이사 토벌로 랜덤박스 1개 지급 예정!")
-            elif boss_name == "스우":
-                embed.add_field(name = "", value = f"스우 토벌로 연마제 2개 지급 예정!")
-            elif boss_name == "브라움":
-                embed.add_field(name = "", value = f"브라움 토벌로 운명 왜곡의 룬 3개 지급 예정!")
-            elif boss_name == "팬텀":
-                embed.add_field(name = "", value = f"팬텀 토벌로 강화재료 3개 지급 예정!")
-            else:
-                embed.add_field(name = "", value = f"보스 토벌로 강화재료 3개 지급 예정!")
-        if cur_dur <= 0:
-            embed.add_field(name="레이드 종료 이후 도전 인원", value="\n".join(after_rankings), inline=False)
-        await interaction.followup.send(embed = embed)
+        embed.add_field(name="현재 레이드 보스", value=boss_order_str, inline=False)
+        embed.add_field(
+            name="레이드 보스의 현재 체력",
+            value=f"[{cur_dur}/{total_dur}] {remain_durability_ratio}%",
+            inline=False
+        )
+        embed.add_field(
+            name="현재 대미지",
+            value="\n".join(rankings) if rankings else "기록 없음",
+            inline=False
+        )
+        embed.add_field(
+            name="보상 현황",
+            value=f"강화재료 **{total_reward}개** 지급 예정!",
+            inline=False
+        )
+
+        await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="수치조정", description="무기에 밸런스 패치로 인해 변경된 스탯을 적용합니다")
     async def stat_change(self, interaction: discord.Interaction):
@@ -2298,8 +2305,6 @@ class hello(commands.Cog):
     async def infinity_tower(self, interaction: discord.Interaction, 층수 : app_commands.Range[int, 1] = None):
         await interaction.response.defer()
         nickname = interaction.user.name
-        cur_predict_seasonref = db.reference("승부예측/현재예측시즌") 
-        current_predict_season = cur_predict_seasonref.get()
 
         ref_weapon_challenger = db.reference(f"무기/유저/{nickname}")
         weapon_data_challenger = ref_weapon_challenger.get() or {}
@@ -2346,7 +2351,7 @@ class hello(commands.Cog):
             warnembed.add_field(name="",value="다른 대결이 진행중입니다! ❌")
             await interaction.followup.send(embed = warnembed)
             return
-        battle_ref.set(True)
+        
         tower_bool = tower_data.get("등반여부", False)
         if tower_bool:
             if tower_refesh:
@@ -2362,7 +2367,7 @@ class hello(commands.Cog):
                 warnembed.add_field(name="",value="오늘의 도전 기회를 다 사용했습니다! ❌")
                 await interaction.followup.send(embed = warnembed)
                 return
-        
+        battle_ref.set(True)
        
 
         # ====================  [미션]  ====================
