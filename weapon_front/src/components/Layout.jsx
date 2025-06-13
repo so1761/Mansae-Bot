@@ -164,6 +164,17 @@ function Layout() {
                                         강화하기
                                     </Link>
                                 </li>
+                                <li>
+                                    <Link
+                                        to="/weapon/inherit"
+                                        className={`block px-3 py-2 rounded ${
+                                            isActive("/weapon/inherit") ? "bg-indigo-100 text-indigo-700" : "hover:bg-indigo-50"
+                                        }`}
+                                        onClick={() => setIsSidebarOpen(false)}
+                                    >
+                                        계승[미구현]
+                                    </Link>
+                                </li>
                             </ul>
                         )}
                     </li>

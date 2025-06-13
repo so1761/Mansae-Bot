@@ -101,7 +101,7 @@ function WeaponInfo() {
     } else {
         // 로그아웃 시 데이터 초기화 (검색된 정보는 유지할 수 있음)
     }
-  }, [isLoggedIn, user, fetchWeaponData]);
+  }, [isLoggedIn, user, displayedUsername, fetchWeaponData]);
 
   const handleRefresh = () => {
     if (displayedUsername) {

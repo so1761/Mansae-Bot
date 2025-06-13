@@ -1,8 +1,27 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useAuth } from "../context/AuthContext";
 
 export default function Home() {
+  const { isLoggedIn, setIsLoggedIn, setUser } = useAuth(); // set 함수는 직접 노출 필요 (아래 설명 참조)
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      fetch(`${process.env.REACT_APP_API_BASE_URL}/api/user/`, { credentials: "include" })
+        .then((res) => {
+          if (!res.ok) return null;
+          return res.json();
+        })
+        .then((data) => {
+          if (data) {
+            setIsLoggedIn(true);
+            setUser(data);
+          }
+        });
+    }
+  }, [isLoggedIn, setIsLoggedIn, setUser]);
+  
   return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
