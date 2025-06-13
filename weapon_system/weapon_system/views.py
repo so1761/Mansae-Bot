@@ -130,7 +130,7 @@ def get_weapon_data(request, discord_username):
     if not weapon_data:
         return JsonResponse({"error": "Weapon data not found"}, status=404)
 
-    #user_instance = CustomUser.objects.get(discord_username=discord_username)
+    user_instance = CustomUser.objects.filter(discord_username=discord_username).first()
 
 
     ref_base = db.reference(f"무기/기본 스탯")
@@ -202,7 +202,7 @@ def get_weapon_data(request, discord_username):
         name=weapon_data.get('이름'),
         weapon_type=weapon_data.get('무기타입'),
         
-        #user = user_instance
+        user = user_instance
     )
 
     # 강화 내역 처리
@@ -268,7 +268,6 @@ def get_weapon_data(request, discord_username):
             level=level,
             cooldown=total_cd,
             current_cooldown=current_cd,
-            skill_range=skill_info.get('사거리', 0),
             skill_description=skill_server_data.get('description', "스킬 설명이 없습니다"),
             skill_notes_key=tooltip_key,
             skill_notes_params=template_context  # 💡 JSONField여야 함
@@ -341,7 +340,6 @@ def get_weapon_data(request, discord_username):
                 'level': skill.level,
                 'cooldown': skill.cooldown,
                 'current_cooldown': skill.current_cooldown,
-                'skill_range' : skill.skill_range,
                 'skill_description': skill.skill_description,
                 'skill_notes_key': skill.skill_notes_key,
                 'skill_notes_params': skill.skill_notes_params

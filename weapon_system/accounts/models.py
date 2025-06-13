@@ -11,14 +11,18 @@ class CustomUser(AbstractUser):
 class Weapon(models.Model):
     name = models.CharField(max_length=100)
     weapon_type = models.CharField(max_length=50)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
 
     # ⚙️ 기본 스탯
     base_attack_power = models.IntegerField(default=0)
     base_durability = models.IntegerField(default=0)
     base_accuracy = models.IntegerField(default=0)
     base_defense = models.IntegerField(default=0)
-    base_range = models.IntegerField(default=0)
     base_speed = models.IntegerField(default=0)
     base_skill_enhance = models.IntegerField(default=0)
     base_critical_damage = models.FloatField(default=1.5)
@@ -144,7 +148,6 @@ class Skill(models.Model):
     level = models.IntegerField(default=0)  # 스킬 레벨
     cooldown = models.IntegerField(default=0)  # 전체 쿨타임
     current_cooldown = models.IntegerField(default=0)  # 현재 쿨타임
-    skill_range = models.IntegerField(default=0) # 사거리
     skill_description = models.TextField(default="설명이 없습니다")
     skill_notes_key = models.CharField(max_length=100, blank=True, null=True)
     skill_notes_params = models.JSONField(default=dict)
