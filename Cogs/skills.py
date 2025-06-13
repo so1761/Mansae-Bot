@@ -20,7 +20,7 @@ skill_emojis = {
     "속사": "<:rapid_fire:1380504532043300904>",
     "강타": "<:smash:1380504562766712893>",
     "창격": "<:spearShot:1380512916406796358>",
-    "일섬": "<:issen:1380504641451593878>",
+    "일섬": "<:issen:1382940302549192814>",
     "동상": "<:braum_Q:1381436009539178536>",
     "뇌진탕 펀치": "<:braum_P:1380505175973695538>",
     "불굴": "<:braum_E:1380505187160035378>",
@@ -120,7 +120,7 @@ def issen(attacker, defender, skill_level, skill_data_firebase):
     # 출혈 상태일 경우, 출혈 상태 해제 후 남은 피해의 150%를 즉시 입히고, 해당 피해의 50%를 고정 피해로 변환
 
     apply_status_for_turn(defender, "일섬", duration=2)
-    message = f"**{skill_emojis['일섬']}일섬** 사용!\n엄청난 속도로 적을 벤 후, 다음 턴에 날카로운 참격을 가합니다.\n회피를 무시하고 명중에 비례하는 대미지를 입힙니다.\n" 
+    message = f"**{skill_emojis['일섬']}일섬** 사용!\n{attacker['name']}이(가) 준비자세를 취합니다." 
     return message, 0
 
 def headShot(attacker, defender, evasion, skill_level, skill_data_firebase):

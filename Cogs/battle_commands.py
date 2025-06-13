@@ -69,17 +69,17 @@ class ResultButton(discord.ui.View):
         self.message = None       # 나중에 메세지 저장
 
     async def do_reroll(self):
-        total_enhancement = sum(self.wdc.get("강화내역", {}).values())
+        total_enhancement = sum(self.wdc.get("강화내역", {}).values()) + self.win_count
 
         ref_weapon_enhance = db.reference(f"무기/강화")
         enhance_types_dict = ref_weapon_enhance.get() or {}
         enhance_types = list(enhance_types_dict.keys())
 
-        weapon_type = self.wdc.get("무기타입", "")
-        if weapon_type in attack_weapons:
-            enhance_types = [etype for etype in enhance_types_dict.keys() if etype != "스킬 강화"]
-        elif weapon_type in skill_weapons:
-            enhance_types = [etype for etype in enhance_types_dict.keys() if etype != "공격 강화"]
+        # weapon_type = self.wdc.get("무기타입", "")
+        # if weapon_type in attack_weapons:
+        #     enhance_types = [etype for etype in enhance_types_dict.keys() if etype != "스킬 강화"]
+        # elif weapon_type in skill_weapons:
+        #     enhance_types = [etype for etype in enhance_types_dict.keys() if etype != "공격 강화"]
 
         # 강화 점수 재분배
         random_log = random_redistribute(total_enhancement, enhance_types)
@@ -2808,11 +2808,11 @@ class hello(commands.Cog):
         enhance_types_dict = ref_weapon_enhance.get() or {}
         enhance_types = list(enhance_types_dict.keys())  # dict_keys -> list 변환
 
-        weapon_type = weapon_data_challenger.get("무기타입", "")
-        if weapon_type in attack_weapons:
-            enhance_types = [etype for etype in enhance_types_dict.keys() if etype != "스킬 강화"]
-        elif weapon_type in skill_weapons:
-            enhance_types = [etype for etype in enhance_types_dict.keys() if etype != "공격 강화"]
+        # weapon_type = weapon_data_challenger.get("무기타입", "")
+        # if weapon_type in attack_weapons:
+        #     enhance_types = [etype for etype in enhance_types_dict.keys() if etype != "스킬 강화"]
+        # elif weapon_type in skill_weapons:
+        #     enhance_types = [etype for etype in enhance_types_dict.keys() if etype != "공격 강화"]
 
         # 랜덤 분배 실행
         new_enhance_log = random_redistribute(total_enhancement, enhance_types)

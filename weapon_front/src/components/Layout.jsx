@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 function Layout() {
     const location = useLocation();
     const { isLoggedIn, user, handleLogin, handleLogout } = useAuth();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
+    const [isProbabilityOpen, setIsProbabilityOpen] = useState(true);
+    const [isInfoOpen, setIsInfoOpen] = useState(true);
+    const [isEnhanceOpen, setIsEnhanceOpen] = useState(true);
     const isActive = (path) => location.pathname === path;
 
     return (
@@ -45,93 +48,124 @@ function Layout() {
 
                     {/* 확률 섹션 */}
                     <li>
-                        <div className="text-indigo-600 font-semibold px-3 mt-4">확률</div>
-                        <ul className="pl-4 space-y-1">
-                            <li>
-                                <Link
-                                    to="/probability/randombox"
-                                    className={`block px-3 py-2 rounded ${
-                                        isActive("/probability/randombox") ? "bg-indigo-100 text-indigo-700" : "hover:bg-indigo-50"
-                                    }`}
-                                    onClick={() => setIsSidebarOpen(false)}
-                                >
-                                    랜덤박스
-                                </Link>
-                            </li>
-                            <li>
-                                <Link
-                                    to="/probability/enhancement"
-                                    className={`block px-3 py-2 rounded ${
-                                        isActive("/probability/enhancement") ? "bg-indigo-100 text-indigo-700" : "hover:bg-indigo-50"
-                                    }`}
-                                    onClick={() => setIsSidebarOpen(false)}
-                                >
-                                    강화 확률
-                                </Link>
-                            </li>
-                            <li>
-                                <Link
-                                    to="/probability/inheritance"
-                                    className={`block px-3 py-2 rounded ${
-                                        isActive("/probability/inheritance") ? "bg-indigo-100 text-indigo-700" : "hover:bg-indigo-50"
-                                    }`}
-                                    onClick={() => setIsSidebarOpen(false)}
-                                >
-                                    계승 확률
-                                </Link>
-                            </li>
-                        </ul>
+                        <div
+                            className="text-indigo-600 font-semibold px-3 mt-4 cursor-pointer flex justify-between items-center"
+                            onClick={() => setIsProbabilityOpen(!isProbabilityOpen)}
+                        >
+                            확률
+                            <span>{isProbabilityOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}</span>
+                        </div>
+                        {isProbabilityOpen && (
+                            <ul className="pl-4 space-y-1 mt-1">
+                                <li>
+                                    <Link
+                                        to="/probability/randombox"
+                                        className={`block px-3 py-2 rounded ${
+                                            isActive("/probability/randombox") ? "bg-indigo-100 text-indigo-700" : "hover:bg-indigo-50"
+                                        }`}
+                                        onClick={() => setIsSidebarOpen(false)}
+                                    >
+                                        랜덤박스
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link
+                                        to="/probability/enhancement"
+                                        className={`block px-3 py-2 rounded ${
+                                            isActive("/probability/enhancement") ? "bg-indigo-100 text-indigo-700" : "hover:bg-indigo-50"
+                                        }`}
+                                        onClick={() => setIsSidebarOpen(false)}
+                                    >
+                                        강화 확률
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link
+                                        to="/probability/inheritance"
+                                        className={`block px-3 py-2 rounded ${
+                                            isActive("/probability/inheritance") ? "bg-indigo-100 text-indigo-700" : "hover:bg-indigo-50"
+                                        }`}
+                                        onClick={() => setIsSidebarOpen(false)}
+                                    >
+                                        계승 확률
+                                    </Link>
+                                </li>
+                            </ul>
+                        )}
                     </li>
 
-                    {/* 무기 섹션 */}
+                    {/* 정보 섹션 */}
                     <li>
-                        <div className="text-indigo-600 font-semibold px-3 mt-4">무기</div>
-                        <ul className="pl-4 space-y-1">
-                            <li>
-                                <Link
-                                    to="/weapon"
-                                    className={`block px-3 py-2 rounded ${
-                                        isActive("/weapon") && location.pathname === "/weapon" ? "bg-indigo-100 text-indigo-700" : "hover:bg-indigo-50"
-                                    }`}
-                                    onClick={() => setIsSidebarOpen(false)}
-                                >
-                                    무기 정보
-                                </Link>
-                            </li>
-                            <li>
-                                <Link
-                                    to="/weapon/enhancement_values"
-                                    className={`block px-3 py-2 rounded ${
-                                        isActive("/weapon/enhancement_values") ? "bg-indigo-100 text-indigo-700" : "hover:bg-indigo-50"
-                                    }`}
-                                    onClick={() => setIsSidebarOpen(false)}
-                                >
-                                    강화 수치 보기
-                                </Link>
-                            </li>
-                            <li>
-                                <Link
-                                    to="/weapon/enhance"
-                                    className={`block px-3 py-2 rounded ${
-                                        isActive("/weapon/enhance") ? "bg-indigo-100 text-indigo-700" : "hover:bg-indigo-50"
-                                    }`}
-                                    onClick={() => setIsSidebarOpen(false)}
-                                >
-                                    강화하기
-                                </Link>
-                            </li>
-                            <li>
-                                <Link
-                                    to="/weapon/skills"
-                                    className={`block px-3 py-2 rounded ${
-                                    isActive("/weapon/skills") ? "bg-indigo-100 text-indigo-700" : "hover:bg-indigo-50"
-                                    }`}
-                                    onClick={() => setIsSidebarOpen(false)}
-                                >
-                                    스킬 정보
-                                </Link>
-                            </li>
-                        </ul>
+                        <div
+                            className="text-indigo-600 font-semibold px-3 mt-4 cursor-pointer flex justify-between items-center"
+                            onClick={() => setIsInfoOpen(!isInfoOpen)}
+                        >
+                            정보
+                            <span>{isInfoOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}</span>
+                        </div>
+                        {isInfoOpen && (
+                            <ul className="pl-4 space-y-1 mt-1">
+                                <li>
+                                    <Link
+                                        to="/weapon"
+                                        className={`block px-3 py-2 rounded ${
+                                            isActive("/weapon") && location.pathname === "/weapon" ? "bg-indigo-100 text-indigo-700" : "hover:bg-indigo-50"
+                                        }`}
+                                        onClick={() => setIsSidebarOpen(false)}
+                                    >
+                                        무기 정보
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link
+                                        to="/weapon/enhancement_values"
+                                        className={`block px-3 py-2 rounded ${
+                                            isActive("/weapon/enhancement_values") ? "bg-indigo-100 text-indigo-700" : "hover:bg-indigo-50"
+                                        }`}
+                                        onClick={() => setIsSidebarOpen(false)}
+                                    >
+                                        강화 수치
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link
+                                        to="/weapon/skills"
+                                        className={`block px-3 py-2 rounded ${
+                                        isActive("/weapon/skills") ? "bg-indigo-100 text-indigo-700" : "hover:bg-indigo-50"
+                                        }`}
+                                        onClick={() => setIsSidebarOpen(false)}
+                                    >
+                                        스킬 정보
+                                    </Link>
+                                </li>
+                            </ul>
+                        )}
+                    </li>
+
+                    {/* 강화 섹션 */}
+                    <li>
+                        <div
+                            className="text-indigo-600 font-semibold px-3 mt-4 cursor-pointer flex justify-between items-center"
+                            onClick={() => setIsEnhanceOpen(!isEnhanceOpen)}
+                        >
+                            강화
+                            <span>{isEnhanceOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}</span>
+                        </div>
+                        {isEnhanceOpen && (
+                            <ul className="pl-4 space-y-1 mt-1">
+                                <li>
+                                    <Link
+                                        to="/weapon/enhance"
+                                        className={`block px-3 py-2 rounded ${
+                                            isActive("/weapon/enhance") ? "bg-indigo-100 text-indigo-700" : "hover:bg-indigo-50"
+                                        }`}
+                                        onClick={() => setIsSidebarOpen(false)}
+                                    >
+                                        강화하기
+                                    </Link>
+                                </li>
+                            </ul>
+                        )}
                     </li>
                     <li>
                         <Link

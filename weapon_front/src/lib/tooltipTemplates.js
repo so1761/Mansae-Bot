@@ -365,7 +365,6 @@ export const tooltipTemplates = {
       레벨당_공격력_계수_증가,
       공격력,
       치명타_확률_증가,
-      명중
     } = params;
   
     const base_damage = 기본_피해량 + 레벨 * 레벨당_피해량_증가;
@@ -770,7 +769,7 @@ export const tooltipTemplates = {
     return (
       <div className="space-y-2 text-sm text-gray-600">
         <div>
-          <span className="text-red-500">🗡️ 일섬</span> : 대상에게 한 턴 뒤 최대{" "}
+          한 턴 뒤 최대{" "}
           <span
             className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
@@ -784,10 +783,23 @@ export const tooltipTemplates = {
           >
           {최대피해}
           </span>
-          의 피해를 입힙니다.<br />
-          적이 <span className="text-rose-500">출혈 상태</span>일 경우, 출혈 상태를 없앤 뒤,<br />
-          남은 출혈 피해를 대미지에 합산하고,<br />
-          총 피해의 50%를 <span className="text-rose-500">고정피해</span>로 입힙니다.
+          의 피해를 입히고{" "}
+          <span
+            className="text-indigo-500"
+            data-tooltip-id="tooltip-hit"
+            data-tooltip-html={`
+              <div style="font-size: 13px; line-height: 1.5;">
+                · 출혈: 2턴 지속<br />
+                · 출혈 피해: 10 + 레벨 × 5 = ${출혈피해}<br />
+              </div>
+            `}
+            data-tooltip-place="top"
+          >
+            출혈
+          </span>
+          을 부여합니다.<br />
+          적이 이미 <span className="text-indigo-500">출혈 상태</span>일 경우, 남은 출혈 대미지를 더한 뒤<br />
+          총 피해의 50%를 <span className="text-indigo-500">고정 피해</span>로 입힙니다.
 
         </div>
   
@@ -795,7 +807,7 @@ export const tooltipTemplates = {
           <span className="text-gray-700">[패시브 효과]</span><br />
           치명타 공격 시,{" "}
           <span
-            className="text-rose-500"
+            className="text-indigo-500"
             data-tooltip-id="tooltip-hit"
             data-tooltip-html={`
               <div style="font-size: 13px; line-height: 1.5;">
@@ -807,7 +819,7 @@ export const tooltipTemplates = {
             `}
             data-tooltip-place="top"
           >
-            출혈 상태이상🩸
+            출혈
           </span>
           을 부여합니다.
         </div>

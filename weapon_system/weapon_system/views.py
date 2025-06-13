@@ -130,7 +130,7 @@ def get_weapon_data(request, discord_username):
     if not weapon_data:
         return JsonResponse({"error": "Weapon data not found"}, status=404)
 
-    user_instance = CustomUser.objects.get(discord_username=discord_username)
+    #user_instance = CustomUser.objects.get(discord_username=discord_username)
 
 
     ref_base = db.reference(f"무기/기본 스탯")
@@ -202,7 +202,7 @@ def get_weapon_data(request, discord_username):
         name=weapon_data.get('이름'),
         weapon_type=weapon_data.get('무기타입'),
         
-        user = user_instance
+        #user = user_instance
     )
 
     # 강화 내역 처리

@@ -781,11 +781,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 else:
                     shield_amount = 0
 
-                
+                apply_status_for_turn(attacker, "출혈", 2, bleed_damage)
 
                 battle_embed.add_field(
                     name="일섬!",
-                    value=f"명중의 {accuracy_apply_rate}%를 공격력과 합산한 대미지를 입힙니다!\n",
+                    value=f"2턴간 출혈 부여!🩸\n",
                     inline=False
                 )
                 
@@ -796,8 +796,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     if '출혈' in attacker["Status"]:
                         del attacker["Status"]['출혈']
                     battle_embed.add_field(
-                        name="추가 피해!",
-                        value="출혈 상태의 적에게 추가 효과!\n남은 출혈 피해를 대미지에 합산하고, 총 피해의 50%를 고정피해로 입힙니다.",
+                        name="출혈 추가 효과!",
+                        value="남은 출혈 대미지를 더하고\n총 피해의 50%를 고정피해로 입힙니다.",
                         inline=False
                     )
                     explosion_message = f"(+🩸{explosion_damage} 대미지)"
@@ -852,7 +852,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 shield_amount = 0
                 
             attacker["HP"] -= bleed_damage
-            battle_embed.add_field(name="", value = f"출혈 상태로 인하여 {bleed_damage} 대미지를 받았습니다!{shield_message}", inline = False)
+            battle_embed.add_field(name="", value = f"출혈 상태로 인하여 {bleed_damage} 대미지를 받았습니다!\n{shield_message}", inline = False)
             battle_embed.add_field(name="남은 턴", value = f"출혈 상태 남은 턴 : {attacker['Status']['출혈']['duration']}", inline = False)
 
             if "보호막" in challenger['Status']:
@@ -903,7 +903,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 shield_amount = 0
                 
             attacker["HP"] -= burn_damage
-            battle_embed.add_field(name="", value = f"화상 상태로 인하여 {burn_damage} 대미지를 받았습니다!{shield_message}", inline = False)
+            battle_embed.add_field(name="", value = f"화상 상태로 인하여 {burn_damage} 대미지를 받았습니다!\n{shield_message}", inline = False)
             battle_embed.add_field(name="남은 턴", value = f"화상 상태 남은 턴 : {attacker['Status']['화상']['duration']}", inline = False)
 
             if "보호막" in challenger['Status']:
@@ -938,7 +938,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 
             attacker["HP"] -= posion_damage
-            battle_embed.add_field(name="", value = f"독 상태로 인하여 {posion_damage} 대미지를 받았습니다!{shield_message}", inline = False)
+            battle_embed.add_field(name="", value = f"독 상태로 인하여 {posion_damage} 대미지를 받았습니다!\n{shield_message}", inline = False)
             battle_embed.add_field(name="남은 턴", value = f"독 상태 남은 턴 : {attacker['Status']['독']['duration']}", inline = False)
 
             if "보호막" in challenger['Status']:
