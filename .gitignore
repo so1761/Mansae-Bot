@@ -28,3 +28,4 @@ weapon_system/db.sqlite3
 Cogs/battle_test_commands.py
 bot_test.py
 Cogs/battle2.py
+dice_result.py

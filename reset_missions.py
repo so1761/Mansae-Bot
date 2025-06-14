@@ -173,9 +173,14 @@ user_last_hp = {}
 for username, bosses in all_logs.items():
     total_damage = 0
     for boss_name, record in bosses.items():
-        total_damage += record.get("대미지", 0)
-        if "남은내구도" in record:
-            user_last_hp[username] = record["남은내구도"]
+        total_damage += record.get("대미지", 0)\
+        
+    # 보스 순서 역순으로 순회하면서 남은내구도 먼저 나오는 것 사용
+    for boss_name in reversed(today_bosses):
+        if boss_name in bosses and "남은내구도" in bosses[boss_name]:
+            user_last_hp[username]= bosses[boss_name]["남은내구도"]
+            break
+        
     if total_damage > 0:
         user_total_damage[username] = total_damage
 
