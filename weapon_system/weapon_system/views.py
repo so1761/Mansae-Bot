@@ -605,12 +605,12 @@ def enhance_weapon_batch(request):
         if available_parts <= 0:
             return JsonResponse({'error': '강화 재료가 부족합니다.'}, status=400)
 
-        if use_polish:
+        if use_polish_limit:
             polish_count = item_data.get("연마제", 0)
             if polish_count <= 0:
                 return JsonResponse({'error': '연마제가 부족합니다.'}, status=400)
 
-        if use_high_polish:
+        if use_high_polish_limit:
             special_polish_count = item_data.get("특수 연마제", 0)
             if special_polish_count <= 0:
                 return JsonResponse({'error': '특수 연마제가 부족합니다.'}, status=400)
