@@ -841,7 +841,6 @@ def enhance_weapon_batch(request):
         })
 
     except Exception as e:
-        weapon_data["강화"] = previous_enhancement  # 롤백
         return JsonResponse({'error': str(e)}, status=400)
 
 def get_skill_params(request, discord_username):
