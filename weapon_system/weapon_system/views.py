@@ -695,7 +695,7 @@ def enhance_weapon_batch(request):
         weapon_enhanced = weapon_data.get('강화', 0)
         if weapon_enhanced == 20:
             ref_mission = db.reference(f"미션/미션진행상태/{nickname}/시즌미션/연마")
-            mission_data = ref_mission.get()
+            mission_data = ref_mission.get() or {}
             mission_bool = mission_data.get('완료',False)
             if not mission_bool:
                 ref_mission.update({"완료": True})
@@ -816,6 +816,7 @@ def enhance_weapon_batch(request):
         })
 
     except Exception as e:
+        weapon_data["강화"] = previous_enhancement  # 롤백
         return JsonResponse({'error': str(e)}, status=400)
 
 def get_skill_params(request, discord_username):
