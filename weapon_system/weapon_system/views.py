@@ -478,7 +478,7 @@ def enhance_weapon(request):
                 # 시즌미션 : 연마(무기 20강 달성)
                 if weapon_enhanced + 1 == 20:
                     ref_mission = db.reference(f"미션/미션진행상태/{nickname}/시즌미션/연마")
-                    mission_data = ref_mission.get()
+                    mission_data = ref_mission.get() or {}
                     mission_bool = mission_data.get('완료',False)
                     if not mission_bool:
                         ref_mission.update({"완료": True})
