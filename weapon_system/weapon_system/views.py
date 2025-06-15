@@ -601,22 +601,27 @@ def enhance_weapon_batch(request):
         used_parts = used_polish = used_high_polish = 0
         logs = []
 
-        # 재료 부족 예외 처리
-        if available_parts <= 0:
-            return JsonResponse({'error': '강화 재료가 부족합니다.'}, status=400)
+        # 1. 선차감 (트랜잭션)
+        def reserve_materials(current):
+            if current is None:
+                raise Exception("인벤토리가 없습니다.")
 
-        if use_polish_limit:
-            polish_count = item_data.get("연마제", 0)
-            if polish_count <= 0:
-                return JsonResponse({'error': '연마제가 부족합니다.'}, status=400)
+            if current.get("강화재료", 0) < weapon_parts_limit:
+                raise Exception("강화재료 부족")
+            if current.get("연마제", 0) < use_polish_limit:
+                raise Exception("연마제 부족")
+            if current.get("특수 연마제", 0) < use_high_polish_limit:
+                raise Exception("특수 연마제 부족")
 
-        if use_high_polish_limit:
-            special_polish_count = item_data.get("특수 연마제", 0)
-            if special_polish_count <= 0:
-                return JsonResponse({'error': '특수 연마제가 부족합니다.'}, status=400)
-            
-        if current_enhancement >= 20:
-            return JsonResponse({'error': '이미 최고 강화입니다.'}, status=400)
+            current["강화재료"] -= weapon_parts_limit
+            current["연마제"] -= use_polish_limit
+            current["특수 연마제"] -= use_high_polish_limit
+            return current
+
+        try:
+            ref_item.transaction(reserve_materials)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
                 
         weapon_stats = {k: v for k, v in weapon_data.items() if k not in ["강화", "이름", "강화내역"]}
         while (current_enhancement < target_enhancement and 
@@ -671,13 +676,6 @@ def enhance_weapon_batch(request):
         # 로그 집계
         success_count = sum(1 for log in logs if log["success"])
         attempt_count = len(logs)
-
-        #최종 검증
-        item_data = ref_item.get() or {}
-        available_parts = item_data.get("강화재료", 0)
-        if available_parts - used_parts < 0: # 가진 재료보다 더 썼을 경우?
-            return JsonResponse({'error': '가진 재료보다 더 많은 강화를 하여 강화가 취소되었습니다'}, status=400)
-
 
         # 최종 강화 수치 및 인벤토리 반영
         ref_weapon.update({"강화": current_enhancement})
