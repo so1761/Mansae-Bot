@@ -843,6 +843,7 @@ def enhance_weapon_batch(request):
 
 
 @login_required
+@csrf_exempt
 def inherit_weapon(request):
     if request.method == 'POST':
         data = json.loads(request.body)

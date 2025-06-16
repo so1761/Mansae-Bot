@@ -53,6 +53,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+LOGIN_URL = '/login/'
+
 ROOT_URLCONF = "weapon_system.urls"
 
 CORS_ALLOWED_ORIGINS = [
