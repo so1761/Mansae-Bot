@@ -841,6 +841,153 @@ def enhance_weapon_batch(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
+
+@login_required
+def inherit_weapon(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        selected_weapon = data.get('selectedWeapon')
+        new_weapon_name = data.get('newWeaponName')
+        
+        user = request.user  # ✅ 여기가 핵심! 로그인한 유저 정보 자동 제공
+        
+        # 예: 유저의 무기 데이터 확인 및 계승 처리
+        print(f"{user.username}이(가) {selected_weapon}을(를) {new_weapon_name}(으)로 계승 요청")
+
+        chance = random.random()  # 0 ~ 1 사이 랜덤 값
+
+        if chance < 0.7:
+            inherit_type = "기본 스탯 증가"
+        else:
+            inherit_type = "기본 스킬 레벨 증가"
+
+        # inherit = weapon_data.get("계승", 0)
+        # inherit_log = weapon_data.get("계승 내역", {})
+
+        # # 🔹 기존 계승 내역 업데이트
+        # if inherit_type in inherit_log:
+        #     inherit_log[inherit_type] += 1
+        # else:
+        #     inherit_log[inherit_type] = 1
+
+        # # 🔹 강화 내역 가져오기
+        # nickname = interaction.user.name
+
+        # ref_enhancement_log = db.reference(f"무기/유저/{nickname}/강화내역")
+        # enhancement_log = ref_enhancement_log.get() or {}
+
+        # selected_options = []
+        # # 🔹 15강 이상이면 계승할 강화 옵션 선택
+        # current_upgrade_level = self.weapon_data.get("강화", 0)
+        # if current_upgrade_level > 15:
+        #     num_inherit_upgrades = current_upgrade_level - 15
+        #     weighted_options = []
+
+        #     for option, count in enhancement_log.items():
+        #         # 계승 가능 횟수만큼 옵션을 리스트에 추가 (가중치 방식)
+        #         weighted_options.extend([option] * count)
+
+        #     while len(selected_options) < num_inherit_upgrades and weighted_options:
+        #         option = random.choice(weighted_options)
+
+        #         # 해당 옵션의 계승 횟수가 제한보다 작으면 선택
+        #         if selected_options.count(option) < enhancement_log[option]:
+        #             selected_options.append(option)
+
+        #             # 이미 선택한 만큼 weighted_options에서도 줄여줘야 중복 방지
+        #             weighted_options.remove(option)
+        #         else:
+        #             # 만약 최대 횟수까지 이미 선택된 경우, 더는 뽑히지 않게
+        #             weighted_options = [o for o in weighted_options if o != option]
+
+        #     # 🔹 계승 내역에 추가
+        #     for option in selected_options:
+        #         # "추가강화" 키가 계승 내역에 존재하는지 확인하고 없으면 생성
+        #         if "추가강화" not in inherit_log:
+        #             inherit_log["추가강화"] = {}  # "추가강화"가 없다면 새로 생성
+
+        #         # 해당 옵션이 추가강화 내역에 있는지 확인
+        #         if option in inherit_log["추가강화"]:
+        #             inherit_log["추가강화"][option] += 1  # 이미 있다면 개수 증가
+        #         else:
+        #             inherit_log["추가강화"][option] = 1  # 없으면 1로 시작
+
+        # ref_weapon_base = db.reference(f"무기/기본 스탯")
+        # base_weapon_stats = ref_weapon_base.get() or {}
+
+        # base_stat_increase = inherit_log.get("기본 스탯 증가", 0) * 0.3
+        # base_weapon_stat = base_weapon_stats[self.selected_weapon_type]
+
+        # # 계승 내역에 각 강화 유형을 추가
+        # enhanced_stats = {}
+
+        # ref_weapon_enhance = db.reference(f"무기/강화")
+        # enhancement_options = ref_weapon_enhance.get() or {}
+        # # 계승 내역에서 각 강화 옵션을 확인하고, 해당 스탯을 강화 내역에 추가
+        # for enhancement_type, enhancement_data in inherit_log.items():
+        #     if enhancement_type == "추가강화":  # 추가강화 항목만 따로 처리
+        #         # "추가강화" 내역에서 각 강화 옵션을 확인
+        #         for option, enhancement_count in enhancement_data.items():
+        #             # 해당 옵션에 대한 stats를 업데이트
+        #             if option in enhancement_options:
+        #                 stats = enhancement_options[option]["stats"]
+        #                 # 강화된 수치를 적용
+        #                 for stat, increment in stats.items():
+        #                     if stat in enhanced_stats:
+        #                         enhanced_stats[stat] += increment * enhancement_count  # 강화 내역 수 만큼 적용
+        #                     else:
+        #                         enhanced_stats[stat] = increment * enhancement_count  # 처음 추가되는 stat은 그 값으로 설정
+
+        # new_enhancement_log = dict(Counter(selected_options))
+
+        # # 메시지 템플릿에 추가된 강화 내역을 포함
+        # enhancement_message = "\n강화 내역:\n"
+        # for option, count in new_enhancement_log.items():
+        #     enhancement_message += f"{option}: {count}회\n"
+
+        # if "추가강화" in inherit_log:
+        #     new_enhancement_log = Counter(inherit_log["추가강화"])  # 기존 내역 추가
+        
+        # basic_skill_levelup = inherit_log.get("기본 스킬 레벨 증가", 0)
+        
+        # basic_skills = ["속사", "기습", "강타", "헤드샷", "창격", "수확", "명상", "화염 마법", "냉기 마법", "신성 마법", "일섬"]
+        # skills = base_weapon_stat["스킬"]
+        # for skill_name in basic_skills:
+        #     if skill_name in skills:
+        #         skills[skill_name]["레벨"] += basic_skill_levelup
+
+        # new_weapon_data = {
+        #     "강화": 0,  # 기본 강화 값
+        #     "계승": inherit + 1,
+        #     "이름": new_weapon_name,
+        #     "무기타입": self.selected_weapon_type,
+        #     "공격력": base_weapon_stat["공격력"] + round(base_weapon_stat["공격력"] * base_stat_increase + enhanced_stats.get("공격력", 0)),
+        #     "스킬 증폭": base_weapon_stat["스킬 증폭"] + round(base_weapon_stat["스킬 증폭"] * base_stat_increase + enhanced_stats.get("스킬 증폭", 0)),
+        #     "내구도": base_weapon_stat["내구도"] + round(base_weapon_stat["내구도"] * base_stat_increase + enhanced_stats.get("내구도", 0)),
+        #     "방어력": base_weapon_stat["방어력"] + round(base_weapon_stat["방어력"] * base_stat_increase + enhanced_stats.get("방어력", 0)),
+        #     "스피드": base_weapon_stat["스피드"] + round(base_weapon_stat["스피드"] * base_stat_increase + enhanced_stats.get("스피드", 0)),
+        #     "명중": base_weapon_stat["명중"] + round(base_weapon_stat["명중"] * base_stat_increase + enhanced_stats.get("명중", 0)),
+        #     "치명타 대미지": base_weapon_stat["치명타 대미지"] + enhanced_stats.get("치명타 대미지", 0),
+        #     "치명타 확률": base_weapon_stat["치명타 확률"] + enhanced_stats.get("치명타 확률", 0),
+        #     "스킬": skills,
+        #     "강화내역": new_enhancement_log,
+        #     "계승 내역": inherit_log 
+        # }
+
+        # ref_weapon = db.reference(f"무기/유저/{nickname}")
+        # ref_weapon.update(new_weapon_data)
+
+        # await interaction.response.send_message(
+        #     f"[{self.weapon_data.get('이름', '이전 무기')}]의 힘을 계승한 **[{new_weapon_name}](🌟 +{inherit + 1})** 무기가 생성되었습니다!\n"
+        #     f"계승 타입: [{self.inherit_type}] 계승이 적용되었습니다!\n"
+        #     f"{enhancement_message}" 
+        # )
+        # 로직 수행 후 결과 리턴
+        return JsonResponse({
+            'inherit_reward': inherit_type,
+            'inherit_additional_enhance': { '공격 강화': 3 }
+        })
+
 def get_skill_params(request, discord_username):
     skill_name = request.GET.get('key')  # 프론트엔드에서 보내는 skill_tooltip_xxx
 

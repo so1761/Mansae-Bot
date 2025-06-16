@@ -2,44 +2,7 @@ import random
 from .battle_utils import calculate_accuracy, calculate_evasion_score
 from .status import apply_status_for_turn
 from .battle_utils import calculate_damage_reduction
-
-skill_emojis = {
-    "기습": "<:surprise:1380504593317888053>",
-    "화염 마법": "<:flare:1380503684567273552><:meteor:1380503739307393035>",
-    "플레어": "<:flare:1380503684567273552>",
-    "메테오": "<:meteor:1380503739307393035>",
-    "냉기 마법": "<:frost:1380504246436233226><:blizzard:1380504269823803392>",
-    "프로스트": "<:frost:1380504246436233226>",
-    "블리자드": "<:blizzard:1380504269823803392>",
-    "신성 마법": "<:bless:1380504375276867605><:judgement:1380504404263829565>",
-    "블레스": "<:bless:1380504375276867605>",
-    "저지먼트": "<:judgement:1380504404263829565>",
-    "명상": "<:meditation:1380504431992373431>",
-    "헤드샷": "<:headShot:1380504463516893235>",
-    "수확": "<:reap:1380504495720759399>",
-    "속사": "<:rapid_fire:1380504532043300904>",
-    "강타": "<:smash:1380504562766712893>",
-    "창격": "<:spearShot:1380512916406796358>",
-    "일섬": "<:issen:1382940302549192814>",
-    "동상": "<:braum_Q:1381436009539178536>",
-    "뇌진탕 펀치": "<:braum_P:1380505175973695538>",
-    "불굴": "<:braum_E:1380505187160035378>",
-    "빙하 균열": "<:braum_R:1380505216688062464>",
-    "이케시아 폭우": "<:kaisa_Q:1380505235503448176>",
-    "공허추적자": "<:kaisa_W:1380505250892480592>",
-    "두번째 피부": "<:kaisa_P:1380505278109454417>",
-    "고속충전": "<:kaisa_E:1380505268898631803>",
-    "사냥본능": "<:kaisa_R:1380505334707392693>",
-    "전선더미 방출": "<:siu_Q:1380505352025538601>",
-    "보호막": "<:siu_E:1380505365791244338>",
-    "전깃줄": "<:siu_R:1380505375412850698>",
-    "저주받은 바디": "<:cursed_body:1381440391106007070>",
-    "불꽃 펀치": "<:fire_punch:1381448312669868104>",
-    "병상첨병": "<:Hex:1381440966690607276>",
-    "섀도볼": "<:shadow_ball:1381447997501734932>",
-    "독찌르기": "<:poision_jab:1381448941874184272>",
-    "타이머": "⏱️"
-}
+from .skill_emoji import skill_emojis
 
 def invisibility(attacker, defender, evasion, skill_level, skill_data_firebase, mode = "buff"):
     if mode == "buff":
@@ -150,7 +113,7 @@ def headShot(attacker, defender, evasion, skill_level, skill_data_firebase):
         )
 
         # 장전 상태 부여
-        apply_status_for_turn(attacker, "장전", duration=1)
+        apply_status_for_turn(attacker, "장전", duration=1, source_id=defender['Id'])
         message += "1턴간 **장전** 상태가 됩니다."
 
     else:

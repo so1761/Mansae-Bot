@@ -30,5 +30,6 @@ urlpatterns = [
     path('api/item/<str:discord_username>/', views.get_items, name = 'get_items'),
     path("api/enhancement-info/", views.enhancement_info),
     path("api/enhance", views.enhance_weapon),
-    path("api/enhance_batch", views.enhance_weapon_batch)
+    path("api/enhance_batch", views.enhance_weapon_batch),
+    path("api/inherit",views.inherit_weapon)
 ]

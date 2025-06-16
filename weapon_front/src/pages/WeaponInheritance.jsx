@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from "../context/AuthContext";
 import { 
   ShieldAlert, 
   Sparkles, 
@@ -7,22 +8,10 @@ import {
   Gem, 
   Gift,
   ChevronsRight,
-  X
+  X,
+  RotateCcw
 } from 'lucide-react';
-
-// --- Mock Data: 실제로는 props로 이 데이터를 받아야 합니다. ---
-// 부모 컴포넌트로부터 weaponData를 전달받는다고 가정합니다.
-const mockWeaponData = {
-  name: "오래된 대검",
-  enhancements: {
-    attack_enhance: 10,
-    defense_enhance: 5,
-    speed_enhance: 2,
-    // 필요에 따라 다른 강화 수치 추가
-  },
-  // ... 기타 무기 데이터
-};
-// ----------------------------------------------------------------
+const baseUrl = process.env.REACT_APP_API_BASE_URL;
 
 // 드롭다운에 표시할 무기 목록
 const weaponOptions = [
@@ -39,17 +28,49 @@ const weaponOptions = [
 ];
 
 // 계승 불가 시 보여줄 컴포넌트
-const EligibilityWarning = ({ enhancementLevel }) => (
-    <div className="flex flex-col items-center justify-center text-center p-8 border-2 border-red-300 bg-red-50 rounded-lg shadow-md">
-        <ShieldAlert className="w-16 h-16 text-red-500 mb-4" />
-        <h2 className="text-2xl font-bold text-red-700">계승 불가!</h2>
-        <p className="text-lg text-red-600 mt-2">
-            무기 강화 단계가 15단계 이상일 때만 계승이 가능합니다.
-        </p>
-        <p className="text-md text-gray-500 mt-4">
-            현재 강화 단계: <span className="font-bold text-red-500">+{enhancementLevel}</span>
-        </p>
-    </div>
+const EligibilityWarning = ({ enhancementLevel, handleRefresh, isRefreshing }) => (
+  <div className="relative flex flex-col items-center justify-center text-center p-8 border-2 border-red-300 bg-red-50 rounded-lg shadow-md">
+    {/* 오른쪽 상단 새로고침 버튼 */}
+    <button
+      onClick={handleRefresh}
+      className="absolute top-2 right-2 p-2 bg-red-100 rounded-full shadow hover:bg-red-200 text-red-600 transition"
+      title="새로고침"
+    >
+      {isRefreshing ? (
+        <svg
+          className="animate-spin h-5 w-5 text-red-600"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          ></circle>
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v4l5-5-5-5v4a10 10 0 100 20v-2a8 8 0 01-8-8z"
+          ></path>
+        </svg>
+      ) : (
+        <RotateCcw className="h-5 w-5" />
+      )}
+    </button>
+
+    <ShieldAlert className="w-16 h-16 text-red-500 mb-4" />
+    <h2 className="text-2xl font-bold text-red-700">계승 불가!</h2>
+    <p className="text-lg text-red-600 mt-2">
+      무기 강화 단계가 15단계 이상일 때만 계승이 가능합니다.
+    </p>
+    <p className="text-md text-gray-500 mt-4">
+      현재 강화 단계: <span className="font-bold text-red-500">+{enhancementLevel}</span>
+    </p>
+  </div>
 );
 
 // 계승 진행 모달 컴포넌트
@@ -104,39 +125,66 @@ const InheritanceModal = ({ selectedWeapon, onConfirm, onCancel }) => {
 
 
 // 메인 계승 페이지 컴포넌트
-function WeaponInheritance({ weaponData }) {
+function WeaponInheritance({ weaponData, handleRefresh, isRefreshing}) {
     const [selectedWeapon, setSelectedWeapon] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // 총 강화 수치를 계산 (useMemo로 불필요한 재연산 방지)
-    const totalEnhancement = useMemo(() => {
-        if (!weaponData || !weaponData.enhancements) return 0;
-        return Object.values(weaponData.enhancements).reduce((sum, level) => sum + level, 0);
-    }, [weaponData]);
-
-    const enhancementToInherit = Math.max(0, totalEnhancement - 15);
-    const isEligible = totalEnhancement >= 15;
+    const enhancementLevel = weaponData.enhancements.enhancement_level || 0;
+    const enhancementToInherit = Math.max(0, enhancementLevel - 15);
+    const isEligible = enhancementLevel >= 15;
 
     const handleInheritClick = () => {
         setIsModalOpen(true);
     };
 
-    const handleModalConfirm = (newWeaponName) => {
+    const handleModalConfirm = async (newWeaponName) => {
         console.log(`계승 시작!`);
         console.log(`선택된 무기 타입: ${selectedWeapon}`);
         console.log(`새로운 무기 이름: ${newWeaponName}`);
-        
-        // 여기에 실제 계승 로직 API 호출
-        // 예: 70% 확률로 '기본 스탯 증가', 30% 확률로 '기본 스킬 레벨 증가' 보상 결정
-        const reward = Math.random() < 0.7 ? "기본 스탯 증가" : "기본 스킬 레벨 증가";
-        console.log(`계승 보상: ${reward}`);
-        
-        alert(`${newWeaponName}(으)로 계승이 완료되었습니다! 보상: ${reward}`);
-        setIsModalOpen(false);
+
+        try {
+            const response = await fetch(`${baseUrl}/api/inherit/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                // 필요 시 Authorization 헤더 추가
+                // 'Authorization': `Bearer ${yourToken}`
+            },
+            credentials: 'include', // 쿠키 기반 인증 시 필수
+            body: JSON.stringify({
+                selectedWeapon,
+                newWeaponName
+            }),
+            });
+
+            if (!response.ok) {
+            throw new Error('계승 요청 실패');
+            }
+
+            const result = await response.json();
+            const { inherit_reward, inherit_additional_enhance } = result;
+
+            console.log(`계승 보상: ${inherit_reward}`);
+            console.log('추가 강화:', inherit_additional_enhance);
+
+            // 예시 alert 메시지
+            let bonusText = Object.entries(inherit_additional_enhance)
+            .map(([key, value]) => `${key} +${value}`)
+            .join(', ');
+
+            alert(`${newWeaponName}(으)로 계승이 완료되었습니다!
+        보상: ${inherit_reward}
+        추가 강화: ${bonusText}`);
+
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error('계승 중 오류 발생:', error);
+            alert('계승에 실패했습니다. 다시 시도해주세요.');
+        }
     };
 
     if (!isEligible) {
-        return <EligibilityWarning enhancementLevel={totalEnhancement} />;
+        return <EligibilityWarning handleRefresh={handleRefresh} enhancementLevel={enhancementLevel} isRefreshing={isRefreshing}/>;
     }
 
     return (
@@ -148,13 +196,47 @@ function WeaponInheritance({ weaponData }) {
                     onCancel={() => setIsModalOpen(false)}
                 />
             )}
-            <div className="p-6 max-w-4xl mx-auto bg-white shadow-xl rounded-2xl">
+            <div className="p-6 max-w-4xl mx-auto bg-white shadow-xl rounded-2xl relative">
+                {/* 🔄 오른쪽 상단 새로고침 버튼 */}
+                <button
+                    onClick={handleRefresh}
+                    className="absolute top-4 right-4 p-2 bg-gray-100 rounded-full shadow hover:bg-indigo-100 text-indigo-600 transition"
+                    title="새로고침"
+                >
+                    {isRefreshing ? (
+                    <svg
+                        className="animate-spin h-5 w-5 text-indigo-600"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                    >
+                        <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        ></circle>
+                        <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v4l5-5-5-5v4a10 10 0 100 20v-2a8 8 0 01-8-8z"
+                        ></path>
+                    </svg>
+                    ) : (
+                    <RotateCcw className="h-5 w-5" />
+                    )}
+                </button>
+
                 <div className="text-center mb-8">
                     <Sparkles className="w-12 h-12 mx-auto text-indigo-500" />
                     <h1 className="text-4xl font-extrabold text-indigo-700 mt-2">
-                        <span className="text-yellow-400">+{totalEnhancement}</span>강 달성! 무기 계승
+                    <span className="text-yellow-400">+{enhancementLevel}</span>강 달성! 무기 계승
                     </h1>
-                    <p className="text-lg text-gray-600 mt-2">새로운 가능성을 향해 무기를 재탄생시키세요.</p>
+                    <p className="text-lg text-gray-600 mt-2">
+                    새로운 가능성을 향해 무기를 재탄생시키세요.
+                    </p>
                 </div>
 
                 {/* 계승 규칙 안내 */}
@@ -219,10 +301,78 @@ function WeaponInheritance({ weaponData }) {
 
 // 이 컴포넌트를 사용하는 예시 페이지
 export default function InheritancePage() {
-    // 실제로는 API를 통해 유저의 무기 데이터를 가져와야 합니다.
-    const [myWeapon] = useState(mockWeaponData);
+    const { isLoggedIn, user } = useAuth();
+    const [weaponData, setWeaponData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false); // 새로고침 중인지
+
+    const handleRefresh = async () => {
+        if (!user) return;
+        const discordUsername = user.discord_username;
+      
+        try {
+          setIsRefreshing(true);
+      
+          // 무기 정보
+          const weaponRes = await fetch(`${baseUrl}/api/weapon/${discordUsername}/`, {
+            credentials: "include",
+          });
+          const weaponData = await weaponRes.json();
+          setWeaponData(weaponData);
+          sessionStorage.setItem(`weapon_${discordUsername}`, JSON.stringify(weaponData));
+          sessionStorage.setItem(`weapon_${discordUsername}_time`, Date.now().toString());
+        } catch (error) {
+          console.error("데이터 새로고침 실패:", error);
+          alert("데이터 새로고침 중 오류가 발생했습니다.");
+        } finally {
+          setIsRefreshing(false);
+        }
+      };
+
+    useEffect(() => {
+        if (!isLoggedIn || !user) return;
+        fetchAllData(user.discord_username);
+      }, [isLoggedIn, user]);
+    
+    const fetchAllData = async (discordUsername) => {
+        try {
+          const now = Date.now();
+          // 무기 데이터
+          const weaponCacheKey = `weapon_${discordUsername}`;
+          const weaponCacheTimeKey = `weapon_${discordUsername}_time`;
+          const weaponTTL = 5 * 60 * 1000;
+          const weaponCached = sessionStorage.getItem(weaponCacheKey);
+          const weaponCachedTime = sessionStorage.getItem(weaponCacheTimeKey);
+    
+          if (weaponCached && weaponCachedTime && now - parseInt(weaponCachedTime) < weaponTTL) {
+            setWeaponData(JSON.parse(weaponCached));
+          } else {
+            const weaponRes = await fetch(`${baseUrl}/api/weapon/${discordUsername}/`, {
+              credentials: "include",
+            });
+            const weaponData = await weaponRes.json();
+            setWeaponData(weaponData);
+            sessionStorage.setItem(weaponCacheKey, JSON.stringify(weaponData));
+            sessionStorage.setItem(weaponCacheTimeKey, now.toString());
+          }
+    
+        } catch (err) {
+          console.error("데이터 불러오기 실패:", err);
+        } finally {
+          setLoading(false); // 무기 불러오기 완료 기준으로 사용 중이라면 여기만 처리
+        }
+    };
+
+    if (!isLoggedIn) {
+        return <p className="text-center text-indigo-600 font-semibold">로그인 후 이용 가능합니다.</p>;
+      }
+    
+    if (loading || !weaponData) {
+    return <p className="text-center text-gray-600">무기 정보 로딩 중...</p>;
+    }
+    
 
     return (
-        <WeaponInheritance weaponData={myWeapon} />
+        <WeaponInheritance weaponData={weaponData} handleRefresh={handleRefresh} isRefreshing={isRefreshing} />
     );
 }

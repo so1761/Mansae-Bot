@@ -1,4 +1,5 @@
 import random
+from .skill_emoji import skill_emojis
 
 STATUS_EMOJIS = {
     "빙결": "❄️",
@@ -7,12 +8,13 @@ STATUS_EMOJIS = {
     "기절": "💫",
     "독": "🫧",
     "둔화": "🐌",
-    "꿰뚫림": "<:spearShot:1380512916406796358>",
+    "꿰뚫림": skill_emojis['창격'],
     "침묵": "🔇",
     "은신": "🌫️",
-    "불굴": "<:braum_E:1380505187160035378>",
+    "불굴": skill_emojis['불굴'],
     "치유 감소": "❤️‍🩹",
-    "속박": "⛓️"
+    "속박": "⛓️",
+    "장전": skill_emojis['헤드샷']
 }
 
 SUBSCRIPT_MAP = {

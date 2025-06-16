@@ -162,7 +162,7 @@ def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebas
             result_message += skill_message
             if evasion:
                 # 스킬 쿨타임 적용
-                apply_status_for_turn(attacker, "장전", duration=1)
+                apply_status_for_turn(attacker, "장전", duration=1, source_id=defender['Id'])
                 return None, result_message, critical_bool
         elif skill_name == "명상":
             skill_message, damage= meditate(attacker,defender, skill_level, skill_data_firebase)

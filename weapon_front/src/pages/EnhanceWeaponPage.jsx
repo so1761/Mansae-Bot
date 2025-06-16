@@ -943,9 +943,14 @@ export default function EnhanceWeaponPage() {
                 </button>
                 <button
                   onClick={handleEnhanceBatch}
-                  className="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700"
+                  disabled={isEnhancing}
+                  className={`px-4 py-2 rounded text-white transition 
+                    ${isEnhancing 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-purple-600 hover:bg-purple-700'}
+                  `}
                 >
-                  연속 강화 실행
+                  {isEnhancing ? '강화 중...' : '연속 강화 실행'}
                 </button>
               </div>
             </div>
@@ -955,7 +960,13 @@ export default function EnhanceWeaponPage() {
         <EnhanceResultModal result={enhanceResult} onClose={closeModal} />
       )}
       {enhanceResultBatch && (
-        <EnhanceResultBatchModal resultData={enhanceResultBatch} onClose={() => setEnhanceResultBatch(null)} />
+        <EnhanceResultBatchModal
+          resultData={enhanceResultBatch}
+          onClose={() => {
+            setEnhanceResultBatch(null);       // 결과 모달 닫기
+            setShowEnhanceBatchModal(false);   // 상위 모달도 함께 닫기
+          }}
+        />
       )}
     </div>
   );

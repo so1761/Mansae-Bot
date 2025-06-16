@@ -707,7 +707,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         turn += 1
 
         if turn >= 30:
-            healban_amount = round((turn - 20) * 0.01,1)
+            healban_amount = min(1, round((turn - 20) * 0.01,1))
             apply_status_for_turn(attacker, "치유 감소", 1, healban_amount, source_id = attacker['Id'])
             apply_status_for_turn(defender, "치유 감소", 1, healban_amount, source_id = defender['Id'])
 
