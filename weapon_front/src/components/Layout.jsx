@@ -172,7 +172,7 @@ function Layout() {
                                         }`}
                                         onClick={() => setIsSidebarOpen(false)}
                                     >
-                                        계승[미구현]
+                                        계승
                                     </Link>
                                 </li>
                             </ul>

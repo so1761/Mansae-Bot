@@ -74,7 +74,7 @@ const EligibilityWarning = ({ enhancementLevel, handleRefresh, isRefreshing }) =
 );
 
 // 계승 진행 모달 컴포넌트
-const InheritanceModal = ({ selectedWeapon, onConfirm, onCancel }) => {
+const InheritanceModal = ({ selectedWeapon, onConfirm, onCancel, isSubmitting }) => {
     const [newWeaponName, setNewWeaponName] = useState("");
 
     const handleConfirm = () => {
@@ -99,7 +99,8 @@ const InheritanceModal = ({ selectedWeapon, onConfirm, onCancel }) => {
                     type="text"
                     value={newWeaponName}
                     onChange={(e) => setNewWeaponName(e.target.value)}
-                    placeholder="예: 영광의 불꽃 활"
+                    placeholder="예: 거대한 공포"
+                    maxLength={10}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 mb-6"
                 />
                 <div className="flex justify-end gap-3">
@@ -111,11 +112,11 @@ const InheritanceModal = ({ selectedWeapon, onConfirm, onCancel }) => {
                     </button>
                     <button
                         onClick={handleConfirm}
-                        disabled={!newWeaponName.trim()}
+                        disabled={!newWeaponName.trim() || isSubmitting}
                         className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
+                        >
                         <Sparkles className="w-5 h-5" />
-                        계승 완료
+                        {isSubmitting ? '처리 중...' : '계승 시작'}
                     </button>
                 </div>
             </div>
@@ -123,11 +124,39 @@ const InheritanceModal = ({ selectedWeapon, onConfirm, onCancel }) => {
     );
 };
 
+const InheritResultModal = ({ newWeaponName, inheritReward, inheritEnhance, onClose }) => {
+    const bonusText = Object.entries(inheritEnhance)
+      .map(([key, value]) => `${key} +${value}`)
+      .join(', ');
+  
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60"
+        onClick={onClose}
+      >
+        <div className="bg-white rounded-2xl p-8 shadow-2xl text-center animate-fade-in-up w-[90%] max-w-xl">
+          <div className="text-3xl font-bold text-yellow-600 mb-4">🌟 무기 계승 완료!</div>
+          <div className="text-xl font-semibold text-gray-800 mb-2">
+            [{newWeaponName}] 무기가 탄생했습니다!
+          </div>
+  
+          <div className="mt-4 text-left text-sm text-gray-700">
+            <div className="mb-2"><span className="font-bold">🎁 계승 보상:</span> {inheritReward}</div>
+            <div className="mb-2"><span className="font-bold">✨ 추가 강화:</span> {bonusText}</div>
+          </div>
+  
+          <div className="text-gray-500 text-sm mt-6">아무데나 클릭하여 닫기</div>
+        </div>
+      </div>
+    );
+  };
 
 // 메인 계승 페이지 컴포넌트
 function WeaponInheritance({ weaponData, handleRefresh, isRefreshing}) {
     const [selectedWeapon, setSelectedWeapon] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [inheritResult, setInheritResult] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const enhancementLevel = weaponData.enhancements.enhancement_level || 0;
     const enhancementToInherit = Math.max(0, enhancementLevel - 15);
@@ -138,10 +167,7 @@ function WeaponInheritance({ weaponData, handleRefresh, isRefreshing}) {
     };
 
     const handleModalConfirm = async (newWeaponName) => {
-        console.log(`계승 시작!`);
-        console.log(`선택된 무기 타입: ${selectedWeapon}`);
-        console.log(`새로운 무기 이름: ${newWeaponName}`);
-
+        setIsSubmitting(true); // 버튼 비활성화
         try {
             const response = await fetch(`${baseUrl}/api/inherit/`, {
             method: 'POST',
@@ -164,22 +190,19 @@ function WeaponInheritance({ weaponData, handleRefresh, isRefreshing}) {
             const result = await response.json();
             const { inherit_reward, inherit_additional_enhance } = result;
 
-            console.log(`계승 보상: ${inherit_reward}`);
-            console.log('추가 강화:', inherit_additional_enhance);
+            setInheritResult({
+                newWeaponName,
+                inheritReward: inherit_reward,
+                inheritEnhance: inherit_additional_enhance
+              });
+              
+            setIsModalOpen(false); // 기존 모달은 닫고 결과 모달은 새로 띄움
 
-            // 예시 alert 메시지
-            let bonusText = Object.entries(inherit_additional_enhance)
-            .map(([key, value]) => `${key} +${value}`)
-            .join(', ');
-
-            alert(`${newWeaponName}(으)로 계승이 완료되었습니다!
-        보상: ${inherit_reward}
-        추가 강화: ${bonusText}`);
-
-            setIsModalOpen(false);
         } catch (error) {
             console.error('계승 중 오류 발생:', error);
             alert('계승에 실패했습니다. 다시 시도해주세요.');
+        } finally{
+            setIsSubmitting(false);
         }
     };
 
@@ -194,6 +217,15 @@ function WeaponInheritance({ weaponData, handleRefresh, isRefreshing}) {
                     selectedWeapon={selectedWeapon}
                     onConfirm={handleModalConfirm}
                     onCancel={() => setIsModalOpen(false)}
+                    isSubmitting={isSubmitting}
+                />
+            )}
+            {inheritResult && (
+                <InheritResultModal
+                    newWeaponName={inheritResult.newWeaponName}
+                    inheritReward={inheritResult.inheritReward}
+                    inheritEnhance={inheritResult.inheritEnhance}
+                    onClose={() => setInheritResult(null)}
                 />
             )}
             <div className="p-6 max-w-4xl mx-auto bg-white shadow-xl rounded-2xl relative">
