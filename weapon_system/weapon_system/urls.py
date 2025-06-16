@@ -31,5 +31,5 @@ urlpatterns = [
     path("api/enhancement-info/", views.enhancement_info),
     path("api/enhance", views.enhance_weapon),
     path("api/enhance_batch", views.enhance_weapon_batch),
-    path("api/inherit",views.inherit_weapon)
+    path("api/inherit/",views.inherit_weapon)
 ]
