@@ -251,38 +251,6 @@ async def get_team_champion_embed(puuid, get_info_func=get_current_game_info):
 
     return embed
 
-async def mission_notice(name, mission, rarity):
-    channel = bot.get_channel(int(CHANNEL_ID))
-    
-    # 희귀도에 따라 임베드 색상과 제목 설정
-    color_map = {
-        "일반": discord.Color.light_gray(),
-        "희귀": discord.Color.blue(),
-        "에픽": discord.Color.purple(),
-        "전설": discord.Color.gold(),
-        "신화": discord.Color.dark_red(),
-        "히든": discord.Color.from_rgb(100,198,209)
-    }
-
-    title_map = {
-        "일반": "[일반] 미션 달성!",
-        "희귀": "[희귀] 미션 달성!",
-        "에픽": "[에픽] 미션 달성!",
-        "전설": "[전설] 미션 달성!",
-        "신화": "[신화] 미션 달성!",
-        "히든": "[히든] 미션 달성!"
-    }
-
-    color = color_map.get(rarity, discord.Color.light_gray())  # 기본 색상은 light_gray
-    title = title_map.get(rarity, "미션 달성!")
-
-    # 임베드 메시지 구성
-    userembed = discord.Embed(title=title, color=color)
-    userembed.add_field(name="", value=f"{name}님이 [{mission}] 미션을 달성했습니다!", inline=False)
-    
-    # 메시지 보내기
-    await channel.send(f"\n", embed=userembed)
-
 class MissionView(View):
     def __init__(self):
         super().__init__(timeout=None)

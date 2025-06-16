@@ -225,7 +225,10 @@ function WeaponInheritance({ weaponData, handleRefresh, isRefreshing}) {
                     newWeaponName={inheritResult.newWeaponName}
                     inheritReward={inheritResult.inheritReward}
                     inheritEnhance={inheritResult.inheritEnhance}
-                    onClose={() => setInheritResult(null)}
+                    onClose={() => {
+                        setInheritResult(null)
+                        handleRefresh();
+                    }}
                 />
             )}
             <div className="p-6 max-w-4xl mx-auto bg-white shadow-xl rounded-2xl relative">
