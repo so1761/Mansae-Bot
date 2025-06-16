@@ -853,7 +853,7 @@ def inherit_weapon(request):
         user = request.user  # ✅ 여기가 핵심! 로그인한 유저 정보 자동 제공
         
         # 예: 유저의 무기 데이터 확인 및 계승 처리
-        print(f"{user.username}이(가) {selected_weapon}을(를) {new_weapon_name}(으)로 계승 요청")
+        print(f"{user.discord_username}이(가) {selected_weapon}을(를) {new_weapon_name}(으)로 계승 요청")
 
         chance = random.random()  # 0 ~ 1 사이 랜덤 값
 
