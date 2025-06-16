@@ -987,7 +987,7 @@ def inherit_weapon(request):
                     "title": f"🌟 {new_weapon_name} 생성 완료!",
                     "description": (
                         f"🔹 **[{weapon_data.get('이름', '이전 무기')}]**의 힘을 계승한\n"
-                        f"**🌟 +{inherit + 1} {new_weapon_name}** 무기가 생성되었습니다!\n\n"
+                        f"**{new_weapon_name}** 무기가 생성되었습니다![🌟 +{inherit + 1}]\n\n"
                         f"계승 타입: `{inherit_type}`\n"
                         f"{enhancement_message}"
                     ),
@@ -1004,7 +1004,7 @@ def inherit_weapon(request):
         # 로직 수행 후 결과 리턴
         return JsonResponse({
             'inherit_reward': inherit_type,
-            'inherit_additional_enhance': new_enhancement_log
+            'inherit_additional_enhance': dict(Counter(selected_options))
         })
 
 def get_skill_params(request, discord_username):
