@@ -15,7 +15,7 @@ from collections import Counter
 from .battle import Battle
 from .battle_utils import get_user_insignia_stat, attack_weapons, skill_weapons, percent_insignias, insignia_items
 from .commands import mission_notice, give_item
-
+from .analyze import analyze_weapon_for_user, analyze_battle_matchup
 API_KEY = None
 
 ENHANCEMENT_CHANNEL = 1350434647149908070
@@ -3176,9 +3176,111 @@ class hello(commands.Cog):
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+    @app_commands.command(name="무기분석", description="AI가 당신의 무기를 분석하고 조언해줍니다.")
+    @app_commands.describe(질문="AI에게 궁금한 점을 구체적으로 질문할 수 있습니다. (선택 사항)")
+    async def analyze_my_weapon(self, interaction: discord.Interaction, 질문: str = None):
+        """
+        /무기분석 -> 일반적인 성장 방향 분석
+        /무기분석 질문:내가 무슨 무기로 계승하면 가장 셀까? -> 특정 질문에 대한 답변
+        """
+        
+        # 1. 사용자 닉네임과 질문 가져오기
+        nickname = interaction.user.name
+        user_query = 질문
+
+        # 2. AI 응답까지 시간이 걸리므로 '생각 중...' 상태로 전환
+        await interaction.response.defer()
+
+        try:
+            # 3. 비동기 분석 함수 호출 (이전과 동일)
+            analysis_result = await analyze_weapon_for_user(nickname=nickname, user_query=user_query)
+            
+            # 4. 결과 Embed 생성 (이전과 동일)
+            embed = discord.Embed(
+                title=f"📜 {nickname}님의 무기 분석 결과",
+                description=analysis_result,
+                color=discord.Color.blue()
+            )
+            if user_query:
+                embed.set_footer(text=f"질문: {user_query}")
+            else:
+                embed.set_footer(text="종합 성장 분석 리포트")
+
+            # --- 여기서부터 스레드 생성 및 전송 로직 ---
+
+            # 5. 명령어가 사용된 채널 객체 가져오기
+            channel = interaction.channel
+
+            # 6. 스레드 생성 (이름을 분석 내용에 맞게 변경)
+            analysis_thread = await channel.create_thread(
+                name=f"{interaction.user.display_name}님의 무기 AI 분석",
+                type=discord.ChannelType.public_thread
+            )
+
+            # 7. 생성된 스레드 안에 분석 결과(Embed) 전송
+            await analysis_thread.send(embed=embed)
+
+            # 8. 원래 채널에는 스레드가 생성되었음을 알리는 간단한 메시지 전송
+            #    interaction.followup.send는 defer에 대한 응답으로, 딱 한 번만 사용할 수 있습니다.
+            msg = await interaction.followup.send(
+                f"✅ 분석이 완료되었습니다!"
+            )
+            await msg.delete()
+
+        except Exception as e:
+            await interaction.followup.send(f"오류가 발생했습니다: {e}")
+
+    @app_commands.command(name="대결분석", description="AI가 지정한 상대방과의 대결을 분석하고 전략을 조언합니다.")
+    @app_commands.describe(상대방="분석할 상대방의 디스코드 닉네임입니다.")
+    async def predict_win_rate(self, interaction: discord.Interaction, 상대방: discord.Member):
+        
+        my_nickname = interaction.user.name
+        opponent_nickname = 상대방.name
+
+        # 자기 자신과의 대결은 방지
+        if my_nickname == opponent_nickname:
+            await interaction.response.send_message("자기 자신과의 승률은 예측할 수 없습니다!", ephemeral=True)
+            return
+
+        await interaction.response.defer() # '생각 중...' 메시지 표시
+
+        try:
+            # 새로 만든 2인 분석 함수 호출
+            analysis_result = await analyze_battle_matchup(
+                my_nickname=my_nickname,
+                opponent_nickname=opponent_nickname
+            )
+            
+            embed = discord.Embed(
+                title=f"⚔️ 전투 예측: {interaction.user.display_name} vs {상대방.display_name}",
+                description=analysis_result,
+                color=discord.Color.red()
+            )
+            embed.set_footer(text="AI 기반 전투 시뮬레이션 및 전략 분석")
+
+            channel = interaction.channel
+            # 6. 스레드 생성 (이름을 분석 내용에 맞게 변경)
+            analysis_thread = await channel.create_thread(
+                name=f"{interaction.user.display_name}님과 {상대방.display_name}의 전투 예측",
+                type=discord.ChannelType.public_thread
+            )
+
+            # 7. 생성된 스레드 안에 분석 결과(Embed) 전송
+            await analysis_thread.send(embed=embed)
+
+            # 8. 원래 채널에는 스레드가 생성되었음을 알리는 간단한 메시지 전송
+            #    interaction.followup.send는 defer에 대한 응답으로, 딱 한 번만 사용할 수 있습니다.
+            msg = await interaction.followup.send(
+                f"✅ 분석이 완료되었습니다!"
+            )
+            await msg.delete()
+
+
+        except Exception as e:
+            await interaction.followup.send(f"오류가 발생했습니다: {e}")
 async def setup(bot: commands.Bot) -> None:
-    # await bot.add_cog(
-    #     hello(bot),
-    #     guilds=[Object(id=298064707460268032)]
-    # )
-    await bot.add_cog(hello(bot))
+    await bot.add_cog(
+        hello(bot),
+        guilds=[Object(id=298064707460268032)]
+    )
+    #await bot.add_cog(hello(bot))
