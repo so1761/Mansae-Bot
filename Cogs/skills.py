@@ -329,7 +329,7 @@ def meditate(attacker, defender, skill_level,skill_data_firebase):
             attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 현재 쿨타임 감소
     attacker['명상'] = attacker.get("명상", 0) + 1 # 명상 스택 + 1 추가
     apply_status_for_turn(attacker,"보호막",1,shield_amount, source_id= defender['Id'])
-    message = f"**{skill_emojis['명상']}명상** 사용!(현재 명상 스택 : {attacker['명상']})\n 모든 스킬의 현재 쿨타임이 1턴 감소하고 1턴간 {shield_amount}의 보호막 생성!\n"
+    message = f"**{skill_emojis['명상']}명상** 사용!(현재 명상 스택 : {attacker['명상']})\n **가속**효과를 얻고 1턴간 보호막 생성!\n"
 
     skill_damage = 0
     return message,skill_damage
@@ -650,7 +650,7 @@ def fire_punch(attacker,defender,evasion,skill_level, skill_data_firebase):
             burn_damage = poison_jab_data['화상_대미지'] + poison_jab_data['레벨당_화상_대미지'] * skill_level
             apply_status_for_turn(defender,"화상",2, burn_damage)
             apply_status_for_turn(defender,"치유 감소", 2, 0.4)
-            message += f"화상 상태이상 2턴간 부여!(확률 : {round(cc_probability * 100)}%)"
+            message += f"화상 상태이상 2턴간 부여!(확률 : {round(cc_probability * 100)}%)\n"
 
     else:
         skill_damage = 0
@@ -660,4 +660,130 @@ def fire_punch(attacker,defender,evasion,skill_level, skill_data_firebase):
 def timer():
     skill_damage = 1000000
     message = f"타이머 종료!\n"
+    return message, skill_damage
+
+def summon_undead(attacker, skill_level, skill_data_firebase):
+    """
+    액티브 - 사령 소환
+    자신의 현재 내구도 15%를 소모하여 사령을 소환합니다.
+    사령은 소환사의 기본 스탯 50%를 가집니다.
+    """
+    # firebase에 정의하거나 여기에 하드코딩
+    necro_data = skill_data_firebase.get('사령 소환', {}).get('values', {})
+    hp_cost_ratio = necro_data.get('내구도_소모_비율', 0.15)
+    stat_inherit_ratio = necro_data.get('스탯_계승_비율', 0.5)
+
+    hp_cost = max(20, round(attacker['HP'] * hp_cost_ratio)) # 최소 20
+
+    if attacker['HP'] <= hp_cost:
+        return "내구도가 부족하여 사령을 소환할 수 없습니다!", 0
+
+    # 사령이 이미 존재하면 소환 불가
+    if 'Summon' in attacker:
+        return "이미 사령이 소환되어 있습니다!", 0
+
+    attacker['HP'] -= hp_cost
+
+    # 사령의 스탯은 소환사의 '기본(Base)' 스탯을 따릅니다.
+    summon_stats = {
+        'name': '사령',
+        'BaseHP': round(attacker['BaseHP'] * stat_inherit_ratio),
+        'HP': round(attacker['BaseHP'] * stat_inherit_ratio),
+        'Attack': round(attacker['BaseSpell'] *  stat_inherit_ratio), # 공격력은 스킬 증폭 기반
+        'Defense': round(attacker['BaseDefense'] * stat_inherit_ratio), # 기본 방어력 스탯이 필요합니다.
+        'Speed': round(attacker['BaseSpeed'] * stat_inherit_ratio),
+        'Accuracy': attacker['BaseAccuracy'], # 명중률은 그대로 계승
+        'Status': {}  # <<<<<<<< [핵심 추가] 사령의 상태이상 딕셔너리
+    }
+    
+    # 소환사 딕셔너리에 사령 정보 추가
+    attacker['Summon'] = summon_stats
+
+    # skill_emojis 딕셔너리가 있는 파일에 '사령 소환' 이모지 추가 권장
+    emoji = skill_emojis.get('사령 소환', '💀')
+    message = (
+        f"**{emoji}사령 소환** 사용! 자신의 내구도 **{hp_cost}**를 소모하여 사령을 소환합니다!\n"
+        f"사령 스탯: (HP: {summon_stats['HP']}, 공격력: {summon_stats['Attack']})\n"
+    )
+    
+    return message, 0 # 소환 자체는 피해를 주지 않음
+
+
+def curse(attacker, defender, evasion, skill_level, skill_data_firebase):
+    """
+    액티브 - 저주
+    스킬 증폭 비례 피해와 함께 [저주] 상태(공/방 감소)를 부여.
+    사령이 활성화되어 있으면 강화된 버전으로 발동.
+    """
+    curse_data = skill_data_firebase['저주']['values']
+    hp_cost_ratio = curse_data.get('내구도_소모_비율', 0.05) # DB에서 값 가져오기 (없으면 0.05)
+
+    # [추가] 내구도 코스트 계산 및 확인
+    hp_cost = round(attacker['HP'] * hp_cost_ratio)
+
+    # 최소 1의 내구도는 소모하도록 설정 (내구도 20 미만일 때 hp_cost가 0이 되는 것 방지)
+    hp_cost = max(1, hp_cost) 
+
+    if attacker['HP'] <= hp_cost:
+        skill_damage = 0
+        message = f"**{skill_emojis.get('저주', '💀')}저주** 시전 실패! 내구도가 부족합니다!\n"
+        # 중요: 스킬 시전 실패 시 쿨타임이 돌지 않도록 처리 필요
+        # use_skill 핸들러에서 쿨타임 처리를 조정해야 함
+        return message, skill_damage
+
+    # [추가] 스킬 시전 성공 시 내구도 소모
+    attacker['HP'] -= hp_cost
+    cost_message = f"내구도 **{hp_cost}**를 소모하여, "
+    if evasion:
+        skill_damage = 0
+        message = cost_message +  f"**{skill_emojis.get('저주', '💀')}저주**를 시전했지만 빗나갔습니다!\n"
+        return message, skill_damage
+
+    is_enhanced = 'Summon' in attacker and attacker.get('Summon')
+    
+    if is_enhanced:
+        # 강화된 저주 (사령 존재)
+        base_damage = curse_data['강화_기본_피해량'] + curse_data['강화_레벨당_피해량_증가'] * skill_level
+        skill_multiplier = curse_data['강화_기본_스킬증폭_계수'] + curse_data['강화_레벨당_스킬증폭_계수_증가'] * skill_level
+        
+        # [수정] 디버프 값을 딕셔너리로 저장
+        debuff_effects = {
+            'def_reduce': curse_data['강화_저주_방어력_감소율'],
+            'atk_reduce': curse_data['강화_저주_공격력_감소율']
+        }
+        duration = curse_data['저주_지속시간']
+
+        skill_damage = base_damage + attacker['Spell'] * skill_multiplier
+        # [수정] apply_status_for_turn에 딕셔너리를 값으로 전달
+        apply_status_for_turn(defender, "저주", duration, debuff_effects)
+        
+        message = (
+            cost_message +
+            f"**{skill_emojis.get('저주', '💀')}[사령의 낙인]** 시전!\n"
+            f"사령의 힘으로, 대상의 공격력이 **{int(debuff_effects['atk_reduce'] * 100)}%**, "
+            f"방어력이 **{int(debuff_effects['def_reduce'] * 100)}%** 감소합니다! ({duration}턴 지속)\n"
+        )
+    else:
+        # 일반 저주
+        base_damage = curse_data['기본_피해량'] + curse_data['레벨당_피해량_증가'] * skill_level
+        skill_multiplier = curse_data['기본_스킬증폭_계수'] + curse_data['레벨당_스킬증폭_계수_증가'] * skill_level
+        
+        # [수정] 디버프 값을 딕셔너리로 저장
+        debuff_effects = {
+            'def_reduce': curse_data['저주_방어력_감소율'],
+            'atk_reduce': curse_data['저주_공격력_감소율']
+        }
+        duration = curse_data['저주_지속시간']
+
+        skill_damage = base_damage + attacker['Spell'] * skill_multiplier
+        # [수정] apply_status_for_turn에 딕셔너리를 값으로 전달
+        apply_status_for_turn(defender, "저주", duration, debuff_effects)
+
+        message = (
+            cost_message +
+            f"**{skill_emojis.get('저주', '💀')}저주** 시전!\n"
+            f"대상의 공격력이 **{int(debuff_effects['atk_reduce'] * 100)}%**, "
+            f"방어력이 **{int(debuff_effects['def_reduce'] * 100)}%** 감소합니다! ({duration}턴 지속)\n"
+        )
+
     return message, skill_damage

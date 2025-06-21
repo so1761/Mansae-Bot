@@ -14,7 +14,8 @@ STATUS_EMOJIS = {
     "불굴": skill_emojis['불굴'],
     "치유 감소": "❤️‍🩹",
     "속박": "⛓️",
-    "장전": skill_emojis['헤드샷']
+    "장전": skill_emojis['헤드샷'],
+    "저주": "💀",
 }
 
 SUBSCRIPT_MAP = {
@@ -43,8 +44,10 @@ def format_status_effects(status_dict):
     return " ".join(result)
 
 def apply_status_for_turn(character, status_name, duration=1, value=None, source_id = None):
+    target_char = character.get('Summon') if 'Summon' in character and character.get('Summon') else character
+    
     debuffs_resistable = {
-        "hard_cc": ["기절", "침묵", "빙결"],
+        "hard_cc": ["기절", "침묵", "빙결", "저주"],
         "soft_cc": ["둔화", "출혈", "화상", "독", "속박"]
     }
 
@@ -65,35 +68,62 @@ def apply_status_for_turn(character, status_name, duration=1, value=None, source
     if source_id is None:
         source_id = character.get("Id", None)  # character의 id를 바로 꺼내서
 
-    if status_name not in character["Status"]:
-        character["Status"][status_name] = {"duration": duration}
+    if "Status" not in target_char:
+        target_char["Status"] = {}
+        
+    if status_name not in target_char["Status"]:
+        target_char["Status"][status_name] = {"duration": duration}
         if value is not None:
-            character["Status"][status_name]["value"] = value
+            target_char["Status"][status_name]["value"] = value
         if source_id is not None:
-            character["Status"][status_name]["source"] = source_id
+            target_char["Status"][status_name]["source"] = source_id
     else:
         if status_name in ["출혈", "화상"]:
-            character["Status"][status_name]["duration"] += duration
+            target_char["Status"][status_name]["duration"] += duration
         else:
-            if duration >= character["Status"][status_name]["duration"]:
-                character["Status"][status_name]["duration"] = duration
+            if duration >= target_char["Status"][status_name]["duration"]:
+                target_char["Status"][status_name]["duration"] = duration
         if value is not None:
-            current_value = character["Status"][status_name].get("value", None)
-            if current_value is None or value > current_value:
-                character["Status"][status_name]["value"] = value
+            # value가 딕셔너리인 경우 (e.g., 저주 스킬)
+            if isinstance(value, dict):
+                # 딕셔너리는 비교하지 않고, 항상 새로운 값으로 덮어씁니다.
+                target_char["Status"][status_name]["value"] = value
+            else:
+                # value가 숫자나 다른 타입인 경우 기존 로직 사용
+                current_value = target_char["Status"][status_name].get("value", None)
+                # 새로운 값이 더 강력할 때만 갱신 (None 이거나 더 클 때)
+                if current_value is None or value > current_value:
+                    target_char["Status"][status_name]["value"] = value
         if source_id is not None:
-            character["Status"][status_name]["source"] = source_id
+            target_char["Status"][status_name]["source"] = source_id
 
 def update_status(character, current_turn_id):
-    for status, data in list(character["Status"].items()):
-        # source가 없으면 기본으로 duration 감소
-        source = data.get("source", None)
-        # 내 턴이 아니고, 상태 부여자가 현재 턴 주체가 아니라면 감소
-        # 즉, 상대 턴일 때만 줄임
-        if source is None or source != current_turn_id:
-            character["Status"][status]["duration"] -= 1
-            if character["Status"][status]["duration"] <= 0:
-                del character["Status"][status]
+    """
+    캐릭터와 그 캐릭터의 소환수의 상태이상 지속시간을 모두 감소시킵니다.
+    """
+
+    # 내부 헬퍼 함수: 특정 캐릭터의 상태이상 지속시간을 감소시키는 로직
+    def _update_single_char_status(char):
+        if not char or "Status" not in char:
+            return
+
+        # .items()의 복사본을 만들어 순회 (원본 딕셔너리 수정 때문)
+        for status, data in list(char["Status"].items()):
+            source = data.get("source", None)
+            
+            # 상태이상 부여자의 턴이 아닐 때만 duration 감소
+            if source is None or source != current_turn_id:
+                char["Status"][status]["duration"] -= 1
+                if char["Status"][status]["duration"] <= 0:
+                    del char["Status"][status]
+
+    # 1. 본체의 상태이상을 업데이트합니다.
+    _update_single_char_status(character)
+
+    # 2. 만약 소환수가 존재하면, 소환수의 상태이상도 업데이트합니다.
+    if 'Summon' in character and character.get('Summon'):
+        summon_char = character['Summon']
+        _update_single_char_status(summon_char)
 
 def remove_status_effects(character, skill_data_firebase):
 
@@ -108,6 +138,7 @@ def remove_status_effects(character, skill_data_firebase):
     character["Attack"] = character["BaseAttack"]
     character["Accuracy"] = character["BaseAccuracy"]
     character["Speed"] = character["BaseSpeed"]
+    character["Defense"] = character["BaseDefense"]
     character["DamageEnhance"] = character["BaseDamageEnhance"]
     character["DefenseIgnore"] = character["BaseDefenseIgnore"]
     character["HealBan"] = 0
@@ -141,4 +172,17 @@ def remove_status_effects(character, skill_data_firebase):
         if reduce_amount > 1:
             reduce_amount = 1
         character["DamageReduction"] = reduce_amount
+
+    # --- 공/방 관련 디버프 ---
+    if "저주" in character["Status"]:
+        # [수정] value가 이제 딕셔너리
+        debuff_effects = character['Status']['저주']['value']
+        
+        # 각 키에서 값을 가져와 적용
+        def_reduce_ratio = debuff_effects.get('def_reduce', 0)
+        atk_reduce_ratio = debuff_effects.get('atk_reduce', 0)
+        
+        character['Defense'] *= (1 - def_reduce_ratio)
+        character['Attack'] *= (1 - atk_reduce_ratio) # 공격력 감소 적용
+
 

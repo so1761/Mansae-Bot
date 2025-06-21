@@ -167,8 +167,11 @@ def durability_bar(current, max_value, shield, bar_length=20):
     return result
 
 def show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent):
-    def name_with_effects(player):
-        effects_str = format_status_effects(player.get("Status", {}))
+    # ----- 내부 헬퍼 함수 (수정 없음) -----
+    def name_with_effects(player, custom_status=None):
+        # custom_status 인자가 있으면 그 status를, 없으면 player의 status를 사용
+        status_dict = custom_status if custom_status is not None else player.get("Status", {})
+        effects_str = format_status_effects(status_dict)
         return f"{player['name']} {effects_str}" if effects_str else player['name']
 
     def bar_for(player, is_raid, shield, is_opponent=False):
@@ -178,15 +181,40 @@ def show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent,
             max_hp = player['BaseHP']
         return durability_bar(player['HP'], max_hp, shield)
 
-    battle_embed.add_field(
-    name=name_with_effects(challenger),
-    value=f"**{bar_for(challenger, raid, shield_amount_challenger, is_opponent=False)}**",
-    inline=False
-    )
+    # 1. 도전자(Challenger) 정보 조립
+    challenger_name = name_with_effects(challenger)
+    challenger_value_text = f"**{bar_for(challenger, raid, shield_amount_challenger, is_opponent=False)}**"
+    
+    if 'Summon' in challenger and challenger.get('Summon'):
+        summon = challenger['Summon']
+        summon_bar = durability_bar(summon['HP'], summon['BaseHP'], 0)
+        
+        # [핵심 수정] 사령의 Status를 name_with_effects 함수에 전달
+        summon_name_with_effects = name_with_effects(summon, custom_status=summon.get('Status', {}))
+        
+        challenger_value_text += f"\n**{summon_name_with_effects}\n{summon_bar}**"
 
     battle_embed.add_field(
-        name=name_with_effects(opponent),
-        value=f"**{bar_for(opponent, raid, shield_amount_opponent, is_opponent=True)}**",
+        name=challenger_name,
+        value=challenger_value_text,
+        inline=False
+    )
+
+    # 2. 상대(Opponent) 정보 조립 (위와 동일한 로직)
+    opponent_name = name_with_effects(opponent)
+    opponent_value_text = f"**{bar_for(opponent, raid, shield_amount_opponent, is_opponent=True)}**"
+    
+    if 'Summon' in opponent and opponent.get('Summon'):
+        summon = opponent['Summon']
+        summon_bar = durability_bar(summon['HP'], summon['BaseHP'], 0)
+
+        # [핵심 수정] 사령의 Status를 name_with_effects 함수에 전달
+        summon_name_with_effects = name_with_effects(summon, custom_status=summon.get('Status', {}))
+
+        opponent_value_text += f"\n**{summon_name_with_effects}\n{summon_bar}**"
+    battle_embed.add_field(
+        name=opponent_name,
+        value=opponent_value_text,
         inline=False
     )
 
@@ -239,3 +267,18 @@ def generate_tower_weapon(floor: int):
         skill_data["레벨"] = enhancement_level // 10 + 1    
 
     return weapon_data
+
+def clear_debuffs(character):
+    """
+    캐릭터에게 걸린 모든 해로운 상태이상(디버프)을 제거합니다.
+    """
+    # 제거할 디버프 목록 (프로젝트에 맞게 추가/수정 가능)
+    debuff_list = ["저주", "출혈", "화상", "독", "꿰뚫림", "둔화", "침묵", "속박"]
+    
+    # 상태이상 딕셔너리의 복사본을 만들어 순회 (원본을 직접 수정하기 위함)
+    statuses_to_remove = [status for status in character.get("Status", {}).keys() if status in debuff_list]
+    
+    for status_name in statuses_to_remove:
+        del character["Status"][status_name]
+    
+    return len(statuses_to_remove) > 0 # 디버프가 하나라도 제거되었는지 여부를 반환

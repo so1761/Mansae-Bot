@@ -11,6 +11,76 @@ from .battle_utils import *
 from .skill_handler import process_all_skills, process_on_hit_effects, use_skill
 from .skills import *
 
+async def apply_and_process_damage(
+        source_char,       # 피해를 준 캐릭터
+        target_char,       # 피해를 받는 캐릭터
+        damage_amount,     # 총 피해량
+        embed,             # 메시지를 추가할 Embed 객체
+        is_critical,       # [추가] 치명타 여부 (True/False)
+        is_evaded,         # [추가] 회피 여부 (True/False)
+        damage_source_name # 피해 출처 이름 (로그용)
+    ):
+        """피해를 최종 적용하고 보호막/사령 분담을 처리하며, 직관적인 결과 메시지를 Embed에 추가합니다."""
+        
+        # 회피 시 즉시 종료
+        if is_evaded:
+            embed.add_field(name="", value=f"**회피!⚡️**", inline=False)
+            return target_char['HP'] <= 0
+
+        # 피해량이 0이면 메시지 없이 종료 (예: 버프 스킬만 사용)
+        if damage_amount <= 0:
+            return target_char['HP'] <= 0
+
+        remaining_damage = damage_amount
+        shield_message_part = ""
+        summon_message_part = ""
+        
+        # 1. 보호막 흡수
+        if remaining_damage > 0 and "보호막" in target_char['Status']:
+            shield = target_char['Status']['보호막']
+            damage_absorbed = min(remaining_damage, shield['value'])
+            shield['value'] -= damage_absorbed
+            remaining_damage -= damage_absorbed
+            if shield['value'] <= 0:
+                del target_char['Status']['보호막']
+            shield_message_part = f" 🛡️{damage_absorbed} 흡수!"
+            
+        # 2. 사령 흡수
+        if remaining_damage > 0 and 'Summon' in target_char and target_char.get('Summon'):
+            summon = target_char['Summon']
+            damage_absorbed = min(remaining_damage, summon['HP'])
+            summon['HP'] -= damage_absorbed
+            
+            # 사령 파괴 여부 확인
+            if summon['HP'] <= 0:
+                remaining_damage = 0 # 피해 완전 흡수
+                del target_char['Summon']
+                if "사령 소환" in target_char["Skills"]:
+                    cooldown = target_char["Skills"]["사령 소환"]["전체 쿨타임"]
+                    target_char["Skills"]["사령 소환"]["현재 쿨타임"] = cooldown
+                summon_message_part = f" 💀사령 소멸!({damage_absorbed} 흡수)"
+            else:
+                remaining_damage = 0 # 피해 완전 흡수
+                summon_message_part = f" 💀{damage_absorbed} 흡수"
+
+        # 3. 본체 피해 적용
+        target_char["HP"] -= remaining_damage
+        
+        # 4. 최종 메시지 조합 및 Embed에 추가
+        crit_text = "💥" if is_critical else ""
+        
+        # 본체에 피해가 들어갔거나, 아무것도 피해를 흡수하지 못했을 때만 피해량 표시
+        if remaining_damage > 0:
+            final_message = f"**{remaining_damage} 대미지!{crit_text}{shield_message_part}{summon_message_part}**"
+        # 보호막이나 사령이 모든 피해를 흡수했을 때
+        elif shield_message_part or summon_message_part:
+            final_message = f"**총 {damage_amount} 피해!{crit_text} →{shield_message_part}{summon_message_part}**"
+        else: # 예상치 못한 경우 기본 메시지
+            final_message = f"**{damage_amount} 대미지!{crit_text}**"
+
+        embed.add_field(name="", value=final_message, inline=False)
+        return target_char['HP'] <= 0
+
 async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = False, remain_HP = None, practice = False, tower = False, tower_floor = 1, simulate = False, skill_data = None, wdc = None, wdo = None, scd = None, insignia = None):
     weapon_battle_thread = None
     if simulate:
@@ -331,6 +401,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         "Attack": weapon_data_challenger.get("공격력", 0),
         "BaseAttack": weapon_data_challenger.get("공격력", 0),
         "Spell" : weapon_data_challenger.get("스킬 증폭", 0),
+        "BaseSpell" : weapon_data_challenger.get("스킬 증폭", 0),
         "CritChance": weapon_data_challenger.get("치명타 확률", 0),
         "BaseCritChance" : weapon_data_challenger.get("치명타 확률", 0),
         "CritDamage": weapon_data_challenger.get("치명타 대미지", 0),
@@ -350,6 +421,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         "Id": 0, # Id를 통해 도전자와 상대 파악 도전자 = 0, 상대 = 1
         "Accuracy": weapon_data_challenger.get("명중", 0),
         "BaseAccuracy": weapon_data_challenger.get("명중", 0),
+        "BaseDefense": weapon_data_challenger.get("방어력", 0),
         "Defense": weapon_data_challenger.get("방어력", 0),
         "Skills": challenger_merged_skills,
         "Status" : {}
@@ -385,6 +457,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         "Attack": weapon_data_opponent.get("공격력", 0),
         "BaseAttack": weapon_data_opponent.get("공격력", 0),
         "Spell" : weapon_data_opponent.get("스킬 증폭", 0),
+        "BaseSpell": weapon_data_opponent.get("스킬 증폭", 0),
         "CritChance": weapon_data_opponent.get("치명타 확률", 0),
         "BaseCritChance" : weapon_data_opponent.get("치명타 확률", 0),
         "CritDamage": weapon_data_opponent.get("치명타 대미지", 0),
@@ -404,6 +477,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         "Id" : 1, # Id를 통해 도전자와 상대 파악 도전자 = 0, 상대 = 1
         "Accuracy": weapon_data_opponent.get("명중", 0),
         "BaseAccuracy": weapon_data_opponent.get("명중", 0),
+        "BaseDefense": weapon_data_opponent.get("방어력", 0),
         "Defense": weapon_data_opponent.get("방어력", 0),
         "Skills": opponent_merged_skills,
         "Status" : {}
@@ -717,7 +791,6 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             if attacker["Status"]["일섬"]["duration"] == 1:
                 issen_data = skill_data_firebase['일섬']['values']
                 skill_level = defender['Skills']['일섬']['레벨']
-                accuracy_apply_rate = round((issen_data['기본_명중_반영_비율'] + issen_data['레벨당_명중_반영_비율'] * skill_level) * 100)
 
                 def calculate_damage(attacker,defender,multiplier):
                     evasion_score = calculate_evasion_score(defender["Speed"])
@@ -756,248 +829,200 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     return max(1, round(final_damage)), critical_bool, explosion_damage,bleed_explosion
 
                 bleed_damage = issen_data['출혈_대미지'] + issen_data['레벨당_출혈_대미지'] * skill_level
-                issen_damage, critical, explosion_damage, bleed_explosion = calculate_damage(defender,attacker,1)
-        
-                shield_message = ""
-                if attacker['Id'] == 0: # 도전자 공격
+                total_issen_damage, critical, explosion_damage, bleed_explosion = calculate_damage(defender, attacker, 1)
+
+                # 2. Embed 초기화 (오류 방지)
+                if attacker['Id'] == 0:
                     battle_embed = discord.Embed(title=f"{defender['name']}의 일섬!", color=discord.Color.red())
-                elif attacker['Id'] == 1: # 상대 공격
-                    battle_embed = discord.Embed(title=f"{defender['name']}의 일섬!", color=discord.Color.blue())
-                if "보호막" in attacker['Status']:
-                    shield_amount = attacker["Status"]["보호막"]["value"]
-                    if shield_amount >= issen_damage:
-                        attacker["Status"]["보호막"]["value"] -= issen_damage
-                        shield_message = f" 🛡️피해 {issen_damage} 흡수!"
-                        issen_damage = 0
-                    else:
-                        issen_damage -= shield_amount
-                        shield_message = f" 🛡️피해 {shield_amount} 흡수!"
-                        attacker["Status"]["보호막"]["value"] = 0
-                    if "보호막" in attacker["Status"] and attacker["Status"]["보호막"]["value"] <= 0: # 보호막이 0이 되면 삭제
-                        del attacker["Status"]["보호막"]
-
-                if "보호막" in attacker['Status']:
-                    shield_amount = attacker["Status"]["보호막"]["value"]
                 else:
-                    shield_amount = 0
+                    battle_embed = discord.Embed(title=f"{defender['name']}의 일섬!", color=discord.Color.blue())
 
+                # 3. 결과 메시지 생성 및 출력
                 apply_status_for_turn(attacker, "출혈", 2, bleed_damage)
-
-                battle_embed.add_field(
-                    name="일섬!",
-                    value=f"2턴간 출혈 부여!🩸\n",
-                    inline=False
-                )
+                battle_embed.add_field(name="일섬!", value="2턴간 출혈 부여!🩸\n", inline=False)
                 
-                attacker["HP"] -= issen_damage
                 crit_text = "💥" if critical else ""
                 explosion_message = ""
                 if bleed_explosion:
-                    if '출혈' in attacker["Status"]:
-                        del attacker["Status"]['출혈']
+                    if '출혈' in attacker["Status"]: del attacker["Status"]['출혈']
                     battle_embed.add_field(
                         name="출혈 추가 효과!",
                         value="남은 출혈 대미지를 더하고\n총 피해의 50%를 고정피해로 입힙니다.",
                         inline=False
                     )
                     explosion_message = f"(+🩸{explosion_damage} 대미지)"
-                battle_embed.add_field(name ="", value = f"**{issen_damage} 대미지!{crit_text}{explosion_message}{shield_message}**",inline = False)
-
-                if "보호막" in challenger['Status']:
-                    shield_amount_challenger = challenger["Status"]["보호막"]["value"]
-                else:
-                    shield_amount_challenger = 0
-
-                if "보호막" in opponent['Status']:
-                    shield_amount_opponent = opponent["Status"]["보호막"]["value"]
-                else:
-                    shield_amount_opponent = 0
                 
+                is_dead = await apply_and_process_damage(
+                    defender, attacker, total_issen_damage, battle_embed, critical, evasion, "일섬"
+                )
 
-                show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
+                # 5. 전투 현황 업데이트 및 종료 체크 (수정 없음)
+                shield_challenger = challenger["Status"].get("보호막", {}).get("value", 0)
+                shield_opponent = opponent["Status"].get("보호막", {}).get("value", 0)
+                show_bar(battle_embed, raid, challenger, shield_challenger, opponent, shield_opponent)
 
-                if attacker["HP"] <= 0:
+                if is_dead:
                     attacker["HP"] = 0
-                    result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
-                    if simulate:
-                        return result
+                    result = await end(attacker, defender, "defender", raid, simulate, winner_id=defender['Id'])
+                    if simulate: return result
                     break
                 else:
-                    if not simulate:
-                        await weapon_battle_thread.send(embed = battle_embed)
+                    if not simulate: await weapon_battle_thread.send(embed=battle_embed)
 
-        if "출혈" in attacker["Status"]:
-            bleed_damage = attacker["Status"]["출혈"]["value"]
-            shield_message = ""
-            if attacker['Id'] == 0: # 도전자 공격
-                battle_embed = discord.Embed(title=f"{attacker['name']}의 출혈!🩸", color=discord.Color.red())
-            elif attacker['Id'] == 1: # 상대 공격
-                battle_embed = discord.Embed(title=f"{attacker['name']}의 출혈!🩸", color=discord.Color.blue())
-            if "보호막" in attacker['Status']:
-                shield_amount = attacker["Status"]["보호막"]["value"]
-                if shield_amount >= bleed_damage:
-                    attacker["Status"]["보호막"]["value"] -= bleed_damage
-                    shield_message = f" 🛡️피해 {bleed_damage} 흡수!"
-                    bleed_damage = 0
-                else:
-                    bleed_damage -= shield_amount
-                    shield_message = f" 🛡️피해 {shield_amount} 흡수!"
-                    attacker["Status"]["보호막"]["value"] = 0
-                if "보호막" in attacker["Status"] and attacker["Status"]["보호막"]["value"] <= 0: # 보호막이 0이 되면 삭제
-                    del attacker["Status"]["보호막"]
+        async def process_turn_start_effects(
+            attacker, defender, raid, simulate, weapon_battle_thread, end_func,
+            challenger, opponent, turn # turn을 인자로 받아 sleep 시간 조절에 사용
+        ):
+            """
+            턴 시작 시 본체와 소환수의 모든 상태 효과(DoT, CC)를 처리하고,
+            본체의 행동 가능 여부를 반환합니다.
+            """
 
-            if "보호막" in attacker['Status']:
-                shield_amount = attacker["Status"]["보호막"]["value"]
-            else:
-                shield_amount = 0
+            async def _process_effects_for_char(char, is_summon=False):
+                """특정 캐릭터(char)의 DoT 및 CC 효과를 처리하는 내부 함수"""
+                # 1. 지속 피해(DoT) 처리
+                dot_effects = {
+                    "출혈": {"emoji": "🩸", "damage_type": "value"},
+                    "화상": {"emoji": "🔥", "damage_type": "value"},
+                    "독": {"emoji": "🫧", "damage_type": "percent_hp"}
+                }
+
+                for effect_name, props in dot_effects.items():
+                    if effect_name in char.get("Status", {}):
+                        
+                        char_name = "사령" if is_summon else char['name']
+                        total_dot_damage = 0
+                        if props["damage_type"] == "value":
+                            total_dot_damage = char["Status"][effect_name].get("value", 0)
+                        elif props["damage_type"] == "percent_hp":
+                            # 독은 항상 본체(attacker)의 HP를 기준으로 계산
+                            total_dot_damage = round(attacker['HP'] / 16) 
+
+                        if total_dot_damage <= 0: continue
+
+                        dot_embed = discord.Embed(
+                            title=f"{char_name}의 {effect_name}!{props['emoji']}",
+                            color=discord.Color.red() if attacker['Id'] == 0 else discord.Color.blue()
+                        )
+                        dot_embed.add_field(name="지속 효과", value=f"{effect_name} 상태로 효과가 발동합니다.", inline=False)
+                        
+                        # [수정] DoT 피해는 사령 자신에게 적용됨. apply_and_process_damage는 본체-사령 연계 로직이 있음
+                        # 따라서 사령에게는 직접 피해를 적용하고, 본체에게는 통합 함수 사용
+                        if is_summon:
+                            char['HP'] -= total_dot_damage
+                            dot_embed.add_field(name="", value=f"**{total_dot_damage}**의 지속 피해!", inline=False)
+                            is_dead = char['HP'] <= 0
+                        else:
+                            is_dead = await apply_and_process_damage(
+                                char, char, total_dot_damage, dot_embed,
+                                is_critical=False, is_evaded=False, damage_source_name=effect_name
+                            )
+
+                        # 남은 턴 메시지
+                        current_status = char.get("Status", {}).get(effect_name, {})
+                        remaining_duration = current_status.get('duration', 0)
+                        duration_message = f"{effect_name} 상태 남은 턴: {remaining_duration}" if remaining_duration > 0 else f"{effect_name} 효과가 소진되었습니다."
+                        dot_embed.add_field(name="남은 턴", value=duration_message, inline=False)
+                        
+
+                        shield_challenger = challenger["Status"].get("보호막", {}).get("value", 0)
+                        shield_opponent = opponent["Status"].get("보호막", {}).get("value", 0)
+                        show_bar(dot_embed, raid, challenger, shield_challenger, opponent, shield_opponent)
+
+                        if not simulate: await weapon_battle_thread.send(embed=dot_embed)
                 
-            attacker["HP"] -= bleed_damage
-            battle_embed.add_field(name="", value = f"출혈 상태로 인하여 {bleed_damage} 대미지를 받았습니다!\n{shield_message}", inline = False)
-            battle_embed.add_field(name="남은 턴", value = f"출혈 상태 남은 턴 : {attacker['Status']['출혈']['duration']}", inline = False)
+                        if is_dead:
+                            if is_summon:
+                                if "사령 소환" in attacker["Skills"]:
+                                    cooldown = attacker["Skills"]["사령 소환"]["전체 쿨타임"]
+                                    attacker["Skills"]["사령 소환"]["현재 쿨타임"] = cooldown
+                                # 사령이 죽었으면 딕셔너리에서 제거
+                                del attacker['Summon'] 
+                                # 본체 전투는 계속되므로 루프를 계속함
+                                
+                            else: # 본체가 죽었으면 전투 종료
+                                char["HP"] = 0
+                                result = await end_func(
+                                    char,            # 사망자 (attacker 자신)
+                                    defender,        # 생존자 (상대방)
+                                    "defender",      # 승자
+                                    raid,            # raid 여부
+                                    simulate,        # simulate 여부
+                                    winner_id=defender['Id'] # 승자 ID
+                                )
+                                return "ended", result # 전투 종료 신호
 
-            if "보호막" in challenger['Status']:
-                shield_amount_challenger = challenger["Status"]["보호막"]["value"]
-            else:
-                shield_amount_challenger = 0
-
-            if "보호막" in opponent['Status']:
-                shield_amount_opponent = opponent["Status"]["보호막"]["value"]
-            else:
-                shield_amount_opponent = 0
-
-            show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
-
-            if attacker["HP"] <= 0:
-                attacker["HP"] = 0
-                result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
-                if simulate:
-                    return result
-                break
-            else:
-                if not simulate:
-                    await weapon_battle_thread.send(embed = battle_embed)
-
-        if "화상" in attacker["Status"]:
-            burn_damage = attacker["Status"]["화상"]["value"]
-            shield_message = ""
-            if attacker['Id'] == 0: # 도전자 공격
-                battle_embed = discord.Embed(title=f"{attacker['name']}의 화상!🔥", color=discord.Color.red())
-            elif attacker['Id'] == 1: # 상대 공격
-                battle_embed = discord.Embed(title=f"{attacker['name']}의 화상!🔥", color=discord.Color.blue())
-            if "보호막" in attacker['Status']:
-                shield_amount = attacker["Status"]["보호막"]["value"]
-                if shield_amount >= burn_damage:
-                    attacker["Status"]["보호막"]["value"] -= burn_damage
-                    shield_message = f" 🛡️피해 {burn_damage} 흡수!"
-                    burn_damage = 0
-                else:
-                    burn_damage -= shield_amount
-                    shield_message = f" 🛡️피해 {burn_damage} 흡수!"
-                    attacker["Status"]["보호막"]["value"] = 0
-                if "보호막" in attacker["Status"] and attacker["Status"]["보호막"]["value"] <= 0: # 보호막이 0이 되면 삭제
-                    del attacker["Status"]["보호막"]
-
-            if "보호막" in attacker['Status']:
-                shield_amount = attacker["Status"]["보호막"]["value"]
-            else:
-                shield_amount = 0
+                # 2. 행동 불가(CC) 처리 (수정 없음, 단 turn 인자 사용)
+                cc_effects = {
+                    "기절": {"emoji": "💫"},
+                    "빙결": {"emoji": "❄️"}
+                }
                 
-            attacker["HP"] -= burn_damage
-            battle_embed.add_field(name="", value = f"화상 상태로 인하여 {burn_damage} 대미지를 받았습니다!\n{shield_message}", inline = False)
-            battle_embed.add_field(name="남은 턴", value = f"화상 상태 남은 턴 : {attacker['Status']['화상']['duration']}", inline = False)
+                for effect_name, props in cc_effects.items():
+                    if effect_name in char.get("Status", {}):
+                        char_name = "사령" if is_summon else char['name']
+                        
+                        # 메시지만 출력하는 용도
+                        cc_embed = discord.Embed(
+                            title=f"{char_name}의 상태!⚔️", # 대상의 이름 사용
+                            color=discord.Color.orange() # 경고/상태이상을 나타내는 색
+                        )
+                        cc_embed.add_field(
+                            name="행동 불가!",
+                            value=f"{char_name}이(가) {effect_name}{props['emoji']} 상태이상으로 묶여있습니다!\n남은 턴: {char['Status'][effect_name]['duration']}",
+                            inline=False
+                        )
+                        
+                        # '장전' 상태는 본체(attacker)에만 존재하므로, is_summon이 아닐 때만 체크
+                        if not is_summon and "장전" in char["Status"]:
+                            char["Status"]["장전"]["duration"] += 1
 
-            if "보호막" in challenger['Status']:
-                shield_amount_challenger = challenger["Status"]["보호막"]["value"]
-            else:
-                shield_amount_challenger = 0
-
-            if "보호막" in opponent['Status']:
-                shield_amount_opponent = opponent["Status"]["보호막"]["value"]
-            else:
-                shield_amount_opponent = 0
-
-            show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
-
-            if attacker["HP"] <= 0:
-                attacker["HP"] = 0
-                result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
-                if simulate:
-                    return result
-                break
-            else:
-                if not simulate:
-                    await weapon_battle_thread.send(embed = battle_embed)
-
-        if "독" in attacker["Status"]:
-            posion_damage = round(attacker['HP'] / 16)
-            shield_message = ""
-            if attacker['Id'] == 0: # 도전자 공격
-                battle_embed = discord.Embed(title=f"{attacker['name']}의 독!🫧", color=discord.Color.red())
-            elif attacker['Id'] == 1: # 상대 공격
-                battle_embed = discord.Embed(title=f"{attacker['name']}의 독!🫧", color=discord.Color.blue())
-
+                        if not simulate:
+                            await weapon_battle_thread.send(embed=cc_embed)
                 
-            attacker["HP"] -= posion_damage
-            battle_embed.add_field(name="", value = f"독 상태로 인하여 {posion_damage} 대미지를 받았습니다!\n{shield_message}", inline = False)
-            battle_embed.add_field(name="남은 턴", value = f"독 상태 남은 턴 : {attacker['Status']['독']['duration']}", inline = False)
+                    return "can_act", None # 기본적으로 행동 가능
 
-            if "보호막" in challenger['Status']:
-                shield_amount_challenger = challenger["Status"]["보호막"]["value"]
-            else:
-                shield_amount_challenger = 0
+            # --- 메인 로직 시작 ---
+    
+            # 1. 사령이 있다면, 사령의 효과부터 먼저 처리
+            if 'Summon' in attacker and attacker.get('Summon'):
+                summon = attacker['Summon']
+                status, result = await _process_effects_for_char(summon, is_summon=True)
+                # 사령의 효과 처리 중 본체가 죽는 경우는 없으므로, 'ended'는 체크하지 않음
+                
+            # 2. 본체의 효과 처리
+            status, result = await _process_effects_for_char(attacker)
+            if status == "ended":
+                return "ended", result
 
-            if "보호막" in opponent['Status']:
-                shield_amount_opponent = opponent["Status"]["보호막"]["value"]
-            else:
-                shield_amount_opponent = 0
+            # 3. 본체의 행동 가능 여부 최종 결정
+            # 본체 또는 사령에게 행동 불가 CC가 걸려 있는지 확인
+            # (규칙 변경: 사령이 CC에 걸리면 본체는 행동 가능, 본체가 걸리면 행동 불가)
+            for effect_name in ["기절", "빙결"]:
+                if effect_name in attacker.get("Status", {}):
+                    return "cc_active", None # 본체가 행동 불가
+
+            return "can_act", None # 모든 검사를 통과하면 행동 가능
+
+        # [ 여기가 핵심 수정 부분 ]
+        # 새로 만든 함수를 호출하여 턴 시작 효과를 통합 처리
+        action_status, result = await process_turn_start_effects(
+            attacker, defender, raid, simulate, weapon_battle_thread, end,
+            challenger, opponent, turn
+        )
+
+        # 전투가 끝났으면 루프 종료
+        if action_status == "ended":
+            if simulate: return result
+            break # while 루프 종료
             
-            show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
-
-            if attacker["HP"] <= 0:
-                attacker["HP"] = 0
-                result = await end(attacker,defender,"defender",raid,simulate,winner_id = defender['Id'])
-                if simulate:
-                    return result
-                break
-            else:
-                if not simulate:
-                    await weapon_battle_thread.send(embed = battle_embed)
-
-        if "기절" in attacker["Status"]: # 기절 상태일 경우 바로 턴을 넘김
-            # 공격자와 방어자 변경
-            battle_embed = discord.Embed(title=f"{attacker['name']}의 턴!⚔️", color=discord.Color.blue())
-            battle_embed.add_field(name="행동 불가!", value = f"기절 상태이상으로 인해 행동할 수 없습니다!\n기절 상태 남은 턴 : {attacker['Status']['기절']['duration']}", inline = False)
-            if "장전" in attacker["Status"]:  # 장전이 있는지 확인
-                attacker["Status"]["장전"]["duration"] += 1
-            remove_status_effects(attacker, skill_data_firebase)
+        # 행동 불가(CC) 상태이면 다음 턴으로
+        if action_status == "cc_active":
+            remove_status_effects(attacker, skill_data_firebase) # 스탯 재계산은 필수
             update_status(attacker, current_turn_id=attacker["Id"])
             update_status(defender, current_turn_id=attacker["Id"])
-            attacker, defender = defender, attacker
-            if not simulate:
-                await weapon_battle_thread.send(embed = battle_embed)
-                if turn >= 30:
-                    await asyncio.sleep(1)
-                else:
-                    await asyncio.sleep(2)  # 턴 간 딜레이
-            continue
-                
-        if "빙결" in attacker["Status"]: # 빙결 상태일 경우 바로 턴을 넘김
-            # 공격자와 방어자 변경
-            battle_embed = discord.Embed(title=f"{attacker['name']}의 턴!⚔️", color=discord.Color.blue())
-            battle_embed.add_field(name="행동 불가!", value = f"빙결 상태이상으로 인해 행동할 수 없습니다!❄️\n빙결 상태 남은 턴 : {attacker['Status']['빙결']['duration']}", inline = False)
-            if "장전" in attacker["Status"]:  # 장전이 있는지 확인
-                attacker["Status"]["장전"]["duration"] += 1
-            remove_status_effects(attacker, skill_data_firebase)
-            update_status(attacker, current_turn_id=attacker["Id"])
-            update_status(defender, current_turn_id=attacker["Id"])
-            attacker, defender = defender, attacker
-            if not simulate:
-                await weapon_battle_thread.send(embed = battle_embed)
-                if turn >= 30:
-                    await asyncio.sleep(1)
-                else:
-                    await asyncio.sleep(2)  # 턴 간 딜레이
-            continue
+            attacker, defender = defender, attacker # 턴 넘기기
+            continue # while 루프의 다음 반복으로
 
         # 가속 확률 계산 (스피드 5당 1% 확률)
         speed = attacker.get("Speed", 0)
@@ -1061,155 +1086,123 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                 defender['evaded'] = True
 
         reloading = False
-        if "장전" in attacker['Status']: 
+        if "장전" in attacker['Status']:
             result_message += f"장전 중! ({attacker['Status']['장전']['duration']}턴 남음!)\n"
-            # 장전 상태일 경우 공격 불가
             reloading = True
         
+        # 1. Embed 기본틀 생성
+        # 스킬 사용 여부에 따라 제목/색상은 아래에서 변경됨
         battle_embed = discord.Embed(title=f"{attacker['name']}의 공격!⚔️", color=discord.Color.blue())
         
-        
+        # 2. 스킬 사용 여부 결정 (가속 효과는 result_message에 먼저 추가됨)
         skill_message, used_skill, skill_attack_names, cooldown_messages = process_all_skills(
             attacker, defender, slienced, evasion, attacked,
             skill_data_firebase
         )
-
         result_message += skill_message
 
-        # 공격 처리
-        if skill_attack_names: # 공격 스킬 사용 시
+        # 3. 피해량 계산 (스킬/기본공격 분기 처리)
+        total_damage = 0
+        critical = False # 치명타 여부 추적
+        
+        if skill_attack_names:
+            # 스킬 공격
             battle_embed.title = f"{attacker['name']}의 스킬 사용!⚔️"
-            if attacker['Id'] == 0: # 도전자 공격
-                battle_embed.color = discord.Color.blue()
-            elif attacker['Id'] == 1: # 상대 공격
-                battle_embed.color = discord.Color.red()
-            damage, critical, dist, evade, skill_message = await attack(attacker, defender, evasion, reloading, skill_attack_names)
+            if attacker['Id'] == 1: battle_embed.color = discord.Color.red()
+            
+            # attack 함수는 이제 순수 피해량만 계산
+            total_damage, critical, _, _, skill_message = await attack(attacker, defender, evasion, reloading, skill_attack_names)
             result_message += skill_message
-        else: # 일반 공격 시
-            battle_embed.title = f"{attacker['name']}의 공격!⚔️"
-            if attacker['Id'] == 0: # 도전자 공격
-                battle_embed.color = discord.Color.blue()
-            elif attacker['Id'] == 1: # 상대 공격
-                battle_embed.color = discord.Color.red() 
-            damage, critical, dist, evade, skill_message = await attack(attacker, defender, evasion, reloading, skill_attack_names)
-            result_message += skill_message
+        else:
+            # 일반 공격
+            if attacker['Id'] == 1: battle_embed.color = discord.Color.red()
 
+            # attack 함수는 이제 순수 피해량만 계산
+            total_damage, critical, _, _, skill_message = await attack(attacker, defender, evasion, reloading, None)
+            result_message += skill_message
+            
+        # 4. 적중 시 효과 처리 (뇌진탕, 불굴 등)
         if attacked:
-            result_message, used_skill = process_on_hit_effects(
-                attacker, defender, evasion, critical, skill_attack_names, used_skill, result_message,
+            hit_effects_message, used_skill_on_hit = process_on_hit_effects(
+                attacker, defender, evasion, critical, skill_attack_names, [], result_message,
                 skill_data_firebase, battle_embed
             )
-        
-        if skill_attack_names or attacked: # 공격시 상대의 빙결 상태 해제
-            if skill_attack_names != ['명상'] and not evasion: # 명상만 썼을 경우, 회피했을 경우 제외!
-                if '빙결' in defender['Status']:
-                    del defender['Status']['빙결']
-                    battle_embed.add_field(name="❄️빙결 상태 해제!", value = f"공격을 받아 빙결 상태가 해제되었습니다!\n")
+            used_skill.extend(used_skill_on_hit)
 
-        # 강인함 로그 처리 - attacker, defender 모두 포함
-        for char in (attacker, defender):
-            logs = char.get("Log", [])
-            if logs:
-                result_message += "\n".join(logs) + "\n"
-                char["Log"].clear()  # 로그 초기화
-
+        # 5. 모든 텍스트 메시지를 Embed에 정리하여 추가
         if cooldown_messages:
-            final_cooldown_text = "⏳:" + " ".join(cooldown_messages)
-            result_message += final_cooldown_text + "\n"
-
-        # 공격 후, 각 스킬의 현재 쿨타임을 감소시키는 부분
-        for skill, cooldown_data in attacker["Skills"].items():
-            if cooldown_data["현재 쿨타임"] > 0 and skill not in used_skill:
-                attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 현재 쿨타임 감소
-
-        if skill_attack_names:
-            crit_text = "💥" if critical else ""
-            evade_text = "회피!⚡️" if evade else ""
-            distance_text = "🎯" if dist else ""
-
-            shield_message = ""
-            battle_embed.add_field(name="스킬", value = result_message.rstrip("\n"), inline = False)
-            if "보호막" in defender['Status']:
-                shield_amount = defender["Status"]["보호막"]["value"]
-                if shield_amount >= damage:
-                    defender["Status"]["보호막"]["value"] -= damage
-                    shield_message = f" 🛡️피해 {damage} 흡수!"
-                    damage = 0
-                else:
-                    damage -= shield_amount
-                    shield_message = f" 🛡️피해 {shield_amount} 흡수!"
-                    defender["Status"]["보호막"]["value"] = 0
-                if "보호막" in defender["Status"] and defender["Status"]["보호막"]["value"] <= 0: # 보호막이 0이 되면 삭제
-                    del defender["Status"]["보호막"]
-
-            if "보호막" in defender['Status']:
-                shield_amount = defender["Status"]["보호막"]["value"]
-            else:
-                shield_amount = 0
-
-            battle_embed.add_field(name ="", value = f"**{evade_text}{distance_text} {damage} 대미지!{crit_text}{shield_message}**",inline = False)
-            defender["HP"] -= damage
-
-            if "보호막" in challenger['Status']:
-                shield_amount_challenger = challenger["Status"]["보호막"]["value"]
-            else:
-                shield_amount_challenger = 0
-
-            if "보호막" in opponent['Status']:
-                shield_amount_opponent = opponent["Status"]["보호막"]["value"]
-            else:
-                shield_amount_opponent = 0
-
-            show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
-        else:
-            # 크리티컬 또는 회피 여부에 따라 메시지 추가
-            crit_text = "💥" if critical else ""
-            evade_text = "회피!⚡️" if evade else ""
-            distance_text = "🎯" if dist else ""
-
-            shield_message = ""
-            battle_embed.add_field(name="스킬", value = result_message.rstrip("\n"), inline = False)
-            if "보호막" in defender['Status']:
-                shield_amount = defender["Status"]["보호막"]["value"]
-                if shield_amount >= damage:
-                    defender["Status"]["보호막"]["value"] -= damage
-                    shield_message = f" 🛡️피해 {damage} 흡수!"
-                    damage = 0
-                else:
-                    damage -= shield_amount
-                    shield_message = f" 🛡️피해 {shield_amount} 흡수!"
-                    defender["Status"]["보호막"]["value"] = 0
-                if "보호막" in defender["Status"] and defender["Status"]["보호막"]["value"] <= 0: # 보호막이 0이 되면 삭제
-                    del defender["Status"]["보호막"]
-
-            if "보호막" in defender['Status']:
-                shield_amount = defender["Status"]["보호막"]["value"]
-            else:
-                shield_amount = 0
-
-            battle_embed.add_field(name ="", value = f"**{evade_text}{distance_text} {damage} 대미지!{crit_text}{shield_message}**",inline = False)
-            defender["HP"] -= damage
-
-            if "보호막" in challenger['Status']:
-                shield_amount_challenger = challenger["Status"]["보호막"]["value"]
-            else:
-                shield_amount_challenger = 0
-
-            if "보호막" in opponent['Status']:
-                shield_amount_opponent = opponent["Status"]["보호막"]["value"]
-            else:
-                shield_amount_opponent = 0
-            
-            show_bar(battle_embed, raid, challenger, shield_amount_challenger, opponent, shield_amount_opponent)
-
-        if defender["HP"] <= 0:
-            defender["HP"] = 0
-            result = await end(attacker,defender,"attacker",raid,simulate,winner_id = attacker['Id'])
-            if simulate:
-                return result
-            break
+            result_message += "\n⏳:" + " ".join(cooldown_messages)
         
-        # 공격자와 방어자 변경
+        battle_embed.add_field(name="진행 상황", value=result_message.strip() or "별다른 일 없었다.", inline=False)
+        
+        # 6. [핵심] 통합 피해 처리 함수 호출
+        is_dead = await apply_and_process_damage(
+            attacker, defender, total_damage, battle_embed, critical, evasion,
+            skill_attack_names[0] if skill_attack_names else "기본 공격"
+        )
+
+        # 7. 사령의 추가 공격 로직 (공격자에게 사령이 있을 경우)
+        summon_can_attack = True # 사령 공격 가능 여부 플래그
+        
+        if 'Summon' in attacker and attacker.get('Summon') and not reloading and not evasion:
+            summon = attacker['Summon']
+            
+            # [핵심 추가] 사령의 행동 불가 상태(CC) 확인
+            for effect_name in ["기절", "빙결"]:
+                if effect_name in summon.get("Status", {}):
+                    # Embed에 사령이 공격하지 못했음을 알리는 메시지 추가
+                    battle_embed.add_field(
+                        name="사령 행동 불가",
+                        value=f"⚔️ 사령이 {effect_name} 상태라 공격할 수 없습니다!",
+                        inline=False
+                    )
+                    summon_can_attack = False
+                    break # CC 하나라도 걸려있으면 더 확인할 필요 없음
+            
+            # 사령이 공격 가능한 상태일 때만 공격 로직 실행
+            if summon_can_attack:
+                evasion_score = calculate_evasion_score(defender["Speed"])
+                accuracy = calculate_accuracy(summon.get("Accuracy", 0), evasion_score + defender.get("Evasion", 0))
+
+                if random.random() <= accuracy:
+                    summon_base_damage = summon.get("Attack", 0)
+                    # 방어력 계산
+                    defense = max(0, defender.get("Defense", 0) - attacker.get("DefenseIgnore", 0))
+                    damage_reduction_calc = calculate_damage_reduction(defense)
+                    final_summon_damage = round(summon_base_damage * (1 - damage_reduction_calc))
+                    
+                    # 사령의 공격 피해도 통합 처리 함수로 전달
+                    is_dead_by_summon = await apply_and_process_damage(
+                        attacker, defender, final_summon_damage, battle_embed,
+                        False, # 사령 공격은 치명타 X
+                        False, # 회피 계산은 이미 위에서 했음
+                        "사령의 공격"
+                    )
+                    if is_dead_by_summon: is_dead = True
+                else:
+                    battle_embed.add_field(name="사령 전투", value="⚔️ 사령의 공격이 빗나갔습니다!", inline=False)
+
+        # 8. 공격 후처리
+        if attacked and '빙결' in defender['Status']:
+             if not skill_attack_names or (skill_attack_names and '명상' not in skill_attack_names):
+                del defender['Status']['빙결']
+                battle_embed.add_field(name="❄️ 빙결 상태 해제!", value="공격을 받아 빙결 상태가 해제되었습니다!", inline=False)
+
+        for skill, data in attacker["Skills"].items():
+            if data["현재 쿨타임"] > 0 and skill not in used_skill:
+                data["현재 쿨타임"] -= 1
+
+        # 9. 최종 전투 현황 업데이트 및 종료 체크
+        shield_challenger = challenger["Status"].get("보호막", {}).get("value", 0)
+        shield_opponent = opponent["Status"].get("보호막", {}).get("value", 0)
+        show_bar(battle_embed, raid, challenger, shield_challenger, opponent, shield_opponent)
+
+        if is_dead:
+            defender["HP"] = 0
+            result = await end(attacker, defender, "attacker", raid, simulate, winner_id=attacker['Id'])
+            if simulate: return result
+            break
+
         attacker, defender = defender, attacker
         if not simulate:
             await weapon_battle_thread.send(embed = battle_embed)

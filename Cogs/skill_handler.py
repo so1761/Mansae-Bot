@@ -229,7 +229,19 @@ def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebas
         elif skill_name == "병상첨병":
             skill_message, damage= Hex(attacker, defender, evasion, skill_level, skill_data_firebase)
             result_message += skill_message
-
+        elif skill_name == "사령 소환":
+            skill_message, damage = summon_undead(attacker, skill_level, skill_data_firebase)
+            result_message += skill_message
+            # 중요: 사령이 죽기 전까지 쿨타임이 돌지 않으므로, 여기서 쿨타임을 설정하지 않습니다.
+            # 대신, 이미 소환된 경우를 summon_undead 내부에서 처리합니다.
+            # 쿨타임 적용 라인을 이 블록 바깥으로 유지합니다.
+            if "이미" not in skill_message and "부족하여" not in skill_message:
+                attacker["Skills"][skill_name]["현재 쿨타임"] = 999 # 임의의 큰 수로 설정하여 재사용 방지 (사령 사망 시 초기화)
+            else: # 소환 실패 시 쿨타임 원상복구
+                attacker["Skills"][skill_name]["현재 쿨타임"] = 0
+        elif skill_name == "저주":
+            skill_message, damage = curse(attacker, defender, evasion, skill_level, skill_data_firebase)
+            result_message += skill_message
         if skill_name != "속사" and skill_name != "이케시아 폭우":
             # 피해 증폭
             damage *= 1 + attacker["DamageEnhance"]
