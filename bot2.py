@@ -1138,7 +1138,7 @@ async def check_points(puuid, name, channel_id, notice_channel_id, votes, event)
                         mission_bool = mission_data.get('완료',False)
                         if not mission_bool:
                             ref_mission.update({"완료": True})
-                            await mission_notice(winner['name'].display_name,"천리안")
+                            mission_notice(winner['name'].display_name,"천리안")
                             print(f"{winner['name'].display_name}의 [천리안] 미션 완료")
 
                     # ====================  [미션]  ====================
@@ -1151,7 +1151,7 @@ async def check_points(puuid, name, channel_id, notice_channel_id, votes, event)
                         mission_bool = mission_data.get('완료',False)
                         if not mission_bool:
                             ref_mission.update({"완료": True})
-                            await mission_notice(winner['name'].display_name,"예측의 신")
+                            mission_notice(winner['name'].display_name,"예측의 신")
                             print(f"{winner['name'].display_name}의 [예측의 신] 미션 완료")
 
                     # ====================  [미션]  ====================
@@ -1217,7 +1217,7 @@ async def check_points(puuid, name, channel_id, notice_channel_id, votes, event)
                         mission_bool = mission_data.get('완료',False)
                         if not mission_bool:
                             ref_mission.update({"완료": True})
-                            await mission_notice(loser['name'].display_name,"마이너스의 손")
+                            mission_notice(loser['name'].display_name,"마이너스의 손")
                             print(f"{loser['name'].display_name}의 [마이너스의 손] 미션 완료")
 
                     # ====================  [미션]  ====================
@@ -1299,7 +1299,7 @@ async def check_points(puuid, name, channel_id, notice_channel_id, votes, event)
                                 mission_bool = mission_data.get('완료',False)
                                 if not mission_bool:
                                     ref_mission.update({"완료": True})
-                                    await mission_notice(perfect_winner['name'].display_name,"완벽")
+                                    mission_notice(perfect_winner['name'].display_name,"완벽")
                                     print(f"{perfect_winner['name'].display_name}의 [완벽] 미션 완료")
                                 # ====================  [미션]  ====================
                                 today = datetime.today()
