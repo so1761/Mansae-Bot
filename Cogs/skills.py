@@ -1,6 +1,6 @@
 import random
 from .battle_utils import calculate_accuracy, calculate_evasion_score
-from .status import apply_status_for_turn
+from .status import apply_status_for_turn, remove_status_effects
 from .battle_utils import calculate_damage_reduction
 from .skill_emoji import skill_emojis
 
@@ -289,11 +289,14 @@ def rapid_fire(attacker, defender, skill_level, skill_data_firebase):
         evasion_bool = False
 
         accuracy = max(accuracy, 0.1)  # 최소 명중률 10%
-        if random.random() > accuracy: # 회피
-        #if random.random() > accuracy:
-            evasion_bool = True
-            return 0, False, evasion_bool
-
+        if "속박" not in defender["Status"]:
+            if random.random() > accuracy: # 회피
+            #if random.random() > accuracy:
+                evasion_bool = True
+                if "기습" in defender["Status"]:
+                    defender['evaded'] = True
+                return 0, False, evasion_bool
+        
         # 피해 증폭
         base_damage *= 1 + attacker["DamageEnhance"]
 
@@ -320,19 +323,49 @@ def rapid_fire(attacker, defender, skill_level, skill_data_firebase):
     message += f"{skill_emojis['속사']}**속사**로 {hit_count}연타 공격! 총 {total_damage} 피해!\n"
     return message,total_damage
 
-def meditate(attacker, defender, skill_level,skill_data_firebase):
-    # 명상 : 모든 스킬 쿨타임 감소 + 스킬 증폭 비례 보호막 획득, 명상 스택 획득
+def meditate(attacker, defender, skill_level, skill_data_firebase, acceleration_triggered=False, overdrive_triggered=False):
+    stacks_to_add = 1
+    acceleration_message = ""
+    chained_skills = []
+
+    # [핵심 수정 7] 전달받은 값에 따라 추가 스택 결정
+    if overdrive_triggered:
+        stacks_to_add += 2
+        acceleration_message = "초가속으로"
+    elif acceleration_triggered:
+        stacks_to_add += 1
+        acceleration_message = "가속으로"
+
+    attacker["명상"] = attacker.get("명상", 0) + stacks_to_add
+    
     meditate_data = skill_data_firebase['명상']['values']
     shield_amount = int(round(attacker['Spell'] * (meditate_data['스킬증폭당_보호막_계수'] + meditate_data['레벨당_보호막_계수_증가'] * skill_level)))
-    for skill, cooldown_data in attacker["Skills"].items():
-        if cooldown_data["현재 쿨타임"] > 0 and skill != "명상":
-            attacker["Skills"][skill]["현재 쿨타임"] -= 1  # 현재 쿨타임 감소
-    attacker['명상'] = attacker.get("명상", 0) + 1 # 명상 스택 + 1 추가
-    apply_status_for_turn(attacker,"보호막",1,shield_amount, source_id= defender['Id'])
-    message = f"**{skill_emojis['명상']}명상** 사용!(현재 명상 스택 : {attacker['명상']})\n **가속**효과를 얻고 1턴간 보호막 생성!\n"
 
-    skill_damage = 0
-    return message,skill_damage
+    # 쿨타임 감소 로직 및 연계 스킬 확인
+    for skill_name, cooldown_data in attacker["Skills"].items():
+        if cooldown_data["현재 쿨타임"] > 0 and skill_name != "명상":
+            original_cooldown = cooldown_data["현재 쿨타임"]
+            new_cooldown = max(0, original_cooldown - stacks_to_add)
+            attacker["Skills"][skill_name]["현재 쿨타임"] = new_cooldown
+            
+            # [핵심] 쿨타임이 0이 되었다면, 연계 목록에 추가
+            if original_cooldown > 0 and new_cooldown == 0:
+                chained_skills.append(skill_name)
+            
+    shield_cap = int(shield_amount / 5) # 최대 보호막량의 1/5로 제한
+    final_shield_amount = min(shield_amount, shield_cap * attacker['명상']) # 명상 스택을 곱함
+    apply_status_for_turn(attacker,"보호막",1,final_shield_amount, source_id= defender['Id'])
+    apply_status_for_turn(attacker,"속박",1,source_id=defender['Id']) # 속박
+    
+    if acceleration_message:
+        message = f"**{skill_emojis['명상']}명상** 사용! {acceleration_message} 스택을 **{stacks_to_add}** 획득합니다! (현재: {attacker.get('명상', 0)})\n"
+    else:
+        message = f"**{skill_emojis['명상']}명상** 사용! 스택을 **{stacks_to_add}** 획득합니다! (현재: {attacker.get('명상', 0)})\n"
+
+    message += f"다른 모든 스킬의 쿨타임을 **{stacks_to_add}**만큼 감소시킵니다.\n"    
+    message += f"**{final_shield_amount}**의 보호막을 얻고, 1턴간 **속박** 상태가 됩니다.\n"
+    
+    return message, 0, chained_skills
 
 def fire(attacker, defender, evasion, skill_level, skill_data_firebase):
     # 기본 : Flare(플레어) 강화 : Meteor(메테오)
@@ -373,39 +406,55 @@ def fire(attacker, defender, evasion, skill_level, skill_data_firebase):
             message = f"**{skill_emojis['플레어']}플레어**가 빗나갔습니다!\n"
     return message,skill_damage
 
-def ice(attacker,defender, evasion, skill_level, skill_data_firebase):
-    # 기본 : Frost(프로스트) 강화 : Blizzard(블리자드)
-    # 프로스트 : 기본 피해 + 스킬증폭 비례의 스킬 피해. 1턴간 '빙결' 상태이상 부여
-    # 블리자드 : 강화 기본 피해 + 스킬증폭 비례의 스킬 피해. 3턴간 '빙결' 상태이상 부여 (빙결 : 공격받기 전까지 계속 스턴 상태)
-    ice_data = skill_data_firebase['냉기 마법']['values']
-    meditation = attacker.get("명상",0) # 현재 명상 스택 확인
-    if meditation >= 5: # 명상 스택이 5 이상일 경우 스택 5 제거 후 강화된 스킬 시전
-        # 블리자드
-        meditation -= 5 # 명상 스택 5 제거
-        attacker['명상'] = meditation
-        if not evasion:
-            base_damage = ice_data['강화_기본_피해량'] + ice_data['레벨당_강화_기본_피해량_증가'] * skill_level
-            skill_multiplier = ice_data['강화_기본_스킬증폭_계수'] + ice_data['레벨당_강화_스킬증폭_계수_증가'] * skill_level
-            skill_damage = base_damage + attacker['Spell'] * skill_multiplier
-            slow_amount = int(round((ice_data['강화_둔화율'] + ice_data['강화_레벨당_둔화율'] * skill_level) * 100))
-            apply_status_for_turn(defender, "빙결", 3)
-            apply_status_for_turn(defender, "둔화", 5, slow_amount / 100)
-            message = f"**{skill_emojis['블리자드']}블리자드** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n3턴간 빙결 부여!, 5턴간 {slow_amount}% 둔화 부여!\n"
-        else:
-            skill_damage = 0
-            message = f"**{skill_emojis['블리자드']}블리자드**가 빗나갔습니다!\n"
-    else:
-        # 프로스트
-        if not evasion:
-            base_damage = ice_data['기본_피해량'] + ice_data['레벨당_기본_피해량_증가'] * skill_level
-            skill_multiplier = ice_data['기본_스킬증폭_계수'] + ice_data['레벨당_스킬증폭_계수_증가'] * skill_level
-            skill_damage = base_damage + attacker['Spell'] * skill_multiplier
-            apply_status_for_turn(defender, "빙결", 1)
-            message = f"**{skill_emojis['프로스트']}프로스트** 사용!\n {base_damage} + 스킬증폭 {round(skill_multiplier * 100)}%의 스킬피해!\n1턴간 빙결 부여!\n"
-        else:
-            skill_damage = 0
-            message = f"**{skill_emojis['프로스트']}프로스트**가 빗나갔습니다!\n"
-    return message,skill_damage
+def ice_frost(attacker, defender, evasion, skill_level, skill_data_firebase):
+    """프로스트: 기본 피해를 계산하고, 동상 스택을 +2 부여합니다."""
+    frost_data = skill_data_firebase.get('냉기 마법', {}).get('values', {})
+    
+    if evasion:
+        return f"{skill_emojis['프로스트']}프로스트가 빗나갔습니다!\n", 0
+
+            
+    # 1. 스킬을 사용하기 "전"의 동상 스택을 먼저 가져옵니다.
+    frostbite_status = defender.get('Status', {}).get('동상', {})
+    # value가 딕셔너리일 수 있으므로, .get('stacks', 0)으로 안전하게 접근
+    current_frostbite_stacks = frostbite_status.get('value', {}).get('stacks', 0)
+
+    # 2. 현재 스택을 기준으로 피해량 증폭률을 계산합니다.
+    damage_multiplier = 1 + (current_frostbite_stacks * 0.3)
+
+    # 3. 증폭된 최종 기본 피해량을 계산합니다.
+    base_damage = frost_data['기본_피해량'] + frost_data['레벨당_기본_피해량_증가'] * skill_level
+    skill_multiplier = frost_data['기본_스킬증폭_계수'] + frost_data['레벨당_스킬증폭_계수_증가'] * skill_level
+    skill_damage = base_damage + attacker['Spell'] * skill_multiplier
+
+    final_damage = skill_damage * damage_multiplier
+    
+    # 4. 피해량 계산이 끝난 후, 대상의 동상 스택을 +2 부여합니다.
+    new_stacks = current_frostbite_stacks + 2
+    apply_status_for_turn(defender, '동상', 99, value={'stacks': new_stacks})
+    
+    message = f"{skill_emojis['프로스트']}**프로스트** 사용!\n동상 스택을 +2 부여합니다! (현재: {new_stacks} 스택)\n"
+    return message, final_damage
+
+def ice_blizzard(attacker, defender, evasion, skill_level, skill_data_firebase):
+    """블리자드: 피해를 주지 않고, 3턴간 '눈보라' 버프를 부여합니다."""
+    blizzard_data = skill_data_firebase.get('냉기 마법', {}).get('values', {})
+    # [수정] '블리자드'는 이제 회피의 영향을 받지 않는 버프 스킬이 됩니다.
+    # if evasion:
+    #     return f"{skill_emojis['블리자드']}블리자드가 빗나갔지만, 눈보라는 시작됩니다!\n", 0
+
+    # 틱당 대미지 계산
+    base_damage = blizzard_data['눈보라_기본_피해량'] + blizzard_data['눈보라_레벨당_기본_피해량_증가'] * skill_level
+    skill_multiplier = blizzard_data['눈보라_기본_스킬증폭_계수'] + blizzard_data['눈보라_레벨당_스킬증폭_계수_증가'] * skill_level
+    skill_damage = base_damage + attacker['Spell'] * skill_multiplier
+    # '눈보라' 버프 부여
+    apply_status_for_turn(attacker, '눈보라', 3, value = skill_damage)
+    
+    # [수정] 즉발 피해가 없음을 명확히 하는 메시지
+    message = f"{skill_emojis['블리자드']}**블리자드** 시전!\n3턴 동안 **눈보라**가 전장을 뒤덮습니다!\n"
+    
+    # [수정] 피해량이 없으므로 0을 반환
+    return message, 0
 
 def holy(attacker,defender, evasion, skill_level, skill_data_firebase):
     # 기본 : Bless(블레스) 강화 : Judgment(저지먼트)
@@ -457,6 +506,106 @@ def holy(attacker,defender, evasion, skill_level, skill_data_firebase):
             skill_damage = 0
             message = f"**{skill_emojis['블레스']}블레스**가 빗나갔습니다!\n"
     return message,skill_damage
+
+def wind_gale(attacker, evasion, skill_level, skill_data_firebase):
+    """
+    게일: 스킬 증폭과 스피드에 비례한 피해를 입힙니다.
+    질풍 스택을 1개 부여합니다.
+    """
+    current_stacks = attacker.get('Status', {}).get('질풍', {}).get('value',{}).get('stacks', 0)
+    if not evasion:
+        new_stacks = current_stacks + 1
+        
+        skill_level = attacker["Skills"]["질풍 마법"]["레벨"]
+        wind_gale_data = skill_data_firebase['질풍 마법']['values']
+        
+        base_damage = wind_gale_data['기본_피해량'] + wind_gale_data['레벨당_피해량'] * skill_level
+        spell_multiplier = (wind_gale_data['기본_스킬증폭_계수'] + wind_gale_data['레벨당_스킬증폭_계수'] * skill_level)
+        speed_multiplier = (wind_gale_data['기본_스피드_계수'] + wind_gale_data['레벨당_스피드_계수'] * skill_level)
+
+        skill_damage = base_damage + spell_multiplier * attacker['Spell'] + speed_multiplier * attacker['Speed']
+        
+        # 질풍 버프 적용 (지속시간은 매우 길게)
+        apply_status_for_turn(attacker, '질풍', 99, value ={'stacks': new_stacks})
+        
+        message = f"{skill_emojis['게일']}**게일** 사용!\n강한 바람을 일으켜 **질풍** 스택을 +1 얻습니다!\n"
+    else:
+        skill_damage = 0
+        message = f"**{skill_emojis['게일']}게일**이 빗나갔습니다!\n"
+    return message, skill_damage
+
+def wind_tornado(
+    attacker, defender, skill_level, skill_data_firebase, 
+    acceleration_triggered=False, overdrive_triggered=False
+):
+    """
+    토네이도: 가속 여부에 따라 여러 번 타격하며, 매 타격마다 스탯을 재계산하여 강해집니다.
+    """
+    tornado_data = skill_data_firebase.get('질풍 마법', {}).get('values', {})
+    
+    # 1. 가속 여부에 따라 타격 횟수 결정
+    num_hits = 1
+    if overdrive_triggered:
+        num_hits = 3
+    elif acceleration_triggered:
+        num_hits = 2
+        
+    total_damage = 0
+    message = f"{skill_emojis.get('토네이도', '🌪️')}**토네이도** 사용! ({num_hits}회 타격)\n"
+    hit_damage_messages = []
+
+    # 2. 루프를 돌며 각 타격 처리
+    for i in range(num_hits):
+        # a. [타격 시작] 현재 스탯으로 먼저 재계산 (이전 타격의 영향 반영)
+        remove_status_effects(attacker, skill_data_firebase)
+        
+        # b. 회피 판정
+        is_hit_this_time = False
+        if "속박" in defender.get("Status", {}):
+            is_hit_this_time = True
+        else:
+            evasion_score = calculate_evasion_score(defender["Speed"])
+            accuracy = calculate_accuracy(attacker["Accuracy"], evasion_score + defender["Evasion"])
+            is_hit_this_time = (random.random() <= max(accuracy, 0.1))
+
+        if is_hit_this_time:
+            # c. 명중 시: 질풍 스택 +1 부여
+            current_stacks = attacker.get('Status', {}).get('질풍', {}).get('value',{}).get('stacks', 0)
+            new_stacks = current_stacks
+            apply_status_for_turn(attacker, '질풍', 99, value = {'stacks': new_stacks})
+            
+            # d. [매우 중요] 스택 부여 후, 스탯을 즉시 재계산하여 이번 타격의 데미지에 반영
+            remove_status_effects(attacker, skill_data_firebase)
+
+            # e. 최신 스탯을 기준으로 '기본 스킬 피해량' 계산
+            base_damage = tornado_data.get('강화_기본_피해량', 20) + tornado_data.get('강화_레벨당_피해량', 3) * skill_level
+            spell_multiplier = tornado_data.get('강화_기본_스킬증폭_계수', 0.15) + tornado_data.get('강화_레벨당_스킬증폭_계수', 0.01) * skill_level
+            speed_multiplier = tornado_data.get('강화_기본_스피드_계수', 0.08) + tornado_data.get('강화_레벨당_스피드_계수', 0.01) * skill_level
+            
+            skill_damage = base_damage + (spell_multiplier * attacker['Spell']) + (speed_multiplier * attacker['Speed'])
+            
+            # f. 방어력 계산까지 완료된 '최종 피해량' 계산 및 저장
+            damage_with_enhance = skill_damage * (1 + attacker.get("DamageEnhance", 0))
+            defense = max(0, defender.get("Defense", 0) - attacker.get("DefenseIgnore", 0))
+            damage_reduction = calculate_damage_reduction(defense)
+            final_damage_this_hit = damage_with_enhance * (1 - damage_reduction)
+            final_damage_this_hit *= (1 - defender.get('DamageReduction', 0))
+            final_damage_this_hit = max(1, round(final_damage_this_hit))
+
+            total_damage += final_damage_this_hit
+            hit_damage_messages.append(f"**{final_damage_this_hit} 대미지!** (질풍 {new_stacks} 스택)")
+        else:
+            # g. 빗나갔을 때
+            hit_damage_messages.append("**회피!** ⚡️")
+            if "기습" in defender["Status"]:
+                defender['evaded'] = True
+    
+    # 3. 모든 메시지 조합
+    message += "\n".join(hit_damage_messages)
+    message += f"\n\n휩쓸고 지나간 토네이도가 총 **{round(total_damage)}**의 피해를 입혔습니다!"
+
+    # 4. 최종적으로 계산된 피해량과 메시지를 반환
+    return message, total_damage
 
 def second_skin(target, skill_level, value, skill_data_firebase):
     """패시브 - 두번째 피부: 공격 적중 시 플라즈마 중첩 부여, 5스택 시 전체 체력 비례 10% 대미지"""

@@ -16,6 +16,9 @@ STATUS_EMOJIS = {
     "속박": "⛓️",
     "장전": skill_emojis['헤드샷'],
     "저주": "💀",
+    "동상": "❄️",
+    "눈보라": skill_emojis['블리자드'],
+    "질풍": "🌪️",
 }
 
 SUBSCRIPT_MAP = {
@@ -28,19 +31,57 @@ def to_subscript(number):
 
 def format_status_effects(status_dict):
     result = []
-    value_status = ["꿰뚫림", "치유 감소", "둔화", "은신"]
-    percent_status = ["치유 감소", "둔화"]
-    for status, info in status_dict.items():
-        emoji = STATUS_EMOJIS.get(status, "")
-        duration = info.get("duration", 0)
-        if emoji and duration > 0:
-            if status in value_status:
-                values = info.get("value", 0)
-                if status in percent_status:
-                    values = int(values * 100)
-                result.append(f"{emoji}{to_subscript(values)}{duration}")
+    
+    # [수정 1] 각 상태이상의 특징에 따라 목록을 명확히 정의
+    # value를 표시해야 하는 상태 (값의 종류가 %인가, 일반 수치인가)
+    value_status_flat = ["꿰뚫림", "은신"] 
+    value_status_percent = ["치유 감소", "둔화"]
+    
+    # stacks를 표시해야 하는 상태
+    stack_status = ["동상", "질풍"]
+
+    # status_dict가 비어있지 않다면 루프 실행
+    if status_dict:
+        for status, info in status_dict.items():
+            emoji = STATUS_EMOJIS.get(status, "")
+            
+            # 이모지가 있는 상태만 처리
+            if not emoji:
+                continue
+
+            # [수정 2] '동상'처럼 스택을 표시하는 경우
+            if status in stack_status:
+                value = info.get('value', 0)
+                stacks = value.get('stacks', 0)
+                # 스택이 0보다 클 때만 표시
+                if stacks > 0:
+                    result.append(f"{emoji}{stacks}")
+
+            # value(수치 또는 퍼센트)를 표시하는 경우
+            elif status in value_status_flat or status in value_status_percent:
+                duration = info.get("duration", 0)
+                if duration > 0:
+                    value = info.get("value", 0)
+                    
+                    # 퍼센트 값이라면 변환
+                    if status in value_status_percent:
+                        value_str = f"{int(value * 100)}"
+                    else:
+                        value_str = str(value)
+
+                    # 아래 숫자 첨자 to_subscript는 가독성에 따라 선택적으로 사용
+                    result.append(f"{emoji}{to_subscript(value_str)}{duration}")
+                    #result.append(f"{emoji}{value_str}({duration})")
+
+
+            # 그 외, 지속시간만 표시하는 일반적인 경우 (예: 기절, 빙결, 눈보라, 속박)
             else:
-                result.append(f"{emoji}{duration}")
+                duration = info.get("duration", 0)
+                if duration > 0:
+                    # 99와 같이 매우 긴 턴은 '∞' (무한)으로 표시하면 더 깔끔함
+                    duration_str = str(duration) if duration < 99 else "∞"
+                    result.append(f"{emoji}{duration_str}")
+                    
     return " ".join(result)
 
 def apply_status_for_turn(character, status_name, duration=1, value=None, source_id = None):
@@ -128,7 +169,8 @@ def update_status(character, current_turn_id):
 def remove_status_effects(character, skill_data_firebase):
 
     """
-    상태가 사라졌을 때 효과를 되돌리는 함수
+    모든 스탯을 기본값으로 초기화한 뒤,
+    현재 활성화된 모든 상태 효과를 다시 적용하여 스탯을 최종 결정합니다.
     """
     
     # 기본값으로 초기화
@@ -145,6 +187,13 @@ def remove_status_effects(character, skill_data_firebase):
     character["DamageReduction"] = character["BaseDamageReduction"]
 
     # 현재 적용 중인 상태 효과를 확인하고 반영
+
+    if "질풍" in character.get("Status", {}):
+        gale_stacks = character['Status']['질풍'].get('value',{}).get('stacks', 0)
+        if gale_stacks > 0:
+            speed_multiplier = 1 + (gale_stacks * 0.1) # 스택당 10%
+            character['Speed'] *= speed_multiplier # BaseSpeed에 곱해야 중첩 오류가 없음
+
     if "은신" in character["Status"]:
         value = character["Status"]['은신']['value']
         character["Evasion"] += value # 회피 수치 증가

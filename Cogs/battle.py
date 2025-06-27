@@ -8,78 +8,8 @@ from dotenv import load_dotenv
 from firebase_admin import db
 from .status import apply_status_for_turn, update_status, remove_status_effects
 from .battle_utils import *
-from .skill_handler import process_all_skills, process_on_hit_effects, use_skill
+from .skill_handler import process_all_skills, process_on_hit_effects, use_skill, apply_and_process_damage
 from .skills import *
-
-async def apply_and_process_damage(
-        source_char,       # 피해를 준 캐릭터
-        target_char,       # 피해를 받는 캐릭터
-        damage_amount,     # 총 피해량
-        embed,             # 메시지를 추가할 Embed 객체
-        is_critical,       # [추가] 치명타 여부 (True/False)
-        is_evaded,         # [추가] 회피 여부 (True/False)
-        damage_source_name # 피해 출처 이름 (로그용)
-    ):
-        """피해를 최종 적용하고 보호막/사령 분담을 처리하며, 직관적인 결과 메시지를 Embed에 추가합니다."""
-        
-        # 회피 시 즉시 종료
-        if is_evaded:
-            embed.add_field(name="", value=f"**회피!⚡️**", inline=False)
-            return target_char['HP'] <= 0
-
-        # 피해량이 0이면 메시지 없이 종료 (예: 버프 스킬만 사용)
-        if damage_amount <= 0:
-            return target_char['HP'] <= 0
-
-        remaining_damage = damage_amount
-        shield_message_part = ""
-        summon_message_part = ""
-        
-        # 1. 보호막 흡수
-        if remaining_damage > 0 and "보호막" in target_char['Status']:
-            shield = target_char['Status']['보호막']
-            damage_absorbed = min(remaining_damage, shield['value'])
-            shield['value'] -= damage_absorbed
-            remaining_damage -= damage_absorbed
-            if shield['value'] <= 0:
-                del target_char['Status']['보호막']
-            shield_message_part = f" 🛡️{damage_absorbed} 흡수!"
-            
-        # 2. 사령 흡수
-        if remaining_damage > 0 and 'Summon' in target_char and target_char.get('Summon'):
-            summon = target_char['Summon']
-            damage_absorbed = min(remaining_damage, summon['HP'])
-            summon['HP'] -= damage_absorbed
-            
-            # 사령 파괴 여부 확인
-            if summon['HP'] <= 0:
-                remaining_damage = 0 # 피해 완전 흡수
-                del target_char['Summon']
-                if "사령 소환" in target_char["Skills"]:
-                    cooldown = target_char["Skills"]["사령 소환"]["전체 쿨타임"]
-                    target_char["Skills"]["사령 소환"]["현재 쿨타임"] = cooldown
-                summon_message_part = f" 💀사령 소멸!({damage_absorbed} 흡수)"
-            else:
-                remaining_damage = 0 # 피해 완전 흡수
-                summon_message_part = f" 💀{damage_absorbed} 흡수"
-
-        # 3. 본체 피해 적용
-        target_char["HP"] -= remaining_damage
-        
-        # 4. 최종 메시지 조합 및 Embed에 추가
-        crit_text = "💥" if is_critical else ""
-        
-        # 본체에 피해가 들어갔거나, 아무것도 피해를 흡수하지 못했을 때만 피해량 표시
-        if remaining_damage > 0:
-            final_message = f"**{remaining_damage} 대미지!{crit_text}{shield_message_part}{summon_message_part}**"
-        # 보호막이나 사령이 모든 피해를 흡수했을 때
-        elif shield_message_part or summon_message_part:
-            final_message = f"**총 {damage_amount} 피해!{crit_text} →{shield_message_part}{summon_message_part}**"
-        else: # 예상치 못한 경우 기본 메시지
-            final_message = f"**{damage_amount} 대미지!{crit_text}**"
-
-        embed.add_field(name="", value=final_message, inline=False)
-        return target_char['HP'] <= 0
 
 async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = False, remain_HP = None, practice = False, tower = False, tower_floor = 1, simulate = False, skill_data = None, wdc = None, wdo = None, scd = None, insignia = None):
     weapon_battle_thread = None
@@ -89,18 +19,16 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         ref_skill_data = db.reference("무기/스킬")
         skill_data_firebase = ref_skill_data.get() or {}
 
-    async def end(attacker, defender, winner, raid, simulate = False, winner_id = None):
+    async def end(winner, loser, raid, simulate = False):          
         if simulate:
             if raid:
-                if winner == "attacker" and defender['Id'] == 0:
-                    return first_HP - attacker['HP']
-                elif winner == "defender" and attacker['Id'] == 0:
-                    return first_HP - defender['HP']
-                else:
-                    return first_HP  # 보스가 0이 되면 끝났다는 뜻
+                # 레이드 시뮬레이션에서는 '가한 데미지'를 반환
+                boss_obj = loser if loser['Id'] == 1 else winner # 보스 객체 찾기 (ID가 1)
+                return first_HP - boss_obj['HP']
             else:
-                return winner_id == challenger['Id']  # 일반전투일 경우 승리 여부만 반환
-        await weapon_battle_thread.send(embed = battle_embed)
+                # 일반 시뮬레이션에서는 원래 도전자(challenger)가 이겼는지 여부를 bool로 반환
+                return winner['Id'] == challenger['Id']
+        #await weapon_battle_thread.send(embed = battle_embed)
 
         if raid:
             if not practice:
@@ -136,12 +64,10 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                       
             ref_boss = db.reference(f"레이드/보스/{boss}")
 
-            player_is_winner = (winner == "attacker" and defender['Id'] != 0) or (winner == "defender" and attacker['Id'] != 0)
+            player_is_winner = (loser['Id'] != 0)
 
-            if winner == "attacker":
-                final_HP = attacker['HP'] if defender['Id'] == 0 else defender['HP']
-            else:
-                final_HP = defender['HP'] if attacker['Id'] == 0 else attacker['HP']
+            boss_obj = loser if loser['Id'] != 0 else winner
+            final_HP = boss_obj['HP']
             
             final_HP = max(final_HP, 0)
             total_damage = first_HP - final_HP
@@ -224,37 +150,23 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     await weapon_battle_thread.send(f"**레이드 종료!** 총 대미지 : {total_damage}")
 
         elif tower:
+            player_won = (winner['Id'] == 0)
+
+            if player_won:
+                if practice:
+                    # 연습 모드에서는 단순히 메시지만 출력
+                    await weapon_battle_thread.send(f"**{winner['name']}** 승리! {tower_floor}층 모의전 클리어!")
+                else:
+                    # 실제 등반에서는 메시지 출력 및 보상 처리
+                    await weapon_battle_thread.send(f"**{winner['name']}** 승리! {tower_floor}층 클리어!")
+            else: # 플레이어 패배
+                await weapon_battle_thread.send(f"**{winner['name']}**에게 {tower_floor}층에서 패배!")
+
             ref_current_floor = db.reference(f"탑/유저/{challenger_m.name}")
             tower_data = ref_current_floor.get() or {}
-            current_floor = tower_data.get("층수", 1)
-
-            if winner == "attacker": # 일반적인 상황
-                if defender['Id'] == 0: # 패배한 사람이 플레이어일 경우
-                    await weapon_battle_thread.send(f"**{attacker['name']}**에게 패배!")
-                    result = False
-                else: # 플레이어가 승리한 경우
-                    if practice:
-                        await weapon_battle_thread.send(f"**{attacker['name']}** 승리! {tower_floor}층 클리어!")
-                    else:
-                        if tower_floor != 1: #tower_floor 설정했다면? -> 빠른 전투
-                            current_floor = tower_floor
-                        await weapon_battle_thread.send(f"**{attacker['name']}** 승리! {current_floor}층 클리어!")
-                    result = True
-            elif winner == "defender": # 출혈 등 특수한 상황
-                if attacker['Id'] == 0: # 패배한 사람이 플레이어일 경우
-                    await weapon_battle_thread.send(f"**{defender['name']}**에게 패배!")
-                    result = False
-                else: # 플레이어가 승리한 경우
-                    if practice:
-                        await weapon_battle_thread.send(f"**{defender['name']}** 승리! {tower_floor}층 클리어!")
-                    else:
-                        if tower_floor != 1: #tower_floor 설정했다면? -> 빠른 전투
-                            current_floor = tower_floor
-                        await weapon_battle_thread.send(f"**{defender['name']}** 승리! {current_floor}층 클리어!")
-                    result = True
-
+            
             if not practice: # 연습모드 아닐 경우
-                if result:
+                if player_won:
                     if tower_floor != 1: #tower_floor 설정했다면? -> 빠른 전투
                         current_floor = tower_data.get("층수", 1)
                         ref_current_floor.update({"층수" : tower_floor + 1}) # 층수 1 올리기
@@ -285,10 +197,8 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                     ref_current_floor.update({"등반여부": True})
 
         else: # 일반 배틀
-            if winner == "attacker": # 일반적인 상황
-                await weapon_battle_thread.send(f"**{attacker['name']}** 승리!")
-            elif winner == "defender": # 출혈 등 특수한 상황
-                await weapon_battle_thread.send(f"**{defender['name']}** 승리!")
+            await weapon_battle_thread.send(f"**{winner['name']}** 승리!")
+
         return None
 
     if simulate:
@@ -320,7 +230,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
     
 
     # 공격 함수
-    async def attack(attacker, defender, evasion, reloading, skills = None):
+    async def attack(attacker, defender, evasion, reloading, skills = None, acceleration_triggered = False, overdrive_triggered = False):
 
         remove_status_effects(attacker, skill_data_firebase)
         # attacker 턴일 때 attacker 상태 갱신
@@ -332,7 +242,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             return 0, False, False, False, ""
         
         if skills:
-            damage, skill_message, critical_bool = use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebase)
+            damage, skill_message, critical_bool = await use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebase, acceleration_triggered, overdrive_triggered)
             if damage is not None:
                 return damage, critical_bool, False, False, skill_message  # 스킬 피해 적용
             else:
@@ -863,105 +773,166 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
                 if is_dead:
                     attacker["HP"] = 0
-                    result = await end(attacker, defender, "defender", raid, simulate, winner_id=defender['Id'])
+                    if not simulate:
+                        await weapon_battle_thread.send(embed = battle_embed)
+                    result = await end(defender, attacker, raid, simulate)
                     if simulate: return result
                     break
                 else:
                     if not simulate: await weapon_battle_thread.send(embed=battle_embed)
 
-        async def process_turn_start_effects(
-            attacker, defender, raid, simulate, weapon_battle_thread, end_func,
-            challenger, opponent, turn # turn을 인자로 받아 sleep 시간 조절에 사용
-        ):
-            """
-            턴 시작 시 본체와 소환수의 모든 상태 효과(DoT, CC)를 처리하고,
-            본체의 행동 가능 여부를 반환합니다.
-            """
+        async def process_turn_start_effects(attacker, defender):
+            """턴 시작 시 현재 턴 캐릭터(attacker)와 그 사령의 모든 상태 효과를 처리합니다."""
+            
+            embeds_generated_this_turn = []
+            chars_to_process_this_turn = [(attacker, False)]
+            if 'Summon' in attacker and attacker.get('Summon'):
+                chars_to_process_this_turn.append((attacker['Summon'], True))
 
-            async def _process_effects_for_char(char, is_summon=False):
-                """특정 캐릭터(char)의 DoT 및 CC 효과를 처리하는 내부 함수"""
-                # 1. 지속 피해(DoT) 처리
+            async def _process_blizzard_effects(caster, target, embeds_list):
+                """caster가 시전한 눈보라가 target과 그 사령에게 피해를 줍니다."""
+                if "눈보라" not in caster.get("Status", {}):
+                    return "processed", None # 눈보라가 없으면 아무것도 안 함
+
+                targets_to_damage = [(target, False)]
+                if 'Summon' in target and target.get('Summon'):
+                    targets_to_damage.append((target['Summon'], True))
+
+                for char, is_summon in targets_to_damage:
+                    char_name = "사령" if is_summon else char['name']
+                    if '동상' not in char.get('Status', {}):
+                        apply_status_for_turn(char, '동상', 99, value={'stacks': 0})
+                    
+                    frostbite_status = char['Status']['동상']
+                    current_stacks = frostbite_status['value'].get('stacks', 0)
+                    new_stacks = current_stacks + 1
+                    frostbite_status['value']['stacks'] = new_stacks
+
+                    # 눈보라 피해 계산
+                    blizzard_status = caster['Status']['눈보라']
+                    blizzard_damage = blizzard_status.get('value', 0)
+                    base_dot_damage = blizzard_damage * (1 + 0.3 * new_stacks)
+                    final_dot_damage = 0
+
+                    if base_dot_damage > 0:
+                        defense = char.get("Defense", 0)
+                        damage_reduction_from_defense = calculate_damage_reduction(defense)
+                        reduced_damage = base_dot_damage * (1 - damage_reduction_from_defense)
+                        final_dot_damage = reduced_damage * (1 - char.get('DamageReduction', 0))
+                        final_dot_damage = max(1, round(final_dot_damage))
+                    
+                    dot_embed = discord.Embed(
+                        title="❄️ 눈보라",
+                        description=f"{char_name}이(가) 눈보라의 지속 피해를 입습니다!",
+                        color=discord.Color.teal()
+                    )
+
+                    is_dead = False
+                    if is_summon:
+                        char['HP'] -= final_dot_damage
+                        dot_embed.add_field(name="", value=f"**{final_dot_damage}**의 지속 피해!", inline=False)
+                        is_dead = char['HP'] <= 0
+                    else:
+                        is_dead = await apply_and_process_damage(caster, char, final_dot_damage, dot_embed, False, False, "눈보라", True)
+                    
+                    # embed는 함수 외부의 리스트에 추가
+                    embeds_list.append(dot_embed)
+
+                    if is_dead:
+                        return "ended", {"dead_char": char, "killer_char": caster}
+                    
+                return "processed", None
+
+            # ======================= 메인 로직 시작 =======================
+            
+            # [핵심] 1. 양방향으로 눈보라 효과 처리
+            # A -> B: Attacker가 시전한 눈보라가 Defender에게 피해
+            status_ab, result_ab = await _process_blizzard_effects(attacker, defender, embeds_generated_this_turn)
+            if status_ab == "ended": return "ended", result_ab, embeds_generated_this_turn
+            
+            # B -> A: Defender가 시전한 눈보라가 Attacker에게 피해
+            status_ba, result_ba = await _process_blizzard_effects(defender, attacker, embeds_generated_this_turn)
+            if status_ba == "ended": return "ended", result_ba, embeds_generated_this_turn
+
+            # 2. 현재 턴 캐릭터(attacker)와 그 사령의 상태이상 처리
+            for char, is_summon in chars_to_process_this_turn:
+                char_name = "사령" if is_summon else char['name']
+                # a. 동상 자연 감소
+                #    (눈보라 시전자가 '자기 자신'일 경우 감소되지 않음)
+                is_any_blizzard_active = "눈보라" in attacker.get("Status", {}) or "눈보라" in defender.get("Status", {})
+
+                if not is_any_blizzard_active:
+                    if '동상' in char.get('Status', {}):
+                        # 동상 스택 계산
+                        frostbite_status = char['Status']['동상']
+                        frostbite_data = frostbite_status.get('value', {})
+                        current_stacks = frostbite_data.get('stacks', 0)
+                        
+                        # 동상 스택 감소
+                        new_stacks = max(0, current_stacks - 1)
+                        if new_stacks == 0:
+                            del char['Status']['동상']
+                        else:
+                            frostbite_status['value'] = {'stacks': new_stacks}
+
+                # b. 일반 DoT 처리 (출혈, 화상, 독)
                 dot_effects = {
                     "출혈": {"emoji": "🩸", "damage_type": "value"},
                     "화상": {"emoji": "🔥", "damage_type": "value"},
                     "독": {"emoji": "🫧", "damage_type": "percent_hp"}
                 }
-
                 for effect_name, props in dot_effects.items():
                     if effect_name in char.get("Status", {}):
-                        
-                        char_name = "사령" if is_summon else char['name']
-                        total_dot_damage = 0
-                        if props["damage_type"] == "value":
-                            total_dot_damage = char["Status"][effect_name].get("value", 0)
-                        elif props["damage_type"] == "percent_hp":
-                            # 독은 항상 본체(attacker)의 HP를 기준으로 계산
-                            total_dot_damage = round(attacker['HP'] / 16) 
-
-                        if total_dot_damage <= 0: continue
-
                         dot_embed = discord.Embed(
                             title=f"{char_name}의 {effect_name}!{props['emoji']}",
                             color=discord.Color.red() if attacker['Id'] == 0 else discord.Color.blue()
                         )
                         dot_embed.add_field(name="지속 효과", value=f"{effect_name} 상태로 효과가 발동합니다.", inline=False)
                         
-                        # [수정] DoT 피해는 사령 자신에게 적용됨. apply_and_process_damage는 본체-사령 연계 로직이 있음
-                        # 따라서 사령에게는 직접 피해를 적용하고, 본체에게는 통합 함수 사용
+                        base_dot_damage = char["Status"][effect_name].get("value", 0)
+                        # 화상 피해는 방어력에 영향을 받는다
+                        final_dot_damage = base_dot_damage
+                        if effect_name == "화상":
+                            # 1. 대상의 방어력을 가져옵니다. DoT는 방어 관통이 없다고 가정합니다.
+                            defense = char.get("Defense", 0)
+                            if defense < 0: defense = 0
+                            
+                            # 2. 방어력에 의한 피해 감소율을 계산합니다.
+                            #    (이전에 제공된 attack 함수 로직을 참고, calculate_damage_reduction 함수가 있다고 가정)
+                            damage_reduction_from_defense = calculate_damage_reduction(defense)
+                            
+                            # 3. 방어력에 의한 피해 감소를 적용합니다.
+                            reduced_damage = base_dot_damage * (1 - damage_reduction_from_defense)
+                            
+                            # 4. 최종 피해 감소 스탯(%)을 적용합니다.
+                            final_dot_damage = reduced_damage * (1 - char.get('DamageReduction', 0))
+                            final_dot_damage = max(1, round(final_dot_damage)) # 최소 1의 피해 보장
+
+                        # 피해 적용
+                        is_dead_by_dot = False
                         if is_summon:
-                            char['HP'] -= total_dot_damage
-                            dot_embed.add_field(name="", value=f"**{total_dot_damage}**의 지속 피해!", inline=False)
-                            is_dead = char['HP'] <= 0
+                            char['HP'] -= final_dot_damage
+                            dot_embed.add_field(name="", value=f"**{final_dot_damage}**의 지속 피해!", inline=False)
+                            is_dead_by_dot = char['HP'] <= 0
                         else:
-                            is_dead = await apply_and_process_damage(
-                                char, char, total_dot_damage, dot_embed,
-                                is_critical=False, is_evaded=False, damage_source_name=effect_name
+                            is_dead_by_dot = await apply_and_process_damage(
+                                char, char, final_dot_damage, dot_embed,
+                                is_critical=False, is_evaded=False, damage_source_name=effect_name,
+                                is_dot_damage=True
                             )
-
-                        # 남은 턴 메시지
-                        current_status = char.get("Status", {}).get(effect_name, {})
-                        remaining_duration = current_status.get('duration', 0)
-                        duration_message = f"{effect_name} 상태 남은 턴: {remaining_duration}" if remaining_duration > 0 else f"{effect_name} 효과가 소진되었습니다."
-                        dot_embed.add_field(name="남은 턴", value=duration_message, inline=False)
                         
+                        embeds_generated_this_turn.append(dot_embed)
 
-                        shield_challenger = challenger["Status"].get("보호막", {}).get("value", 0)
-                        shield_opponent = opponent["Status"].get("보호막", {}).get("value", 0)
-                        show_bar(dot_embed, raid, challenger, shield_challenger, opponent, shield_opponent)
+                        if is_dead_by_dot and not is_summon: # 본체만 사망 시 전투 종료
+                            return "ended", {"dead_char": attacker, "killer_char": defender}, embeds_generated_this_turn
 
-                        if not simulate: await weapon_battle_thread.send(embed=dot_embed)
-                
-                        if is_dead:
-                            if is_summon:
-                                if "사령 소환" in attacker["Skills"]:
-                                    cooldown = attacker["Skills"]["사령 소환"]["전체 쿨타임"]
-                                    attacker["Skills"]["사령 소환"]["현재 쿨타임"] = cooldown
-                                # 사령이 죽었으면 딕셔너리에서 제거
-                                del attacker['Summon'] 
-                                # 본체 전투는 계속되므로 루프를 계속함
-                                
-                            else: # 본체가 죽었으면 전투 종료
-                                char["HP"] = 0
-                                result = await end_func(
-                                    char,            # 사망자 (attacker 자신)
-                                    defender,        # 생존자 (상대방)
-                                    "defender",      # 승자
-                                    raid,            # raid 여부
-                                    simulate,        # simulate 여부
-                                    winner_id=defender['Id'] # 승자 ID
-                                )
-                                return "ended", result # 전투 종료 신호
-
-                # 2. 행동 불가(CC) 처리 (수정 없음, 단 turn 인자 사용)
+                # c. CC 처리
                 cc_effects = {
                     "기절": {"emoji": "💫"},
                     "빙결": {"emoji": "❄️"}
                 }
-                
                 for effect_name, props in cc_effects.items():
                     if effect_name in char.get("Status", {}):
-                        char_name = "사령" if is_summon else char['name']
-                        
                         # 메시지만 출력하는 용도
                         cc_embed = discord.Embed(
                             title=f"{char_name}의 상태!⚔️", # 대상의 이름 사용
@@ -977,43 +948,78 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                         if not is_summon and "장전" in char["Status"]:
                             char["Status"]["장전"]["duration"] += 1
 
-                        if not simulate:
-                            await weapon_battle_thread.send(embed=cc_embed)
-                
-                    return "can_act", None # 기본적으로 행동 가능
+                        embeds_generated_this_turn.append(cc_embed)
+            
+            # --- 모든 효과 처리 후 메시지 전송 및 행동 가능 여부 반환 ---
 
-            # --- 메인 로직 시작 ---
-    
-            # 1. 사령이 있다면, 사령의 효과부터 먼저 처리
-            if 'Summon' in attacker and attacker.get('Summon'):
-                summon = attacker['Summon']
-                status, result = await _process_effects_for_char(summon, is_summon=True)
-                # 사령의 효과 처리 중 본체가 죽는 경우는 없으므로, 'ended'는 체크하지 않음
-                
-            # 2. 본체의 효과 처리
-            status, result = await _process_effects_for_char(attacker)
-            if status == "ended":
-                return "ended", result
-
-            # 3. 본체의 행동 가능 여부 최종 결정
-            # 본체 또는 사령에게 행동 불가 CC가 걸려 있는지 확인
-            # (규칙 변경: 사령이 CC에 걸리면 본체는 행동 가능, 본체가 걸리면 행동 불가)
+            # # 1. 메시지 전송
+            # if not simulate and embeds_generated_this_turn:
+            #     for embed in embeds_generated_this_turn:
+            #         shield_challenger = challenger["Status"].get("보호막", {}).get("value", 0)
+            #         shield_opponent = opponent["Status"].get("보호막", {}).get("value", 0)
+            #         show_bar(embed, raid, challenger, shield_challenger, opponent, shield_opponent)
+            #         await weapon_battle_thread.send(embed=embed)
+            
+            # 2. 최종 행동 가능 여부 결정
+            # 본체가 행동 불가 상태(CC)인지 확인
             for effect_name in ["기절", "빙결"]:
                 if effect_name in attacker.get("Status", {}):
-                    return "cc_active", None # 본체가 행동 불가
+                    return "cc_active", None, embeds_generated_this_turn
 
-            return "can_act", None # 모든 검사를 통과하면 행동 가능
+            # [수정] 사령의 CC 처리 (선택적)
+            # 현재 규칙에 따라, 사령의 CC는 본체 행동에 영향을 주지 않으므로,
+            # 해당 부분은 메시지만 출력하고 실제 행동을 막지는 않습니다.
+            # 만약 "사령이 CC에 걸리면 본체도 행동 불가"라는 규칙을 원한다면
+            # 아래 주석을 해제하고 `return`을 사용하면 됩니다.
+            if 'Summon' in attacker and attacker.get('Summon'):
+                for effect_name in ["기절", "빙결"]:
+                    if effect_name in attacker['Summon'].get("Status", {}):
+                        # summon_cc_embed = discord.Embed(title="사령 행동 불가", ...)
+                        # await weapon_battle_thread.send(embed=summon_cc_embed)
+                        # return "cc_active", None, embeds_generated_this_turn
+                        pass # 현재는 아무 행동도 하지 않음
+
+            # 모든 검사를 통과하면 행동 가능
+            return "can_act", None, embeds_generated_this_turn
+
 
         # [ 여기가 핵심 수정 부분 ]
         # 새로 만든 함수를 호출하여 턴 시작 효과를 통합 처리
-        action_status, result = await process_turn_start_effects(
-            attacker, defender, raid, simulate, weapon_battle_thread, end,
-            challenger, opponent, turn
-        )
+        action_status, result_data, turn_start_embeds = await process_turn_start_effects(attacker, defender)
+
+        # 2. [신규] 턴 시작 메시지(DoT, CC 등)를 먼저 전송
+        if not simulate and turn_start_embeds:
+            for embed in turn_start_embeds:
+                # show_bar를 embed마다 호출하면 정보가 중복될 수 있으므로, 
+                # 상황에 따라 마지막 embed에만 추가하거나, 지금처럼 매번 추가할 수 있습니다.
+                shield_challenger = challenger["Status"].get("보호막", {}).get("value", 0)
+                shield_opponent = opponent["Status"].get("보호막", {}).get("value", 0)
+                show_bar(embed, raid, challenger, shield_challenger, opponent, shield_opponent)
+                await weapon_battle_thread.send(embed=embed)
 
         # 전투가 끝났으면 루프 종료
         if action_status == "ended":
-            if simulate: return result
+            # 1. result_data 딕셔너리에서 사망자와 가해자 정보를 정확히 추출합니다.
+            dead_char = result_data['dead_char']
+            killer_char = result_data['killer_char']
+
+            # 2. 패자는 dead_char, 승자는 killer_char 입니다.
+            loser = dead_char
+            winner = killer_char
+            
+            # 3. end 함수에 정확한 승자/패자 정보를 전달합니다.
+            #    end 함수는 최종 결과를 반환합니다 (시뮬레이션 시 bool, 아닐 시 None).
+            final_result = await end(
+                winner,               # 승자 객체
+                loser,              # 패자 객체
+                raid,
+                simulate,
+            )
+
+            # 4. 시뮬레이션 환경에 따라 결과를 반환하거나 루프를 종료합니다.
+            if simulate:
+                return final_result
+            
             break # while 루프 종료
             
         # 행동 불가(CC) 상태이면 다음 턴으로
@@ -1029,7 +1035,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         acceleration_chance = speed // 5  # 예: 스피드 50이면 10%
         overdrive_chance = max(0, (speed - 200) // 5)  # 초가속: 200 초과부터 5당 1%
         result_message = ""
-
+        
         # 가속 판정 1회
         acceleration_triggered = False
         overdrive_triggered = False
@@ -1095,7 +1101,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
         battle_embed = discord.Embed(title=f"{attacker['name']}의 공격!⚔️", color=discord.Color.blue())
         
         # 2. 스킬 사용 여부 결정 (가속 효과는 result_message에 먼저 추가됨)
-        skill_message, used_skill, skill_attack_names, cooldown_messages = process_all_skills(
+        skill_message, used_skill, skill_attack_names = await process_all_skills(
             attacker, defender, slienced, evasion, attacked,
             skill_data_firebase
         )
@@ -1111,25 +1117,33 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             if attacker['Id'] == 1: battle_embed.color = discord.Color.red()
             
             # attack 함수는 이제 순수 피해량만 계산
-            total_damage, critical, _, _, skill_message = await attack(attacker, defender, evasion, reloading, skill_attack_names)
+            total_damage, critical, _, _, skill_message = await attack(attacker, defender, evasion, reloading, skill_attack_names, acceleration_triggered= acceleration_triggered, overdrive_triggered = overdrive_triggered)
             result_message += skill_message
         else:
             # 일반 공격
             if attacker['Id'] == 1: battle_embed.color = discord.Color.red()
 
             # attack 함수는 이제 순수 피해량만 계산
-            total_damage, critical, _, _, skill_message = await attack(attacker, defender, evasion, reloading, None)
+            total_damage, critical, _, _, skill_message = await attack(attacker, defender, evasion, reloading, None, acceleration_triggered= acceleration_triggered, overdrive_triggered = overdrive_triggered)
             result_message += skill_message
             
         # 4. 적중 시 효과 처리 (뇌진탕, 불굴 등)
         if attacked:
-            hit_effects_message, used_skill_on_hit = process_on_hit_effects(
+            hit_effects_message, used_skill_on_hit = await process_on_hit_effects(
                 attacker, defender, evasion, critical, skill_attack_names, [], result_message,
                 skill_data_firebase, battle_embed
             )
             used_skill.extend(used_skill_on_hit)
 
         # 5. 모든 텍스트 메시지를 Embed에 정리하여 추가
+        cooldown_messages = []
+        for skill_name, skill_data in attacker["Skills"].items():
+            if skill_name not in used_skill:
+                current_cd = skill_data.get("현재 쿨타임", 0)
+                if current_cd > 0:
+                    emoji = skill_emojis.get(skill_name, "")
+                    cooldown_messages.append(f"**{emoji}: {current_cd}턴**")
+        
         if cooldown_messages:
             result_message += "\n⏳:" + " ".join(cooldown_messages)
         
@@ -1199,8 +1213,11 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
 
         if is_dead:
             defender["HP"] = 0
-            result = await end(attacker, defender, "attacker", raid, simulate, winner_id=attacker['Id'])
+            if not simulate:
+                await weapon_battle_thread.send(embed = battle_embed)
+            result = await end(attacker, defender, raid, simulate)
             if simulate: return result
+            
             break
 
         attacker, defender = defender, attacker

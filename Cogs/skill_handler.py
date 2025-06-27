@@ -4,12 +4,86 @@ from .skills import *
 # 예시로 몇 개의 스킬만 간략하게 구현
 # 실제로는 각각의 스킬 함수 (charging_shot, Shield, etc.)를 import 하거나 이 파일에 포함해야 함
 
+async def apply_and_process_damage(
+        source_char,
+        target_char,
+        damage_amount,
+        embed,
+        is_critical,
+        is_evaded,
+        damage_source_name,
+        is_dot_damage=False  # DoT 여부를 받는 인자
+    ):
+        """피해를 최종 적용하고 보호막/사령 분담을 처리하며, 직관적인 결과 메시지를 Embed에 추가합니다."""
+        not_evasion_skills = ['속사','일섬', "이케시아 폭우", "토네이도"]
 
-def process_skill(
+        if is_evaded:
+            if damage_source_name in not_evasion_skills: # 필중 스킬에 회피가 터졌으면 다시 초기화
+                if "기습" in target_char["Status"]:
+                    target_char['evaded'] = False
+            else:
+                embed.add_field(name="", value=f"**회피!⚡️**", inline=False)
+                return target_char['HP'] <= 0
+
+        if damage_amount <= 0:
+            return target_char['HP'] <= 0
+
+        remaining_damage = damage_amount
+        shield_message_part = ""
+        summon_message_part = ""
+        
+        # 1. 보호막 흡수
+        if remaining_damage > 0 and "보호막" in target_char['Status']:
+            shield = target_char['Status']['보호막']
+            damage_absorbed_by_shield = min(remaining_damage, shield['value'])
+            shield['value'] -= damage_absorbed_by_shield
+            remaining_damage -= damage_absorbed_by_shield
+            if shield['value'] <= 0:
+                del target_char['Status']['보호막']
+            shield_message_part = f" 🛡️{damage_absorbed_by_shield} 흡수!"
+            
+        # 2. 사령 흡수 (DoT가 아닐 때만 실행)
+        # [의도 반영] is_dot_damage가 False일 때만 이 블록이 실행됩니다.
+        if not is_dot_damage and remaining_damage > 0 and 'Summon' in target_char and target_char.get('Summon'):
+            summon = target_char['Summon']
+            damage_absorbed_by_summon = min(remaining_damage, summon['HP'])
+            summon['HP'] -= damage_absorbed_by_summon
+            
+            # [의도 반영] 사령이 피해를 흡수하면, 남은 피해량(remaining_damage)을 0으로 만듭니다.
+            #            본체는 피해를 입지 않습니다.
+            remaining_damage = 0 
+            
+            if summon['HP'] <= 0:
+                del target_char['Summon']
+                if "사령 소환" in target_char["Skills"]:
+                    cooldown = target_char["Skills"]["사령 소환"]["전체 쿨타임"]
+                    target_char["Skills"]["사령 소환"]["현재 쿨타임"] = cooldown
+                summon_message_part = f" 💀사령 소멸!({damage_absorbed_by_summon} 흡수)"
+            else:
+                summon_message_part = f" 💀{damage_absorbed_by_summon} 흡수"
+
+        # 3. 본체 피해 적용
+        # - 일반 공격 시: remaining_damage가 0이 되어 본체 피해 없음.
+        # - DoT 피해 시: 사령 흡수 로직을 건너뛰었으므로, 남은 피해가 그대로 본체에 적용됨.
+        target_char["HP"] -= remaining_damage
+        
+        # 4. 최종 메시지 조합 및 Embed에 추가
+        crit_text = "💥" if is_critical else ""
+        
+        if remaining_damage > 0:
+            final_message = f"**{remaining_damage} 대미지!{crit_text}{shield_message_part}{summon_message_part}**"
+        elif shield_message_part or summon_message_part:
+            final_message = f"**총 {damage_amount} 피해!{crit_text} →{shield_message_part}{summon_message_part}**"
+        else:
+            final_message = f"**{damage_amount} 대미지!{crit_text}**"
+
+        embed.add_field(name="", value=final_message, inline=False)
+        return target_char['HP'] <= 0
+
+async def process_skill(
     attacker, defender, skill_name, slienced, evasion, attacked,
     skill_data_firebase,
     result_message, used_skill, skill_attack_names,
-    cooldown_message
 ):
     skill_cooldown_current = attacker["Skills"][skill_name]["현재 쿨타임"]
     skill_cooldown_total = attacker["Skills"][skill_name]["전체 쿨타임"]
@@ -17,7 +91,7 @@ def process_skill(
 
     passive_skills = ["두번째 피부", "뇌진탕 펀치", "저주받은 바디"]
 
-    if skill_cooldown_current == 0:
+    if skill_cooldown_current <= 0:
         if slienced:
             result_message += f"침묵 상태로 인하여 {skill_name}스킬 사용 불가!\n"
         else:
@@ -38,13 +112,10 @@ def process_skill(
                     # 공격형, 쿨타임형 등 기타 스킬
                     used_skill.append(skill_name)
                     skill_attack_names.append(skill_name)
-    else:
-        emoji = skill_emojis.get(skill_name, "")  # 없으면 공백 or skill_name로 대체 가능
-        cooldown_message.append(f"{emoji}**{skill_cooldown_current}턴**")
 
     return result_message
 
-def process_all_skills(
+async def process_all_skills(
     attacker, defender, slienced, evasion, attacked,
     skill_data_firebase
 ):
@@ -52,7 +123,6 @@ def process_all_skills(
     used_skill = []
     skill_attack_names = []
     skill_names = list(attacker["Skills"].keys())
-    cooldown_message = [] 
 
     # 기술 사용(자동 스킬 선택) 기믹
     if "기술 사용" in attacker.get("Status", {}):
@@ -68,17 +138,17 @@ def process_all_skills(
             used_skill.append(ai_skill_to_use)
             skill_attack_names.append(ai_skill_to_use)
         # 기술 사용 관련 처리를 했으므로, 아래 일반 스킬 처리로 바로 넘어가지 않도록 return
-        return result_message, used_skill, skill_attack_names, cooldown_message
+        return result_message, used_skill, skill_attack_names
 
     for skill_name in skill_names:
-        result_message = process_skill(
+        result_message = await process_skill(
             attacker, defender, skill_name, slienced, evasion, attacked,
-            skill_data_firebase, result_message, used_skill, skill_attack_names, cooldown_message
+            skill_data_firebase, result_message, used_skill, skill_attack_names
         )
 
-    return result_message, used_skill, skill_attack_names, cooldown_message
+    return result_message, used_skill, skill_attack_names
 
-def process_on_hit_effects(
+async def process_on_hit_effects(
     attacker, defender, evasion, critical_bool, skill_attack_names, used_skill, result_message,
     skill_data_firebase, battle_embed
 ):
@@ -129,13 +199,30 @@ def process_on_hit_effects(
                         battle_embed.add_field(name="출혈!", value="치명타 공격으로 2턴간 **출혈** 부여!🩸", inline=False)
     return result_message, used_skill
 
-def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebase):
+async def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebase, acceleration_triggered, overdrive_triggered):
     """스킬을 사용하여 피해를 입히고 효과를 적용"""
 
     total_damage = 0  # 총 피해량 저장
     result_message = ""
     critical_bool = False
-    for skill_name in skills:
+
+    final_skills_to_cast = list(skills)
+
+    if "명상" in skills:
+        skill_data = attacker["Skills"]["명상"]
+        skill_level = skill_data["레벨"]
+
+        # meditate 함수는 이제 3개의 값을 반환함
+        skill_message, damage, chained_skills = meditate(attacker, defender, skill_level, skill_data_firebase, acceleration_triggered, overdrive_triggered)
+        result_message += skill_message
+        
+        # [핵심] 명상으로 인해 연계된 스킬들을 최종 시전 목록에 추가
+        if chained_skills:
+            final_skills_to_cast.extend(chained_skills)
+            # 중복 제거 (예: 원래도 쿨 0이었는데 연계 목록에도 추가된 경우)
+            final_skills_to_cast = list(dict.fromkeys(final_skills_to_cast)) 
+
+    for skill_name in final_skills_to_cast:
         skill_data = attacker["Skills"].get(skill_name, None)
         if not skill_data or skill_data["현재 쿨타임"] > 0:
             result_message += f"{skill_name}의 남은 쿨타임 : {skill_data['현재 쿨타임']}턴\n"
@@ -165,8 +252,7 @@ def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebas
                 apply_status_for_turn(attacker, "장전", duration=1, source_id=defender['Id'])
                 return None, result_message, critical_bool
         elif skill_name == "명상":
-            skill_message, damage= meditate(attacker,defender, skill_level, skill_data_firebase)
-            result_message += skill_message
+            continue
         elif skill_name == "기습":
             if "기습" in attacker['Status']:
                 skill_message, damage = invisibility(attacker, defender, evasion, skill_level, skill_data_firebase, mode = "attack")
@@ -183,10 +269,23 @@ def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebas
             skill_message, damage= fire(attacker,defender, evasion,skill_level, skill_data_firebase)
             result_message += skill_message
         elif skill_name == "냉기 마법":
-            skill_message, damage= ice(attacker,defender, evasion,skill_level, skill_data_firebase)
+            if attacker.get('명상', 0) >= 5:
+                attacker['명상'] = attacker.get('명상', 0) - 5
+                skill_message, damage = ice_blizzard(attacker,defender, evasion,skill_level, skill_data_firebase)
+            else:
+                skill_message, damage= ice_frost(attacker,defender, evasion,skill_level, skill_data_firebase)
             result_message += skill_message
         elif skill_name == "신성 마법":
             skill_message, damage= holy(attacker,defender, evasion,skill_level, skill_data_firebase)
+            result_message += skill_message
+        elif skill_name == "질풍 마법":
+            if attacker.get('명상', 0) >= 5:
+                attacker['명상'] = attacker.get('명상', 0) - 5
+                skill_message, damage = wind_tornado(attacker,defender,skill_level, skill_data_firebase, acceleration_triggered, overdrive_triggered)
+                skill_name = "토네이도"
+                total_damage += damage
+            else:
+                skill_message, damage= wind_gale(attacker,evasion,skill_level, skill_data_firebase)
             result_message += skill_message
         elif skill_name == "창격":
             skill_message, damage = spearShot(attacker, defender, evasion, skill_level,skill_data_firebase)
@@ -242,7 +341,9 @@ def use_skill(attacker, defender, skills, evasion, reloading, skill_data_firebas
         elif skill_name == "저주":
             skill_message, damage = curse(attacker, defender, evasion, skill_level, skill_data_firebase)
             result_message += skill_message
-        if skill_name != "속사" and skill_name != "이케시아 폭우":
+
+        multi_skills = ['속사', '이케시아 폭우', '토네이도'] #연사기는 미리 방어력 계산함
+        if skill_name not in multi_skills:
             # 피해 증폭
             damage *= 1 + attacker["DamageEnhance"]
             # 방어력 계산 적용

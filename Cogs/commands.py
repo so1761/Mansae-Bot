@@ -1283,8 +1283,8 @@ async def get_summoner_id(puuid):
                 print('Error:', response.status)
                 return None
 
-async def get_summoner_ranks(summoner_id, type="솔랭"):
-    url = f'https://kr.api.riotgames.com/lol/league/v4/entries/by-summoner/{summoner_id}'
+async def get_summoner_ranks(puuid, type="솔랭"):
+    url = f'https://kr.api.riotgames.com/lol/league/v4/entries/by-puuid/{puuid}'
     headers = {'X-Riot-Token': API_KEY}
 
     async with aiohttp.ClientSession() as session:
@@ -2860,8 +2860,7 @@ class hello(commands.Cog):
         RNAME = RNAME.strip()
         TLINE = TLINE.strip()
         puuid = await get_summoner_puuid(RNAME, TLINE)
-        id = await get_summoner_id(puuid)
-        rank = await get_summoner_ranks(id,리그)
+        rank = await get_summoner_ranks(puuid,리그)
         if rank == []:
             await interaction.response.send_message("해당 리그의 전적을 찾을 수 없습니다.")
             return

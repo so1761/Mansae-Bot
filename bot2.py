@@ -565,21 +565,8 @@ async def get_summoner_puuid(riot_id, tagline):
                 print('Error:', response.status)
                 return None
 
-async def get_summoner_id(puuid):
-    url = f'https://kr.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/{puuid}'
-    headers = {'X-Riot-Token': API_KEY}
-
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers) as response:
-            if response.status == 200:
-                data = await response.json()
-                return data['id']
-            else:
-                print('Error:', response.status)
-                return None
-
-async def get_summoner_ranks(summoner_id, type="솔랭", retries=5, delay=5):
-    url = f'https://kr.api.riotgames.com/lol/league/v4/entries/by-summoner/{summoner_id}'
+async def get_summoner_ranks(puuid, type="솔랭", retries=5, delay=5):
+    url = f'https://kr.api.riotgames.com/lol/league/v4/entries/by-puuid/{puuid}'
     headers = {'X-Riot-Token': API_KEY}
 
     for attempt in range(retries):
@@ -895,7 +882,7 @@ def calculate_bonus_rate(streak):
     
     return round(bonus,1)
 
-async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, votes, event):
+async def check_points(puuid, name, channel_id, notice_channel_id, votes, event):
     await bot.wait_until_ready()
     channel = bot.get_channel(int(channel_id)) # 일반 채널
     notice_channel = bot.get_channel(int(notice_channel_id)) # 공지 채널
@@ -903,8 +890,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
     prediction_votes = votes["prediction"]
     kda_votes = votes["kda"]
     try:
-        last_rank_solo = await get_summoner_ranks(summoner_id, "솔랭")
-        last_rank_flex = await get_summoner_ranks(summoner_id, "자랭")
+        last_rank_solo = await get_summoner_ranks(puuid, "솔랭")
+        last_rank_flex = await get_summoner_ranks(puuid, "자랭")
         if not last_rank_solo:
             last_total_match_solo = 0
         else:
@@ -928,8 +915,8 @@ async def check_points(puuid, summoner_id, name, channel_id, notice_channel_id, 
 
     while not bot.is_closed():
         try:
-            current_rank_solo = await get_summoner_ranks(summoner_id, "솔랭")
-            current_rank_flex = await get_summoner_ranks(summoner_id, "자랭")
+            current_rank_solo = await get_summoner_ranks(puuid, "솔랭")
+            current_rank_flex = await get_summoner_ranks(puuid, "자랭")
         except Exception as e:
             print(f"Error in check_points: {e}")
             current_rank_solo = None
@@ -2214,7 +2201,6 @@ class MyBot(commands.Bot):
         # Check points for Jimo
         bot.loop.create_task(check_points(
             puuid=JIMO_PUUID, 
-            summoner_id=JIMO_ID, 
             name="지모", 
             channel_id=CHANNEL_ID, 
             notice_channel_id=NOTICE_CHANNEL_ID, 
@@ -2225,7 +2211,6 @@ class MyBot(commands.Bot):
         # Check points for Melon
         bot.loop.create_task(check_points(
             puuid=MELON_PUUID, 
-            summoner_id=MELON_ID, 
             name="Melon", 
             channel_id=CHANNEL_ID, 
             notice_channel_id=NOTICE_CHANNEL_ID, 

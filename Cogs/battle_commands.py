@@ -385,7 +385,7 @@ def apply_stat_to_weapon_data(weapon_data: dict, enhancement_options: dict, base
                 new_stats[stat] = round(new_stats.get(stat, 0) + value * enhance_count, 3)
 
     basic_skill_levelup = inherit_log_data.get("기본 스킬 레벨 증가", 0)
-    basic_skills = ["속사", "기습", "강타", "헤드샷", "창격", "수확", "명상", "화염 마법", "냉기 마법", "신성 마법", "일섬", "사령 소환", "저주"]
+    basic_skills = ["속사", "기습", "강타", "헤드샷", "창격", "수확", "명상", "화염 마법", "냉기 마법", "신성 마법", "질풍 마법", "일섬", "사령 소환", "저주"]
     skills = base_weapon_stats[weapon_type].get("스킬", {})
     updated_skills = {}
     for skill_name in skills:
@@ -554,7 +554,7 @@ def apply_stat_change(nickname: str):
 
     basic_skill_levelup = inherit_log_data.get("기본 스킬 레벨 증가", 0)
         
-    basic_skills = ["속사", "기습", "강타", "헤드샷", "창격", "수확", "명상", "화염 마법", "냉기 마법", "신성 마법", "일섬", "사령 소환", "저주"]
+    basic_skills = ["속사", "기습", "강타", "헤드샷", "창격", "수확", "명상", "화염 마법", "냉기 마법", "신성 마법", "질풍 마법", "일섬", "사령 소환", "저주"]
     base_weapon_stat = base_weapon_stats[weapon_type]
     skills = base_weapon_stat["스킬"]
     for skill_name in basic_skills:
@@ -1013,7 +1013,7 @@ class InheritWeaponNameModal(discord.ui.Modal, title="새로운 무기 이름 �
         
         basic_skill_levelup = inherit_log.get("기본 스킬 레벨 증가", 0)
         
-        basic_skills = ["속사", "기습", "강타", "헤드샷", "창격", "수확", "명상", "화염 마법", "냉기 마법", "신성 마법", "일섬", "사령 소환", "저주"]
+        basic_skills = ["속사", "기습", "강타", "헤드샷", "창격", "수확", "명상", "화염 마법", "냉기 마법", "신성 마법", "질풍 마법", "일섬", "사령 소환", "저주"]
         skills = base_weapon_stat["스킬"]
         for skill_name in basic_skills:
             if skill_name in skills:
@@ -2465,12 +2465,11 @@ class hello(commands.Cog):
             description="전투가 시작되었습니다!",
             color=discord.Color.blue()  # 원하는 색상 선택
         )
-        msg = await interaction.response.send_message(embed=embed)
+        msg = await interaction.response.send_message(embed=embed, delete_after = 5)
         await Battle(channel = interaction.channel,challenger_m = 상대, tower = True, practice= True, tower_floor= 층수)
 
         battle_ref = db.reference("승부예측/대결진행여부")
         battle_ref.set(False)
-        await msg.delete()
 
     @app_commands.command(name="랜덤박스", description="랜덤 박스를 열어 아이템을 얻습니다!")
     @app_commands.describe(개수="개봉할 랜덤박스 개수 (기본값: 1)")
