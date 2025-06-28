@@ -52,7 +52,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
                             "오늘달성": True
                         }
 
-                        if new_count >= 10:
+                        if new_count >= 5:
                             from .commands import mission_notice
                             updates["완료"] = True
                             mission_notice(challenger_m.display_name,"선봉장")
