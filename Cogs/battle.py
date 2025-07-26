@@ -696,7 +696,7 @@ async def Battle(channel, challenger_m, opponent_m = None, boss = None, raid = F
             apply_status_for_turn(defender, "치유 감소", 1, healban_amount, source_id = defender['Id'])
 
         attacked = False
-
+        
         if "일섬" in attacker["Status"]:
             if attacker["Status"]["일섬"]["duration"] == 1:
                 issen_data = skill_data_firebase['일섬']['values']

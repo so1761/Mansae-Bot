@@ -81,10 +81,70 @@ def smash(attacker, defender, evasion, skill_level, skill_data_firebase):
 def issen(attacker, defender, skill_level, skill_data_firebase):
     # 일섬 : 다음턴에 적에게 날카로운 참격을 가한다. 회피를 무시하고 명중률에 비례한 대미지를 입히며, 표식을 부여한다.
     # 출혈 상태일 경우, 출혈 상태 해제 후 남은 피해의 150%를 즉시 입히고, 해당 피해의 50%를 고정 피해로 변환
+    damage = 0
+    message = ""
+    if "일섬" in defender.get("Status", {}):
+        if defender["Status"]["일섬"]["duration"] >= 1:
+            message += f"**{skill_emojis['일섬']}일섬 - 중첩 발동!**\n{attacker['name']}이(가) 대기 중이던 일섬을 발동합니다!\n"
 
+            issen_data = skill_data_firebase['일섬']['values']
+            skill_level = attacker['Skills']['일섬']['레벨']
+
+            def calculate_damage(attacker,defender,multiplier):
+                evasion_score = calculate_evasion_score(defender["Speed"])
+                accuracy = calculate_accuracy(attacker["Accuracy"], evasion_score + defender["Evasion"])
+                accuracy_apply_rate = issen_data['기본_명중_반영_비율'] + issen_data['레벨당_명중_반영_비율'] * skill_level
+                base_damage = random.uniform(attacker["Attack"] + (attacker["Accuracy"] * accuracy_apply_rate) * accuracy, attacker["Attack"] + (attacker["Accuracy"] * accuracy_apply_rate))  # 최소 ~ 최대 피해
+                critical_bool = False
+
+                # 피해 증폭
+                base_damage *= 1 + attacker["DamageEnhance"]
+
+                explosion_damage = 0
+                bleed_explosion = False
+                if '출혈' in defender["Status"]: # 출혈 적용상태라면
+                    duration = defender["Status"]['출혈']['duration']
+                    value = defender["Status"]['출혈']['value']
+                    explosion_damage = (duration * value)
+                    explosion_damage = round(explosion_damage)
+                    base_damage += explosion_damage
+                    bleed_explosion = True
+
+                if random.random() < attacker["CritChance"]:
+                    base_damage *= attacker["CritDamage"]
+                    critical_bool = True
+
+                fixed_damage = 0 # 출혈 상태 적용 시 고정 피해 50%
+                if '출혈' in defender["Status"]: # 출혈 적용상태라면
+                    duration = defender["Status"]['출혈']['duration']
+                    fixed_damage = round(base_damage / 2)
+                    base_damage = fixed_damage
+
+                defense = max(0, (defender["Defense"] - attacker["DefenseIgnore"]))
+                damage_reduction = calculate_damage_reduction(defense)
+                defend_damage = base_damage * (1 - damage_reduction) * multiplier
+                final_damage = defend_damage * (1 - defender['DamageReduction']) + fixed_damage # 대미지 감소 적용
+                return max(1, round(final_damage)), critical_bool, explosion_damage,bleed_explosion
+
+            bleed_damage = issen_data['출혈_대미지'] + issen_data['레벨당_출혈_대미지'] * skill_level
+            total_issen_damage, critical, explosion_damage, bleed_explosion = calculate_damage(attacker, defender, 1)
+
+            # 3. 결과 메시지 생성 및 출력
+            apply_status_for_turn(defender, "출혈", 2, bleed_damage)
+            message += f"🩸 2턴간 출혈 부여!\n"
+            
+            crit_text = "💥" if critical else ""
+            explosion_message = ""
+            if bleed_explosion:
+                if '출혈' in attacker["Status"]: 
+                    del attacker["Status"]['출혈']
+                    message += "출혈 추가 효과! 남은 출혈 대미지를 더하고\n총 피해의 50%를 고정피해로 입힙니다.\n",
+                    explosion_message = f"(+🩸{explosion_damage} 대미지)"
+
+            damage += total_issen_damage
     apply_status_for_turn(defender, "일섬", duration=2)
-    message = f"**{skill_emojis['일섬']}일섬** 사용!\n{attacker['name']}이(가) 준비자세를 취합니다." 
-    return message, 0
+    message += f"**{skill_emojis['일섬']}일섬** 사용!\n{attacker['name']}이(가) 준비자세를 취합니다." 
+    return message, damage
 
 def headShot(attacker, defender, evasion, skill_level, skill_data_firebase):
     """액티브 - 헤드샷"""

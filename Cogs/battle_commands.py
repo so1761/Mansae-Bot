@@ -1948,7 +1948,10 @@ class hello(commands.Cog):
                 discord.SelectOption(label="스태프-화염", description="강력한 화력과 지속적 화상 피해"),
                 discord.SelectOption(label="스태프-냉기", description="얼음과 관련된 군중제어기 보유"),
                 discord.SelectOption(label="스태프-신성", description="치유 능력과 침묵 부여"),
+                discord.SelectOption(label="스태프-질풍", description="스피드에 따른 연속 스킬 시전"),
+                discord.SelectOption(label="흑마법서", description="사령 소환 및 저주 부여"),
                 discord.SelectOption(label="태도", description="명중에 따른 공격 능력 증가, 출혈을 통한 피해"),
+                
             ]
         )
 
