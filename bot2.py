@@ -2174,17 +2174,17 @@ class MyBot(commands.Bot):
 
         bot.loop.create_task(update_mission_message())
         
-        # # Task for Jimo
-        # bot.loop.create_task(open_prediction(
-        #     name="지모", 
-        #     puuid=JIMO_PUUID, 
-        #     votes=p.votes['지모'], 
-        #     channel_id=CHANNEL_ID, 
-        #     notice_channel_id=NOTICE_CHANNEL_ID, 
-        #     event=p.jimo_event,
-        #     current_game_state = p.jimo_current_game_state,
-        #     winbutton = p.jimo_winbutton
-        # ))
+        # Task for Jimo
+        bot.loop.create_task(open_prediction(
+            name="지모", 
+            puuid=JIMO_PUUID, 
+            votes=p.votes['지모'], 
+            channel_id=CHANNEL_ID, 
+            notice_channel_id=NOTICE_CHANNEL_ID, 
+            event=p.jimo_event,
+            current_game_state = p.jimo_current_game_state,
+            winbutton = p.jimo_winbutton
+        ))
 
         # Task for Melon
         bot.loop.create_task(open_prediction(
@@ -2198,15 +2198,15 @@ class MyBot(commands.Bot):
             winbutton = p.melon_winbutton
         ))
 
-        # # Check points for Jimo
-        # bot.loop.create_task(check_points(
-        #     puuid=JIMO_PUUID, 
-        #     name="지모", 
-        #     channel_id=CHANNEL_ID, 
-        #     notice_channel_id=NOTICE_CHANNEL_ID, 
-        #     votes=p.votes['지모'], 
-        #     event=p.jimo_event
-        # ))
+        # Check points for Jimo
+        bot.loop.create_task(check_points(
+            puuid=JIMO_PUUID, 
+            name="지모", 
+            channel_id=CHANNEL_ID, 
+            notice_channel_id=NOTICE_CHANNEL_ID, 
+            votes=p.votes['지모'], 
+            event=p.jimo_event
+        ))
 
         # Check points for Melon
         bot.loop.create_task(check_points(
