@@ -1,6 +1,0 @@
-Django==5.0.4
-firebase_admin==6.5.0
-python-dotenv==1.1.0
-Requests==2.32.3
-gunicorn
-django-cors-headers
