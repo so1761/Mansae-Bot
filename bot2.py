@@ -260,7 +260,7 @@ async def get_team_champion_embed(username, puuid, get_info_func=get_current_gam
         "Guardian": "<:Guardian:1476931915415027784>",
         "VeteranAftershock": "<:VeteranAftershock:1476931927541026957>"
     }
-    
+
     CHAMPION_ID_NAME_MAP = await fetch_champion_data(force_download = False)
     SPELL_ID_TO_KEY = await fetch_spell_id_to_key_map()
     RUNE_ID_TO_KEY = await fetch_rune_id_to_key_map()
@@ -507,7 +507,7 @@ async def refresh_kda_prediction(name, kda_votes):
     perfect_predictions = "\n".join(f"{user['name'].display_name}" for user in kda_votes["perfect"]) or "없음"
 
     embed.add_field(name="KDA 3 이상", value=up_predictions, inline=False)
-    embed.add_field(name="KDA 3 이상", value=down_predictions, inline=False)
+    embed.add_field(name="KDA 3 이하", value=down_predictions, inline=False)
     embed.add_field(name="퍼펙트", value=perfect_predictions, inline=False)
     
     await p.current_messages_kda[name].edit(embed=embed)
