@@ -20,13 +20,13 @@ firebase_admin.initialize_app(cred,{
 cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
 current_predict_season = cur_predict_seasonref.get()
 
-# 현재 시즌에서 숫자 추출 후 +1
-match = re.search(r'\d+', current_predict_season)
-if match:
-    next_season_number = int(match.group()) + 1
-    next_season = re.sub(r'\d+', str(next_season_number), current_predict_season)
-else:
-    next_season = current_predict_season + "1"
+now = datetime.now()
+
+# 연도 뒤의 2자리와 월 조합 (예: 2026년 2월 -> 26-2)
+next_predict_season = f"{now.strftime('%y')}-{now.month}"
+
+# 이제 DB에서 해당 시즌 데이터를 참조
+cur_predict_seasonref = db.reference(f"승부예측/예측시즌/{current_predict_season}")
     
 # 포인트 순위 가져오기
 ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트')
@@ -41,7 +41,7 @@ winner = sorted_data[0] if sorted_data else None
 if winner:
     winner_name, winner_info = winner
     embed = {
-        "title": f"🏆 {current_predict_season} 시즌 종료 🏆",
+        "title": f"🏆 [{current_predict_season}] 시즌 종료 🏆",
         "description": f"🎉 {winner_name}님이 1등을 차지했습니다! 축하합니다! 🎉",
         "color": 0xFFD700,
         "fields": [
@@ -63,16 +63,10 @@ else:
 # 디스코드 웹훅으로 메시지 전송
 response = requests.post(WEBHOOK_URL, json={"embeds": [embed]})
 
-# 기존 시즌의 강화 재료 가져오기
-current_items_ref = db.reference(f'승부예측/예측시즌/{current_predict_season}/예측포인트')
-current_items = current_items_ref.get() or {}
-
-# 새로운 시즌의 아이템 레퍼런스
-next_items_ref = db.reference(f'승부예측/예측시즌/{next_season}/예측포인트')
 
 # 시즌 업데이트 (다음 시즌으로 변경)
-cur_predict_seasonref.set(next_season)
-print(f"시즌이 {next_season}으로 변경되었습니다.")
+cur_predict_seasonref.set(next_predict_season)
+print(f"시즌이 [{next_predict_season}]으로 변경되었습니다.")
 
 if response.status_code == 204:
     print("✅ 시즌 종료 메시지 전송 성공!")
