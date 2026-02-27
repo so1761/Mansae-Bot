@@ -23,16 +23,6 @@ votes = {
             "down": [],
             "perfect": []
         }
-    },
-    "배틀": {
-        "prediction": {
-            "win": [],
-            "lose": []
-        },
-        "name":{
-            "challenger": "",
-            "상대": ""
-        }
     }
 }
 
