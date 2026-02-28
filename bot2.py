@@ -258,7 +258,7 @@ async def get_team_champion_embed(username, puuid, get_info_func=get_current_gam
         "ArcaneComet": "<:ArcaneComet:1476931896624550000>",
         "GraspOfTheUndying": "<:GraspOfTheUndying:1476931913787637762>",
         "Guardian": "<:Guardian:1476931915415027784>",
-        "VeteranAftershock": "<:VeteranAftershock:1476931927541026957>"
+        "Aftershock": "<:Aftershock:1476931927541026957>"
     }
 
     CHAMPION_ID_NAME_MAP = await fetch_champion_data(force_download = False)
