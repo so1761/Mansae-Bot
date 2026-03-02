@@ -1,0 +1,8 @@
+aiohttp==3.9.5
+discord.py==2.4.0
+firebase_admin==6.5.0
+matplotlib==3.8.0
+mplfinance==0.12.10b0
+pandas==3.0.1
+python-dotenv==1.2.2
+Requests==2.32.5
