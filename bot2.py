@@ -61,7 +61,8 @@ RANK_MAP = {
 MEMBER_MAP = {
     "지모" : 270093275673657355,
     "Melon" : 266140074310107136,
-    "그럭저럭" : 512990115782590464
+    "그럭저럭" : 512990115782590464,
+    "이미름" : 298064278328705026
 }
 
 class NotFoundError(Exception):
@@ -978,195 +979,7 @@ async def check_points(name):
 
         await asyncio.sleep(20)
 
-# async def open_prediction(name, puuid, votes, event, current_game_state, winbutton, nowgame_func = nowgame):
-#     await bot.wait_until_ready()
-#     channel = bot.get_channel(int(CHANNEL_ID))
-#     notice_channel = bot.get_channel(int(NOTICE_CHANNEL_ID))
-
-#     cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
-#     current_predict_season = cur_predict_seasonref.get()
-
-#     while not bot.is_closed():
-#         current_game_state, current_game_type = await nowgame_func(puuid)
-#         #current_game_state = True
-#         #current_game_type = "솔로랭크"
-#         if current_game_state:
-#             onoffref = db.reference("승부예측/투표온오프")
-#             onoffbool = onoffref.get()
-
-#             # 이전 게임의 match_id를 저장
-#             if current_game_type == "솔로랭크":
-#                 p.current_match_id_solo[name] = await get_summoner_recentmatch_id(puuid)
-#             else:
-#                 p.current_match_id_flex[name] = await get_summoner_recentmatch_id(puuid)
-#             p.current_predict_season[name] = current_predict_season
-
-#             winbutton.disabled = onoffbool
-#             losebutton = discord.ui.Button(style=discord.ButtonStyle.danger,label="패배",disabled=onoffbool)
-
-            
-#             prediction_view = discord.ui.View()
-#             prediction_view.add_item(winbutton)
-#             prediction_view.add_item(losebutton)
-
-#             upbutton = discord.ui.Button(style=discord.ButtonStyle.success,label="업",disabled=onoffbool)
-#             downbutton = discord.ui.Button(style=discord.ButtonStyle.danger,label="다운",disabled=onoffbool)
-#             perfectbutton = discord.ui.Button(style=discord.ButtonStyle.primary,label="퍼펙트",disabled=onoffbool)
-
-#             kda_view = discord.ui.View()
-#             kda_view.add_item(upbutton)
-#             kda_view.add_item(downbutton)
-#             kda_view.add_item(perfectbutton)
-                
-#             async def disable_buttons():
-#                 if onoffbool: #투표 꺼져있다면 안함
-#                     return
-#                 await asyncio.sleep(150)  # 2분 30초 대기
-#                 alarm_embed = discord.Embed(title="알림", description="예측 종료까지 30초 남았습니다! ⏰", color=discord.Color.red())
-#                 await channel.send(embed=alarm_embed)
-#                 await asyncio.sleep(30) # 30초 대기
-#                 winbutton.disabled = True
-#                 losebutton.disabled = True
-#                 upbutton.disabled = True
-#                 downbutton.disabled = True
-#                 perfectbutton.disabled = True
-#                 prediction_view = discord.ui.View()
-#                 kda_view = discord.ui.View()
-#                 prediction_view.add_item(winbutton)
-#                 prediction_view.add_item(losebutton)
-#                 kda_view.add_item(upbutton)
-#                 kda_view.add_item(downbutton)
-#                 kda_view.add_item(perfectbutton)
-
-#                 await p.current_messages[name].edit(view=prediction_view)
-#                 await p.current_messages_kda[name].edit(view=kda_view)
-
-#             prediction_votes = votes["prediction"]
-#             kda_votes = votes["kda"]
-            
-#             async def bet_button_callback(interaction: discord.Interaction = None, prediction_type: str = "", nickname: discord.Member = None):
-#                 if interaction:
-#                     nickname = interaction.user
-#                     await interaction.response.defer()  # 응답 지연 (버튼 눌렀을 때 오류 방지)
-#                 if (nickname not in [user['name'] for user in prediction_votes["win"]]) and (nickname not in [user['name'] for user in prediction_votes["lose"]]):
-                    
-#                     prediction_votes[prediction_type].append({"name": nickname})
-
-#                     await refresh_prediction(name,prediction_votes) # 새로고침
-
-#                     #prediction_value = "승리" if prediction_type == "win" else "패배"
-                    
-#                     #await channel.send(f"\n", embed=userembed)
-#                 else:
-#                     userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-#                     userembed.add_field(name="", value=f"{nickname.display_name}님은 이미 투표하셨습니다", inline=True)
-#                     if interaction:
-#                         await interaction.followup.send(embed=userembed, ephemeral=True)
-
-#             async def kda_button_callback(interaction: discord.Interaction, prediction_type: str):
-#                 nickname = interaction.user
-#                 await interaction.response.defer()
-#                 if (nickname.name not in [user['name'].name for user in kda_votes['up']] )and (nickname.name not in [user['name'].name for user in kda_votes['down']]) and (nickname.name not in [user['name'].name for user in kda_votes['perfect']]):
-#                     kda_votes[prediction_type].append({"name": nickname})
-#                     await refresh_kda_prediction(name,kda_votes)
-
-#                     # if name == "지모":
-#                     #     userembed = discord.Embed(title="메세지", color=0x000000)
-#                     #     noticeembed = discord.Embed(title="메세지", color=0x000000)
-#                     # elif name == "Melon":
-#                     #     userembed = discord.Embed(title="메세지", color=discord.Color.brand_green())
-#                     #     noticeembed = discord.Embed(title="메세지", color=discord.Color.brand_green())
-
-#                     # if prediction_type == "up":
-#                     #     prediction_value = "KDA 3 이상"
-#                     # elif prediction_type == "down":
-#                     #     prediction_value = "KDA 3 이하"
-#                     # elif prediction_type == "perfect":
-#                     #     prediction_value = "KDA 퍼펙트"
-                    
-#                     # noticeembed.add_field(name="",value=f"{name}의 {prediction_value}에 투표 완료!", inline=False)
-#                     # await interaction.response.send_message(embed=noticeembed, ephemeral=True)
-#                 else:
-#                     userembed = discord.Embed(title="메세지", color=discord.Color.dark_gray())
-#                     userembed.add_field(name="", value=f"{nickname.display_name}님은 이미 투표하셨습니다", inline=True)
-#                     await interaction.followup.send(embed=userembed, ephemeral=True)
-
-#             winbutton.callback = lambda interaction: bet_button_callback(interaction, 'win')
-#             losebutton.callback = lambda interaction: bet_button_callback(interaction, 'lose')
-#             upbutton.callback = lambda interaction: kda_button_callback(interaction, 'up')
-#             downbutton.callback = lambda interaction: kda_button_callback(interaction, 'down')
-#             perfectbutton.callback = lambda interaction: kda_button_callback(interaction, 'perfect')
-
-#             prediction_embed = discord.Embed(title=f"{name} 예측 현황", color=0x000000) # Black
-
-#             win_predictions = "\n".join(
-#                 f"{winner['name'].display_name}" for winner in prediction_votes["win"]) or "없음"
-#             lose_predictions = "\n".join(
-#                 f"{loser['name'].display_name}" for loser in prediction_votes["lose"]) or "없음"
-
-#             prediction_embed.add_field(name="승리 예측", value=win_predictions, inline=True)
-#             prediction_embed.add_field(name="패배 예측", value=lose_predictions, inline=True)
-
-#             kda_embed = discord.Embed(title=f"{name} KDA 예측 현황", color=0x000000) # Black
-
-#             up_predictions = "\n".join(f"{user['name'].display_name}" for user in kda_votes["up"]) or "없음"
-#             down_predictions = "\n".join(f"{user['name'].display_name}" for user in kda_votes["down"]) or "없음"
-#             perfect_predictions = "\n".join(f"{user['name'].display_name}" for user in kda_votes["perfect"]) or "없음"
-        
-#             kda_embed.add_field(name="KDA 3 이상", value=up_predictions, inline=False)
-#             kda_embed.add_field(name="KDA 3 이하", value=down_predictions, inline=False)
-#             kda_embed.add_field(name="퍼펙트", value=perfect_predictions, inline=False)
-
-#             curseasonref = db.reference("전적분석/현재시즌")
-#             current_season = curseasonref.get()
-
-#             refprev = db.reference(f'전적분석/{current_season}/점수변동/{name}/{current_game_type}')
-#             points = refprev.get()
-
-#             if points is None:
-#                 game_win_streak = 0
-#                 game_lose_streak = 0
-#             else:
-#                 latest_date = max(points.keys())
-#                 latest_time = max(points[latest_date].keys(), key=lambda t: datetime.strptime(t, '%H:%M:%S'))
-#                 latest_data = points[latest_date][latest_time]
-#                 game_win_streak = latest_data["연승"]
-#                 game_lose_streak = latest_data["연패"]
-            
-
-#             onoffref = db.reference("승부예측/이벤트온오프")
-
-#             streak_message = ""
-#             if game_win_streak >= 1:
-#                 streak_message = f"{game_win_streak}연승 중!"
-#             elif game_lose_streak >= 1:        
-#                 streak_message = f"{game_lose_streak}연패 중!"
-
-
-#             p.current_messages[name] = await channel.send(f"\n{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{streak_message}", view=prediction_view, embed=prediction_embed)
-
-#             p.current_messages_kda[name] = await channel.send("\n", view=kda_view, embed=kda_embed)
-
-#             if not onoffbool:
-#                 await notice_channel.send(f"{name}의 {current_game_type} 게임이 감지되었습니다!\n승부예측을 해보세요!\n")
-            
-#             guild = bot.get_guild(GUILD_ID)
-#             game_player = guild.get_member(MEMBER_MAP[name])
-#             await bet_button_callback(prediction_type='win', nickname=game_player)
-
-#             info_embed = await get_team_champion_embed(name, puuid, get_info_func=get_current_game_info)
-#             info_embed.color = 0x000000
-#             await channel.send("",embed=info_embed) # 그 판의 조합을 나타내는 embed를 보냄
-
-#             event.clear()
-#             await asyncio.gather(
-#                 disable_buttons(),
-#                 event.wait()  # 이 작업은 event가 set될 때까지 대기
-#             )
-#             print(f"check_game_status for {name} 대기 종료")
-
-#         await asyncio.sleep(20)  # 20초마다 반복
-
+# 예측 오픈 함수: 게임이 감지되면 해당 게임에 대한 예측을 오픈하는 함수
 async def open_prediction(name, mode, game_id):
     await bot.wait_until_ready()
     channel = bot.get_channel(int(CHANNEL_ID))
@@ -1231,7 +1044,7 @@ async def open_prediction(name, mode, game_id):
         if onoffbool: #투표 꺼져있다면 안함
             return
         await asyncio.sleep(150)  # 2분 30초 대기
-        alarm_embed = discord.Embed(title="알림", description="예측 종료까지 30초 남았습니다! ⏰", color=discord.Color.red())
+        alarm_embed = discord.Embed(title="알림", description=f"{name}의 예측 종료까지 30초 남았습니다! ⏰", color=discord.Color.red())
         await channel.send(embed=alarm_embed)
         await asyncio.sleep(30) # 30초 대기
         winbutton.disabled = True
@@ -1257,48 +1070,57 @@ async def open_prediction(name, mode, game_id):
         if interaction:
             nickname = interaction.user
             await interaction.response.defer()  # 응답 지연 (버튼 눌렀을 때 오류 방지)
-        if (nickname not in [user['name'] for user in prediction_votes["win"]]) and (nickname not in [user['name'] for user in prediction_votes["lose"]]):
-            
-            prediction_votes[prediction_type].append({"name": nickname})
 
-            await refresh_prediction(name,prediction_votes) # 새로고침
+        # 사용자가 이미 투표한 유형이 있는지 확인
+        current_prediction_type = None
 
-            #prediction_value = "승리" if prediction_type == "win" else "패배"
-            
-            #await channel.send(f"\n", embed=userembed)
-        else:
+        for p_type in ["win", "lose"]:
+            if nickname.name in [user['name'].name for user in prediction_votes[p_type]]:
+                current_prediction_type = p_type
+                break
+        
+        # 사용자가 같은 유형으로 투표하려는 경우, 이미 투표했다는 메시지를 보내고 함수 종료
+        if current_prediction_type == prediction_type:
             userembed = discord.Embed(title="메세지", color=discord.Color.blue())
-            userembed.add_field(name="", value=f"{nickname.display_name}님은 이미 투표하셨습니다", inline=True)
+            userembed.add_field(name="", value=f"{nickname.display_name}님은 이미 {prediction_type}에 투표하셨습니다", inline=True)
             if interaction:
                 await interaction.followup.send(embed=userembed, ephemeral=True)
+            return
+        
+        # 사용자가 다른 유형으로 투표하려는 경우, 기존 투표를 제거하고 새로운 투표 추가
+        if current_prediction_type:
+            prediction_votes[current_prediction_type] = [user for user in prediction_votes[current_prediction_type] if user['name'].name != nickname.name]
+            await refresh_prediction(name,prediction_votes) # 새로고침
+
+        prediction_votes[prediction_type].append({"name": nickname})
+        await refresh_prediction(name,prediction_votes) # 새로고침
 
     async def kda_button_callback(interaction: discord.Interaction, prediction_type: str):
         nickname = interaction.user
         await interaction.response.defer()
-        if (nickname.name not in [user['name'].name for user in kda_votes['up']] )and (nickname.name not in [user['name'].name for user in kda_votes['down']]) and (nickname.name not in [user['name'].name for user in kda_votes['perfect']]):
-            kda_votes[prediction_type].append({"name": nickname})
-            await refresh_kda_prediction(name,kda_votes)
 
-            # if name == "지모":
-            #     userembed = discord.Embed(title="메세지", color=0x000000)
-            #     noticeembed = discord.Embed(title="메세지", color=0x000000)
-            # elif name == "Melon":
-            #     userembed = discord.Embed(title="메세지", color=discord.Color.brand_green())
-            #     noticeembed = discord.Embed(title="메세지", color=discord.Color.brand_green())
+        # 사용자가 이미 투표한 유형이 있는지 확인
+        current_prediction_type = None
 
-            # if prediction_type == "up":
-            #     prediction_value = "KDA 3 이상"
-            # elif prediction_type == "down":
-            #     prediction_value = "KDA 3 이하"
-            # elif prediction_type == "perfect":
-            #     prediction_value = "KDA 퍼펙트"
-            
-            # noticeembed.add_field(name="",value=f"{name}의 {prediction_value}에 투표 완료!", inline=False)
-            # await interaction.response.send_message(embed=noticeembed, ephemeral=True)
-        else:
+        for kda_type in ["up", "down", "perfect"]:
+            if nickname.name in [user['name'].name for user in kda_votes[kda_type]]:
+                current_prediction_type = kda_type
+                break
+        
+        # 사용자가 같은 유형으로 투표하려는 경우, 이미 투표했다는 메시지를 보내고 함수 종료
+        if current_prediction_type == prediction_type:
             userembed = discord.Embed(title="메세지", color=discord.Color.dark_gray())
-            userembed.add_field(name="", value=f"{nickname.display_name}님은 이미 투표하셨습니다", inline=True)
+            userembed.add_field(name="", value=f"{nickname.display_name}님은 이미 {prediction_type}에 투표하셨습니다", inline=True)
             await interaction.followup.send(embed=userembed, ephemeral=True)
+            return
+        
+        # 사용자가 다른 유형으로 투표하려는 경우, 기존 투표를 제거하고 새로운 투표 추가
+        if current_prediction_type:
+            kda_votes[current_prediction_type] = [user for user in kda_votes[current_prediction_type] if user['name'].name != nickname.name]
+            await refresh_kda_prediction(name,kda_votes)
+        
+        kda_votes[prediction_type].append({"name": nickname})
+        await refresh_kda_prediction(name,kda_votes)
 
     winbutton.callback = lambda interaction: bet_button_callback(interaction, 'win')
     losebutton.callback = lambda interaction: bet_button_callback(interaction, 'lose')

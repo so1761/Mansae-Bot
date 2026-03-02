@@ -571,6 +571,10 @@ def plot_lp_difference_firebase(season=None,name=None,rank=None):
         plt.plot(lp_scores, marker='', linestyle='-',color ="dodgerblue")
     if name == 'Melon':
         plt.plot(lp_scores, marker='', linestyle='-',color ="violet")
+    if name == '그럭저럭':
+        plt.plot(lp_scores, marker='', linestyle='-',color ="orange")
+    if name == '이미름' :
+        plt.plot(lp_scores, marker='', linestyle='-',color ="green")
     plt.title(f"{name} {rank} LP 변화량 추이")
     plt.xlabel('게임 플레이 판수')
     plt.ylabel('현재 LP 점수')
@@ -1449,7 +1453,9 @@ class hello(commands.Cog):
     @app_commands.describe(이름="누구의 그래프를 볼지 선택하세요", 랭크="랭크 유형을 선택하세요 (기본값: 솔로랭크)")
     @app_commands.choices(이름=[
     Choice(name='강지모', value='지모'),
-    Choice(name='Melon', value='Melon')
+    Choice(name='Melon', value='Melon'),
+    Choice(name='그럭저럭', value='그럭저럭'),
+    Choice(name='이미름', value='이미름')
     ])
     @app_commands.choices(랭크=[
     Choice(name='솔랭', value='솔로랭크'),
@@ -1479,7 +1485,9 @@ class hello(commands.Cog):
     @app_commands.describe(이름='누구의 그래프를 볼지 선택하세요')
     @app_commands.choices(이름=[
     Choice(name='강지모', value='지모'),
-    Choice(name='Melon', value='Melon')
+    Choice(name='Melon', value='Melon'),
+    Choice(name='그럭저럭', value='그럭저럭'),
+    Choice(name='이미름', value='이미름')
     ])
     @app_commands.choices(랭크=[
     Choice(name='솔랭', value='솔로랭크'),
@@ -1558,6 +1566,8 @@ class hello(commands.Cog):
     @app_commands.choices(이름=[
     Choice(name='강지모', value='지모'),
     Choice(name='Melon', value='Melon'),
+    Choice(name='그럭저럭', value='그럭저럭'),
+    Choice(name='이미름', value='이미름')
     ])
     @app_commands.choices(랭크=[
     Choice(name='솔랭', value='솔로랭크'),
@@ -1589,6 +1599,8 @@ class hello(commands.Cog):
     @app_commands.choices(이름=[
     Choice(name='강지모', value='지모'),
     Choice(name='Melon', value='Melon'),
+    Choice(name='그럭저럭', value='그럭저럭'),
+    Choice(name='이미름', value='이미름')
     ])
     async def 시즌캔들그래프(self, interaction: discord.Interaction, 이름:str,시즌:str, 랭크:str = "솔로랭크"):   
         await interaction.response.defer()  # Interaction을 유지
