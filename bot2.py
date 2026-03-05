@@ -81,7 +81,7 @@ async def get_latest_ddragon_version():
                 versions = await response.json()
                 return versions[0]  # 가장 최신 버전
             else:
-                print(f"[ERROR] 버전 정보 불러오기 실패: {response.status}")
+                print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 버전 정보 불러오기 실패: {response.status}")
                 return None
 
 # 챔피언 데이터 다운로드 함수 (캐시 추가)
@@ -110,7 +110,7 @@ async def fetch_champion_data(force_download=False):
                     champ_id = int(champ["key"])  # 문자열을 정수로
                     champ_name = champ["name"]
                     data_by_id[champ_id] = champ_name
-                print(f"[INFO] {len(data_by_id)}개의 챔피언을 불러왔습니다. (버전: {version})")
+                print(f"[INFO] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {len(data_by_id)}개의 챔피언을 불러왔습니다. (버전: {version})")
 
                 # 로컬 캐시 저장
                 with open(cache_path, "w", encoding="utf-8") as f:
@@ -119,7 +119,7 @@ async def fetch_champion_data(force_download=False):
                 CHAMPION_ID_NAME_MAP = data_by_id
                 return data_by_id
             else:
-                print(f"[ERROR] 챔피언 데이터 불러오기 실패: {response.status}")
+                print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 챔피언 데이터 불러오기 실패: {response.status}")
                 return {}
 
 # 패치 버전 주기적으로 확인하여 최신 버전이 바뀌면 데이터 갱신
@@ -132,7 +132,7 @@ async def fetch_patch_version():
 
     season_name = "시즌" + version.split(".")[0]
 
-    print(season_name)
+    print(f"[LOG] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 현재 시즌 : {season_name}")
 
     if current_season != season_name:
         curseasonref = db.reference("전적분석")
@@ -165,7 +165,7 @@ async def fetch_rune_id_to_key_map(force_download=False):
                     for rune in tree["slots"][0]["runes"]
                 }       
 
-                print(f"[INFO] {len(rune_id_to_key)}개의 룬을 불러왔습니다. (버전: {version})")
+                print(f"[INFO] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {len(rune_id_to_key)}개의 룬을 불러왔습니다. (버전: {version})")
 
                 # 로컬 캐시 저장
                 with open(cache_path, "w", encoding="utf-8") as f:
@@ -173,7 +173,7 @@ async def fetch_rune_id_to_key_map(force_download=False):
 
                 return rune_id_to_key
             else:
-                print(f"[ERROR] 룬 데이터 불러오기 실패: {response.status}")
+                print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 룬 데이터 불러오기 실패: {response.status}")
                 return {}
 
 async def fetch_spell_id_to_key_map(force_download=False):
@@ -200,7 +200,7 @@ async def fetch_spell_id_to_key_map(force_download=False):
                     for key, value in data["data"].items()
                 }
 
-                print(f"[INFO] {len(spell_id_to_key)}개의 스펠을 불러왔습니다. (버전: {version})")
+                print(f"[INFO] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {len(spell_id_to_key)}개의 스펠을 불러왔습니다. (버전: {version})")
 
                 # 로컬 캐시 저장
                 with open(cache_path, "w", encoding="utf-8") as f:
@@ -208,7 +208,7 @@ async def fetch_spell_id_to_key_map(force_download=False):
 
                 return spell_id_to_key
             else:
-                print(f"[ERROR] 스펠 데이터 불러오기 실패: {response.status}")
+                print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 스펠 데이터 불러오기 실패: {response.status}")
                 return {}
 
 async def fake_get_current_game_info(puuid):
@@ -227,7 +227,7 @@ async def get_current_game_info(puuid):
             elif response.status == 404:
                 return None  # 게임 안 하는 중
             else:
-                print(f"[ERROR] Riot API 오류: {response.status}")
+                print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_current_game_info에서 오류 발생: {response.status}")
                 return None
 
 async def get_team_champion_embed(username, puuid, get_info_func=get_current_game_info):
@@ -328,7 +328,6 @@ async def nowgame(puuid, retries=5, delay=5):
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as response:
-                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     if response.status == 200:
                         data = await response.json()
                         game_id = data.get("gameId")
@@ -348,10 +347,10 @@ async def nowgame(puuid, retries=5, delay=5):
                         return False, None, None  # 현재 게임이 없으면 재시도할 필요 없음
 
                     elif response.status in [500, 502, 503, 504, 524]:  # 524 추가
-                        print(f"[{now}] [WARNING] {response.status} Server error, retrying {attempt + 1}/{retries}...")
+                        print(f"[WARNING] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] nowgame에서 {response.status} 오류 발생, 재시도 중 {attempt + 1}/{retries}...")
 
                     else:
-                        print(f"[{now}] [ERROR] Riot API returned status {response.status} in nowgame")
+                        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] nowgame에서 {response.status} 오류 발생")
                         return False, None, None  # 다른 오류는 재시도하지 않음
 
         except aiohttp.ClientConnectorError as e:
@@ -364,8 +363,7 @@ async def nowgame(puuid, retries=5, delay=5):
 
         await asyncio.sleep(delay)  # 재시도 간격 증가
 
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{now}] [ERROR] nowgame All retries failed.")
+    print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] nowgame에서 모든 재시도 실패")
     return False, None, None
 
 async def get_summoner_puuid(riot_id, tagline):
@@ -378,7 +376,7 @@ async def get_summoner_puuid(riot_id, tagline):
                 data = await response.json()
                 return data['puuid']
             else:
-                print('Error:', response.status)
+                print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_puuid에서 {response.status} 오류 발생")
                 return None
 
 async def get_summoner_ranks(puuid, type="솔로랭크", retries=5, delay=5):
@@ -389,7 +387,6 @@ async def get_summoner_ranks(puuid, type="솔로랭크", retries=5, delay=5):
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as response:
-                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     if response.status == 200:
                         data = await response.json()
                         if type == "솔로랭크":
@@ -399,29 +396,25 @@ async def get_summoner_ranks(puuid, type="솔로랭크", retries=5, delay=5):
                         return filtered_data[0] if filtered_data else []
 
                     elif response.status == 404:
-                        print(f"[{now}] [ERROR] 404 Not Found in get_summoner_ranks")
+                        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_ranks에서 404 오류 발생")
                         return None  # 소환사 정보가 없으면 재시도할 필요 없음
 
                     elif response.status in [500, 502, 503, 504, 524]:  
-                        print(f"[{now}] [WARNING] {response.status} Server error, retrying {attempt + 1}/{retries}...")  
+                        print(f"[WARNING] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_ranks에서 {response.status} 오류 발생, 재시도 중 {attempt + 1}/{retries}...")  
                     else:
-                        print(f"[{now}] [ERROR] get_summoner_ranks Error: {response.status}")
+                        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_ranks에서 {response.status} 오류 발생")
                         return None  # 다른 오류는 재시도 없이 종료
 
         except aiohttp.ClientConnectorError as e:
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{now}] [ERROR] Connection error: {e}, retrying {attempt + 1}/{retries}...")
+            print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_ranks에서 연결 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
         except aiohttp.ClientOSError as e:
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{now}] [ERROR] Client OSError (Server disconnected): {e}, retrying {attempt + 1}/{retries}...")
+            print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_ranks에서 클라이언트 오류 발생 (서버 연결 해제): {e}, 재시도 중 {attempt + 1}/{retries}...")
         except Exception as e:
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{now}] [ERROR] Unexpected error in get_summoner_ranks: {e}, retrying {attempt + 1}/{retries}...")
+            print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_ranks에서 예기치 않은 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
 
         await asyncio.sleep(delay)  # 재시도 간격
 
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print("[{now}] [ERROR] get_summoner_ranks All retries failed.")
+    print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_ranks 모든 재시도 실패")
     return None
 
 async def get_summoner_recentmatch_id(puuid, retries=5, delay=5):
@@ -432,33 +425,29 @@ async def get_summoner_recentmatch_id(puuid, retries=5, delay=5):
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as response:
-                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     if response.status == 200:
                         data = await response.json()
                         return data[0] if data else None
 
                     elif response.status == 404:
-                        print(f"[{now}] [ERROR] 404 Not Found: No matches found for PUUID {puuid}")
+                        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_recentmatch_id에서 404 오류 발생: PUUID {puuid}에 대한 매치가 없습니다.")
                         return None  # PUUID가 잘못된 경우는 재시도할 필요 없음
 
                     elif response.status in [500, 502, 503, 504, 524]:
-                        print(f"[{now}] [WARNING] {response.status} Server error, retrying {attempt + 1}/{retries}...")
+                        print(f"[WARNING] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_recentmatch_id에서 {response.status} 오류 발생, 재시도 중 {attempt + 1}/{retries}...")
                     else:
-                        print(f"[{now}] [ERROR] Riot API returned status {response.status} in get_summoner_recentmatch_id")
+                        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_recentmatch_id에서 {response.status} 오류 발생")
                         return None
 
         except aiohttp.ClientConnectorError as e:
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{now}] [ERROR] Connection error: {e}, retrying {attempt + 1}/{retries}...")
+            print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_recentmatch_id에서 연결 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
         except Exception as e:
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{now}] [ERROR] Unexpected error in get_summoner_recentmatch_id: {e}")
+            print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_recentmatch_id에서 예기치 않은 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
             return None
 
         await asyncio.sleep(delay)  # 재시도 간격
 
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{now}] [ERROR] get_summoner_recentmatch_id All retries failed.")
+    print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_recentmatch_id 모든 재시도 실패")
     return None
 
 async def get_summoner_matchinfo(matchid, retries=5, delay=5):
@@ -469,36 +458,32 @@ async def get_summoner_matchinfo(matchid, retries=5, delay=5):
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=headers) as response:
-                    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     if response.status == 200:
                         return await response.json()
 
                     elif response.status == 404:
-                        print(f"[{now}] [ERROR] 404 Not Found: Match ID {matchid} not found.")
+                        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_matchinfo에서 404 오류 발생: 매치 ID {matchid}를 찾을 수 없습니다.")
                         return None  # 매치 ID가 잘못된 경우는 재시도할 필요 없음
 
                     elif response.status == 400:
-                        print(f"[{now}] [ERROR] 400 Bad Request: Invalid match ID {matchid}.")
+                        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_matchinfo에서 400 오류 발생: 잘못된 매치 ID {matchid}.")
                         return None  # 잘못된 요청이라면 재시도할 필요 없음
 
                     elif response.status in [500, 502, 503, 504, 524]:
-                        print(f"[{now}] [WARNING] {response.status} Server error, retrying {attempt + 1}/{retries}...")
+                        print(f"[WARNING] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_matchinfo에서 {response.status} 오류 발생, 재시도 중 {attempt + 1}/{retries}...")
                     else:
-                        print(f"[{now}] [ERROR] Riot API returned status {response.status} in get_summoner_matchinfo")
+                        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_matchinfo에서 {response.status} 오류 발생")
                         return None
 
         except aiohttp.ClientConnectorError as e:
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{now}] [ERROR] Connection error: {e}, retrying {attempt + 1}/{retries}...")
+            print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_matchinfo에서 연결 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
         except Exception as e:
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{now}] [ERROR] Unexpected error in get_summoner_matchinfo: {e}")
+            print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_matchinfo에서 예기치 않은 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
             return None
 
         await asyncio.sleep(delay)  # 재시도 간격
 
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{now}] [ERROR] get_summoner_matchinfo All retries failed.")
+    print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_matchinfo 모든 재시도 실패")
     return None
 
 async def refresh_prediction(name, prediction_votes):
@@ -677,7 +662,7 @@ async def monitor_games():
             if ingame:
                 tracked_users.add(username)  # 추적 중인 플레이어로 추가
                 active_games[game_id].append((username, mode))
-                print(f"[LOG] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {username}이 게임 중입니다! (게임 ID: {game_id}, 모드: {mode})")  
+                print(f"[LOG] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {username}이(가) 게임 중입니다! (게임 ID: {game_id}, 모드: {mode})")  
 
         #print(f"active_games: {dict(active_games)}")
         # 게임 id 단위로 처리
@@ -750,7 +735,7 @@ async def monitor_single_player_ending(name, game_id, current_game_type, channel
     try:
         current_rank = await get_summoner_ranks(puuid, current_game_type)
     except Exception as e:
-        print(f"Error in monitor_single_player_ending: {e}")
+        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] monitor_single_player_ending에서 예기치 않은 오류 발생: {e}")
         current_rank= None
 
     if not current_rank:
@@ -761,7 +746,7 @@ async def monitor_single_player_ending(name, game_id, current_game_type, channel
         current_total_match = current_win + current_loss
 
         if last_rank:
-            print(f"{name}의 {current_total_match}번째 {current_game_type} 게임 완료")
+            print(f"[LOG] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {name}의 {current_total_match}번째 {current_game_type} 게임 완료")
             string = get_lp_and_tier_difference(last_rank, current_rank, current_game_type, name)
             await notice_channel.send(f"\n{name}의 {current_game_type} 점수 변동이 감지되었습니다!\n{string}")
             await channel.send(f"\n{name}의 {current_game_type} 점수 변동이 감지되었습니다!\n{string}")
@@ -786,7 +771,7 @@ async def monitor_endings():
             monitored_games.add(game_id)
 
             for name, current_game_type in players:
-                print(f"Starting to monitor game ending for {name} in game {game_id} ({current_game_type})")
+                print(f"[LOG] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]{name}의 게임 종료를 모니터링 중입니다. (게임 ID: {game_id}, 모드: {current_game_type})")
                 asyncio.create_task(monitor_single_player_ending(name, game_id, current_game_type, channel, notice_channel))
         
         await asyncio.sleep(10)
@@ -1240,60 +1225,7 @@ async def open_prediction(name, mode, game_id):
         event.wait()  # 이 작업은 event가 set될 때까지 대기
     )
     opened_games.discard(game_id)
-    print(f"{name}의 게임 종료 대기 완료. 게임 ID: {game_id}")
-
-async def check_remake_status(name):
-    channel = bot.get_channel(int(CHANNEL_ID))
-    last_game_state = False
-
-    puuid = PUUID[name]
-
-    while not bot.is_closed():
-        current_game_state, current_game_type, _ = await nowgame(puuid)
-        if current_game_state != last_game_state:
-            if not current_game_state:
-                
-                # open_prediction에서 얻은 이전 게임의 current_match_id를 파악한 뒤 previous_match_id에 넣음
-                if current_game_type == "솔로랭크":
-                    previous_match_id_solo = p.current_match_id_solo[name]
-                else:
-                    previous_match_id_flex  = p.current_match_id_flex[name]
-
-                await asyncio.sleep(30)  # 게임 종료 후 30초 대기
-                
-                # 30초 뒤 다시 이전 게임의 match_id를 구함. match_id가 다르다면 게임이 끝난 것(다시하기)
-                async def check_match_id(puuid, previous_match_id):
-                    current_match_id = await get_summoner_recentmatch_id(puuid)
-                    return previous_match_id != current_match_id, current_match_id
-
-                # match_id를 확인하고 게임이 끝났는지 판단
-                if current_game_type == "솔로랭크":
-                    match_ended, current_match_id = await check_match_id(puuid, previous_match_id_solo)
-                else:
-                    match_ended, current_match_id = await check_match_id(puuid, previous_match_id_flex)
-
-                if match_ended: # 게임이 끝났다면
-                    match_info = await get_summoner_matchinfo(current_match_id)
-                    participant_id = get_participant_id(match_info, puuid)
-
-                    if match_info['info']['participants'][participant_id]['gameEndedInEarlySurrender'] and int(match_info['info']['gameDuration']) <= 240:
-
-                        userembed = discord.Embed(title=f"{name}의 게임 종료!", color=discord.Color.light_gray())
-                        userembed.add_field(name=f"{name}의 랭크게임이 종료되었습니다!", value="결과 : 다시하기!")
-                        await channel.send(embed=userembed)
-
-                        if name in p.votes:
-                            votes = p.votes[name]
-                            votes['prediction']['win'].clear()
-                            votes['prediction']['lose'].clear()
-                            votes['kda']['up'].clear()
-                            votes['kda']['down'].clear()
-                            votes['kda']['perfect'].clear()         
-                        
-                            p.events[name].set()
-
-        last_game_state = current_game_state
-        await asyncio.sleep(20)
+    print(f"[LOG] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]{name}의 게임 종료! (게임 ID: {game_id}, 모드: {mode}")
 
 class MyBot(commands.Bot):
     def __init__(self):
@@ -1315,7 +1247,7 @@ class MyBot(commands.Bot):
         await bot.tree.sync()
 
     async def on_ready(self):
-        print('Logged on as', self.user)
+        print(f"[LOG] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {self.user}로 로그인 완료!")
         await self.change_presence(status=Status.online,
                                     activity=Game("만세중"))
         cred = credentials.Certificate("mykey.json")
@@ -1330,10 +1262,6 @@ class MyBot(commands.Bot):
 
         bot.loop.create_task(monitor_games())
         bot.loop.create_task(monitor_endings())
-
-        # for username in REGISTERED_USERS:
-        #     bot.loop.create_task(check_points(username))
-        #     bot.loop.create_task(check_remake_status(username))
     
         bot.loop.create_task(fetch_patch_version())
 bot = MyBot()
