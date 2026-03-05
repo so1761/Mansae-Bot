@@ -348,9 +348,10 @@ async def get_team_champion_embed(username, puuid, mode, get_info_func=get_curre
         elif p.get("teamId") == 200:
             team2.append(entry)
 
+    version = await get_latest_ddragon_version()
     embed = discord.Embed(
         title=f"🔍 {username} 인게임 정보",
-        description=f"{username}의 실시간 챔피언 정보입니다.",
+        description=f"{username}의 실시간 챔피언 정보입니다. **[버전 : {version}]**",
         color=discord.Color.green(),
         timestamp = datetime.now(timezone.utc)
     )
