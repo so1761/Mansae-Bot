@@ -81,7 +81,7 @@ async def get_latest_ddragon_version():
                 versions = await response.json()
                 return versions[0]  # 가장 최신 버전
             else:
-                print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 버전 정보 불러오기 실패: {response.status}")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] 버전 정보 불러오기 실패: {response.status}")
                 return None
 
 # 챔피언 데이터 다운로드 함수 (캐시 추가)
@@ -110,7 +110,7 @@ async def fetch_champion_data(force_download=False):
                     champ_id = int(champ["key"])  # 문자열을 정수로
                     champ_name = champ["name"]
                     data_by_id[champ_id] = champ_name
-                print(f"[INFO] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {len(data_by_id)}개의 챔피언을 불러왔습니다. (버전: {version})")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] {len(data_by_id)}개의 챔피언을 불러왔습니다. (버전: {version})")
 
                 # 로컬 캐시 저장
                 with open(cache_path, "w", encoding="utf-8") as f:
@@ -119,7 +119,7 @@ async def fetch_champion_data(force_download=False):
                 CHAMPION_ID_NAME_MAP = data_by_id
                 return data_by_id
             else:
-                print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 챔피언 데이터 불러오기 실패: {response.status}")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] 챔피언 데이터 불러오기 실패: {response.status}")
                 return {}
 
 # 패치 버전 주기적으로 확인하여 최신 버전이 바뀌면 데이터 갱신
@@ -132,7 +132,7 @@ async def fetch_patch_version():
 
     season_name = "시즌" + version.split(".")[0]
 
-    print(f"[LOG] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 현재 시즌 : {season_name}")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] 현재 시즌 : {season_name}")
 
     if current_season != season_name:
         curseasonref = db.reference("전적분석")
@@ -165,7 +165,7 @@ async def fetch_rune_id_to_key_map(force_download=False):
                     for rune in tree["slots"][0]["runes"]
                 }       
 
-                print(f"[INFO] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {len(rune_id_to_key)}개의 룬을 불러왔습니다. (버전: {version})")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] {len(rune_id_to_key)}개의 룬을 불러왔습니다. (버전: {version})")
 
                 # 로컬 캐시 저장
                 with open(cache_path, "w", encoding="utf-8") as f:
@@ -173,7 +173,7 @@ async def fetch_rune_id_to_key_map(force_download=False):
 
                 return rune_id_to_key
             else:
-                print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 룬 데이터 불러오기 실패: {response.status}")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] 룬 데이터 불러오기 실패: {response.status}")
                 return {}
 
 async def fetch_spell_id_to_key_map(force_download=False):
@@ -200,7 +200,7 @@ async def fetch_spell_id_to_key_map(force_download=False):
                     for key, value in data["data"].items()
                 }
 
-                print(f"[INFO] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {len(spell_id_to_key)}개의 스펠을 불러왔습니다. (버전: {version})")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] {len(spell_id_to_key)}개의 스펠을 불러왔습니다. (버전: {version})")
 
                 # 로컬 캐시 저장
                 with open(cache_path, "w", encoding="utf-8") as f:
@@ -208,7 +208,7 @@ async def fetch_spell_id_to_key_map(force_download=False):
 
                 return spell_id_to_key
             else:
-                print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 스펠 데이터 불러오기 실패: {response.status}")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] 스펠 데이터 불러오기 실패: {response.status}")
                 return {}
 
 async def fake_get_current_game_info(puuid):
@@ -227,7 +227,7 @@ async def get_current_game_info(puuid):
             elif response.status == 404:
                 return None  # 게임 안 하는 중
             else:
-                print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_current_game_info에서 오류 발생: {response.status}")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_current_game_info에서 오류 발생: {response.status}")
                 return None
 
 async def get_team_champion_embed(username, puuid, get_info_func=get_current_game_info):
@@ -347,23 +347,21 @@ async def nowgame(puuid, retries=5, delay=5):
                         return False, None, None  # 현재 게임이 없으면 재시도할 필요 없음
 
                     elif response.status in [500, 502, 503, 504, 524]:  # 524 추가
-                        print(f"[WARNING] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] nowgame에서 {response.status} 오류 발생, 재시도 중 {attempt + 1}/{retries}...")
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [WARNING] nowgame에서 {response.status} 오류 발생, 재시도 중 {attempt + 1}/{retries}...")
 
                     else:
-                        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] nowgame에서 {response.status} 오류 발생")
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] nowgame에서 {response.status} 오류 발생")
                         return False, None, None  # 다른 오류는 재시도하지 않음
 
         except aiohttp.ClientConnectorError as e:
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{now}] [ERROR] Connection error: {e}, retrying {attempt + 1}/{retries}...")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] nowgame에서 연결 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
         except Exception as e:
-            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{now}] [ERROR] Unexpected error in nowgame: {e}")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] nowgame에서 예기치 않은 오류 발생: {e}")
             return False, None, None
 
         await asyncio.sleep(delay)  # 재시도 간격 증가
 
-    print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] nowgame에서 모든 재시도 실패")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] nowgame에서 모든 재시도 실패")
     return False, None, None
 
 async def get_summoner_puuid(riot_id, tagline):
@@ -376,7 +374,7 @@ async def get_summoner_puuid(riot_id, tagline):
                 data = await response.json()
                 return data['puuid']
             else:
-                print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_puuid에서 {response.status} 오류 발생")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_puuid에서 {response.status} 오류 발생")
                 return None
 
 async def get_summoner_ranks(puuid, type="솔로랭크", retries=5, delay=5):
@@ -396,25 +394,25 @@ async def get_summoner_ranks(puuid, type="솔로랭크", retries=5, delay=5):
                         return filtered_data[0] if filtered_data else []
 
                     elif response.status == 404:
-                        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_ranks에서 404 오류 발생")
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_ranks에서 404 오류 발생")
                         return None  # 소환사 정보가 없으면 재시도할 필요 없음
 
                     elif response.status in [500, 502, 503, 504, 524]:  
-                        print(f"[WARNING] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_ranks에서 {response.status} 오류 발생, 재시도 중 {attempt + 1}/{retries}...")  
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [WARNING] get_summoner_ranks에서 {response.status} 오류 발생, 재시도 중 {attempt + 1}/{retries}...")  
                     else:
-                        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_ranks에서 {response.status} 오류 발생")
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_ranks에서 {response.status} 오류 발생")
                         return None  # 다른 오류는 재시도 없이 종료
 
         except aiohttp.ClientConnectorError as e:
-            print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_ranks에서 연결 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_ranks에서 연결 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
         except aiohttp.ClientOSError as e:
-            print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_ranks에서 클라이언트 오류 발생 (서버 연결 해제): {e}, 재시도 중 {attempt + 1}/{retries}...")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_ranks에서 클라이언트 오류 발생 (서버 연결 해제): {e}, 재시도 중 {attempt + 1}/{retries}...")
         except Exception as e:
-            print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_ranks에서 예기치 않은 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_ranks에서 예기치 않은 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
 
         await asyncio.sleep(delay)  # 재시도 간격
 
-    print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_ranks 모든 재시도 실패")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_ranks 모든 재시도 실패")
     return None
 
 async def get_summoner_recentmatch_id(puuid, retries=5, delay=5):
@@ -430,24 +428,24 @@ async def get_summoner_recentmatch_id(puuid, retries=5, delay=5):
                         return data[0] if data else None
 
                     elif response.status == 404:
-                        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_recentmatch_id에서 404 오류 발생: PUUID {puuid}에 대한 매치가 없습니다.")
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_recentmatch_id에서 404 오류 발생: PUUID {puuid}에 대한 매치가 없습니다.")
                         return None  # PUUID가 잘못된 경우는 재시도할 필요 없음
 
                     elif response.status in [500, 502, 503, 504, 524]:
-                        print(f"[WARNING] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_recentmatch_id에서 {response.status} 오류 발생, 재시도 중 {attempt + 1}/{retries}...")
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [WARNING] get_summoner_recentmatch_id에서 {response.status} 오류 발생, 재시도 중 {attempt + 1}/{retries}...")
                     else:
-                        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_recentmatch_id에서 {response.status} 오류 발생")
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_recentmatch_id에서 {response.status} 오류 발생")
                         return None
 
         except aiohttp.ClientConnectorError as e:
-            print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_recentmatch_id에서 연결 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_recentmatch_id에서 연결 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
         except Exception as e:
-            print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_recentmatch_id에서 예기치 않은 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_recentmatch_id에서 예기치 않은 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
             return None
 
         await asyncio.sleep(delay)  # 재시도 간격
 
-    print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_recentmatch_id 모든 재시도 실패")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_recentmatch_id 모든 재시도 실패")
     return None
 
 async def get_summoner_matchinfo(matchid, retries=5, delay=5):
@@ -462,28 +460,28 @@ async def get_summoner_matchinfo(matchid, retries=5, delay=5):
                         return await response.json()
 
                     elif response.status == 404:
-                        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_matchinfo에서 404 오류 발생: 매치 ID {matchid}를 찾을 수 없습니다.")
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_matchinfo에서 404 오류 발생: 매치 ID {matchid}를 찾을 수 없습니다.")
                         return None  # 매치 ID가 잘못된 경우는 재시도할 필요 없음
 
                     elif response.status == 400:
-                        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_matchinfo에서 400 오류 발생: 잘못된 매치 ID {matchid}.")
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_matchinfo에서 400 오류 발생: 잘못된 매치 ID {matchid}.")
                         return None  # 잘못된 요청이라면 재시도할 필요 없음
 
                     elif response.status in [500, 502, 503, 504, 524]:
-                        print(f"[WARNING] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_matchinfo에서 {response.status} 오류 발생, 재시도 중 {attempt + 1}/{retries}...")
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [WARNING] get_summoner_matchinfo에서 {response.status} 오류 발생, 재시도 중 {attempt + 1}/{retries}...")
                     else:
-                        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_matchinfo에서 {response.status} 오류 발생")
+                        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_matchinfo에서 {response.status} 오류 발생")
                         return None
 
         except aiohttp.ClientConnectorError as e:
-            print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_matchinfo에서 연결 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_matchinfo에서 연결 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
         except Exception as e:
-            print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_matchinfo에서 예기치 않은 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_matchinfo에서 예기치 않은 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
             return None
 
         await asyncio.sleep(delay)  # 재시도 간격
 
-    print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] get_summoner_matchinfo 모든 재시도 실패")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_summoner_matchinfo 모든 재시도 실패")
     return None
 
 async def refresh_prediction(name, prediction_votes):
@@ -735,7 +733,7 @@ async def monitor_single_player_ending(name, game_id, current_game_type, channel
     try:
         current_rank = await get_summoner_ranks(puuid, current_game_type)
     except Exception as e:
-        print(f"[ERROR] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] monitor_single_player_ending에서 예기치 않은 오류 발생: {e}")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] monitor_single_player_ending에서 예기치 않은 오류 발생: {e}")
         current_rank= None
 
     if not current_rank:
@@ -746,7 +744,7 @@ async def monitor_single_player_ending(name, game_id, current_game_type, channel
         current_total_match = current_win + current_loss
 
         if last_rank:
-            print(f"[LOG] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {name}의 {current_total_match}번째 {current_game_type} 게임 완료")
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {name}의 {current_total_match}번째 {current_game_type} 게임 완료")
             string = get_lp_and_tier_difference(last_rank, current_rank, current_game_type, name)
             await notice_channel.send(f"\n{name}의 {current_game_type} 점수 변동이 감지되었습니다!\n{string}")
             await channel.send(f"\n{name}의 {current_game_type} 점수 변동이 감지되었습니다!\n{string}")
@@ -771,7 +769,7 @@ async def monitor_endings():
             monitored_games.add(game_id)
 
             for name, current_game_type in players:
-                print(f"[LOG] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]{name}의 게임 종료를 모니터링 중입니다. (게임 ID: {game_id}, 모드: {current_game_type})")
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {name}의 게임 종료를 모니터링 중입니다. (게임 ID: {game_id}, 모드: {current_game_type})")
                 asyncio.create_task(monitor_single_player_ending(name, game_id, current_game_type, channel, notice_channel))
         
         await asyncio.sleep(10)
@@ -1225,7 +1223,7 @@ async def open_prediction(name, mode, game_id):
         event.wait()  # 이 작업은 event가 set될 때까지 대기
     )
     opened_games.discard(game_id)
-    print(f"[LOG] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]{name}의 게임 종료! (게임 ID: {game_id}, 모드: {mode}")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {name}의 게임 종료! (게임 ID: {game_id}, 모드: {mode}")
 
 class MyBot(commands.Bot):
     def __init__(self):
@@ -1247,7 +1245,7 @@ class MyBot(commands.Bot):
         await bot.tree.sync()
 
     async def on_ready(self):
-        print(f"[LOG] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {self.user}로 로그인 완료!")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {self.user}로 로그인 완료!")
         await self.change_presence(status=Status.online,
                                     activity=Game("만세중"))
         cred = credentials.Certificate("mykey.json")
