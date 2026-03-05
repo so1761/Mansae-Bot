@@ -20,6 +20,8 @@ from dotenv import load_dotenv
 TARGET_TEXT_CHANNEL_ID = 1289184218135396483
 WARNING_CHANNEL_ID = 1314643507490590731
 GUILD_ID = 298064707460268032
+CHANNEL_ID = '938728993329397781'
+NOTICE_CHANNEL_ID = '1232585451911643187'
 TOKEN = None
 API_KEY = None
 
@@ -68,9 +70,6 @@ MEMBER_MAP = {
 
 class NotFoundError(Exception):
     pass
-
-CHANNEL_ID = '938728993329397781'
-NOTICE_CHANNEL_ID = '1232585451911643187'
 
 CHAMPION_ID_NAME_MAP = {}
 
@@ -123,6 +122,7 @@ async def fetch_champion_data(force_download=False):
                 print(f"[ERROR] 챔피언 데이터 불러오기 실패: {response.status}")
                 return {}
 
+# 패치 버전 주기적으로 확인하여 최신 버전이 바뀌면 데이터 갱신
 async def fetch_patch_version():
 
     version = await get_latest_ddragon_version()
@@ -502,6 +502,14 @@ async def get_summoner_matchinfo(matchid, retries=5, delay=5):
     return None
 
 async def refresh_prediction(name, prediction_votes):
+    """
+    주어진 소환사의 예측 현황을 업데이트합니다.
+    Args:
+        name: 소환사 이름
+        prediction_votes: 예측 투표 데이터 (승리 예측과 패배 예측을 포함하는 딕셔너리)
+    Returns:
+        None
+    """
     embed = discord.Embed(title=f"{name} 예측 현황", color=0x000000) # Black
    
     win_predictions = "\n".join(f"{user['name'].display_name}" for user in prediction_votes["win"]) or "없음"
@@ -513,6 +521,14 @@ async def refresh_prediction(name, prediction_votes):
     await p.current_messages[name].edit(embed=embed)
 
 async def refresh_kda_prediction(name, kda_votes):
+    """
+    주어진 소환사의 KDA 예측 현황을 업데이트합니다.
+    Args:
+        name: 소환사 이름
+        kda_votes: KDA 예측 투표 데이터 (KDA 3 이상, KDA 3 이하, 퍼펙트를 포함하는 딕셔너리)
+    Returns:
+        None
+    """
     embed = discord.Embed(title=f"{name} KDA 예측 현황", color=0x000000) # Black
 
     up_predictions = "\n".join(f"{user['name'].display_name}" for user in kda_votes["up"]) or "없음"
@@ -526,13 +542,22 @@ async def refresh_kda_prediction(name, kda_votes):
     await p.current_messages_kda[name].edit(embed=embed)
 
 def tier_to_number(tier, rank, lp): # 티어를 레이팅 숫자로 변환
+    """
+    주어진 소환사의 티어를 숫자로 변환합니다.
+    Args:
+        tier: 소환사 티어
+        rank: 소환사 랭크
+        lp: 소환사 LP
+    Returns:
+        소환사의 티어를 숫자로 변환한 값 (예: Iron IV 0LP -> 0,  EMERALD II 69LP -> 2669)
+    """
     tier_num = TIER_RANK_MAP.get(tier)
     rank_num = RANK_MAP.get(rank)
     if tier_num is None or rank_num is None:
         return None
     return tier_num * 400 + rank_num * 100 + lp
 
-def get_lp_and_tier_difference(previous_rank, current_rank,rank_type,name): #이전 랭크와 현재 랭크를 받아 차이를 계산하여 메세지 반환(승급/강등)
+def get_lp_and_tier_difference(previous_rank, current_rank,rank_type,name): # 이전 랭크와 현재 랭크를 받아 차이를 계산하여 메세지 반환(승급/강등)
 
     # 티어 변화 확인
     tier_change = False
@@ -566,7 +591,7 @@ def get_lp_and_tier_difference(previous_rank, current_rank,rank_type,name): #이
         else:
             return f"패배..\n{current_rank['tier']} {current_rank['rank']} {current_rank['leaguePoints']}P (-0P)"
 
-def save_lp_difference_to_file(lp_difference,current_rank,rank_type,name): #지모의 점수 변화량과 날짜를 파이어베이수에 저장
+def save_lp_difference_to_file(lp_difference,current_rank,rank_type,name): # 사용자의 점수 변화량과 날짜를 파이어베이스에 저장
     # 현재 날짜 가져오기
     current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     rank_num = tier_to_number(current_rank["tier"],current_rank["rank"],current_rank["leaguePoints"])
@@ -635,6 +660,9 @@ active_games = defaultdict(list)
 tracked_users = set()
 monitored_games = set()
 async def monitor_games():
+    """
+    게임 모니터링: REGISTERED_USERS들이 게임을 시작했는지 주기적으로 확인하여 예측 오픈
+    """
     await bot.wait_until_ready()
     while not bot.is_closed():
         # 전체 플레이어를 한번에 검사
@@ -672,315 +700,6 @@ async def monitor_games():
                     game_id=game_id
                 )
             )
-
-        await asyncio.sleep(20)
-
-async def check_points(name):
-    await bot.wait_until_ready()
-    channel = bot.get_channel(int(CHANNEL_ID)) # 일반 채널
-    notice_channel = bot.get_channel(int(NOTICE_CHANNEL_ID)) # 공지 채널
-    
-    puuid = PUUID[name]
-    try:
-        last_rank_solo = await get_summoner_ranks(puuid, "솔로랭크")
-        last_rank_flex = await get_summoner_ranks(puuid, "자유랭크")
-        if not last_rank_solo:
-            last_total_match_solo = 0
-        else:
-            last_win_solo = last_rank_solo['wins']
-            last_loss_solo = last_rank_solo['losses']
-            last_total_match_solo = last_win_solo + last_loss_solo
-        
-        if not last_rank_flex:
-            last_total_match_flex = 0
-        else:
-            last_win_flex = last_rank_flex['wins']
-            last_loss_flex = last_rank_flex['losses']
-            last_total_match_flex = last_win_flex + last_loss_flex
-
-    except NotFoundError:
-        last_total_match_solo = 0
-        last_total_match_flex = 0
-
-    cur_predict_seasonref = db.reference("승부예측/현재예측시즌") # 현재 진행중인 예측 시즌을 가져옴
-    current_predict_season = cur_predict_seasonref.get()
-
-    while not bot.is_closed():
-        try:
-            current_rank_solo = await get_summoner_ranks(puuid, "솔로랭크")
-            current_rank_flex = await get_summoner_ranks(puuid, "자유랭크")
-        except Exception as e:
-            print(f"Error in check_points: {e}")
-            current_rank_solo = None
-            current_rank_flex = None
-
-
-        if not current_rank_solo:
-            current_total_match_solo = 0
-        else:
-            current_win_solo = current_rank_solo['wins']
-            current_loss_solo = current_rank_solo['losses']
-            current_total_match_solo = current_win_solo + current_loss_solo
-        
-        if not current_rank_flex:
-            current_total_match_flex = 0
-        else:
-            current_win_flex = current_rank_flex['wins']
-            current_loss_flex = current_rank_flex['losses']
-            current_total_match_flex = current_win_flex + current_loss_flex
-
-        if current_total_match_solo != last_total_match_solo or current_total_match_flex != last_total_match_flex:
-            if current_total_match_solo != last_total_match_solo:
-                print(f"{name}의 {current_total_match_solo}번째 솔로랭크 게임 완료")
-                string_solo = get_lp_and_tier_difference(last_rank_solo, current_rank_solo,"솔로랭크",name)
-                await notice_channel.send(f"\n{name}의 솔로랭크 점수 변동이 감지되었습니다!\n{string_solo}")
-                await channel.send(f"\n{name}의 솔로랭크 점수 변동이 감지되었습니다!\n{string_solo}")
-                last_rank_solo = current_rank_solo
-                last_total_match_solo = current_total_match_solo
-                rank_type = "솔로랭크"
-            
-            if current_total_match_flex != last_total_match_flex:
-                print(f"{name}의 {current_total_match_solo}번째 자유랭크 게임 완료")
-                string_flex = get_lp_and_tier_difference(last_rank_flex, current_rank_flex,"자유랭크",name)
-                await notice_channel.send(f"\n{name}의 자유랭크 점수 변동이 감지되었습니다!\n{string_flex}")
-                await channel.send(f"\n{name}의 자유랭크 점수 변동이 감지되었습니다!\n{string_flex}")
-                last_rank_flex = current_rank_flex
-                last_total_match_flex = current_total_match_flex
-                rank_type = "자유랭크"
-
-            onoffref = db.reference("승부예측/투표온오프") # 투표가 off 되어있을 경우 결과 출력 X
-            onoffbool = onoffref.get()
-            
-            if name not in p.votes:
-                prediction_opened = False
-            else:
-                prediction_opened = True
-                event = p.events[name]
-                prediction_votes = p.votes[name]["prediction"]
-                kda_votes = p.votes[name]["kda"]
-
-            if not onoffbool or not prediction_opened: # 투표가 off 되어있거나 예측이 열리지 않았을 경우 결과 출력 X
-                await refresh_prediction(name,prediction_votes) # 예측내역 공개
-                await refresh_kda_prediction(name,kda_votes) # KDA 예측내역 공개
-                
-                if p.current_predict_season[name] != current_predict_season: # 예측 시즌이 변경되었을 경우
-                    kda_votes['up'].clear()
-                    kda_votes['down'].clear()
-                    kda_votes['perfect'].clear()
-                    prediction_votes['win'].clear()
-                    prediction_votes['lose'].clear()
-                
-                curseasonref = db.reference("전적분석/현재시즌")
-                current_season = curseasonref.get()
-
-                current_datetime = datetime.now() # 데이터베이스에 남길 현재 시각 기록
-                current_date = current_datetime.strftime("%Y-%m-%d")
-                current_time = current_datetime.strftime("%H:%M:%S")
-
-                ref = db.reference(f'전적분석/{current_season}/점수변동/{name}/{rank_type}')
-                points = ref.get()
-
-                point_change = 0
-                if points is None:
-                    game_win_streak = 0
-                    game_lose_streak = 0
-                    result = True
-                else:
-                     # 날짜 정렬
-                    sorted_dates = sorted(points.keys(), key=lambda d: datetime.strptime(d, '%Y-%m-%d'))
-
-                    # 가장 최근 날짜 가져오기
-                    latest_date = sorted_dates[-1]
-                    latest_times = sorted(points[latest_date].keys(), key=lambda t: datetime.strptime(t, '%H:%M:%S'))
-
-                    if len(latest_times) > 1:
-                        # 같은 날짜에 여러 게임이 있는 경우, 가장 최근 경기의 "바로 전 경기" 선택
-                        previous_time = latest_times[-2]
-                        latest_time = latest_times[-1]
-                    else:
-                        # 가장 최근 날짜에 한 판만 있었다면, 이전 날짜로 넘어감
-                        if len(sorted_dates) > 1:
-                            previous_date = sorted_dates[-2]
-                            previous_times = sorted(points[previous_date].keys(), key=lambda t: datetime.strptime(t, '%H:%M:%S'))
-                            previous_time = previous_times[-1]  # 이전 날짜에서 가장 늦은 경기
-                            latest_time = latest_times[-1]
-                        else:
-                            # 데이터가 한 판밖에 없는 경우 (첫 경기), 연승/연패 초기화
-                            game_win_streak = 0
-                            game_lose_streak = 0
-                            latest_time = latest_times[-1]
-                            previous_time = None
-
-                    # 최신 경기 데이터
-                    latest_data = points[latest_date][latest_time]
-                    point_change = latest_data['LP 변화량']
-                    result = point_change > 0  # 승리 여부 판단
-
-                    if previous_time:
-                        # "바로 전 경기" 데이터 가져오기
-                        if previous_time in points[latest_date]:  # 같은 날짜에서 찾은 경우
-                            previous_data = points[latest_date][previous_time]
-                        else:  # 이전 날짜에서 가져온 경우
-                            previous_data = points[previous_date][previous_time]
-
-                        # "바로 전 경기"의 연승/연패 기록 사용
-                        game_win_streak = previous_data["연승"]
-                        game_lose_streak = previous_data["연패"]
-                    else:
-                        # 첫 경기라면 연승/연패 초기화
-                        game_win_streak = 0
-                        game_lose_streak = 0
-
-                if result:
-                    userembed = discord.Embed(title=f"{name}의 게임 종료!", color=discord.Color.blue())
-                else:
-                    userembed = discord.Embed(title=f"{name}의 게임 종료!", color=discord.Color.red())
-                
-
-                userembed.add_field(name=f"{name}의 {rank_type} 게임이 종료되었습니다!", value=f"결과 : **{'승리!' if result else '패배..'}**\n점수변동: {point_change}")
-
-                winners = prediction_votes['win'] if result else prediction_votes['lose']
-                losers = prediction_votes['lose'] if result else prediction_votes['win']
-
-                for winner in winners:
-                    point_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name'].name}")
-                    predict_data = point_ref.get()
-
-                    if predict_data is None:
-                        predict_data = {}
-                    
-                    point = predict_data.get("포인트",0)
-
-                    prediction_value = "승리" if result else "패배"
-                    prediction_opposite_value = "패배" if result else "승리"
-                    # 예측 내역 업데이트
-                    point_ref.update({
-                        "포인트": point,
-                        "총 예측 횟수": predict_data.get("총 예측 횟수",0) + 1,
-                        "적중 횟수": predict_data.get("적중 횟수",0) + 1,
-                        "적중률": f"{round((((predict_data.get('적중 횟수',0) + 1) * 100) / (predict_data.get('총 예측 횟수',0) + 1)), 2)}%",
-                        "연승": predict_data.get("연승",0) + 1,
-                        "연패": 0,
-                    
-                        # 추가 데이터
-                        f"{name}적중": predict_data.get(f"{name}적중", 0) + 1,
-                        f"{name}{prediction_value}예측": predict_data.get(f"{name}{prediction_value}예측", 0) + 1,
-                        f"{prediction_value}예측연속": predict_data.get(f"{prediction_value}예측연속", 0) + 1,
-                        f"{prediction_opposite_value}예측연속": 0
-                    })
-
-                    win_streak = predict_data.get('연승', 0) + 1
-                    streak_bonus = calculate_bonus(win_streak)
-                    streak_text = f"{win_streak}연속 적중으로 " if win_streak > 1 else ""
-                    streak_bonus_text = f"(+{streak_bonus})" if win_streak > 1 else ""
-                    
-                    add_points = 20 + streak_bonus if win_streak > 1 else 20
-                    userembed.add_field(name="", value=f"**{winner['name'].display_name}**님이 {streak_text}**{add_points}**{streak_bonus_text}점을 획득하셨습니다!", inline=False)
-    
-                    point_ref.update({"포인트": point + add_points})
-                for loser in losers:
-                    point_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{loser['name'].name}")
-                    predict_data = point_ref.get()
-
-                    if predict_data is None:
-                        predict_data = {}
-
-                    point = predict_data.get("포인트",0)
-                    
-                    prediction_value = "패배" if result else "승리"
-                    prediction_opposite_value = "승리" if result else "패배"
-                    # 예측 내역 업데이트
-                    point_ref.update({
-                        "포인트": point,
-                        "총 예측 횟수": predict_data.get("총 예측 횟수",0) + 1,
-                        "적중 횟수": predict_data.get("적중 횟수",0),
-                        "적중률": f"{round((((predict_data.get('적중 횟수',0)) * 100) / (predict_data.get('총 예측 횟수',0) + 1)), 2)}%",
-                        "연승": 0,
-                        "연패": predict_data.get("연패",0) + 1,
-
-                        # 추가 데이터
-                        f"{name}{prediction_value}예측": predict_data.get(f"{name}{prediction_value}예측", 0) + 1,
-                        f"{prediction_value}예측연속": predict_data.get(f"{prediction_value}예측연속", 0) + 1,
-                        f"{prediction_opposite_value}예측연속": 0
-                    })
-
-                await channel.send(embed=userembed)
-
-                # KDA 예측
-                match_id = await get_summoner_recentmatch_id(puuid)
-                match_info = await get_summoner_matchinfo(match_id)
-
-                for player in match_info['info']['participants']:
-                    if puuid == player['puuid']:
-                        kda = 999 if player['deaths'] == 0 else round((player['kills'] + player['assists']) / player['deaths'], 1)
-
-                        if kda == 999:
-                            kdaembed = discord.Embed(title=f"{name} KDA 예측 결과", color=discord.Color.gold())
-                        elif kda == 3:
-                            kdaembed = discord.Embed(title=f"{name} KDA 예측 결과", color=discord.Color.purple())
-                        elif kda > 3:
-                            kdaembed = discord.Embed(title=f"{name} KDA 예측 결과", color=discord.Color.blue())
-                        elif kda < 3:
-                            kdaembed = discord.Embed(title=f"{name} KDA 예측 결과", color=discord.Color.red())
-
-                        kdaembed.add_field(name=f"{name}의 KDA", value=f"{player['championName']} {player['kills']}/{player['deaths']}/{player['assists']}({'PERFECT' if kda == 999 else kda})", inline=False)
-                        
-                        if kda > 3:
-                            perfect_winners = kda_votes['perfect'] if kda == 999 else []
-                            winners = kda_votes['up']
-                            losers = kda_votes['down'] + (kda_votes['perfect'] if kda != 999 else [])
-                            for perfect_winner in perfect_winners:
-                                point_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{perfect_winner['name'].name}")
-                                predict_data = point_ref.get()
-
-                                if predict_data is None:
-                                    predict_data = {}
-
-                                point_ref.update({"포인트": predict_data["포인트"] + 100})
-                                kdaembed.add_field(name="", value=f"{perfect_winner['name'].display_name}님이 KDA 퍼펙트 예측에 성공하여 100점을 획득하셨습니다!", inline=False)
-
-                            for winner in winners:
-                                point_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name'].name}")
-                                predict_data = point_ref.get()
-
-                                if predict_data is None:
-                                    predict_data = {}
-
-                                point_ref.update({"포인트": predict_data["포인트"] + 20})
-                                kdaembed.add_field(name="", value=f"{winner['name'].display_name}님이 KDA 예측에 성공하여 20점을 획득하셨습니다!", inline=False)
-                        elif kda == 3:
-                            winners = kda_votes['up'] + kda_votes['down']
-                            losers = kda_votes['perfect']
-
-                            for winner in winners:
-                                point_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name'].name}")
-                                predict_data = point_ref.get()
-
-                                if predict_data is None:
-                                    predict_data = {}
-
-                                kdaembed.add_field(name="", value=f"{winner['name'].display_name}님이 KDA 예측에 성공하여 20점을 획득하셨습니다!", inline=False)
-                        else:
-                            winners = kda_votes['down']
-                            losers = kda_votes['up'] + kda_votes['perfect']
-                            for winner in winners:
-                                point_ref = db.reference(f"승부예측/예측시즌/{current_predict_season}/예측포인트/{winner['name'].name}")
-                                predict_data = point_ref.get()
-
-                                if predict_data is None:
-                                    predict_data = {}
-
-                                kdaembed.add_field(name="", value=f"{winner['name'].display_name}님이 KDA 예측에 성공하여 20점을 획득하셨습니다!", inline=False)
-
-                        await channel.send(embed=kdaembed)
-
-                        kda_votes['up'].clear()
-                        kda_votes['down'].clear()
-                        kda_votes['perfect'].clear()
-                        prediction_votes['win'].clear()
-                        prediction_votes['lose'].clear()
-
-                        event.set()
 
         await asyncio.sleep(20)
 
@@ -1048,6 +767,7 @@ async def monitor_single_player_ending(name, game_id, current_game_type, channel
             await channel.send(f"\n{name}의 {current_game_type} 점수 변동이 감지되었습니다!\n{string}")
 
     active_games.pop(game_id) # 게임 종료된 게임 id는 active_games에서 제거
+    tracked_users.discard(name) # 게임 종료된 플레이어는 추적 대상에서 제거
     await predict_results(name,current_game_type) # 예측 결과 처리
 
 # 게임 종료 모니터링: 게임이 종료되었는지 주기적으로 확인하여 점수 변동 감지 및 예측 결과 처리 (동시에 모든 플레이어 모니터링)
@@ -1520,7 +1240,7 @@ async def open_prediction(name, mode, game_id):
         event.wait()  # 이 작업은 event가 set될 때까지 대기
     )
     opened_games.discard(game_id)
-    print(f"check_game_status for {name} 대기 종료")
+    print(f"{name}의 게임 종료 대기 완료. 게임 ID: {game_id}")
 
 async def check_remake_status(name):
     channel = bot.get_channel(int(CHANNEL_ID))
