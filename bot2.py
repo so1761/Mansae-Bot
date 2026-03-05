@@ -28,7 +28,7 @@ NOTICE_CHANNEL_ID = '1232585451911643187'
 TOKEN = None
 API_KEY = None
 
-REGISTERED_USERS = ['지모','Melon','그럭저럭', '이미름', '박퇴경']
+REGISTERED_USERS = ['지모','Melon','그럭저럭', '이미름', '박퇴경', '이나호']
 
 PUUID = {}
 
@@ -68,7 +68,8 @@ MEMBER_MAP = {
     "Melon" : 266140074310107136,
     "그럭저럭" : 512990115782590464,
     "이미름" : 298064278328705026,
-    "박퇴경" : 298068763335589899
+    "박퇴경" : 298068763335589899,
+    "이나호" : 298064278328705026
 }
 
 class NotFoundError(Exception):
@@ -1380,7 +1381,8 @@ PUUID = {
     "Melon" : os.getenv("MELON_PUUID"),
     "그럭저럭" : os.getenv("YOON_PUUID"),
     "이미름" : os.getenv("LEE_PUUID"),
-    "박퇴경" : os.getenv("PARK_PUUID")
+    "박퇴경" : os.getenv("PARK_PUUID"),
+    "이나호" : os.getenv("NAHO_PUUID"),
 }
 
 bot.run(TOKEN)
