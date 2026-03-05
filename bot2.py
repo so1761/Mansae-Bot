@@ -6,6 +6,8 @@ import random
 import prediction_vote as p
 import os
 import json
+import requests
+import re
 from collections import defaultdict
 from firebase_admin import credentials
 from firebase_admin import db
@@ -13,9 +15,10 @@ from discord import Intents
 from discord.ext import commands
 from discord import Game
 from discord import Status
-from discord import Object
+from bs4 import BeautifulSoup
 from datetime import datetime,timedelta, timezone
 from dotenv import load_dotenv
+
 
 TARGET_TEXT_CHANNEL_ID = 1289184218135396483
 WARNING_CHANNEL_ID = 1314643507490590731
@@ -230,7 +233,7 @@ async def get_current_game_info(puuid):
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_current_game_info에서 오류 발생: {response.status}")
                 return None
 
-async def get_team_champion_embed(username, puuid, get_info_func=get_current_game_info):
+async def get_team_champion_embed(username, puuid, mode, get_info_func=get_current_game_info):
     data = await get_info_func(puuid)
     if not data:
         return None
@@ -273,6 +276,41 @@ async def get_team_champion_embed(username, puuid, get_info_func=get_current_gam
         "Aftershock": "<:Aftershock:1476931927541026957>"
     }
 
+    TIER_EMOJI_MAP = {
+        "UNRANKED": "<:UNRANKED:1479135962264113274>",
+        "IRON4": "<:IRON4:1479135265405534352>",
+        "IRON3": "<:IRON3:1479135263656640734>",
+        "IRON2": "<:IRON2:1479135262176055429>",
+        "IRON1": "<:IRON1:1479135260049674371>",
+        "BRONZE4": "<:BRONZE4:1479135236456710365>",
+        "BRONZE3": "<:BRONZE3:1479135234824994906>",
+        "BRONZE2": "<:BRONZE2:1479135233453461605>",
+        "BRONZE1": "<:BRONZE1:1479135232161485095>",
+        "SILVER4": "<:SILVER4:1479135287031365774>",
+        "SILVER3": "<:SILVER3:1479135278689026058>",
+        "SILVER2": "<:SILVER2:1479135277325746290>",
+        "SILVER1": "<:SILVER1:1479135275656675388>",
+        "GOLD4": "<:GOLD4:1479135257210126416>",
+        "GOLD3": "<:GOLD3:1479135255557308468>",
+        "GOLD2": "<:GOLD2:1479135254592622774>",
+        "GOLD1": "<:GOLD1:1479135253258834024>",
+        "PLATINUM4": "<:PLATINUM4:1479135274079486022>",
+        "PLATINUM3": "<:PLATINUM3:1479135272351568078>",
+        "PLATINUM2": "<:PLATINUM2:1479135270631899197>",
+        "PLATINUM1": "<:PLATINUM1:1479135269033611365>",
+        "EMERALD4": "<:EMERALD4:1479135251589759229>",
+        "EMERALD3": "<:EMERALD3:1479135249618305044>",
+        "EMERALD2": "<:EMERALD2:1479135247315632279>",
+        "EMERALD1": "<:EMERALD1:1479135245717475430>",
+        "DIAMOND4": "<:DIAMOND4:1479135244274634993>",
+        "DIAMOND3": "<:DIAMOND3:1479135242500444292>",
+        "DIAMOND2": "<:DIAMOND2:1479135241183432946>",
+        "DIAMOND1": "<:DIAMOND1:1479135239732465694>",
+        "MASTER": "<:MASTER:1479135267377123479>",
+        "GRANDMASTER": "<:GRANDMASTER:1479135258619150376>",
+        "CHALLENGER": "<:CHALLENGER:1479135237987504128>"
+    }
+
     CHAMPION_ID_NAME_MAP = await fetch_champion_data(force_download = False)
     SPELL_ID_TO_KEY = await fetch_spell_id_to_key_map()
     RUNE_ID_TO_KEY = await fetch_rune_id_to_key_map()
@@ -282,6 +320,9 @@ async def get_team_champion_embed(username, puuid, get_info_func=get_current_gam
         champ_name = CHAMPION_ID_NAME_MAP.get(str(champ_id), f"챔피언ID:{champ_id}")
         summoner_name = p.get("riotId", "Unknown")
         
+        riodId = summoner_name.split("#")[0] if "#" in summoner_name else summoner_name
+        tagLine = summoner_name.split("#")[1] if "#" in summoner_name else ""
+
         spell1_id = str(p.get("spell1Id"))
         spell2_id = str(p.get("spell2Id"))
 
@@ -294,12 +335,13 @@ async def get_team_champion_embed(username, puuid, get_info_func=get_current_gam
         perks = p.get("perks", {})
         perk_ids = perks.get("perkIds", [])
         rune_id = str(perk_ids[0]) if perk_ids else None
-
         rune_key = RUNE_ID_TO_KEY.get(rune_id, "")
-
         rune_emoji = RUNE_EMOJI_MAP.get(rune_key, "❓")
-        entry = f"{rune_emoji}{spell1_emoji}{spell2_emoji} **{champ_name}** - {summoner_name}"
 
+        tier = get_opgg_tier(riodId, tagLine, mode)
+        tier_emoji = TIER_EMOJI_MAP.get(tier, "❓")
+        entry = f"{rune_emoji}{spell1_emoji}{spell2_emoji}{tier_emoji} **{champ_name}** - {summoner_name}"
+        
         if p.get("teamId") == 100:
             team1.append(entry)
         elif p.get("teamId") == 200:
@@ -633,6 +675,66 @@ def get_participant_id(match_info, puuid): # match정보와 puuid를 통해 그 
         if participant['puuid'] == puuid:
             return i
     return None
+
+def get_opgg_tier(name, tag, mode="솔로랭크"):
+    """
+    OP.GG에서 소환사의 티어 정보를 크롤링하여 반환합니다.
+    Args:
+        name: 소환사 이름   
+        tag: 소환사 태그 (예: KR1, KR2 등)
+    Returns:
+        티어 이름 + 티어 번호 (예: "Platinum1") 또는 오류 메시지
+    """
+    mode_map = {
+        "솔로랭크": "Ranked Solo/Duo",
+        "자유랭크": "Ranked Flex",
+    }
+
+    if mode not in mode_map:
+        return "올바른 모드를 입력하세요: '솔로랭크' 또는 '자유랭크'"
+
+    target_label = mode_map[mode]
+
+    url = f"https://www.op.gg/summoners/kr/{name}-{tag}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+    }
+
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        return "페이지를 불러올 수 없습니다."
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+
+    # "Ranked Solo/Duo" 또는 "Ranked Flex" 텍스트를 가진 span을 포함하는 section 찾기
+    for section in soup.find_all('section'):
+        header_span = section.find('span', string=target_label)
+        if not header_span:
+            continue
+
+        # 현재 티어: class에 'text-xl'이 포함된 첫 번째 <strong>
+        tier_tag = section.find('strong', class_=lambda c: c and 'text-xl' in c)
+        if not tier_tag:
+            return "UNRANKED"
+
+        tier_text = tier_tag.get_text(strip=True)  # ex) "platinum 1", "gold 2"
+
+        # "PLATINUM1" 형태로 변환
+        match = re.match(
+            r'(iron|bronze|silver|gold|platinum|emerald|diamond|master|grandmaster|challenger)\s*(\d?)',
+            tier_text,
+            re.IGNORECASE
+        )
+        if match:
+            tier = match.group(1).upper()
+            division = match.group(2)
+            return f"{tier}{division}".strip()
+
+        return "UNRANKED"
+
+    return "UNRANKED"
+
 
 def calculate_bonus(streak):
     bonus = 3 * streak
@@ -1213,7 +1315,7 @@ async def open_prediction(name, mode, game_id):
     game_player = guild.get_member(MEMBER_MAP[name])
     await bet_button_callback(prediction_type='win', nickname=game_player)
 
-    info_embed = await get_team_champion_embed(name, puuid, get_info_func=get_current_game_info)
+    info_embed = await get_team_champion_embed(name, puuid, mode, get_info_func=get_current_game_info)
     info_embed.color = 0x000000
     await channel.send("",embed=info_embed) # 그 판의 조합을 나타내는 embed를 보냄
 
