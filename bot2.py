@@ -341,7 +341,7 @@ async def get_team_champion_embed(username, puuid, mode, get_info_func=get_curre
 
         tier = get_opgg_tier(riodId, tagLine, mode)
         tier_emoji = TIER_EMOJI_MAP.get(tier, "❓")
-        entry = f"{rune_emoji}{spell1_emoji}{spell2_emoji}{tier_emoji} **{champ_name}** - {summoner_name}"
+        entry = f"{tier_emoji}{rune_emoji}{spell1_emoji}{spell2_emoji} **{champ_name}** - {summoner_name}"
         
         if p.get("teamId") == 100:
             team1.append(entry)
