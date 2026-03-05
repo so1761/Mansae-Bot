@@ -339,9 +339,9 @@ async def get_team_champion_embed(username, puuid, mode, get_info_func=get_curre
         rune_key = RUNE_ID_TO_KEY.get(rune_id, "")
         rune_emoji = RUNE_EMOJI_MAP.get(rune_key, "❓")
 
-        tier = get_opgg_tier(riodId, tagLine, mode)
+        tier, winrate = get_opgg_tier(riodId, tagLine, mode)
         tier_emoji = TIER_EMOJI_MAP.get(tier, "❓")
-        entry = f"{tier_emoji}{rune_emoji}{spell1_emoji}{spell2_emoji} **{champ_name}** - {summoner_name}"
+        entry = f"{tier_emoji}{rune_emoji}{spell1_emoji}{spell2_emoji} **{champ_name}** - {summoner_name} [{winrate}%]"
         
         if p.get("teamId") == 100:
             team1.append(entry)
@@ -692,7 +692,7 @@ def get_opgg_tier(name, tag, mode="솔로랭크"):
     }
 
     if mode not in mode_map:
-        return "올바른 모드를 입력하세요: '솔로랭크' 또는 '자유랭크'"
+        return None, None
 
     target_label = mode_map[mode]
 
@@ -704,37 +704,42 @@ def get_opgg_tier(name, tag, mode="솔로랭크"):
 
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
-        return "페이지를 불러올 수 없습니다."
+        return None, None
 
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    # "Ranked Solo/Duo" 또는 "Ranked Flex" 텍스트를 가진 span을 포함하는 section 찾기
     for section in soup.find_all('section'):
-        header_span = section.find('span', string=target_label)
-        if not header_span:
+        if not section.find('span', string=target_label):
             continue
 
-        # 현재 티어: class에 'text-xl'이 포함된 첫 번째 <strong>
+        # 티어 추출
         tier_tag = section.find('strong', class_=lambda c: c and 'text-xl' in c)
         if not tier_tag:
-            return "UNRANKED"
+            return "UNRANKED", None
 
-        tier_text = tier_tag.get_text(strip=True)  # ex) "platinum 1", "gold 2"
-
-        # "PLATINUM1" 형태로 변환
+        tier_text = tier_tag.get_text(strip=True)
         match = re.match(
             r'(iron|bronze|silver|gold|platinum|emerald|diamond|master|grandmaster|challenger)\s*(\d?)',
-            tier_text,
-            re.IGNORECASE
+            tier_text, re.IGNORECASE
         )
-        if match:
-            tier = match.group(1).upper()
-            division = match.group(2)
-            return f"{tier}{division}".strip()
+        tier = f"{match.group(1).upper()}{match.group(2)}".strip() if match else "UNRANKED"
 
-        return "UNRANKED"
+        # 승/패 추출 → 승률 계산
+        wl_tag = section.find('span', class_=lambda c: c and 'leading-[26px]' in c)
+        winrate = None
+        if wl_tag:
+            wl_text = wl_tag.get_text(separator='', strip=True)
+            wl_match = re.search(r'(\d+)W.*?(\d+)L', wl_text)
+            if wl_match:
+                wins = int(wl_match.group(1))
+                losses = int(wl_match.group(2))
+                total = wins + losses
+                if total > 0:
+                    winrate = round(wins / total * 100, 1)
 
-    return "UNRANKED"
+        return tier, winrate
+
+    return "UNRANKED", None
 
 
 def calculate_bonus(streak):
