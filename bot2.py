@@ -810,7 +810,7 @@ async def monitor_single_player_ending(name, game_id, current_game_type, channel
         # 게임 종료 체크
         ingame, _, _ = await nowgame(puuid)
         if not ingame: # 게임 종료 의심 상태
-            await asyncio.sleep(30) # 30초 후 재확인
+            await asyncio.sleep(20) # 20초 후 재확인
             recent_match_id = await get_summoner_recentmatch_id(puuid)
             if recent_match_id.split("_")[1] == str(game_id): # 최근 매치가 해당 게임과 동일하다면 게임이 종료된 것으로 간주
                 break
