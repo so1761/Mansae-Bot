@@ -259,9 +259,11 @@ async def fetch_champion_data(force_download=False):
                     champ_id = int(champ["key"])
                     en_key   = champ["id"]    # "Xayah", "LeeSin" 등
                     ko_name  = ko_data["data"].get(champ_id_str, {}).get("name", en_key)
+                    tags = champ.get("tags", [])  # 챔피언 태그 추가
                     data_by_id[champ_id] = {
                         "name": ko_name,   # "자야"
-                        "key":  en_key     # "Xayah"
+                        "key":  en_key,    # "Xayah"
+                        "tags": tags       # ["Marksman", "Carry"] 등
                     }
 
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] {len(data_by_id)}개의 챔피언을 불러왔습니다. (버전: {version})")
@@ -412,6 +414,95 @@ async def get_current_game_info(puuid):
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_current_game_info에서 오류 발생: {response.status}")
                 return None
 
+def guess_position(spell1_key, spell2_key, champ_tags):
+    """스펠과 챔피언 태그를 통해 포지션 추정"""
+    spells = {spell1_key, spell2_key}
+    tags = set(champ_tags) if champ_tags else set()
+
+    # 1. 강타 → 정글 (100%)
+    if "SummonerSmite" in spells:
+        return "JUNGLE"
+
+    # 2. 유체화 → 탑 (탱커/파이터 전용)
+    if "SummonerMana" in spells:
+        return "TOP"
+
+    # 3. 탈진 → 서폿 or 탑
+    if "SummonerExhaust" in spells:
+        if "Marksman" in tags:
+            return "BOTTOM"
+        if "Support" in tags and "Fighter" not in tags:
+            return "UTILITY"
+        return "TOP"
+
+    # 4. 정화 → 바텀 (서폿 제외)
+    if "SummonerBoost" in spells:
+        if "Support" in tags and "Marksman" not in tags:
+            return "UTILITY"
+        return "BOTTOM"
+
+    # 5. 텔 → 탑/미드 태그로 구분
+    if "SummonerTeleport" in spells:
+        if "Support" in tags and "Mage" not in tags:
+            return "UTILITY"
+        if "Marksman" in tags:
+            return "BOTTOM"
+        if "Mage" in tags or "Assassin" in tags:
+            return "MIDDLE"
+        return "TOP"  # Fighter, Tank
+
+    # 6. 점화 → 태그로 구분
+    if "SummonerIgnite" in spells:
+        if "Marksman" in tags:
+            return "BOTTOM"
+        if "Support" in tags and "Mage" not in tags:
+            return "UTILITY"
+        if "Fighter" in tags or "Tank" in tags:
+            return "TOP"
+        return "MIDDLE"  # Mage, Assassin
+
+    return "UNKNOWN"
+
+def assign_positions(team):
+    """팀 내 포지션 중복 제거 및 최종 배치"""
+    POSITION_ORDER = ["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"]
+    
+    # 1차 추정
+    for player in team:
+        player['position'] = guess_position(
+            player['spell1_key'], 
+            player['spell2_key'], 
+            player.get('champ_tags', [])
+        )
+    
+    # 2차 중복 제거
+    used = set()
+    unassigned = []
+    
+    # 확실한 것 먼저 확정 (정글 → 유체화 순)
+    PRIORITY = ["JUNGLE", "TOP", "UTILITY", "BOTTOM", "MIDDLE"]
+    
+    result = {}
+    for pos in PRIORITY:
+        candidates = [p for p in team if p['position'] == pos and pos not in used]
+        if candidates:
+            result[pos] = candidates[0]
+            used.add(pos)
+            if len(candidates) > 1:
+                unassigned.extend(candidates[1:])
+    
+    unassigned.extend([p for p in team if p['position'] == "UNKNOWN"])
+    
+    # 3차 남은 포지션 채우기
+    remaining = [p for p in POSITION_ORDER if p not in used]
+    for player, pos in zip(unassigned, remaining):
+        player['position'] = pos
+    
+    # 최종 정렬
+    return sorted(team, key=lambda x: POSITION_ORDER.index(x.get('position', 'UNKNOWN')) 
+                  if x.get('position') in POSITION_ORDER else 99)
+
+
 async def get_team_champion_embed(username, puuid, mode, get_info_func=get_current_game_info):
     data = await get_info_func(puuid)
     if not data:
@@ -505,11 +596,15 @@ async def get_team_champion_embed(username, puuid, mode, get_info_func=get_curre
 
         results = await asyncio.gather(*tasks)
 
+    team1_temp = []
+    team2_temp = []
+
     for p, (tier, winrate) in zip(participants, results):
         champ_id = p.get("championId")
         champ_info = CHAMPION_ID_NAME_MAP.get(str(champ_id), {})
         champ_name = champ_info.get("name", f"챔피언ID:{champ_id}")
         champ_key  = champ_info.get("key", "")
+        champ_tags = champ_info.get("tags", [])
         summoner_name = p.get("riotId", "Unknown")
 
         spell1_id = str(p.get("spell1Id"))
@@ -537,12 +632,18 @@ async def get_team_champion_embed(username, puuid, mode, get_info_func=get_curre
             "rune_path": RUNE_ID_TO_PATH.get(rune_id, ""),  # "perk-images/Styles/..."
             "name": summoner_name,
             "tier": tier or "UNRANKED",
-            "winrate": winrate if winrate is not None else "N/A"
+            "winrate": winrate if winrate is not None else "N/A",
+            "champ_tags": champ_tags      # 포지션 판별용
         }
+        
         if p.get("teamId") == 100:
-            team1.append(entry)
+            team1_temp.append(entry)
         elif p.get("teamId") == 200:
-            team2.append(entry)
+            team2_temp.append(entry)
+    
+    # 포지션 최적화
+    team1 = assign_positions(team1_temp)
+    team2 = assign_positions(team2_temp)
 
     version = await get_latest_ddragon_version()
     embed = discord.Embed(
