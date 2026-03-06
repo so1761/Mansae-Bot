@@ -130,7 +130,7 @@ async def create_ingame_image(team1_data, team2_data, version):
         body {{
             background: #1e1f22;
             color: white;
-            font-family: 'Malgun Gothic', sans-serif;
+            font-family: 'NanumGothic', sans-serif;
             padding: 16px;
             width: 820px;
             -webkit-font-smoothing: antialiased;
