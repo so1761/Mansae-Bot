@@ -197,7 +197,7 @@ async def create_ingame_image(team1_data, team2_data, version):
     """
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch()
+        browser = await p.chromium.launch(args=["--no-sandbox", "--disable-setuid-sandbox"])
         page = await browser.new_page(
         viewport={"width": 820, "height": 100},
         device_scale_factor=2  # 추가
