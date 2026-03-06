@@ -1613,8 +1613,12 @@ class hello(commands.Cog):
         await interaction.followup.send(file=discord.File('candle_graph.png'),embed = result)   
 
     @app_commands.command(name="예측순위",description="승부예측 포인트 순위를 보여줍니다.")
-    @app_commands.describe(시즌 = "시즌을 입력하세요(26년 2월 => 26-2)")
-    async def 예측순위(self, interaction: discord.Interaction, 시즌:str):
+    @app_commands.describe(시즌 = "시즌을 입력하세요(26년 2월 => 26-2) / 입력 안할 시 현재 시즌 기준")
+    async def 예측순위(self, interaction: discord.Interaction, 시즌:str = None):
+        if 시즌 is None:
+            cur_predict_seasonref = db.reference("승부예측/현재예측시즌")
+            시즌 = cur_predict_seasonref.get()
+
         ref = db.reference(f'승부예측/예측시즌/{시즌}/예측포인트')
         points = ref.get()
 

@@ -205,14 +205,13 @@ async def create_ingame_image(team1_data, team2_data, version):
     </html>
     """
 
-    async with async_playwright() as p:
-        page = await browser_instance.new_page(
-            viewport={"width": 820, "height": 100},
-            device_scale_factor=2
-        )
-        await page.set_content(html, wait_until="networkidle")  # 이미지 로딩 대기
-        screenshot = await page.screenshot(full_page=True)
-        await page.close()
+    page = await browser_instance.new_page(
+        viewport={"width": 820, "height": 100},
+        device_scale_factor=2
+    )
+    await page.set_content(html, wait_until="networkidle")  # 이미지 로딩 대기
+    screenshot = await page.screenshot(full_page=True)
+    await page.close()
 
     return io.BytesIO(screenshot)
 
@@ -1289,8 +1288,8 @@ async def calculate_points(name, result, userembed):
                     if predict_data is None:
                         predict_data = {}
 
-                    point_ref.update({"포인트": predict_data["포인트"] + 20})
-                    kdaembed.add_field(name="", value=f"{winner['name'].display_name}님이 KDA 예측에 성공하여 20점을 획득하셨습니다!", inline=False)
+                    point_ref.update({"포인트": predict_data["포인트"] + 10})
+                    kdaembed.add_field(name="", value=f"{winner['name'].display_name}님이 KDA 예측에 성공하여 10점을 획득하셨습니다!", inline=False)
             elif kda == 3:
                 winners = kda_votes['up'] + kda_votes['down']
                 losers = kda_votes['perfect']
@@ -1302,7 +1301,8 @@ async def calculate_points(name, result, userembed):
                     if predict_data is None:
                         predict_data = {}
 
-                    kdaembed.add_field(name="", value=f"{winner['name'].display_name}님이 KDA 예측에 성공하여 20점을 획득하셨습니다!", inline=False)
+                    point_ref.update({"포인트": predict_data["포인트"] + 10})
+                    kdaembed.add_field(name="", value=f"{winner['name'].display_name}님이 KDA 예측에 성공하여 10점을 획득하셨습니다!", inline=False)
             else:
                 winners = kda_votes['down']
                 losers = kda_votes['up'] + kda_votes['perfect']
@@ -1313,7 +1313,8 @@ async def calculate_points(name, result, userembed):
                     if predict_data is None:
                         predict_data = {}
 
-                    kdaembed.add_field(name="", value=f"{winner['name'].display_name}님이 KDA 예측에 성공하여 20점을 획득하셨습니다!", inline=False)
+                    point_ref.update({"포인트": predict_data["포인트"] + 10})
+                    kdaembed.add_field(name="", value=f"{winner['name'].display_name}님이 KDA 예측에 성공하여 10점을 획득하셨습니다!", inline=False)
 
             await channel.send(embed=kdaembed)
 
@@ -1387,9 +1388,9 @@ async def open_prediction(name, mode, game_id):
     kda_view.add_item(perfectbutton)
         
     async def disable_buttons():
-        if onoffbool: #투표 꺼져있다면 안함
+        if onoffbool: # 투표 꺼져있다면 안함
             return
-        await asyncio.sleep(150)  # 2분 30초 대기
+        await asyncio.sleep(270)  # 4분 30초 대기
         alarm_embed = discord.Embed(title="알림", description=f"{name}의 예측 종료까지 30초 남았습니다! ⏰", color=discord.Color.red())
         await channel.send(embed=alarm_embed)
         await asyncio.sleep(30) # 30초 대기
@@ -1441,8 +1442,9 @@ async def open_prediction(name, mode, game_id):
         prediction_votes[prediction_type].append({"name": nickname})
         await refresh_prediction(name,prediction_votes) # 새로고침
 
-    async def kda_button_callback(interaction: discord.Interaction, prediction_type: str):
-        nickname = interaction.user
+    async def kda_button_callback(interaction: discord.Interaction, prediction_type: str = "", nickname: discord.Member = None):
+        if not nickname:
+            nickname = interaction.user
         await interaction.response.defer()
 
         # 사용자가 이미 투표한 유형이 있는지 확인
@@ -1530,10 +1532,19 @@ async def open_prediction(name, mode, game_id):
     guild = bot.get_guild(GUILD_ID)
     game_player = guild.get_member(MEMBER_MAP[name])
     await bet_button_callback(prediction_type='win', nickname=game_player)
-
-    info_embed, info_file = await get_team_champion_embed(name, puuid, mode, get_info_func=get_current_game_info)
-    info_embed.color = 0x000000
-    await channel.send("",embed=info_embed, file = info_file) # 그 판의 조합을 나타내는 embed를 보냄
+    await kda_button_callback(prediction_type='up', nickname=game_player)
+    
+    # 듀오 게임인 경우 다른 멤버도 자동 투표
+    if game_id in active_games:
+        for other_player_name, _ in active_games[game_id]:
+            if other_player_name != name and other_player_name in MEMBER_MAP:
+                other_game_player = guild.get_member(MEMBER_MAP[other_player_name])
+                if other_game_player:
+                    await bet_button_callback(prediction_type='win', nickname=other_game_player)
+                    await kda_button_callback(prediction_type='up', nickname=other_game_player)
+    
+    _, info_file = await get_team_champion_embed(name, puuid, mode, get_info_func=get_current_game_info)
+    await channel.send(file=info_file) # PNG 파일만 전송 (화질 유지)
 
     event.clear()
     await asyncio.gather(
