@@ -6,7 +6,6 @@ import random
 import prediction_vote as p
 import os
 import json
-import requests
 import re
 from collections import defaultdict
 from firebase_admin import credentials
@@ -28,6 +27,9 @@ CHANNEL_ID = '938728993329397781'
 NOTICE_CHANNEL_ID = '1232585451911643187'
 TOKEN = None
 API_KEY = None
+
+playwright_instance = None
+browser_instance = None
 
 REGISTERED_USERS = ['지모','Melon','그럭저럭', '이미름', '박퇴경', '이나호']
 
@@ -77,6 +79,13 @@ class NotFoundError(Exception):
     pass
 
 CHAMPION_ID_NAME_MAP = {}
+
+async def init_browser():
+    global playwright_instance, browser_instance
+    playwright_instance = await async_playwright().start()
+    browser_instance = await playwright_instance.chromium.launch(
+        args=["--no-sandbox", "--disable-setuid-sandbox"]
+    )
 
 async def create_ingame_image(team1_data, team2_data, version):
 
@@ -197,14 +206,13 @@ async def create_ingame_image(team1_data, team2_data, version):
     """
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(args=["--no-sandbox", "--disable-setuid-sandbox"])
-        page = await browser.new_page(
-        viewport={"width": 820, "height": 100},
-        device_scale_factor=2  # 추가
+        page = await browser_instance.new_page(
+            viewport={"width": 820, "height": 100},
+            device_scale_factor=2
         )
         await page.set_content(html, wait_until="networkidle")  # 이미지 로딩 대기
         screenshot = await page.screenshot(full_page=True)
-        await browser.close()
+        await page.close()
 
     return io.BytesIO(screenshot)
 
@@ -1564,6 +1572,7 @@ class MyBot(commands.Bot):
         })
         #await self.tree.sync(guild=Object(id=298064707460268032))
         
+        await init_browser()
         await fetch_champion_data(True) # 챔피언 데이터를 받음
         await fetch_rune_data(True)
         await fetch_rune_id_to_key_map(True)
