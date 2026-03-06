@@ -423,39 +423,44 @@ def guess_position(spell1_key, spell2_key, champ_tags):
     if "SummonerSmite" in spells:
         return "JUNGLE"
 
-    # 2. 유체화 → 탑 (탱커/파이터 전용)
-    if "SummonerMana" in spells:
-        return "TOP"
-
-    # 3. 탈진 → 서폿 or 탑
-    if "SummonerExhaust" in spells:
+    # 2. 방어막 → 바텀
+    if "SummonerBarrier" in spells:
         if "Marksman" in tags:
             return "BOTTOM"
-        if "Support" in tags and "Fighter" not in tags:
-            return "UTILITY"
-        return "TOP"
-
-    # 4. 정화 → 바텀 (서폿 제외)
-    if "SummonerBoost" in spells:
-        if "Support" in tags and "Marksman" not in tags:
-            return "UTILITY"
-        return "BOTTOM"
-
-    # 5. 텔 → 탑/미드 태그로 구분
+        if "Fighter" in tags or "Tank" in tags:
+            return "TOP"
+        return "MIDDLE"  # Mage, Assassin
+    
+    # 3. 텔 → 탑/미드 태그로 구분
     if "SummonerTeleport" in spells:
-        if "Support" in tags and "Mage" not in tags:
-            return "UTILITY"
-        if "Marksman" in tags:
-            return "BOTTOM"
         if "Mage" in tags or "Assassin" in tags:
             return "MIDDLE"
         return "TOP"  # Fighter, Tank
-
-    # 6. 점화 → 태그로 구분
-    if "SummonerIgnite" in spells:
+    
+    # 4. 유체화 → 탑 or 바텀
+    if "SummonerHaste" in spells:
+        if "Fighter" in tags or "Tank" in tags:
+            return "TOP"
         if "Marksman" in tags:
             return "BOTTOM"
-        if "Support" in tags and "Mage" not in tags:
+
+    # 5. 탈진 → 서폿 or 탑
+    if "SummonerExhaust" in spells:
+        if "Support" in tags:
+            return "UTILITY"
+        if "Marksman" in tags:
+            return "BOTTOM"
+        return "TOP"
+
+    # 6. 정화 → 바텀 (서폿 제외)
+    if "SummonerBoost" in spells:
+        if "Marksman" not in tags:
+            return "MIDDLE"
+        return "BOTTOM"
+
+    # 7. 점화 → 태그로 구분
+    if "SummonerDot" in spells:
+        if "Support" in tags:
             return "UTILITY"
         if "Fighter" in tags or "Tank" in tags:
             return "TOP"
@@ -480,7 +485,7 @@ def assign_positions(team):
     unassigned = []
     
     # 확실한 것 먼저 확정 (정글 → 유체화 순)
-    PRIORITY = ["JUNGLE", "TOP", "UTILITY", "BOTTOM", "MIDDLE"]
+    PRIORITY = ["JUNGLE", "TOP", "BOTTOM", "UTILITY", "MIDDLE"]
     
     result = {}
     for pos in PRIORITY:
@@ -1169,7 +1174,8 @@ async def monitor_single_player_ending(name, game_id, current_game_type, channel
 
     active_games.pop(game_id, None) # 게임 종료된 게임 id는 active_games에서 제거 (존재하지 않을 수 있으므로 None 기본값)
     tracked_users.discard(name) # 게임 종료된 플레이어는 추적 대상에서 제거
-    await predict_results(name,current_game_type) # 예측 결과 처리
+    if name in p.votes:
+        await predict_results(name,current_game_type) # 예측 결과 처리
 
 # 게임 종료 모니터링: 게임이 종료되었는지 주기적으로 확인하여 점수 변동 감지 및 예측 결과 처리 (동시에 모든 플레이어 모니터링)
 async def monitor_endings():
@@ -1543,10 +1549,10 @@ async def open_prediction(name, mode, game_id):
         prediction_votes[prediction_type].append({"name": nickname})
         await refresh_prediction(name,prediction_votes) # 새로고침
 
-    async def kda_button_callback(interaction: discord.Interaction, prediction_type: str = "", nickname: discord.Member = None):
+    async def kda_button_callback(interaction: discord.Interaction = None, prediction_type: str = "", nickname: discord.Member = None):
         if not nickname:
             nickname = interaction.user
-        await interaction.response.defer()
+            await interaction.response.defer()
 
         # 사용자가 이미 투표한 유형이 있는지 확인
         current_prediction_type = None
@@ -1653,7 +1659,7 @@ async def open_prediction(name, mode, game_id):
         event.wait()  # 이 작업은 event가 set될 때까지 대기
     )
     opened_games.discard(game_id)
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {name}의 게임 종료! (게임 ID: {game_id}, 모드: {mode}")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {name}의 게임 종료! (게임 ID: {game_id}, 모드: {mode})")
 
 class MyBot(commands.Bot):
     def __init__(self):
