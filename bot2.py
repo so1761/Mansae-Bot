@@ -18,7 +18,8 @@ from discord import Status
 from bs4 import BeautifulSoup
 from datetime import datetime,timedelta, timezone
 from dotenv import load_dotenv
-
+from playwright.async_api import async_playwright
+import io
 
 TARGET_TEXT_CHANNEL_ID = 1289184218135396483
 WARNING_CHANNEL_ID = 1314643507490590731
@@ -77,6 +78,136 @@ class NotFoundError(Exception):
 
 CHAMPION_ID_NAME_MAP = {}
 
+async def create_ingame_image(team1_data, team2_data, version):
+
+    def player_row(p):
+        champ_url  = f"https://ddragon.leagueoflegends.com/cdn/{version}/img/champion/{p['champ_key']}.png"
+        spell1_url = f"https://ddragon.leagueoflegends.com/cdn/{version}/img/spell/{p['spell1_key']}.png"
+        spell2_url = f"https://ddragon.leagueoflegends.com/cdn/{version}/img/spell/{p['spell2_key']}.png"
+        rune_url   = f"https://ddragon.leagueoflegends.com/cdn/img/{p['rune_path']}"
+
+        wr = p['winrate']
+        if isinstance(wr, (int, float)):
+            wr_color = "#ff4444" if wr >= 60 else "#ffa500" if wr >= 55 else "#4CAF50" if wr >= 50 else "#aaaaaa"
+            wr_text = f"{wr}%"
+        else:
+            wr_color = "#aaaaaa"
+            wr_text = "N/A"
+
+        # 티어별 색상
+        tier = p['tier'].upper()
+        if "CHALLENGER" in tier:   tier_color = "#f4c874"
+        elif "GRANDMASTER" in tier: tier_color = "#ff6b6b"
+        elif "MASTER" in tier:      tier_color = "#9b59b6"
+        elif "DIAMOND" in tier:     tier_color = "#4fc3f7"
+        elif "EMERALD" in tier:     tier_color = "#2ecc71"
+        elif "PLATINUM" in tier:    tier_color = "#1abc9c"
+        elif "GOLD" in tier:        tier_color = "#f1c40f"
+        elif "SILVER" in tier:      tier_color = "#bdc3c7"
+        elif "BRONZE" in tier:      tier_color = "#cd6133"
+        elif "IRON" in tier:        tier_color = "#808080"
+        else:                       tier_color = "#555555"
+
+        return f"""
+        <div class="player">
+            <img class="icon champ-icon" src="{champ_url}">
+            <img class="icon spell-icon" src="{spell1_url}">
+            <img class="icon spell-icon" src="{spell2_url}">
+            <img class="icon rune-icon"  src="{rune_url}">
+            <span class="champ">{p['champ']}</span>
+            <span class="name">{p['name']}</span>
+            <span class="tier" style="color:{tier_color}">{p['tier']}</span>
+            <span class="winrate" style="color:{wr_color}">{wr_text}</span>
+        </div>"""
+
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="UTF-8">
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{
+            background: #1e1f22;
+            color: white;
+            font-family: 'Malgun Gothic', sans-serif;
+            padding: 16px;
+            width: 820px;
+            -webkit-font-smoothing: antialiased;
+        }}
+        .team-header {{
+            font-size: 18px;
+            font-weight: bold;
+            padding: 8px 4px;
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+        }}
+        .blue {{ color: #5865f2; }}
+        .red  {{ color: #ed4245; }}
+        .player {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            margin: 3px 0;
+            background: #2b2d31;
+            border-radius: 8px;
+        }}
+        .icon       {{ border-radius: 4px; object-fit: cover; }}
+        .champ-icon {{ width: 32px; height: 32px; }}
+        .spell-icon {{ width: 24px; height: 24px; }}
+        .rune-icon  {{ width: 24px; height: 24px; }}
+        .champ {{
+            font-weight: 800;
+            width: 90px;
+            font-size: 14px;
+            color: #ffffff;
+            letter-spacing: 0.3px;
+        }}
+        .name {{
+            color: #cccccc;
+            flex: 1;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+        }}
+        .tier {{
+            width: 120px;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }}
+        .winrate {{
+            width: 50px;
+            text-align: right;
+            font-size: 13px;
+            font-weight: 700;
+        }}
+        .divider {{ border: 1px solid #3a3a3a; margin: 12px 0; }}
+    </style>
+    </head>
+    <body>
+        <div class="team-header blue">🔵 블루팀</div>
+        {"".join(player_row(p) for p in team1_data)}
+        <div class="divider"></div>
+        <div class="team-header red">🔴 레드팀</div>
+        {"".join(player_row(p) for p in team2_data)}
+    </body>
+    </html>
+    """
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(
+        viewport={"width": 820, "height": 100},
+        device_scale_factor=2  # 추가
+        )
+        await page.set_content(html, wait_until="networkidle")  # 이미지 로딩 대기
+        screenshot = await page.screenshot(full_page=True)
+        await browser.close()
+
+    return io.BytesIO(screenshot)
+
 async def get_latest_ddragon_version():
     url = 'https://ddragon.leagueoflegends.com/api/versions.json'
     async with aiohttp.ClientSession() as session:
@@ -104,27 +235,35 @@ async def fetch_champion_data(force_download=False):
         return {}
 
     # 챔피언 데이터 가져오기
-    url = f'https://ddragon.leagueoflegends.com/cdn/{version}/data/ko_KR/champion.json'
+
     async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status == 200:
-                data = await response.json()
+        # 한글 이름용
+        ko_url = f'https://ddragon.leagueoflegends.com/cdn/{version}/data/ko_KR/champion.json'
+        # 영문 키용
+        en_url = f'https://ddragon.leagueoflegends.com/cdn/{version}/data/en_US/champion.json'
+
+        async with session.get(ko_url) as ko_res, session.get(en_url) as en_res:
+            if ko_res.status == 200 and en_res.status == 200:
+                ko_data = await ko_res.json()
+                en_data = await en_res.json()
+
                 data_by_id = {}
-                for champ in data["data"].values():
-                    champ_id = int(champ["key"])  # 문자열을 정수로
-                    champ_name = champ["name"]
-                    data_by_id[champ_id] = champ_name
+                for champ_id_str, champ in en_data["data"].items():
+                    champ_id = int(champ["key"])
+                    en_key   = champ["id"]    # "Xayah", "LeeSin" 등
+                    ko_name  = ko_data["data"].get(champ_id_str, {}).get("name", en_key)
+                    data_by_id[champ_id] = {
+                        "name": ko_name,   # "자야"
+                        "key":  en_key     # "Xayah"
+                    }
+
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [INFO] {len(data_by_id)}개의 챔피언을 불러왔습니다. (버전: {version})")
 
-                # 로컬 캐시 저장
                 with open(cache_path, "w", encoding="utf-8") as f:
                     json.dump(data_by_id, f, ensure_ascii=False, indent=2)
 
                 CHAMPION_ID_NAME_MAP = data_by_id
                 return data_by_id
-            else:
-                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] 챔피언 데이터 불러오기 실패: {response.status}")
-                return {}
 
 # 패치 버전 주기적으로 확인하여 최신 버전이 바뀌면 데이터 갱신
 async def fetch_patch_version():
@@ -143,7 +282,39 @@ async def fetch_patch_version():
         curseasonref.update({'현재시즌' : season_name})
     # 최신 버전 가져오기
     await asyncio.sleep(3600)
-    
+
+async def fetch_rune_data(force_download=False):
+    global RUNE_ID_TO_PATH
+
+    cache_path = "rune_cache.json"
+    if not force_download and os.path.exists(cache_path):
+        with open(cache_path, "r", encoding="utf-8") as f:
+            RUNE_ID_TO_PATH = json.load(f)
+        return RUNE_ID_TO_PATH
+
+    version = await get_latest_ddragon_version()
+    url = f"https://ddragon.leagueoflegends.com/cdn/{version}/data/ko_KR/runesReforged.json"
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status == 200:
+                data = await response.json()
+                rune_map = {}
+
+                for style in data:
+                    # 스타일 자체 (정밀, 지배 등)
+                    rune_map[str(style["id"])] = style["icon"]
+
+                    for slot in style["slots"]:
+                        for rune in slot["runes"]:
+                            rune_map[str(rune["id"])] = rune["icon"]
+
+                with open(cache_path, "w", encoding="utf-8") as f:
+                    json.dump(rune_map, f, ensure_ascii=False, indent=2)
+
+                RUNE_ID_TO_PATH = rune_map
+                return rune_map
+
 async def fetch_rune_id_to_key_map(force_download=False):
     cache_path = "rune_id_to_key_cache.json"
     if not force_download and os.path.exists(cache_path):
@@ -316,13 +487,23 @@ async def get_team_champion_embed(username, puuid, mode, get_info_func=get_curre
     SPELL_ID_TO_KEY = await fetch_spell_id_to_key_map()
     RUNE_ID_TO_KEY = await fetch_rune_id_to_key_map()
 
-    for p in participants:
+    async with aiohttp.ClientSession() as session:
+        # 10명 요청을 한꺼번에 발사
+        tasks = []
+        for p in participants:
+            riot_id = p.get("riotId", "Unknown")
+            name = riot_id.split("#")[0] if "#" in riot_id else riot_id
+            tag  = riot_id.split("#")[1] if "#" in riot_id else ""
+            tasks.append(get_opgg_tier(session, name, tag, mode))
+
+        results = await asyncio.gather(*tasks)
+
+    for p, (tier, winrate) in zip(participants, results):
         champ_id = p.get("championId")
-        champ_name = CHAMPION_ID_NAME_MAP.get(str(champ_id), f"챔피언ID:{champ_id}")
+        champ_info = CHAMPION_ID_NAME_MAP.get(str(champ_id), {})
+        champ_name = champ_info.get("name", f"챔피언ID:{champ_id}")
+        champ_key  = champ_info.get("key", "")
         summoner_name = p.get("riotId", "Unknown")
-        
-        riodId = summoner_name.split("#")[0] if "#" in summoner_name else summoner_name
-        tagLine = summoner_name.split("#")[1] if "#" in summoner_name else ""
 
         spell1_id = str(p.get("spell1Id"))
         spell2_id = str(p.get("spell2Id"))
@@ -339,10 +520,18 @@ async def get_team_champion_embed(username, puuid, mode, get_info_func=get_curre
         rune_key = RUNE_ID_TO_KEY.get(rune_id, "")
         rune_emoji = RUNE_EMOJI_MAP.get(rune_key, "❓")
 
-        tier, winrate = get_opgg_tier(riodId, tagLine, mode)
         tier_emoji = TIER_EMOJI_MAP.get(tier, "❓")
-        entry = f"{tier_emoji}{rune_emoji}{spell1_emoji}{spell2_emoji} **{champ_name}** - {summoner_name} **[{winrate}%]**"
-        
+        #entry = f"{tier_emoji}{rune_emoji}{spell1_emoji}{spell2_emoji} **{champ_name}** - {summoner_name} **[{winrate}%]**"
+        entry = {
+            "champ": champ_name,
+            "champ_key": champ_key,        # "Xayah", "LeeSin" 등 영문 키
+            "spell1_key": spell1_key,      # "SummonerFlash" 등
+            "spell2_key": spell2_key,
+            "rune_path": RUNE_ID_TO_PATH.get(rune_id, ""),  # "perk-images/Styles/..."
+            "name": summoner_name,
+            "tier": tier or "UNRANKED",
+            "winrate": winrate if winrate is not None else "N/A"
+        }
         if p.get("teamId") == 100:
             team1.append(entry)
         elif p.get("teamId") == 200:
@@ -351,14 +540,21 @@ async def get_team_champion_embed(username, puuid, mode, get_info_func=get_curre
     version = await get_latest_ddragon_version()
     embed = discord.Embed(
         title=f"🔍 {username} 인게임 정보",
-        description=f"{username}의 실시간 챔피언 정보입니다. **[버전 : {version}]**",
+        description=f"",
         color=discord.Color.green(),
         timestamp = datetime.now(timezone.utc)
     )
-    embed.add_field(name="🔵 블루팀", value="\n".join(team1), inline=False)
-    embed.add_field(name="🔴 레드팀", value="\n".join(team2), inline=False)
+    embed.set_footer(text=f"버전 : {version}")
+    img_buf = await create_ingame_image(team1, team2, version)
+    file = discord.File(img_buf, filename="ingame.png")
+    embed.set_image(url="attachment://ingame.png")
+    return embed, file
 
-    return embed
+    # embed.set_footer(text=f"버전 : {version}")
+    # embed.add_field(name="🔵 블루팀", value="\n".join(team1), inline=False)
+    # embed.add_field(name="🔴 레드팀", value="\n".join(team2), inline=False)
+
+    # return embed
 
 async def fake_nowgame(puuid):
     print("🧪 fake_nowgame 호출됨!")
@@ -678,10 +874,11 @@ def get_participant_id(match_info, puuid): # match정보와 puuid를 통해 그 
             return i
     return None
 
-def get_opgg_tier(name, tag, mode="솔로랭크"):
+async def get_opgg_tier(session: aiohttp.ClientSession, name, tag, mode="솔로랭크"):
     """
     OP.GG에서 소환사의 티어 정보를 크롤링하여 반환합니다.
     Args:
+        session: aiohttp 클라이언트 세션
         name: 소환사 이름   
         tag: 소환사 태그 (예: KR1, KR2 등)
     Returns:
@@ -703,11 +900,15 @@ def get_opgg_tier(name, tag, mode="솔로랭크"):
         "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
     }
 
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
+    try:
+        async with session.get(url, headers=headers) as response:
+            if response.status != 200:
+                return None, None
+            html = await response.text()
+    except Exception:
         return None, None
 
-    soup = BeautifulSoup(response.text, 'html.parser')
+    soup = BeautifulSoup(html, 'html.parser')
 
     for section in soup.find_all('section'):
         if not section.find('span', string=target_label):
@@ -769,7 +970,7 @@ async def monitor_games():
             if ingame:
                 tracked_users.add(username)  # 추적 중인 플레이어로 추가
                 active_games[game_id].append((username, mode))
-                print(f"[LOG] [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {username}이(가) 게임 중입니다! (게임 ID: {game_id}, 모드: {mode})")  
+                print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {username}이(가) 게임 중입니다! (게임 ID: {game_id}, 모드: {mode})")  
 
         #print(f"active_games: {dict(active_games)}")
         # 게임 id 단위로 처리
@@ -1322,9 +1523,9 @@ async def open_prediction(name, mode, game_id):
     game_player = guild.get_member(MEMBER_MAP[name])
     await bet_button_callback(prediction_type='win', nickname=game_player)
 
-    info_embed = await get_team_champion_embed(name, puuid, mode, get_info_func=get_current_game_info)
+    info_embed, info_file = await get_team_champion_embed(name, puuid, mode, get_info_func=get_current_game_info)
     info_embed.color = 0x000000
-    await channel.send("",embed=info_embed) # 그 판의 조합을 나타내는 embed를 보냄
+    await channel.send("",embed=info_embed, file = info_file) # 그 판의 조합을 나타내는 embed를 보냄
 
     event.clear()
     await asyncio.gather(
@@ -1364,8 +1565,10 @@ class MyBot(commands.Bot):
         #await self.tree.sync(guild=Object(id=298064707460268032))
         
         await fetch_champion_data(True) # 챔피언 데이터를 받음
+        await fetch_rune_data(True)
         await fetch_rune_id_to_key_map(True)
         await fetch_spell_id_to_key_map(True)
+        
 
         bot.loop.create_task(monitor_games())
         bot.loop.create_task(monitor_endings())
