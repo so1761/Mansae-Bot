@@ -1167,7 +1167,7 @@ async def monitor_single_player_ending(name, game_id, current_game_type, channel
             await notice_channel.send(f"\n{name}의 {current_game_type} 점수 변동이 감지되었습니다!\n{string}")
             await channel.send(f"\n{name}의 {current_game_type} 점수 변동이 감지되었습니다!\n{string}")
 
-    active_games.pop(game_id) # 게임 종료된 게임 id는 active_games에서 제거
+    active_games.pop(game_id, None) # 게임 종료된 게임 id는 active_games에서 제거 (존재하지 않을 수 있으므로 None 기본값)
     tracked_users.discard(name) # 게임 종료된 플레이어는 추적 대상에서 제거
     await predict_results(name,current_game_type) # 예측 결과 처리
 
