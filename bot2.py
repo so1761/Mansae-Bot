@@ -1219,7 +1219,7 @@ def calculate_bonus(streak):
     return bonus
 
 opened_games = set()
-active_games = defaultdict(list)
+active_games = defaultdict(lambda: {"players": [], "game_start_time": None})
 tracked_users = set()
 monitored_games = set()
 async def monitor_games():
@@ -1239,13 +1239,15 @@ async def monitor_games():
 
             if ingame:
                 tracked_users.add(username)  # 추적 중인 플레이어로 추가
-                active_games[game_id].append((username, mode))
+                active_games[game_id]["players"].append((username, mode))
+                active_games[game_id]["game_start_time"] = game_start_time
                 print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {username}이(가) 게임 중입니다! (게임 ID: {game_id}, 모드: {mode})")  
 
-        #print(f"active_games: {dict(active_games)}")
         # 게임 id 단위로 처리
-        for game_id, players in active_games.items():
-            
+        for game_id, data in active_games.items():
+            players = data["players"]
+            game_start_time = data["game_start_time"]
+
             if game_id in opened_games: # 이미 예측이 열린 게임이라면
                 continue
 
@@ -1343,7 +1345,8 @@ async def monitor_endings():
     
     # 게임 진행중인 플레이어들에 대해서 게임 종료 여부 동시에 확인
     while not bot.is_closed():
-        for game_id, players in active_games.items():
+        for game_id, data in active_games.items():
+            players = data["players"]
 
             if game_id in monitored_games:
                 continue
@@ -1787,8 +1790,14 @@ async def open_prediction(name, mode, game_id, game_start_time):
         streak_message = f"{game_lose_streak}연패 중!"
 
     unix_seconds = int(game_start_time / 1000)
-    p.current_messages[name] = await channel.send(f"\n{name}의 {mode} 게임이 감지되었습니다![<t:{unix_seconds}:R>]\n승부예측을 해보세요!\n{streak_message}", view=prediction_view, embed=prediction_embed)
-
+    p.current_messages[name] = await channel.send(
+        f"\n{name}의 {mode} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{streak_message}",
+        view=prediction_view,
+        embed=prediction_embed
+    )   
+    await p.current_messages[name].edit( 
+        content=f"{name}의 {mode} 게임이 <t:{unix_seconds}:R>에 감지되었습니다!\n승부예측을 해보세요!\n{streak_message}",
+    ) 
     p.current_messages_kda[name] = await channel.send("\n", view=kda_view, embed=kda_embed)
 
     if not onoffbool:
@@ -1801,7 +1810,7 @@ async def open_prediction(name, mode, game_id, game_start_time):
     
     # 듀오 게임인 경우 다른 멤버도 자동 투표
     if game_id in active_games:
-        for other_player_name, _ in active_games[game_id]:
+        for other_player_name, _ in active_games[game_id]["players"]:
             if other_player_name != name and other_player_name in MEMBER_MAP:
                 other_game_player = guild.get_member(MEMBER_MAP[other_player_name])
                 if other_game_player:
