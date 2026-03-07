@@ -1628,7 +1628,7 @@ async def monitor_games():
 
             # 진행중인 게임 목록에 게임 id 추가
             opened_games.add(game_id)
-
+            active_games[game_id]["prediction_owner"] = selected_user
             # 예측 오픈
             bot.loop.create_task(
                 open_prediction(
@@ -1708,7 +1708,8 @@ async def monitor_single_player_ending(name, game_id, current_game_type, channel
 
     active_games.pop(game_id, None) # 게임 종료된 게임 id는 active_games에서 제거 (존재하지 않을 수 있으므로 None 기본값)
     tracked_users.discard(name) # 게임 종료된 플레이어는 추적 대상에서 제거
-    if name in p.votes:
+    prediction_owner = active_games.get(game_id, {}).get("prediction_owner")
+    if name in p.votes and name == prediction_owner:
         await predict_results(name,current_game_type) # 예측 결과 처리
 
 # 게임 종료 모니터링: 게임이 종료되었는지 주기적으로 확인하여 점수 변동 감지 및 예측 결과 처리 (동시에 모든 플레이어 모니터링)
