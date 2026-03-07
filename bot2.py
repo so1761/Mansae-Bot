@@ -1111,7 +1111,11 @@ async def get_fow_multisearch(session: aiohttp.ClientSession, summoners: list[tu
             ]
         }}
     """
-    mode_label = "솔로랭크" if mode == "솔로랭크" else "자유랭크"
+    mode_map = {
+        "솔로랭크": ["솔로랭크", "Ranked Solo"],
+        "자유랭크": ["자유랭크", "Ranked Flex"],
+    }
+    mode_labels = mode_map.get(mode, ["솔로랭크", "Ranked Solo"])
 
     text = ",".join(f"{name} #{tag}" for name, tag in summoners)
     url = "https://www.fow.lol/api/multisearch"
@@ -1164,7 +1168,7 @@ async def get_fow_multisearch(session: aiohttp.ClientSession, summoners: list[tu
         winrate, games = None, None
         for div in info_block.find_all("div"):
             t = div.get_text(strip=True)
-            if mode_label not in t:
+            if not any(label in t for label in mode_labels):  # ← any로 변경
                 continue
             wl_match = re.search(r'(\d+)W\s*(\d+)L', t)
             if wl_match:
