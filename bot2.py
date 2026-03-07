@@ -728,36 +728,37 @@ async def nowgame(puuid, retries=5, delay=5):
                         game_id = data.get("gameId")
                         game_mode = data.get("gameMode")
                         game_type = data.get("gameType")
+                        game_start_time = data.get("gameStartTime")
                         queue_id = data.get("gameQueueConfigId")
 
                         if game_mode == "CLASSIC" and game_type == "MATCHED":
                             if queue_id == 420:
-                                return True, "솔로랭크", game_id
+                                return True, "솔로랭크", game_id, game_start_time
                             elif queue_id == 440:
-                                return True, "자유랭크", game_id
-                        
-                        return False, None, game_id  # 랭크 게임이 아닐 경우
+                                return True, "자유랭크", game_id, game_start_time
+
+                        return False, None, game_id, None  # 랭크 게임이 아닐 경우
 
                     elif response.status == 404:
-                        return False, None, None  # 현재 게임이 없으면 재시도할 필요 없음
+                        return False, None, None, None  # 현재 게임이 없으면 재시도할 필요 없음
 
                     elif response.status in [500, 502, 503, 504, 524]:  # 524 추가
                         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [WARNING] nowgame에서 {response.status} 오류 발생, 재시도 중 {attempt + 1}/{retries}...")
 
                     else:
                         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] nowgame에서 {response.status} 오류 발생")
-                        return False, None, None  # 다른 오류는 재시도하지 않음
+                        return False, None, None, None  # 다른 오류는 재시도하지 않음
 
         except aiohttp.ClientConnectorError as e:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] nowgame에서 연결 오류 발생: {e}, 재시도 중 {attempt + 1}/{retries}...")
         except Exception as e:
             print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] nowgame에서 예기치 않은 오류 발생: {e}")
-            return False, None, None
+            return False, None, None, None
 
         await asyncio.sleep(delay)  # 재시도 간격 증가
 
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] nowgame에서 모든 재시도 실패")
-    return False, None, None
+    return False, None, None, None
 
 async def get_summoner_puuid(riot_id, tagline):
     url = f'https://asia.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{riot_id}/{tagline}'
@@ -1234,7 +1235,7 @@ async def monitor_games():
                 continue  # 이미 추적 중인 플레이어는 건너뜀
             puuid = PUUID[username]
 
-            ingame, mode, game_id = await nowgame(puuid)
+            ingame, mode, game_id, game_start_time = await nowgame(puuid)
 
             if ingame:
                 tracked_users.add(username)  # 추적 중인 플레이어로 추가
@@ -1259,7 +1260,8 @@ async def monitor_games():
                 open_prediction(
                     name=selected_user,
                     mode=mode,
-                    game_id=game_id
+                    game_id=game_id,
+                    game_start_time = game_start_time
                 )
             )
 
@@ -1278,7 +1280,7 @@ async def monitor_single_player_ending(name, game_id, current_game_type, channel
     recent_match_id = None
     while not bot.is_closed():
         # 게임 종료 체크
-        ingame, _, _ = await nowgame(puuid)
+        ingame, _, _, _ = await nowgame(puuid)
         if not ingame: # 게임 종료 의심 상태
             await asyncio.sleep(20) # 20초 후 재확인
             recent_match_id = await get_summoner_recentmatch_id(puuid)
@@ -1590,7 +1592,7 @@ async def calculate_points(name, result, userembed):
             event.set()       
 
 # 예측 오픈 함수: 게임이 감지되면 해당 게임에 대한 예측을 오픈하는 함수
-async def open_prediction(name, mode, game_id):
+async def open_prediction(name, mode, game_id, game_start_time):
     await bot.wait_until_ready()
     channel = bot.get_channel(int(CHANNEL_ID))
     notice_channel = bot.get_channel(int(NOTICE_CHANNEL_ID))
@@ -1784,8 +1786,8 @@ async def open_prediction(name, mode, game_id):
     elif game_lose_streak >= 1:        
         streak_message = f"{game_lose_streak}연패 중!"
 
-
-    p.current_messages[name] = await channel.send(f"\n{name}의 {mode} 게임이 감지되었습니다!\n승부예측을 해보세요!\n{streak_message}", view=prediction_view, embed=prediction_embed)
+    unix_seconds = int(game_start_time / 1000)
+    p.current_messages[name] = await channel.send(f"\n{name}의 {mode} 게임이 감지되었습니다![<t:{unix_seconds}:R>]\n승부예측을 해보세요!\n{streak_message}", view=prediction_view, embed=prediction_embed)
 
     p.current_messages_kda[name] = await channel.send("\n", view=kda_view, embed=kda_embed)
 
