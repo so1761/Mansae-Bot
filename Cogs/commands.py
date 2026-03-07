@@ -193,7 +193,7 @@ async def get_summoner_puuid(riot_id, tagline):
                 data = await response.json()
                 return data['puuid']
             else:
-                print('Error:', response.status)
+                print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] [ERROR] get_summoner_puuid - Status: {response.status}')
                 return None
 
 async def get_summoner_id(puuid):
@@ -206,7 +206,7 @@ async def get_summoner_id(puuid):
                 data = await response.json()
                 return data['id']
             else:
-                print('Error:', response.status)
+                print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] [ERROR] get_summoner_id - Status: {response.status}')
                 return None
 
 async def get_summoner_ranks(puuid, type="솔랭"):
@@ -230,7 +230,7 @@ async def get_summoner_ranks(puuid, type="솔랭"):
             elif response.status == 404:
                 raise NotFoundError("404 Error occurred")
             else:
-                print('Error:', response.status)
+                print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] [ERROR] get_summoner_ranks - Status: {response.status}')
                 return None
 
 async def get_summoner_recentmatch_id(puuid):
@@ -243,7 +243,7 @@ async def get_summoner_recentmatch_id(puuid):
                 data = await response.json()
                 return data[0] if data else None
             else:
-                print('Error:', response.status)
+                print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] [ERROR] get_summoner_recentmatch_id - Status: {response.status}')
                 return None
 
 async def get_summoner_matchinfo(matchid):
@@ -255,7 +255,7 @@ async def get_summoner_matchinfo(matchid):
             if response.status == 200:
                 return await response.json()
             else:
-                print('Error:', response.status)
+                print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] [ERROR] get_summoner_matchinfo - Status: {response.status}')
                 return None
 
 def get_summoner_matchinfo_nonaysnc(matchid): #matchid로 매치 정보 구하기
@@ -267,7 +267,7 @@ def get_summoner_matchinfo_nonaysnc(matchid): #matchid로 매치 정보 구하�
     elif response.status_code == 404:
         raise NotFoundError("404 Error occurred")
     else:
-        print('Error:', response.status_code)
+        print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] [ERROR] get_summoner_matchinfo_nonasync - Status: {response.status_code}')
         return None
 
 # 임베드를 생성하는 함수 (명령어 목록을 페이지별로 나누기)
@@ -543,8 +543,7 @@ def plot_lp_difference_firebase(season=None,name=None,rank=None):
     
     if rank == None:
         rank = "솔로랭크"
-    
-    print(season)
+
     ref = db.reference(f'전적분석/{season}/점수변동/{name}/{rank}')
     lp_difference = ref.get()
     if lp_difference == None:
@@ -729,11 +728,11 @@ async def get_recent_matches(puuid, queue, startNum):
                 match_ids = await response.json()
                 return match_ids
             elif response.status == 404:
-                raise NotFoundError("404 Error occurred")
+                raise NotFoundError(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] [ERROR] get_recent_matches - Status: {response.status}')
             elif response.status == 429:
-                raise TooManyRequestError("429 Error occurred")
+                raise TooManyRequestError(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] [ERROR] get_recent_matches - Status: {response.status}')
             else:
-                print('Error:', response.status)
+                print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] [ERROR] get_recent_matches - Status: {response.status}')
                 return None
 
 async def get_recent_solo_ranked_matches(puuid, startNum):
@@ -776,7 +775,7 @@ async def wins_all_match_info(match_ids, puuid):
                     if participant['win']: wins_list.append('win')
                     else: wins_list.append('lose')
                 else:
-                    print('Participant not found')
+                    print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] [ERROR] wins_all_match_info - Participant not found')
                     wins_list.append(False)  # Participant not found
             else: wins_list.append(False)
     return wins_list
@@ -788,11 +787,11 @@ async def get_match_info(session, match_id):
         if response.status == 200:
             return await response.json()
         elif response.status == 404:
-            raise NotFoundError("404 Error occurred")
+            raise NotFoundError(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] [ERROR] get_match_info - Status: {response.status}')
         elif response.status == 429:
-            raise TooManyRequestError("429 Error occurred")
+            raise TooManyRequestError(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] [ERROR] get_match_info - Status: {response.status}')
         else:
-            print(response.status)
+            print(f'[{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] [ERROR] get_match_info - Status: {response.status}')
             return
 
 # 최근 20경기 승/패 계산
@@ -830,8 +829,6 @@ async def calculate_consecutive_matches(puuid):
                 raise TooManyRequestError
             # 세 번째 10개 매치에 대한 정보를 비동기적으로 가져옴
            # wins_list.extend(await wins_all_match_info(third_10_matches, puuid))
-
-        print(wins_list)
 
         wins = 0
         loss = 0
@@ -882,8 +879,6 @@ async def calculate_consecutive_wins(puuid):
             # 세 번째 10개 매치에 대한 정보를 비동기적으로 가져옴
            # wins_list.extend(await wins_all_match_info(third_10_matches, puuid))
 
-        print(wins_list)
-
         win_streak = 0
         for win in wins_list:
             if win == 'win':
@@ -928,8 +923,6 @@ async def calculate_consecutive_losses(puuid):
                 raise TooManyRequestError
             # 세 번째 10개 매치에 대한 정보를 비동기적으로 가져옴
            # wins_list.extend(await wins_all_match_info(third_10_matches, puuid))
-
-        print(wins_list)
 
         lose_streak = 0
         for win in wins_list:
@@ -1010,15 +1003,13 @@ class hello(commands.Cog):
     Choice(name='격전', value='3')
     ])
     async def 전적분석(self,interaction: discord.Interaction, 닉네임:str, 태그:str, 시작전적:int, 리그: str):
-        print(f"{interaction.user}가 요청한 전적분석 요청 수행")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {interaction.user}가 요청한 전적분석 요청 수행")
         RNAME = 닉네임
         TLINE = 태그
         FROMNUM = 시작전적
         LEAGUE = 리그
-        print(LEAGUE)
         RNAME = RNAME.strip()
         TLINE = TLINE.strip()
-        print(f'RNAME : {RNAME}, TLINE : {TLINE}')
         try:
             puuid = await get_summoner_puuid(RNAME, TLINE)
         except NotFoundError as e:
@@ -1336,7 +1327,7 @@ class hello(commands.Cog):
 
     @app_commands.command(name="트름범인",description="누구인가?")
     async def 트름범인(self,interaction: discord.Interaction):
-        print(f"{interaction.user}가 요청한 트름범인 요쳥 수행")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {interaction.user}가 요청한 트름범인 요청 수행")
         # 필터링할 봇들의 사용자 이름 리스트
         excluded_bots = ['TTS Bot', '술팽봇', '뽀삐', '알로항']
         if interaction.user.voice is not None:
@@ -1353,7 +1344,7 @@ class hello(commands.Cog):
     @app_commands.command(name="연승",description="소환사의 연승 횟수를 보여줍니다")
     @app_commands.describe(닉네임='소환사 닉네임',태그='소환사 태그 ex)KR1')
     async def 연승(self, interaction: discord.Interaction, 닉네임:str, 태그:str):
-        print(f"{interaction.user}가 요청한 연승 요청 수행")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {interaction.user}가 요청한 연승 요청 수행")
         RNAME = 닉네임
         TLINE = 태그
         RNAME = RNAME.strip()
@@ -1386,7 +1377,7 @@ class hello(commands.Cog):
     @app_commands.command(name="연패",description="소환사의 연패 횟수를 보여줍니다")
     @app_commands.describe(닉네임='소환사 닉네임',태그='소환사 태그 ex)KR1')
     async def 연패(self, interaction: discord.Interaction, 닉네임:str, 태그:str):
-        print(f"{interaction.user}가 요청한 연패 요청 수행")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {interaction.user}가 요청한 연패 요청 수행")
         RNAME = 닉네임
         TLINE = 태그
         RNAME = RNAME.strip()
@@ -1419,7 +1410,7 @@ class hello(commands.Cog):
     @app_commands.command(name="최근전적",description="최근 20경기의 전적을 보여줍니다")
     @app_commands.describe(닉네임='소환사 닉네임',태그='소환사 태그 ex)KR1')
     async def 최근전적(self, interaction: discord.Interaction, 닉네임:str, 태그:str):
-        print(f"{interaction.user}가 요청한 최근전적 요청 수행")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {interaction.user}가 요청한 최근전적 요청 수행")
         RNAME = 닉네임
         TLINE = 태그
         RNAME = RNAME.strip()
@@ -1462,7 +1453,7 @@ class hello(commands.Cog):
     Choice(name='자랭', value='자유랭크'),
     ])
     async def 그래프(self, interaction: discord.Interaction, 이름:str, 랭크:str = "솔로랭크"):
-        print(f"{interaction.user}가 요청한 그래프 요청 수행 ({이름}, {랭크})")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {interaction.user}가 요청한 그래프 요청 수행 ({이름}, {랭크})")
         # LP 변동량 그래프 그리기
         await interaction.response.defer()  # Interaction을 유지
         returnVal = plot_lp_difference_firebase(name = 이름, rank = 랭크)
@@ -1494,7 +1485,7 @@ class hello(commands.Cog):
     Choice(name='자랭', value='자유랭크'),
     ])
     async def 시즌그래프(self, interaction: discord.Interaction, 이름:str, 시즌:str, 랭크:str = "솔로랭크"):
-        print(f"{interaction.user}가 요청한 시즌그래프 요청 수행")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {interaction.user}가 요청한 시즌그래프 요청 수행")
         # LP 변동량 그래프 그리기
         await interaction.response.defer()  # Interaction을 유지
         returnVal = plot_lp_difference_firebase(season = 시즌, name = 이름, rank = 랭크)
@@ -1508,7 +1499,7 @@ class hello(commands.Cog):
 
     @app_commands.command(name="시즌종료",description="시즌 종료까지 남은 날짜를 보여줍니다.")
     async def 시즌종료(self, interaction: discord.Interaction):
-        print(f"{interaction.user}가 요청한 시즌종료 요청 수행")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {interaction.user}가 요청한 시즌종료 요청 수행")
         # 현재 날짜 및 시간 가져오기
         current_datetime = datetime.now()
 
@@ -1543,7 +1534,7 @@ class hello(commands.Cog):
     Choice(name='자랭', value='자랭'),
     ])
     async def 점수(self,interaction: discord.Interaction, 닉네임:str, 태그:str, 리그:str):
-        print(f"{interaction.user}가 요청한 점수 요청 수행")
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {interaction.user}가 요청한 점수 요청 수행")
         RNAME = 닉네임
         TLINE = 태그
         RNAME = RNAME.strip()
