@@ -87,7 +87,44 @@ async def init_browser():
         args=["--no-sandbox", "--disable-setuid-sandbox"]
     )
 
-async def create_ingame_image(team1_data, team2_data, version):
+async def create_ingame_image(team1_data, team2_data, version, banned_champions):
+
+    def most_html(most):
+        slots = []
+        for i in range(3):
+            m = most[i] if most and i < len(most) else None
+            if m:
+                wr = m['winrate']
+                wr_color = "#ff4444" if wr >= 60 else "#ffa500" if wr >= 55 else "#4CAF50" if wr >= 50 else "#aaaaaa"
+                slots.append(f"""
+                <div class="most-item">
+                    <img class="most-icon" src="https://ddragon.leagueoflegends.com/cdn/{version}/img/champion/{m['champ_key']}.png">
+                    <span class="most-wr" style="color:{wr_color}">{wr}%</span>
+                    <span class="most-games">{m['games']}판</span>
+                </div>""")
+            else:
+                slots.append("""
+                <div class="most-item">
+                    <div class="most-icon most-empty"></div>
+                    <span class="most-wr"></span>
+                    <span class="most-games"></span>
+                </div>""")
+        return "".join(slots)
+
+    def ban_icons(team_id):
+        bans = sorted(
+            [b for b in banned_champions if b['teamId'] == team_id],
+            key=lambda b: b['pickTurn']
+        )
+        result = []
+        for b in bans:
+            champ_info = CHAMPION_ID_NAME_MAP.get(str(b['championId']), {})
+            key = champ_info.get('key', '')
+            if key:
+                result.append(f'<img class="ban-icon" src="https://ddragon.leagueoflegends.com/cdn/{version}/img/champion/{key}.png">')
+            else:
+                result.append('<div class="ban-empty"></div>')
+        return "".join(result)
 
     def player_row(p):
         champ_url  = f"https://ddragon.leagueoflegends.com/cdn/{version}/img/champion/{p['champ_key']}.png"
@@ -103,9 +140,8 @@ async def create_ingame_image(team1_data, team2_data, version):
             wr_color = "#aaaaaa"
             wr_text = "N/A"
 
-        # 티어별 색상
         tier = p['tier'].upper()
-        if "CHALLENGER" in tier:   tier_color = "#f4c874"
+        if "CHALLENGER" in tier:    tier_color = "#f4c874"
         elif "GRANDMASTER" in tier: tier_color = "#ff6b6b"
         elif "MASTER" in tier:      tier_color = "#9b59b6"
         elif "DIAMOND" in tier:     tier_color = "#4fc3f7"
@@ -117,6 +153,8 @@ async def create_ingame_image(team1_data, team2_data, version):
         elif "IRON" in tier:        tier_color = "#808080"
         else:                       tier_color = "#555555"
 
+        games_html = f'<span class="games">{p["games"]}게임</span>' if p.get('games') else ''
+
         return f"""
         <div class="player">
             <img class="icon champ-icon" src="{champ_url}">
@@ -125,8 +163,15 @@ async def create_ingame_image(team1_data, team2_data, version):
             <img class="icon rune-icon"  src="{rune_url}">
             <span class="champ">{p['champ']}</span>
             <span class="name">{p['name']}</span>
-            <span class="tier" style="color:{tier_color}">{p['tier']}</span>
-            <span class="winrate" style="color:{wr_color}">{wr_text}</span>
+            <div class="right-block">
+                <div class="tier-block">
+                    <span class="tier" style="color:{tier_color}">{p['tier']}</span>
+                    {games_html}
+                </div>
+                <span class="winrate" style="color:{wr_color}">{wr_text}</span>
+                <div class="sep"></div>
+                <div class="most-list">{most_html(p.get('most', []))}</div>
+            </div>
         </div>"""
 
     html = f"""
@@ -141,75 +186,126 @@ async def create_ingame_image(team1_data, team2_data, version):
             color: white;
             font-family: 'NanumGothic', sans-serif;
             padding: 16px;
-            width: 820px;
+            width: 900px;
             -webkit-font-smoothing: antialiased;
         }}
         .team-header {{
-            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
             font-weight: bold;
-            padding: 8px 4px;
+            padding: 6px 4px;
             margin-bottom: 6px;
             letter-spacing: 1px;
         }}
         .blue {{ color: #5865f2; }}
         .red  {{ color: #ed4245; }}
+        .ban-list {{ display: flex; align-items: center; gap: 4px; }}
+        .ban-icon {{
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+            opacity: 0.75;
+            filter: grayscale(30%);
+            border: 1px solid #555;
+        }}
+        .ban-empty {{
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            background: #2b2d31;
+            border: 1px dashed #444;
+        }}
         .player {{
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 12px;
+            padding: 7px 10px;
             margin: 3px 0;
             background: #2b2d31;
             border-radius: 8px;
         }}
-        .icon       {{ border-radius: 4px; object-fit: cover; }}
+        .icon       {{ border-radius: 4px; object-fit: cover; flex-shrink: 0; }}
         .champ-icon {{ width: 32px; height: 32px; }}
-        .spell-icon {{ width: 24px; height: 24px; }}
-        .rune-icon  {{ width: 24px; height: 24px; }}
+        .spell-icon {{ width: 22px; height: 22px; }}
+        .rune-icon  {{ width: 22px; height: 22px; }}
         .champ {{
             font-weight: 800;
-            width: 90px;
-            font-size: 14px;
+            width: 80px;
+            font-size: 13px;
             color: #ffffff;
-            letter-spacing: 0.3px;
+            flex-shrink: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }}
         .name {{
             color: #cccccc;
-            flex: 1;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
-            letter-spacing: 0.2px;
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }}
-        .tier {{
-            width: 120px;
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: 0.3px;
+        .right-block {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
         }}
+        .tier-block {{
+            display: flex;
+            flex-direction: column;
+            width: 140px;
+            flex-shrink: 0;
+        }}
+        .tier  {{ font-size: 12px; font-weight: 700; line-height: 1.4; }}
+        .games {{ font-size: 10px; color: #888; font-weight: 500; }}
         .winrate {{
-            width: 50px;
+            width: 42px;
             text-align: right;
             font-size: 13px;
             font-weight: 700;
+            flex-shrink: 0;
         }}
-        .divider {{ border: 1px solid #3a3a3a; margin: 12px 0; }}
+        .sep {{
+            width: 1px;
+            height: 32px;
+            background: #3a3a3a;
+            flex-shrink: 0;
+        }}
+        .most-list  {{ display: flex; align-items: center; gap: 6px; flex-shrink: 0; }}
+        .most-item  {{ display: flex; flex-direction: column; align-items: center; gap: 2px; }}
+        .most-icon  {{ width: 26px; height: 26px; border-radius: 4px; object-fit: cover; }}
+        .most-empty {{ background: #3a3a3a; border: 1px dashed #555; }}
+        .most-wr    {{ font-size: 9px; font-weight: 700; text-align: center; line-height: 1; width: 30px; }}
+        .most-games {{ font-size: 8px; color: #777; text-align: center; line-height: 1; }}
+        .divider {{ border: 1px solid #3a3a3a; margin: 10px 0; }}
     </style>
     </head>
     <body>
-        <div class="team-header blue">🔵 블루팀</div>
+        <div class="team-header blue">
+            🔵 블루팀
+            <div class="ban-list">{ban_icons(100)}</div>
+        </div>
         {"".join(player_row(p) for p in team1_data)}
         <div class="divider"></div>
-        <div class="team-header red">🔴 레드팀</div>
+        <div class="team-header red">
+            🔴 레드팀
+            <div class="ban-list">{ban_icons(200)}</div>
+        </div>
         {"".join(player_row(p) for p in team2_data)}
     </body>
     </html>
     """
 
     page = await browser_instance.new_page(
-        viewport={"width": 820, "height": 100},
+        viewport={"width": 900, "height": 100},
         device_scale_factor=2
     )
-    await page.set_content(html, wait_until="networkidle")  # 이미지 로딩 대기
+    await page.set_content(html, wait_until="networkidle")
     screenshot = await page.screenshot(full_page=True)
     await page.close()
 
@@ -508,11 +604,12 @@ def assign_positions(team):
                   if x.get('position') in POSITION_ORDER else 99)
 
 
-async def get_team_champion_embed(username, puuid, mode, get_info_func=get_current_game_info):
+async def get_team_champion(username, puuid, mode, get_info_func=get_current_game_info):
     data = await get_info_func(puuid)
     if not data:
         return None
 
+    banned_champions = data.get("bannedChampions",[])
     participants = data.get("participants", [])
     if not participants:
         return None
@@ -520,97 +617,45 @@ async def get_team_champion_embed(username, puuid, mode, get_info_func=get_curre
     team1 = []
     team2 = []
 
-    SPELL_EMOJI_MAP = {
-        "SummonerSmite": "<:smite:1369988249417678948>",
-        "SummonerFlash": "<:flash:1369988373631991858>",
-        "SummonerTeleport": "<:teleport:1369988420276977675>",
-        "SummonerHeal": "<:heal:1369988449460944896>",
-        "SummonerDot": "<:ignite:1369988477915107378>",
-        "SummonerBarrier": "<:barrier:1369988312076390471>",
-        "SummonerExhaust": "<:exhaust:1369988518692261888>",
-        "SummonerHaste": "<:ghost:1369988552200552528>",
-        "SummonerBoost": "<:cleanse:1369988596362379274>"
-    }
-
-    RUNE_EMOJI_MAP = {
-        "Electrocute": "<:Electrocute:1476931788973670603>",
-        "DarkHarvest": "<:DarkHarvest:1476931900755935253>",
-        "HailOfBlades": "<:HailOfBlades:1476931917080428585>",
-        "GlacialAugment": "<:GlacialAugment:1476931912537866374>",
-        "UnsealedSpellbook": "<:UnsealedSpellbook:1476931925498400819>",
-        "FirstStrike": "<:FirstStrike:1476931909388079274>",
-        "FleetFootwork": "<:FleetFootwork:1476931910897893526>",
-        "Conqueror": "<:Conqueror:1476931898533216377>",
-        "LethalTempo": "<:LethalTempo:1476931919047299196>",
-        "PressTheAttack": "<:PressTheAttack:1476931921606082600>",
-        "SummonAery": "<:SummonAery:1476931923459837972>",
-        "PhaseRush": "<:PhaseRush:1476931920372699239>",
-        "ArcaneComet": "<:ArcaneComet:1476931896624550000>",
-        "GraspOfTheUndying": "<:GraspOfTheUndying:1476931913787637762>",
-        "Guardian": "<:Guardian:1476931915415027784>",
-        "Aftershock": "<:Aftershock:1476931927541026957>"
-    }
-
-    TIER_EMOJI_MAP = {
-        "UNRANKED": "<:UNRANKED:1479135962264113274>",
-        "IRON4": "<:IRON4:1479135265405534352>",
-        "IRON3": "<:IRON3:1479135263656640734>",
-        "IRON2": "<:IRON2:1479135262176055429>",
-        "IRON1": "<:IRON1:1479135260049674371>",
-        "BRONZE4": "<:BRONZE4:1479135236456710365>",
-        "BRONZE3": "<:BRONZE3:1479135234824994906>",
-        "BRONZE2": "<:BRONZE2:1479135233453461605>",
-        "BRONZE1": "<:BRONZE1:1479135232161485095>",
-        "SILVER4": "<:SILVER4:1479135287031365774>",
-        "SILVER3": "<:SILVER3:1479135278689026058>",
-        "SILVER2": "<:SILVER2:1479135277325746290>",
-        "SILVER1": "<:SILVER1:1479135275656675388>",
-        "GOLD4": "<:GOLD4:1479135257210126416>",
-        "GOLD3": "<:GOLD3:1479135255557308468>",
-        "GOLD2": "<:GOLD2:1479135254592622774>",
-        "GOLD1": "<:GOLD1:1479135253258834024>",
-        "PLATINUM4": "<:PLATINUM4:1479135274079486022>",
-        "PLATINUM3": "<:PLATINUM3:1479135272351568078>",
-        "PLATINUM2": "<:PLATINUM2:1479135270631899197>",
-        "PLATINUM1": "<:PLATINUM1:1479135269033611365>",
-        "EMERALD4": "<:EMERALD4:1479135251589759229>",
-        "EMERALD3": "<:EMERALD3:1479135249618305044>",
-        "EMERALD2": "<:EMERALD2:1479135247315632279>",
-        "EMERALD1": "<:EMERALD1:1479135245717475430>",
-        "DIAMOND4": "<:DIAMOND4:1479135244274634993>",
-        "DIAMOND3": "<:DIAMOND3:1479135242500444292>",
-        "DIAMOND2": "<:DIAMOND2:1479135241183432946>",
-        "DIAMOND1": "<:DIAMOND1:1479135239732465694>",
-        "MASTER": "<:MASTER:1479135267377123479>",
-        "GRANDMASTER": "<:GRANDMASTER:1479135258619150376>",
-        "CHALLENGER": "<:CHALLENGER:1479135237987504128>"
-    }
-
     CHAMPION_ID_NAME_MAP = await fetch_champion_data(force_download = False)
     SPELL_ID_TO_KEY = await fetch_spell_id_to_key_map()
-    RUNE_ID_TO_KEY = await fetch_rune_id_to_key_map()
+
+    summoners = []
+    for p in participants:
+        name = p.get("riotId", "Unknown").split("#")[0] if "#" in p.get("riotId", "Unknown") else p.get("riotId", "Unknown")
+        tag = p.get("riotId", "Unknown").split("#")[1] if "#" in p.get("riotId", "Unknown") else ""
+        summoners.append((name, tag))
 
     async with aiohttp.ClientSession() as session:
-        # 10명 요청을 한꺼번에 발사
-        tasks = []
-        for p in participants:
-            riot_id = p.get("riotId", "Unknown")
-            name = riot_id.split("#")[0] if "#" in riot_id else riot_id
-            tag  = riot_id.split("#")[1] if "#" in riot_id else ""
-            tasks.append(get_opgg_tier(session, name, tag, mode))
+        results = await get_fow_multisearch(session, summoners, mode)
+    # async with aiohttp.ClientSession() as session:
+    #     # 10명 요청을 한꺼번에 발사
+    #     tasks = []
+    #     for p in participants:
+    #         riot_id = p.get("riotId", "Unknown")
+    #         name = riot_id.split("#")[0] if "#" in riot_id else riot_id
+    #         tag  = riot_id.split("#")[1] if "#" in riot_id else ""
+    #         tasks.append(get_opgg_tier(session, name, tag, mode))
 
-        results = await asyncio.gather(*tasks)
+    #     results = await asyncio.gather(*tasks)
 
     team1_temp = []
     team2_temp = []
 
-    for p, (tier, winrate) in zip(participants, results):
+    for p in participants:
+        summoner_name = p.get("riotId", "Unknown")
+        data = results.get(summoner_name, {
+            "tier": "UNRANKED",
+            "winrate": None,
+            "games": None,
+            "most": []
+        })
         champ_id = p.get("championId")
         champ_info = CHAMPION_ID_NAME_MAP.get(str(champ_id), {})
         champ_name = champ_info.get("name", f"챔피언ID:{champ_id}")
         champ_key  = champ_info.get("key", "")
         champ_tags = champ_info.get("tags", [])
-        summoner_name = p.get("riotId", "Unknown")
+        
 
         spell1_id = str(p.get("spell1Id"))
         spell2_id = str(p.get("spell2Id"))
@@ -618,16 +663,10 @@ async def get_team_champion_embed(username, puuid, mode, get_info_func=get_curre
         spell1_key = SPELL_ID_TO_KEY.get(spell1_id, "")  # 예: 'SummonerSmite'
         spell2_key = SPELL_ID_TO_KEY.get(spell2_id, "")
 
-        spell1_emoji = SPELL_EMOJI_MAP.get(spell1_key, "❓")
-        spell2_emoji = SPELL_EMOJI_MAP.get(spell2_key, "❓")
-
         perks = p.get("perks", {})
         perk_ids = perks.get("perkIds", [])
         rune_id = str(perk_ids[0]) if perk_ids else None
-        rune_key = RUNE_ID_TO_KEY.get(rune_id, "")
-        rune_emoji = RUNE_EMOJI_MAP.get(rune_key, "❓")
 
-        tier_emoji = TIER_EMOJI_MAP.get(tier, "❓")
         #entry = f"{tier_emoji}{rune_emoji}{spell1_emoji}{spell2_emoji} **{champ_name}** - {summoner_name} **[{winrate}%]**"
         entry = {
             "champ": champ_name,
@@ -636,8 +675,10 @@ async def get_team_champion_embed(username, puuid, mode, get_info_func=get_curre
             "spell2_key": spell2_key,
             "rune_path": RUNE_ID_TO_PATH.get(rune_id, ""),  # "perk-images/Styles/..."
             "name": summoner_name,
-            "tier": tier or "UNRANKED",
-            "winrate": winrate if winrate is not None else "N/A",
+            "tier": data['tier'] or "UNRANKED",
+            "winrate": data['winrate'] if data['winrate'] is not None else "N/A",
+            "games": data['games'], # 올 시즌 판 수
+            "most" : data['most'], # 올 시즌 모스트 3
             "champ_tags": champ_tags      # 포지션 판별용
         }
         
@@ -651,23 +692,10 @@ async def get_team_champion_embed(username, puuid, mode, get_info_func=get_curre
     team2 = assign_positions(team2_temp)
 
     version = await get_latest_ddragon_version()
-    embed = discord.Embed(
-        title=f"🔍 {username} 인게임 정보",
-        description=f"",
-        color=discord.Color.green(),
-        timestamp = datetime.now(timezone.utc)
-    )
-    embed.set_footer(text=f"버전 : {version}")
-    img_buf = await create_ingame_image(team1, team2, version)
+    img_buf = await create_ingame_image(team1, team2, version, banned_champions)
     file = discord.File(img_buf, filename="ingame.png")
-    embed.set_image(url="attachment://ingame.png")
-    return embed, file
+    return file
 
-    # embed.set_footer(text=f"버전 : {version}")
-    # embed.add_field(name="🔵 블루팀", value="\n".join(team1), inline=False)
-    # embed.add_field(name="🔴 레드팀", value="\n".join(team2), inline=False)
-
-    # return embed
 
 async def fake_nowgame(puuid):
     print("🧪 fake_nowgame 호출됨!")
@@ -1055,6 +1083,114 @@ async def get_opgg_tier(session: aiohttp.ClientSession, name, tag, mode="솔로�
         return tier, winrate
 
     return "UNRANKED", None
+
+async def get_fow_multisearch(session: aiohttp.ClientSession, summoners: list[tuple[str, str]], mode="솔로랭크"):
+    """
+    Returns:
+        { "name#tag": {
+            "tier": str,
+            "winrate": float | None,
+            "games": int | None,
+            "most": [
+                {"champ": str, "games": int, "winrate": float},
+                ...  # 최대 3개
+            ]
+        }}
+    """
+    mode_label = "솔로랭크" if mode == "솔로랭크" else "자유랭크"
+
+    text = ",".join(f"{name} #{tag}" for name, tag in summoners)
+    url = "https://www.fow.lol/api/multisearch"
+    params = {"region": "kr", "text": text}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Referer": "https://www.fow.lol/",
+    }
+
+    async with session.get(url, params=params, headers=headers) as resp:
+        if resp.status != 200:
+            return {}
+        html = await resp.text()
+
+    soup = BeautifulSoup(html, 'html.parser')
+    results = {}
+
+    for line in soup.select("div.multisearch_line"):
+        divs = line.select("div.multisearch_line > div")
+        if not divs:
+            continue
+
+        info_block = divs[0]
+
+        # 소환사 이름 + 태그
+        link = info_block.select_one("a.summoner_link")
+        if not link:
+            continue
+        name = link.contents[0].strip()
+        tag_el = link.select_one("span.tag")
+        tag = tag_el.text.strip().lstrip("#") if tag_el else ""
+        key = f"{name}#{tag}"
+
+        # 티어 파싱 (예: "PLATINUM I 39 LP", "CHALLENGER 1977 LP")
+        tier = "UNRANKED"
+        for div in info_block.find_all("div"):
+            t = div.get_text(strip=True)
+            match = re.match(
+                r'(CHALLENGER|GRANDMASTER|MASTER|DIAMOND|EMERALD|PLATINUM|GOLD|SILVER|BRONZE|IRON)'
+                r'(?:\s+([IVX]+))?(?:\s+\d+\s+LP)?$',
+                t, re.IGNORECASE
+            )
+            if match:
+                tier_name = match.group(1).upper()
+                division  = match.group(2).upper() if match.group(2) else ""
+                tier = f"{tier_name} {division}".strip()
+                break
+
+        # 승/패/게임수/승률 파싱 (예: "솔로랭크: 53W 53L (50.00%)")
+        winrate, games = None, None
+        for div in info_block.find_all("div"):
+            t = div.get_text(strip=True)
+            if mode_label not in t:
+                continue
+            wl_match = re.search(r'(\d+)W\s*(\d+)L', t)
+            if wl_match:
+                w = int(wl_match.group(1))
+                l = int(wl_match.group(2))
+                games   = w + l
+                winrate = round(w / games * 100, 1) if games > 0 else None
+            break
+
+        # 모스트 챔피언 파싱 (최대 3개)
+        # multisearch_champlist 는 line 내 두번째 div 블록 안에 있음
+        most = []
+        champ_list = line.select_one("div.multisearch_champlist")
+        if champ_list:
+            for champ_div in champ_list.select("div.multisearch_champ")[:3]:
+                champ_divs = champ_div.select("div")
+                if len(champ_divs) < 4:
+                    continue
+
+                champ_name  = champ_divs[1].get_text(strip=True)
+                champ_games = champ_divs[2].get_text(strip=True)
+                wr_text     = champ_divs[3].get_text(strip=True).replace("%", "")
+
+                try:
+                    most.append({
+                        "champ":   champ_name,
+                        "games":   int(champ_games),
+                        "winrate": float(wr_text),
+                    })
+                except ValueError:
+                    continue
+
+        results[key] = {
+            "tier":    tier,
+            "winrate": winrate,
+            "games":   games,
+            "most":    most,
+        }
+
+    return results
 
 
 def calculate_bonus(streak):
@@ -1650,7 +1786,7 @@ async def open_prediction(name, mode, game_id):
                     await bet_button_callback(prediction_type='win', nickname=other_game_player)
                     await kda_button_callback(prediction_type='up', nickname=other_game_player)
     
-    _, info_file = await get_team_champion_embed(name, puuid, mode, get_info_func=get_current_game_info)
+    info_file = await get_team_champion(name, puuid, mode, get_info_func=get_current_game_info)
     await channel.send(file=info_file) # PNG 파일만 전송 (화질 유지)
 
     event.clear()
