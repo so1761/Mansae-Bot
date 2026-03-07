@@ -650,6 +650,20 @@ async def get_team_champion(username, puuid, mode, get_info_func=get_current_gam
             "games": None,
             "most": []
         })
+        # most champ_id → champ_key 역변환
+        # CHAMPION_ID_NAME_MAP의 key가 str(championId) 형태라고 가정
+        converted_most = []
+        for m in data.get("most", []):
+            champ_info = CHAMPION_ID_NAME_MAP.get(str(m["champ_id"]), {})
+            champ_key = champ_info.get("key", "")
+            converted_most.append({
+                "champ_key": champ_key,
+                "champ":     m["champ"],
+                "games":     m["games"],
+                "winrate":   m["winrate"],
+            })
+        data["most"] = converted_most
+
         champ_id = p.get("championId")
         champ_info = CHAMPION_ID_NAME_MAP.get(str(champ_id), {})
         champ_name = champ_info.get("name", f"챔피언ID:{champ_id}")
@@ -1166,6 +1180,7 @@ async def get_fow_multisearch(session: aiohttp.ClientSession, summoners: list[tu
         champ_list = line.select_one("div.multisearch_champlist")
         if champ_list:
             for champ_div in champ_list.select("div.multisearch_champ")[:3]:
+                champ_id = champ_div.get("data-toggle-id", "")
                 champ_divs = champ_div.select("div")
                 if len(champ_divs) < 4:
                     continue
@@ -1176,6 +1191,7 @@ async def get_fow_multisearch(session: aiohttp.ClientSession, summoners: list[tu
 
                 try:
                     most.append({
+                        "champ_id": champ_id,
                         "champ":   champ_name,
                         "games":   int(champ_games),
                         "winrate": float(wr_text),
