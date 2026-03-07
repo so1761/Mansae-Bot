@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Match Result</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #2b2b2b;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: #e0e0e0;
+    padding: 20px;
+    width: 1200px;
+  }
+
+  /* ── MATCH HEADER ── */
+  .match-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #222;
+    border-radius: 10px;
+    padding: 14px 22px;
+    margin-bottom: 18px;
+  }
+  .header-left { display: flex; align-items: center; gap: 18px; }
+  .queue-label { font-size: 11px; color: #777; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 3px; }
+  .duration    { font-size: 30px; font-weight: 900; color: #e8c96a; letter-spacing: 2px; }
+  .result-pair { display: flex; gap: 12px; align-items: center; }
+  .result-badge {
+    font-size: 13px; font-weight: 700;
+    padding: 5px 16px; border-radius: 20px;
+  }
+  .result-badge.win  { background: rgba(74,222,128,0.15); color: #4ade80; border: 1px solid rgba(74,222,128,0.4); }
+  .result-badge.lose { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.4); }
+  .vs-sep { color: #444; font-size: 15px; font-weight: 700; }
+
+  /* ── TEAM SECTION ── */
+  .team-section { margin-bottom: 16px; }
+
+  .team-title {
+    display: flex; align-items: center; gap: 9px;
+    margin-bottom: 7px; padding: 0 2px;
+  }
+  .team-dot { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
+  .blue-dot { background: #4a9eff; box-shadow: 0 0 8px rgba(74,158,255,0.5); }
+  .red-dot  { background: #ff5555; box-shadow: 0 0 8px rgba(255,85,85,0.5); }
+  .team-label { font-size: 16px; font-weight: 700; }
+  .team-champ-icons { display: flex; gap: 5px; margin-left: 2px; }
+  .team-champ-icons img {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 1px solid #444;
+    object-fit: cover;
+  }
+
+  /* ── COLUMN HEADERS ── */
+  .col-headers {
+    display: grid;
+    grid-template-columns: 52px 64px 1fr 96px 68px 232px 52px 1fr;
+    padding: 3px 12px;
+    margin-bottom: 3px;
+  }
+  .col-headers span {
+    font-size: 10px; color: #555;
+    text-transform: uppercase; letter-spacing: 0.8px; font-weight: 500;
+  }
+  .ch-name  { padding-left: 10px; }
+  .ch-c     { text-align: center; }
+  .ch-items { padding-left: 5px; }
+  .ch-dmg   { padding-left: 8px; }
+
+  /* ── PLAYER CARD ── */
+  .player-card {
+    display: grid;
+    grid-template-columns: 52px 64px 1fr 96px 68px 232px 52px 1fr;
+    align-items: center;
+    background: #333;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    min-height: 62px;
+  }
+  .player-card:last-child { margin-bottom: 0; }
+  .is-target .s-name { color: #fbbf24 !important; }
+
+  /* champ */
+  .champ-wrap { position: relative; width: 46px; height: 46px; }
+  .champ-img  {
+    width: 46px; height: 46px;
+    border-radius: 7px; object-fit: cover;
+    border: 2px solid #4a4a4a;
+  }
+  .champ-level {
+    position: absolute; bottom: -3px; left: -3px;
+    background: #111; border: 1px solid #555; border-radius: 3px;
+    font-size: 10px; font-weight: 700; padding: 0 3px; color: #bbb; line-height: 15px;
+  }
+
+  /* spells + runes */
+  .sr-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 3px; padding: 0 8px; width: 64px;
+  }
+  .sr-img {
+    width: 22px; height: 22px; border-radius: 4px;
+    object-fit: cover; border: 1px solid #3a3a3a;
+    background: #1e1e1e;
+  }
+  .sr-img.rune { border-radius: 50%; }
+
+  /* name cell */
+  .name-cell  { padding: 0 10px; min-width: 0; }
+  .s-name {
+    font-size: 14px; font-weight: 700; color: #e8e8e8;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .c-name { font-size: 11px; color: #777; margin-top: 2px; }
+
+  /* KDA */
+  .kda-cell { text-align: center; }
+  .kda-score { font-size: 14px; font-weight: 700; }
+  .kda-score .d { color: #f87171; }
+  .kda-ratio { font-size: 10px; color: #666; margin-top: 2px; }
+  .kda-ratio.perfect { color: #fbbf24; }
+
+  /* gold */
+  .gold-cell { text-align: center; font-size: 13px; font-weight: 700; color: #e8c96a; }
+
+  /* items */
+  .items-cell { display: flex; gap: 3px; padding: 0 5px; flex-wrap: nowrap; align-items: center; }
+  .item-box {
+    width: 28px; height: 28px;
+    border-radius: 5px; background: #1e1e1e;
+    border: 1px solid #3a3a3a; overflow: hidden; flex-shrink: 0;
+  }
+  .item-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .item-box.empty { opacity: 0.18; }
+
+  /* CS */
+  .cs-cell { text-align: center; }
+  .cs-num   { display: block; font-size: 14px; font-weight: 700; color: #ccc; }
+  .cs-label { font-size: 10px; color: #555; }
+
+  /* damage */
+  .damage-cell { padding: 0 8px; }
+  .damage-top  {
+    display: flex; justify-content: space-between;
+    align-items: baseline; margin-bottom: 5px;
+  }
+  .dmg-num { font-size: 13px; font-weight: 600; color: #bbb; }
+  .dmg-pct { font-size: 10px; color: #555; }
+  .bar-bg  { height: 6px; background: #1a1a1a; border-radius: 3px; overflow: hidden; }
+  .bar-fill{ height: 100%; border-radius: 3px; }
+  .blue-fill { background: linear-gradient(90deg, #3b82f6, #93c5fd); }
+  .red-fill  { background: linear-gradient(90deg, #ef4444, #fca5a5); }
+</style>
+</head>
+<body>
+<div id="root">
+
+  <!-- MATCH HEADER -->
+  <div class="match-header">
+    <div class="header-left">
+      <div>
+        <div class="queue-label" id="queueLabel">Ranked Solo/Duo</div>
+        <div class="duration" id="durationDisplay">00:00</div>
+      </div>
+    </div>
+    <div class="result-pair">
+      <div id="blueResultBadge" class="result-badge">—</div>
+      <span class="vs-sep">vs</span>
+      <div id="redResultBadge" class="result-badge">—</div>
+    </div>
+  </div>
+
+  <!-- BLUE TEAM -->
+  <div class="team-section">
+    <div class="team-title">
+      <div class="team-dot blue-dot"></div>
+      <span class="team-label">블루팀</span>
+      <div class="team-champ-icons" id="blueChampIcons"></div>
+    </div>
+    <div class="col-headers">
+      <span></span><span></span>
+      <span class="ch-name">소환사</span>
+      <span class="ch-c">KDA</span>
+      <span class="ch-c">골드</span>
+      <span class="ch-items">아이템</span>
+      <span class="ch-c">CS</span>
+      <span class="ch-dmg">피해량</span>
+    </div>
+    <div id="blueRows"></div>
+  </div>
+
+  <!-- RED TEAM -->
+  <div class="team-section">
+    <div class="team-title">
+      <div class="team-dot red-dot"></div>
+      <span class="team-label">레드팀</span>
+      <div class="team-champ-icons" id="redChampIcons"></div>
+    </div>
+    <div class="col-headers">
+      <span></span><span></span>
+      <span class="ch-name">소환사</span>
+      <span class="ch-c">KDA</span>
+      <span class="ch-c">골드</span>
+      <span class="ch-items">아이템</span>
+      <span class="ch-c">CS</span>
+      <span class="ch-dmg">피해량</span>
+    </div>
+    <div id="redRows"></div>
+  </div>
+
+</div>
+<script>
+const VER  = "14.24.1";
+const BASE = `https://ddragon.leagueoflegends.com/cdn/${VER}`;
+const POS_ORDER = ["TOP","JUNGLE","MIDDLE","BOTTOM","UTILITY"];
+const SPELL_KEY = {
+  1:"SummonerBoost",3:"SummonerExhaust",4:"SummonerFlash",
+  6:"SummonerHaste",7:"SummonerHeal",11:"SummonerSmite",
+  12:"SummonerTeleport",13:"SummonerMana",14:"SummonerDot",
+  21:"SummonerBarrier",32:"SummonerSnowball"
+};
+
+const RUNE_ICON = {
+  8000:"7201_precision",8100:"7200_domination",8200:"7202_sorcery",
+  8300:"7203_whimsy",8400:"7204_resolve",8500:"7205_inspiration"
+};
+
+function secToTime(s){return`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;}
+function champUrl(n){const f={FiddleSticks:"Fiddlesticks",Wukong:"MonkeyKing",NunuWillump:"Nunu"};return`${BASE}/img/champion/${f[n]||n}.png`;}
+function itemUrl(id){return id?`${BASE}/img/item/${id}.png`:null;}
+function spellUrl(id){const k=SPELL_KEY[id];return k?`${BASE}/img/spell/${k}.png`:null;}
+function runeIconUrl(styleId){const k=RUNE_ICON[styleId];return k?`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perk-images/styles/${k}.png`:null;}
+function kdaStr(k,d,a){return d===0?"Perfect":((k+a)/d).toFixed(2);}
+function byPos(arr){return[...arr].sort((a,b)=>{const ai=POS_ORDER.indexOf((a.position||"").toUpperCase()),bi=POS_ORDER.indexOf((b.position||"").toUpperCase());return(ai<0?99:ai)-(bi<0?99:bi);});}
+
+function srHtml(p){
+  const s1=spellUrl(p.summoner1Id),s2=spellUrl(p.summoner2Id);
+  const r1=runeIconUrl(p.perks_primary),r2=runeIconUrl(p.perks_sub);
+  const si=(url)=>url?`<img class="sr-img" src="${url}" onerror="this.style.opacity=0"/>`:`<div class="sr-img" style="opacity:0.1"></div>`;
+  const ri=(url)=>url?`<img class="sr-img rune" src="${url}" onerror="this.style.opacity=0"/>`:`<div class="sr-img rune" style="opacity:0.1"></div>`;
+  return`<div class="sr-grid">${si(s1)}${ri(r1)}${si(s2)}${ri(r2)}</div>`;
+}
+
+function rowHtml(p, maxDmg, barCls, isTarget){
+  const ratio=kdaStr(p.kills,p.deaths,p.assists);
+  const pct=maxDmg>0?(p.damage/maxDmg*100).toFixed(1):0;
+  const cs=(p.minionsKilled||0)+(p.neutralMinionsKilled||0);
+  const items=(p.items||[]).slice(0,7);
+  while(items.length<7)items.push(0);
+
+  const itemsHtml=items.map(id=>{
+    const url=itemUrl(id);
+    if(!url)return`<div class="item-box empty"></div>`;
+    return`<div class="item-box"><img src="${url}" onerror="this.parentElement.classList.add('empty');this.remove()"/></div>`;
+  }).join('');
+
+  return`
+  <div class="player-card${isTarget?' is-target':''}">
+    <div class="champ-wrap">
+      <img class="champ-img" src="${champUrl(p.champ)}" onerror="this.src='${BASE}/img/champion/Ryze.png'"/>
+      <span class="champ-level">${p.level}</span>
+    </div>
+    ${srHtml(p)}
+    <div class="name-cell">
+      <div class="s-name">${p.name||'Unknown'}</div>
+      <div class="c-name">${p.champ||''}</div>
+    </div>
+    <div class="kda-cell">
+      <div class="kda-score">${p.kills} / <span class="d">${p.deaths}</span> / ${p.assists}</div>
+      <div class="kda-ratio${ratio==='Perfect'?' perfect':''}">${ratio} KDA</div>
+    </div>
+    <div class="gold-cell">${(p.gold/1000).toFixed(1)}k</div>
+    <div class="items-cell">${itemsHtml}</div>
+    <div class="cs-cell"><span class="cs-num">${cs}</span><span class="cs-label">CS</span></div>
+    <div class="damage-cell">
+      <div class="damage-top"><span class="dmg-num">${p.damage.toLocaleString()}</span><span class="dmg-pct">${pct}%</span></div>
+      <div class="bar-bg"><div class="bar-fill ${barCls}" style="width:${pct}%"></div></div>
+    </div>
+  </div>`;
+}
+
+function renderMatch(data){
+  const{gameDuration,participants,targetName,queueType}=data;
+  document.getElementById('durationDisplay').textContent=secToTime(gameDuration);
+  document.getElementById('queueLabel').textContent=queueType||'Ranked Solo/Duo';
+
+  const blue=participants.filter(p=>p.teamId===100);
+  const red =participants.filter(p=>p.teamId===200);
+  const blueWin=blue[0]?.win;
+
+  const bb=document.getElementById('blueResultBadge');
+  const rb=document.getElementById('redResultBadge');
+  bb.textContent=blueWin?'블루팀 승리':'블루팀 패배'; bb.className='result-badge '+(blueWin?'win':'lose');
+  rb.textContent=blueWin?'레드팀 패배':'레드팀 승리'; rb.className='result-badge '+(blueWin?'lose':'win');
+
+  const maxDmg=Math.max(...participants.map(p=>p.damage));
+
+  // champ icons in title
+  const iconHtml=(players,cid)=>{
+    document.getElementById(cid).innerHTML=byPos(players).map(p=>
+      `<img src="${champUrl(p.champ)}" onerror="this.src='${BASE}/img/champion/Ryze.png'" title="${p.champ}"/>`
+    ).join('');
+  };
+  iconHtml(blue,'blueChampIcons');
+  iconHtml(red, 'redChampIcons');
+
+  document.getElementById('blueRows').innerHTML=byPos(blue).map(p=>rowHtml(p,maxDmg,'blue-fill',p.name===targetName)).join('');
+  document.getElementById('redRows').innerHTML =byPos(red) .map(p=>rowHtml(p,maxDmg,'red-fill', p.name===targetName)).join('');
+}
+
+const MATCH_DATA = __MATCH_DATA__;
+renderMatch(MATCH_DATA);
+</script>
+</body>
+</html>

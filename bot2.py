@@ -7,6 +7,7 @@ import prediction_vote as p
 import os
 import json
 import re
+from pathlib import Path
 from collections import defaultdict
 from firebase_admin import credentials
 from firebase_admin import db
@@ -30,6 +31,13 @@ API_KEY = None
 
 playwright_instance = None
 browser_instance = None
+
+POS_ORDER = ["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"]
+
+QUEUE_LABELS = {
+    420: "Ranked Solo/Duo",
+    440: "Ranked Flex"
+}
 
 REGISTERED_USERS = ['지모','Melon','그럭저럭', '이미름', '박퇴경', '이나호']
 
@@ -79,6 +87,8 @@ class NotFoundError(Exception):
     pass
 
 CHAMPION_ID_NAME_MAP = {}
+SPELL_ID_TO_KEY = {}
+RUNE_ID_TO_PATH = {}
 
 async def init_browser():
     global playwright_instance, browser_instance
@@ -87,8 +97,370 @@ async def init_browser():
         args=["--no-sandbox", "--disable-setuid-sandbox"]
     )
 
-async def create_ingame_image(team1_data, team2_data, version, banned_champions):
+async def create_match_result_image(
+    match_info:        dict,
+    target_name:       str = "",
+) -> io.BytesIO:
+    """
+    매치 결과 이미지를 생성해 BytesIO로 반환합니다.
+    ingame의 create_ingame_image와 동일한 호출 패턴.
 
+    Parameters
+    ----------
+    match_info       : Riot API /matches/{matchId} 응답 전체
+    version          : DDragon 버전 (e.g. "14.24.1")
+    target_name      : 하이라이트할 소환사 이름 (riotIdGameName)
+    """
+    info          = match_info["info"]
+    game_duration = _sec_to_time(info["gameDuration"])
+    queue_label   = QUEUE_LABELS.get(info.get("queueId", 0), "Normal")
+
+    CHAMPION_ID_NAME_MAP = await fetch_champion_data()
+    SPELL_ID_TO_KEY = await fetch_spell_id_to_key_map()
+    RUNE_ID_TO_PATH = await fetch_rune_id_to_key_map()
+    blue, red = build_match_entries(
+        participants    = info["participants"],
+        champion_id_map = CHAMPION_ID_NAME_MAP,
+        spell_id_to_key = SPELL_ID_TO_KEY,
+        rune_id_to_path = RUNE_ID_TO_PATH,
+        target_name     = target_name,
+    )
+
+    blue_win   = blue[0]["win"] if blue else False
+    max_dmg    = max((p["damage"] for p in blue + red), default=1)
+
+    version = await get_latest_ddragon_version()
+    
+    # target 기준 승패 (없으면 블루팀 기준 폴백)
+    target_player = next((p for p in blue + red if p["is_target"]), None)
+    target_win    = target_player["win"] if target_player else (blue[0]["win"] if blue else False)
+    result_text   = "승리!" if target_win else "패배..."
+    result_cls    = "win"   if target_win else "lose"
+
+    def team_rows(players, bar_cls):
+        return "".join(
+            _player_row(p, max_dmg, bar_cls, version, p["is_target"])
+            for p in _sort_by_pos(players)
+        )
+
+    blue_rows  = team_rows(blue, "blue-fill")
+    red_rows   = team_rows(red,  "red-fill")
+    blue_icons = _champ_icons(blue, version)
+    red_icons  = _champ_icons(red,  version)
+
+    html = f"""<!DOCTYPE html>
+        <html lang="ko">
+            <head>
+            <meta charset="UTF-8">
+            <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{
+                background: #2b2b2b;
+                font-family: 'NanumGothic', 'Noto Sans KR', sans-serif;
+                color: #e0e0e0;
+                padding: 16px;
+                width: 1200px;
+                -webkit-font-smoothing: antialiased;
+            }}
+            .match-header {{
+                display: flex; align-items: center; justify-content: space-between;
+                background: #222; border-radius: 10px; padding: 14px 22px; margin-bottom: 14px;
+            }}
+            .queue-label     {{ font-size: 11px; color: #777; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 5px; }}
+            .result-main     {{ display: flex; align-items: baseline; gap: 10px; }}
+            .result-text     {{ font-size: 28px; font-weight: 900; letter-spacing: 0.5px; }}
+            .result-text.win  {{ color: #4ade80; }}
+            .result-text.lose {{ color: #f87171; }}
+            .result-duration {{ font-size: 13px; font-weight: 600; color: #666; }}
+
+            .team-section {{ margin-bottom: 12px; }}
+            .team-title {{ display: flex; align-items: center; gap: 9px; margin-bottom: 6px; padding: 0 2px; }}
+            .team-dot {{ width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }}
+            .blue-dot {{ background: #4a9eff; box-shadow: 0 0 8px rgba(74,158,255,0.5); }}
+            .red-dot  {{ background: #ff5555; box-shadow: 0 0 8px rgba(255,85,85,0.5); }}
+            .team-label {{ font-size: 16px; font-weight: 700; }}
+            .team-champ-icons {{ display: flex; gap: 5px; margin-left: 2px; }}
+            .team-champ-icons img {{ width: 26px; height: 26px; border-radius: 50%; border: 1px solid #444; object-fit: cover; }}
+
+            .col-headers {{
+                display: grid;
+                grid-template-columns: 52px 64px 1fr 96px 68px 232px 52px 1fr;
+                padding: 3px 12px; margin-bottom: 3px;
+            }}
+            .col-headers span {{ font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 500; }}
+            .ch-name {{ padding-left: 10px; }} .ch-c {{ text-align: center; }}
+            .ch-items {{ padding-left: 5px; }} .ch-dmg {{ padding-left: 8px; }}
+
+            .player-card {{
+                display: grid;
+                grid-template-columns: 52px 64px 1fr 96px 68px 232px 52px 1fr;
+                align-items: center;
+                background: #333; border-radius: 8px;
+                padding: 8px 12px; margin-bottom: 4px; min-height: 62px;
+            }}
+            .player-card:last-child {{ margin-bottom: 0; }}
+            .is-target .s-name {{ color: #fbbf24 !important; }}
+
+            .champ-wrap {{ position: relative; width: 46px; height: 46px; }}
+            .champ-img  {{ width: 46px; height: 46px; border-radius: 7px; object-fit: cover; border: 2px solid #4a4a4a; }}
+            .champ-level {{
+                position: absolute; bottom: -3px; left: -3px;
+                background: #111; border: 1px solid #555; border-radius: 3px;
+                font-size: 10px; font-weight: 700; padding: 0 3px; color: #bbb; line-height: 15px;
+            }}
+            .sr-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 0 8px; width: 64px; }}
+            .sr-img      {{ width: 22px; height: 22px; border-radius: 4px; object-fit: cover; border: 1px solid #3a3a3a; background: #1e1e1e; }}
+            .sr-img.rune {{ border-radius: 50%; }}
+
+            .name-cell {{ padding: 0 10px; min-width: 0; }}
+            .s-name {{ font-size: 14px; font-weight: 700; color: #e8e8e8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+            .c-name {{ font-size: 11px; color: #777; margin-top: 2px; }}
+
+            .kda-cell {{ text-align: center; }}
+            .kda-score {{ font-size: 14px; font-weight: 700; }}
+            .kda-score .d {{ color: #f87171; }}
+            .kda-ratio {{ font-size: 10px; color: #666; margin-top: 2px; }}
+            .kda-ratio.perfect {{ color: #fbbf24; }}
+
+            .gold-cell {{ text-align: center; font-size: 13px; font-weight: 700; color: #e8c96a; }}
+
+            .items-cell {{ display: flex; gap: 3px; padding: 0 5px; align-items: center; }}
+            .item-box {{ width: 28px; height: 28px; border-radius: 5px; background: #1e1e1e; border: 1px solid #3a3a3a; overflow: hidden; flex-shrink: 0; }}
+            .item-box img {{ width: 100%; height: 100%; object-fit: cover; display: block; }}
+            .item-box.empty {{ opacity: 0.18; }}
+
+            .cs-cell {{ text-align: center; }}
+            .cs-num   {{ display: block; font-size: 14px; font-weight: 700; color: #ccc; }}
+            .cs-label {{ font-size: 10px; color: #555; }}
+
+            .damage-cell {{ padding: 0 8px; }}
+            .damage-top  {{ display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }}
+            .dmg-num {{ font-size: 13px; font-weight: 600; color: #bbb; }}
+            .dmg-pct {{ font-size: 10px; color: #555; }}
+            .bar-bg  {{ height: 6px; background: #1a1a1a; border-radius: 3px; overflow: hidden; }}
+            .bar-fill{{ height: 100%; border-radius: 3px; }}
+            .blue-fill {{ background: linear-gradient(90deg, #3b82f6, #93c5fd); }}
+            .red-fill  {{ background: linear-gradient(90deg, #ef4444, #fca5a5); }}
+            </style>
+            </head>
+            <body>
+
+            <div class="match-header">
+                <div class="result-main">
+                <span class="result-text {result_cls}">{result_text}</span>
+                <span class="result-duration">{game_duration}</span>
+                </div>
+            </div>
+
+            <div class="team-section">
+                <div class="team-title">
+                <div class="team-dot blue-dot"></div>
+                <span class="team-label">블루팀</span>
+                <div class="team-champ-icons">{blue_icons}</div>
+                </div>
+                <div class="col-headers">
+                <span></span><span></span>
+                <span class="ch-name">소환사</span>
+                <span class="ch-c">KDA</span>
+                <span class="ch-c">골드</span>
+                <span class="ch-items">아이템</span>
+                <span class="ch-c">CS</span>
+                <span class="ch-dmg">피해량</span>
+                </div>
+                {blue_rows}
+            </div>
+
+            <div class="team-section">
+                <div class="team-title">
+                <div class="team-dot red-dot"></div>
+                <span class="team-label">레드팀</span>
+                <div class="team-champ-icons">{red_icons}</div>
+                </div>
+                <div class="col-headers">
+                <span></span><span></span>
+                <span class="ch-name">소환사</span>
+                <span class="ch-c">KDA</span>
+                <span class="ch-c">골드</span>
+                <span class="ch-items">아이템</span>
+                <span class="ch-c">CS</span>
+                <span class="ch-dmg">피해량</span>
+                </div>
+                {red_rows}
+            </div>
+
+            </body>
+        </html>
+    """
+
+    page = await browser_instance.new_page(
+        viewport={"width": 1200, "height": 100},
+        device_scale_factor=2,
+    )
+    await page.set_content(html, wait_until="networkidle")
+    screenshot = await page.screenshot(full_page=True)
+    await page.close()
+
+    return io.BytesIO(screenshot)
+
+def build_match_entries(
+    participants:      list,
+    champion_id_map:   dict,   # CHAMPION_ID_NAME_MAP  {"266": {"name":..,"key":..}, ...}
+    spell_id_to_key:   dict,   # SPELL_ID_TO_KEY        {"4": "SummonerFlash", ...}
+    rune_id_to_path:   dict,   # RUNE_ID_TO_PATH        {"8112": "perk-images/...", ...}
+    target_name:       str = "",
+) -> tuple[list, list]:
+    """
+    Riot API match participants → (blue_team, red_team) entry 리스트 반환.
+    ingame의 for p in participants 루프와 동일한 구조.
+    """
+    blue, red = [], []
+
+    for p in participants:
+        # 챔피언
+        champ_id   = p.get("championId")
+        champ_info = champion_id_map.get(str(champ_id), {})
+        champ_name = champ_info.get("name", f"챔피언ID:{champ_id}")
+        champ_key  = champ_info.get("key", "")
+
+        # 스펠
+        spell1_key = spell_id_to_key.get(str(p.get("summoner1Id", "")), "")
+        spell2_key = spell_id_to_key.get(str(p.get("summoner2Id", "")), "")
+
+        # 룬 (keystone: perkIds[0])
+        perks    = p.get("perks", {})
+        styles   = perks.get("styles", [])
+        try:
+            keystone_id = str(styles[0]["selections"][0]["perk"])
+        except (IndexError, KeyError):
+            keystone_id = None
+        try: # 부 룬
+            sub_style_id = str(styles[1]["style"])
+        except (IndexError, KeyError):
+            sub_style_id = None
+        rune_path = rune_id_to_path.get(keystone_id, "") if keystone_id else ""
+        sub_rune_path = rune_id_to_path.get(sub_style_id, "") if sub_style_id else ""
+
+        # 포지션
+        position = p.get("individualPosition") or p.get("teamPosition", "")
+
+        entry = {
+            "champ":      champ_name,
+            "champ_key":  champ_key,
+            "spell1_key": spell1_key,
+            "spell2_key": spell2_key,
+            "rune_path":  rune_path,
+            "sub_rune_path": sub_rune_path,
+            "name":       p.get("riotIdGameName") or p.get("riotId", "Unknown"),
+            "level":      p.get("champLevel", 0),
+            "kills":      p.get("kills", 0),
+            "deaths":     p.get("deaths", 0),
+            "assists":    p.get("assists", 0),
+            "items":      [p.get(f"item{i}", 0) for i in range(7)],
+            "gold":       p.get("goldEarned", 0),
+            "damage":     p.get("totalDamageDealtToChampions", 0),
+            "cs":         p.get("totalMinionsKilled", 0) + p.get("neutralMinionsKilled", 0),
+            "position":   position,
+            "win":        p.get("win", False),
+            "teamId":     p.get("teamId", 100),
+            "is_target":  (p.get("riotIdGameName") or p.get("riotId", "")) == target_name,
+        }
+
+        if p.get("teamId") == 100:
+            blue.append(entry)
+        else:
+            red.append(entry)
+
+    return blue, red
+
+def _sec_to_time(s: int) -> str:
+    return f"{s // 60}:{s % 60:02d}"
+
+def _kda_ratio(k: int, d: int, a: int) -> str:
+    return "Perfect" if d == 0 else f"{(k + a) / d:.2f}"
+
+def _sort_by_pos(players: list) -> list:
+    return sorted(players, key=lambda p: (
+        POS_ORDER.index(p["position"].upper())
+        if p["position"].upper() in POS_ORDER else 99
+    ))
+
+def _item_slots(items: list, version: str) -> str:
+    slots = []
+    for i in range(7):
+        item_id = items[i] if i < len(items) else 0
+        if item_id:
+            slots.append(
+                f'<div class="item-box">'
+                f'<img src="https://ddragon.leagueoflegends.com/cdn/{version}/img/item/{item_id}.png"'
+                f' onerror="this.parentElement.classList.add(\'empty\');this.remove()"/>'
+                f'</div>'
+            )
+        else:
+            slots.append('<div class="item-box empty"></div>')
+    return "".join(slots)
+
+def _player_row(p: dict, max_dmg: int, bar_cls: str, version: str, is_target: bool) -> str:
+    base      = f"https://ddragon.leagueoflegends.com/cdn/{version}/img"
+    champ_url = f"{base}/champion/{p['champ_key']}.png"
+    sp1_url   = f"{base}/spell/{p['spell1_key']}.png"  if p.get('spell1_key') else ""
+    sp2_url   = f"{base}/spell/{p['spell2_key']}.png"  if p.get('spell2_key') else ""
+    # rune_path는 ingame과 동일하게 "perk-images/Styles/..." 형태
+    rune_url  = f"https://ddragon.leagueoflegends.com/cdn/img/{p['rune_path']}" if p.get('rune_path') else ""
+
+    ratio    = _kda_ratio(p["kills"], p["deaths"], p["assists"])
+    pct      = round(p["damage"] / max_dmg * 100, 1) if max_dmg > 0 else 0
+    cs       = p.get("cs", 0)
+    items_h  = _item_slots(p.get("items", []), version)
+    target   = " is-target" if is_target else ""
+
+    sp1_tag  = f'<img class="sr-img"      src="{sp1_url}"  onerror="this.style.opacity=0.1"/>' if sp1_url else '<div class="sr-img"></div>'
+    sp2_tag  = f'<img class="sr-img"      src="{sp2_url}"  onerror="this.style.opacity=0.1"/>' if sp2_url else '<div class="sr-img"></div>'
+    rune_tag = f'<img class="sr-img rune" src="{rune_url}" onerror="this.style.opacity=0.1"/>' if rune_url else '<div class="sr-img rune"></div>'
+
+    return f"""
+    <div class="player-card{target}">
+      <div class="champ-wrap">
+        <img class="champ-img" src="{champ_url}" onerror="this.src='{base}/champion/Ryze.png'"/>
+        <span class="champ-level">{p['level']}</span>
+      </div>
+      <div class="sr-grid">
+        {sp1_tag}
+        {rune_tag}
+        {sp2_tag}
+        <div class="sr-img"></div>
+      </div>
+      <div class="name-cell">
+        <div class="s-name">{p['name']}</div>
+        <div class="c-name">{p['champ']}</div>
+      </div>
+      <div class="kda-cell">
+        <div class="kda-score">{p['kills']} / <span class="d">{p['deaths']}</span> / {p['assists']}</div>
+        <div class="kda-ratio{' perfect' if ratio == 'Perfect' else ''}">{ratio} KDA</div>
+      </div>
+      <div class="gold-cell">{p['gold'] / 1000:.1f}k</div>
+      <div class="items-cell">{items_h}</div>
+      <div class="cs-cell">
+        <span class="cs-num">{cs}</span>
+        <span class="cs-label">CS</span>
+      </div>
+      <div class="damage-cell">
+        <div class="damage-top">
+          <span class="dmg-num">{p['damage']:,}</span>
+          <span class="dmg-pct">{pct}%</span>
+        </div>
+        <div class="bar-bg"><div class="bar-fill {bar_cls}" style="width:{pct}%"></div></div>
+      </div>
+    </div>"""
+
+def _champ_icons(players: list, version: str) -> str:
+    base = f"https://ddragon.leagueoflegends.com/cdn/{version}/img/champion"
+    return "".join(
+        f'<img src="{base}/{p["champ_key"]}.png"'
+        f' onerror="this.src=\'{base}/Ryze.png\'" title="{p["champ"]}"/>'
+        for p in _sort_by_pos(players)
+    )
+
+async def create_ingame_image(team1_data, team2_data, version, banned_champions):
     def most_html(most):
         slots = []
         for i in range(3):
@@ -1309,7 +1681,9 @@ async def monitor_single_player_ending(name, game_id, current_game_type, channel
             votes['kda']['up'].clear()
             votes['kda']['down'].clear()
             votes['kda']['perfect'].clear()         
-        
+
+            active_games.pop(game_id, None) # 게임 종료된 게임 id는 active_games에서 제거 (존재하지 않을 수 있으므로 None 기본값)
+            tracked_users.discard(name) # 게임 종료된 플레이어는 추적 대상에서 제거
             p.events[name].set()
         return
 
@@ -1585,6 +1959,14 @@ async def calculate_points(name, result, userembed):
                     kdaembed.add_field(name="", value=f"{winner['name'].display_name}님이 KDA 예측에 성공하여 10점을 획득하셨습니다!", inline=False)
 
             await channel.send(embed=kdaembed)
+
+            
+            img_buf = await create_match_result_image(
+                match_info    = match_info,
+                target_name   = name,
+            )
+            file = discord.File(img_buf, filename="match_result.png")
+            await channel.send(file=file)
 
             kda_votes['up'].clear()
             kda_votes['down'].clear()
@@ -1862,11 +2244,9 @@ class MyBot(commands.Bot):
         await fetch_rune_data(True)
         await fetch_rune_id_to_key_map(True)
         await fetch_spell_id_to_key_map(True)
-        
 
         bot.loop.create_task(monitor_games())
         bot.loop.create_task(monitor_endings())
-    
         bot.loop.create_task(fetch_patch_version())
 bot = MyBot()
 @bot.event
