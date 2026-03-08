@@ -34,11 +34,6 @@ browser_instance = None
 
 POS_ORDER = ["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"]
 
-QUEUE_LABELS = {
-    420: "Ranked Solo/Duo",
-    440: "Ranked Flex"
-}
-
 REGISTERED_USERS = ['지모','Melon','그럭저럭', '이미름', '박퇴경', '이나호']
 
 PUUID = {}
@@ -113,11 +108,9 @@ async def create_match_result_image(
     """
     info          = match_info["info"]
     game_duration = _sec_to_time(info["gameDuration"])
-    queue_label   = QUEUE_LABELS.get(info.get("queueId", 0), "Normal")
 
     CHAMPION_ID_NAME_MAP = await fetch_champion_data()
     SPELL_ID_TO_KEY = await fetch_spell_id_to_key_map()
-    RUNE_ID_TO_PATH = await fetch_rune_id_to_key_map()
     blue, red = build_match_entries(
         participants    = info["participants"],
         champion_id_map = CHAMPION_ID_NAME_MAP,
@@ -126,7 +119,6 @@ async def create_match_result_image(
         target_name     = target_name,
     )
 
-    blue_win   = blue[0]["win"] if blue else False
     max_dmg    = max((p["damage"] for p in blue + red), default=1)
 
     version = await get_latest_ddragon_version()
@@ -210,7 +202,7 @@ async def create_match_result_image(
             }}
             .sr-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 0 8px; width: 64px; }}
             .sr-img      {{ width: 22px; height: 22px; border-radius: 4px; object-fit: cover; border: 1px solid #3a3a3a; background: #1e1e1e; }}
-            .sr-img.rune {{ border-radius: 50%; }}
+            .sr-img.rune {{ border-radius: 0; background: transparent; border: none;}}
 
             .name-cell {{ padding: 0 10px; min-width: 0; }}
             .s-name {{ font-size: 14px; font-weight: 700; color: #e8e8e8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
@@ -292,13 +284,16 @@ async def create_match_result_image(
         </html>
     """
 
-    page = await browser_instance.new_page(
+    context = await browser_instance.new_context(
         viewport={"width": 1200, "height": 100},
         device_scale_factor=2,
     )
-    await page.set_content(html, wait_until="networkidle")
-    screenshot = await page.screenshot(full_page=True)
-    await page.close()
+    try:
+        page = await context.new_page()
+        await page.set_content(html, wait_until="networkidle")
+        screenshot = await page.screenshot(full_page=True)
+    finally:
+        await context.close()  # page.close() 대신 context.close()
 
     return io.BytesIO(screenshot)
 
@@ -406,6 +401,7 @@ def _player_row(p: dict, max_dmg: int, bar_cls: str, version: str, is_target: bo
     sp2_url   = f"{base}/spell/{p['spell2_key']}.png"  if p.get('spell2_key') else ""
     # rune_path는 ingame과 동일하게 "perk-images/Styles/..." 형태
     rune_url  = f"https://ddragon.leagueoflegends.com/cdn/img/{p['rune_path']}" if p.get('rune_path') else ""
+    sub_rune_url = f"https://ddragon.leagueoflegends.com/cdn/img/{p['sub_rune_path']}" if p.get('sub_rune_path') else ""
 
     ratio    = _kda_ratio(p["kills"], p["deaths"], p["assists"])
     pct      = round(p["damage"] / max_dmg * 100, 1) if max_dmg > 0 else 0
@@ -416,7 +412,7 @@ def _player_row(p: dict, max_dmg: int, bar_cls: str, version: str, is_target: bo
     sp1_tag  = f'<img class="sr-img"      src="{sp1_url}"  onerror="this.style.opacity=0.1"/>' if sp1_url else '<div class="sr-img"></div>'
     sp2_tag  = f'<img class="sr-img"      src="{sp2_url}"  onerror="this.style.opacity=0.1"/>' if sp2_url else '<div class="sr-img"></div>'
     rune_tag = f'<img class="sr-img rune" src="{rune_url}" onerror="this.style.opacity=0.1"/>' if rune_url else '<div class="sr-img rune"></div>'
-
+    sub_rune_tag = f'<img class="sr-img rune" src="{sub_rune_url}" onerror="this.style.opacity=0.1"/>' if sub_rune_url else '<div class="sr-img rune"></div>'
     return f"""
     <div class="player-card{target}">
       <div class="champ-wrap">
@@ -427,7 +423,7 @@ def _player_row(p: dict, max_dmg: int, bar_cls: str, version: str, is_target: bo
         {sp1_tag}
         {rune_tag}
         {sp2_tag}
-        <div class="sr-img"></div>
+        {sub_rune_tag}
       </div>
       <div class="name-cell">
         <div class="s-name">{p['name']}</div>
@@ -673,13 +669,16 @@ async def create_ingame_image(team1_data, team2_data, version, banned_champions)
     </html>
     """
 
-    page = await browser_instance.new_page(
+    context = await browser_instance.new_context(
         viewport={"width": 900, "height": 100},
-        device_scale_factor=2
+        device_scale_factor=2,
     )
-    await page.set_content(html, wait_until="networkidle")
-    screenshot = await page.screenshot(full_page=True)
-    await page.close()
+    try:
+        page = await context.new_page()
+        await page.set_content(html, wait_until="networkidle")
+        screenshot = await page.screenshot(full_page=True)
+    finally:
+        await context.close()
 
     return io.BytesIO(screenshot)
 
@@ -1706,10 +1705,11 @@ async def monitor_single_player_ending(name, game_id, current_game_type, channel
             await notice_channel.send(f"\n{name}의 {current_game_type} 점수 변동이 감지되었습니다!\n{string}")
             await channel.send(f"\n{name}의 {current_game_type} 점수 변동이 감지되었습니다!\n{string}")
 
-    active_games.pop(game_id, None) # 게임 종료된 게임 id는 active_games에서 제거 (존재하지 않을 수 있으므로 None 기본값)
-    tracked_users.discard(name) # 게임 종료된 플레이어는 추적 대상에서 제거
     prediction_owner = active_games.get(game_id, {}).get("prediction_owner")
+    tracked_users.discard(name)
     if name in p.votes and name == prediction_owner:
+        active_games.pop(game_id, None) # 게임 종료된 게임 id는 active_games에서 제거 (존재하지 않을 수 있으므로 None 기본값)
+         # 게임 종료된 플레이어는 추적 대상에서 제거
         await predict_results(name,current_game_type) # 예측 결과 처리
 
 # 게임 종료 모니터링: 게임이 종료되었는지 주기적으로 확인하여 점수 변동 감지 및 예측 결과 처리 (동시에 모든 플레이어 모니터링)
