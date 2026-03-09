@@ -92,6 +92,29 @@ async def init_browser():
         args=["--no-sandbox", "--disable-setuid-sandbox"]
     )
 
+async def get_browser():
+    global browser_instance, playwright_instance
+    
+    # 브라우저가 없거나 닫혀있으면 새로 시작
+    try:
+        if browser_instance is None or not browser_instance.is_connected():
+            raise Exception("브라우저 재시작 필요")
+        return browser_instance
+    except Exception:
+        # playwright 재시작
+        if playwright_instance:
+            try:
+                await playwright_instance.stop()
+            except:
+                pass
+        
+        playwright_instance = await async_playwright().start()
+        browser_instance = await playwright_instance.chromium.launch(
+            headless=True,
+            args=["--no-sandbox", "--disable-dev-shm-usage"]  # 리눅스 서버 필수 옵션
+        )
+        return browser_instance
+    
 async def create_match_result_image(
     match_info:        dict,
     target_name:       str = "",
@@ -284,7 +307,8 @@ async def create_match_result_image(
         </html>
     """
 
-    context = await browser_instance.new_context(
+    browser = await get_browser()
+    context = await browser.new_context(
         viewport={"width": 1200, "height": 100},
         device_scale_factor=2,
     )
@@ -669,7 +693,8 @@ async def create_ingame_image(team1_data, team2_data, version, banned_champions)
     </html>
     """
 
-    context = await browser_instance.new_context(
+    browser = await get_browser()
+    context = await browser.new_context(
         viewport={"width": 900, "height": 100},
         device_scale_factor=2,
     )
