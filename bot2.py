@@ -381,7 +381,7 @@ def build_match_entries(
             "position":   position,
             "win":        p.get("win", False),
             "teamId":     p.get("teamId", 100),
-            "is_target":  (p.get("riotIdGameName") or p.get("riotId", "")) == target_name,
+            "is_target":  (p.get("puuid") == PUUID.get(target_name, "")),
         }
 
         if p.get("teamId") == 100:
@@ -1698,17 +1698,16 @@ async def monitor_single_player_ending(name, game_id, current_game_type, channel
         userembed.add_field(name=f"{name}의 랭크게임이 종료되었습니다!", value="결과 : 다시하기!")
         await channel.send(embed=userembed)
 
-        if name in p.votes:
-            votes = p.votes[name]
-            votes['prediction']['win'].clear()
-            votes['prediction']['lose'].clear()
-            votes['kda']['up'].clear()
-            votes['kda']['down'].clear()
-            votes['kda']['perfect'].clear()         
+        # 메시지 참조 제거
+        p.current_messages.pop(name, None)
+        p.current_messages_kda.pop(name, None)
+        
+        # 투표 데이터 제거
+        p.votes.pop(name, None)
 
-            active_games.pop(game_id, None) # 게임 종료된 게임 id는 active_games에서 제거 (존재하지 않을 수 있으므로 None 기본값)
-            tracked_users.discard(name) # 게임 종료된 플레이어는 추적 대상에서 제거
-            p.events[name].set()
+        active_games.pop(game_id, None)
+        tracked_users.discard(name)
+        p.events[name].set()
         return
 
     try:
