@@ -380,7 +380,7 @@ def build_match_entries(
             "spell2_key": spell2_key,
             "rune_path":  rune_path,
             "sub_rune_path": sub_rune_path,
-            "name":       p.get("riotIdGameName") + "#" + p.get("riotIdGameTag", ""),
+            "name":       p.get("riotIdGameName") + "#" + p.get("riotIdTagline", ""),
             "level":      p.get("champLevel", 0),
             "kills":      p.get("kills", 0),
             "deaths":     p.get("deaths", 0),
