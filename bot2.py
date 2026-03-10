@@ -151,6 +151,8 @@ async def create_match_result_image(
     target_win    = target_player["win"] if target_player else (blue[0]["win"] if blue else False)
     result_text   = "승리!" if target_win else "패배..."
     result_cls    = "win"   if target_win else "lose"
+    blue_ban_list = [CHAMPION_ID_NAME_MAP.get(str(b["championId"]), {}).get("key", "") for b in info.get("teams", [])[0].get("bans", [])]
+    red_ban_list  = [CHAMPION_ID_NAME_MAP.get(str(b["championId"]), {}).get("key", "") for b in info.get("teams", [])[1].get("bans", [])]
 
     def team_rows(players, bar_cls):
         return "".join(
@@ -160,8 +162,8 @@ async def create_match_result_image(
 
     blue_rows  = team_rows(blue, "blue-fill")
     red_rows   = team_rows(red,  "red-fill")
-    blue_icons = _champ_icons(blue, version)
-    red_icons  = _champ_icons(red,  version)
+    blue_bans = make_ban_icons(blue_ban_list, version)
+    red_bans  = make_ban_icons(red_ban_list, version)
 
     html = f"""<!DOCTYPE html>
         <html lang="ko">
@@ -196,7 +198,14 @@ async def create_match_result_image(
             .team-label {{ font-size: 16px; font-weight: 700; }}
             .team-champ-icons {{ display: flex; gap: 5px; margin-left: 2px; }}
             .team-champ-icons img {{ width: 26px; height: 26px; border-radius: 50%; border: 1px solid #444; object-fit: cover; }}
-
+            .ban-icons {{ display: flex; gap: 4px; margin-left: 12px; align-items: center; }}
+            .ban-icons img {{
+                width: 22px; height: 22px; border-radius: 50%;
+                border: 1px solid #555; object-fit: cover;
+                filter: grayscale(80%) brightness(0.5);
+                opacity: 0.7;
+            }}
+            .ban-divider {{ width: 1px; height: 18px; background: #444; margin: 0 8px; }}
             .col-headers {{
                 display: grid;
                 grid-template-columns: 52px 64px 1fr 96px 68px 232px 52px 1fr;
@@ -271,7 +280,8 @@ async def create_match_result_image(
                 <div class="team-title">
                 <div class="team-dot blue-dot"></div>
                 <span class="team-label">블루팀</span>
-                <div class="team-champ-icons">{blue_icons}</div>
+                <div class="ban-divider"></div>
+                <div class="ban-icons">{blue_bans}</div>
                 </div>
                 <div class="col-headers">
                 <span></span><span></span>
@@ -289,7 +299,8 @@ async def create_match_result_image(
                 <div class="team-title">
                 <div class="team-dot red-dot"></div>
                 <span class="team-label">레드팀</span>
-                <div class="team-champ-icons">{red_icons}</div>
+                <div class="ban-divider"></div>
+                <div class="ban-icons">{red_bans}</div>
                 </div>
                 <div class="col-headers">
                 <span></span><span></span>
@@ -369,7 +380,7 @@ def build_match_entries(
             "spell2_key": spell2_key,
             "rune_path":  rune_path,
             "sub_rune_path": sub_rune_path,
-            "name":       p.get("riotIdGameName") or p.get("riotId", "Unknown"),
+            "name":       p.get("riotIdGameName") + "#" + p.get("riotIdGameTag", ""),
             "level":      p.get("champLevel", 0),
             "kills":      p.get("kills", 0),
             "deaths":     p.get("deaths", 0),
@@ -472,13 +483,15 @@ def _player_row(p: dict, max_dmg: int, bar_cls: str, version: str, is_target: bo
       </div>
     </div>"""
 
-def _champ_icons(players: list, version: str) -> str:
-    base = f"https://ddragon.leagueoflegends.com/cdn/{version}/img/champion"
-    return "".join(
-        f'<img src="{base}/{p["champ_key"]}.png"'
-        f' onerror="this.src=\'{base}/Ryze.png\'" title="{p["champ"]}"/>'
-        for p in _sort_by_pos(players)
-    )
+def make_ban_icons(bans, version):
+    icons = ""
+    for champ in bans:
+        if champ:
+            url = f"https://ddragon.leagueoflegends.com/cdn/{version}/img/champion/{champ}.png"
+            icons += f'<img src="{url}" title="{champ}">'
+        else:
+            icons += f'<img src="" style="background:#1a1a1a;">'
+    return icons
 
 async def create_ingame_image(team1_data, team2_data, version, banned_champions):
     def most_html(most):
@@ -1000,7 +1013,7 @@ def assign_positions(team):
                   if x.get('position') in POSITION_ORDER else 99)
 
 
-async def get_team_champion(username, puuid, mode, get_info_func=get_current_game_info):
+async def get_team_champion(puuid, mode, get_info_func=get_current_game_info):
     data = await get_info_func(puuid)
     if not data:
         return None
@@ -1008,6 +1021,7 @@ async def get_team_champion(username, puuid, mode, get_info_func=get_current_gam
     banned_champions = data.get("bannedChampions",[])
     participants = data.get("participants", [])
     if not participants:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] get_team_champion: 참가자 정보 없음")
         return None
 
     team1 = []
@@ -1024,16 +1038,6 @@ async def get_team_champion(username, puuid, mode, get_info_func=get_current_gam
 
     async with aiohttp.ClientSession() as session:
         results = await get_fow_multisearch(session, summoners, mode)
-    # async with aiohttp.ClientSession() as session:
-    #     # 10명 요청을 한꺼번에 발사
-    #     tasks = []
-    #     for p in participants:
-    #         riot_id = p.get("riotId", "Unknown")
-    #         name = riot_id.split("#")[0] if "#" in riot_id else riot_id
-    #         tag  = riot_id.split("#")[1] if "#" in riot_id else ""
-    #         tasks.append(get_opgg_tier(session, name, tag, mode))
-
-    #     results = await asyncio.gather(*tasks)
 
     team1_temp = []
     team2_temp = []
@@ -2224,8 +2228,23 @@ async def open_prediction(name, mode, game_id, game_start_time):
                     await bet_button_callback(prediction_type='win', nickname=other_game_player)
                     await kda_button_callback(prediction_type='up', nickname=other_game_player)
     
-    info_file = await get_team_champion(name, puuid, mode, get_info_func=get_current_game_info)
-    await channel.send(file=info_file) # PNG 파일만 전송 (화질 유지)
+    try:
+        info_file = await get_team_champion(puuid, mode, get_info_func=get_current_game_info)
+        if info_file:
+            await channel.send(file=info_file) # PNG 파일만 전송 (화질 유지)
+        else:
+            error_embed = discord.Embed(title=f"{name}의 게임 정보 조회 실패", color=discord.Color.red())
+            error_embed.add_field(name="오류", value="게임 정보 이미지를 생성할 수 없습니다.", inline=False)
+            await channel.send(embed=error_embed)
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] {name}의 게임 정보 이미지 생성 실패")
+    except Exception as e:
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [ERROR] open_prediction에서 게임 정보 전송 중 오류: {e}")
+        error_embed = discord.Embed(title=f"{name}의 게임 정보 조회 오류", color=discord.Color.red())
+        error_embed.add_field(name="오류", value=f"예외 발생: {str(e)}", inline=False)
+        try:
+            await channel.send(embed=error_embed)
+        except:
+            pass
 
     event.clear()
     await asyncio.gather(
@@ -2233,6 +2252,7 @@ async def open_prediction(name, mode, game_id, game_start_time):
         event.wait()  # 이 작업은 event가 set될 때까지 대기
     )
     opened_games.discard(game_id)
+    monitored_games.discard(game_id)
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] [LOG] {name}의 게임 종료! (게임 ID: {game_id}, 모드: {mode})")
 
 class MyBot(commands.Bot):
