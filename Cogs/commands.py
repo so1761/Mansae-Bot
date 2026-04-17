@@ -995,7 +995,7 @@ class hello(commands.Cog):
         load_dotenv()
         global API_KEY, MINECRAFT_SERVER_IP
         API_KEY = os.getenv("RIOT_API_KEY")
-        MINECRAFT_SERVER_IP = os.get("MINECRAFT_SERVER_IP")
+        MINECRAFT_SERVER_IP = os.getenv("MINECRAFT_SERVER_IP")
     @app_commands.command(name="전적분석",description="최근 5개의 경기를 분석합니다")
     @app_commands.describe(닉네임='소환사 닉네임',태그='소환사 태그 ex)KR1',시작전적 = '어느 판부터 분석할 지 숫자로 입력 (가장 최근전적부터 : 0)',리그 = "어떤 랭크를 분석할 지 선택하세요")
     @app_commands.choices(리그=[
@@ -2104,7 +2104,7 @@ class hello(commands.Cog):
             await interaction.response.send_message("권한이 없습니다",ephemeral=True)
 
 
-    @app_commands.command(name="서버상태", description="마크 서버의 상태를 확인합니다.")
+    @app_commands.command(name="마크", description="마크 서버의 상태를 확인합니다.")
     async def server_status(self, interaction: discord.Interaction):
         await interaction.response.defer()
         try:
