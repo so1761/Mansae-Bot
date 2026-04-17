@@ -26,7 +26,9 @@ from datetime import datetime
 from matplotlib import font_manager, rc
 from dotenv import load_dotenv
 from collections import Counter
+from mcstatus import JavaServer
 API_KEY = None
+MINECRAFT_SERVER_IP = None
 
 JIMO_NAME = '강지모'
 JIMO_TAG = 'KR1'
@@ -36,7 +38,6 @@ WARNING_CHANNEL_ID = 1314643507490590731
 ENHANCEMENT_CHANNEL = 1350434647149908070
 
 SEASON_CHANGE_DATE = datetime(2027, 1, 6, 0, 0, 0)
-
 
 TIER_RANK_MAP = {
     'IRON': 1,
@@ -992,9 +993,9 @@ class hello(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         load_dotenv()
-        global API_KEY
+        global API_KEY, MINECRAFT_SERVER_IP
         API_KEY = os.getenv("RIOT_API_KEY")
-
+        MINECRAFT_SERVER_IP = os.get("MINECRAFT_SERVER_IP")
     @app_commands.command(name="전적분석",description="최근 5개의 경기를 분석합니다")
     @app_commands.describe(닉네임='소환사 닉네임',태그='소환사 태그 ex)KR1',시작전적 = '어느 판부터 분석할 지 숫자로 입력 (가장 최근전적부터 : 0)',리그 = "어떤 랭크를 분석할 지 선택하세요")
     @app_commands.choices(리그=[
@@ -2103,6 +2104,24 @@ class hello(commands.Cog):
             await interaction.response.send_message("권한이 없습니다",ephemeral=True)
 
 
+    @app_commands.command(name="서버상태", description="마크 서버의 상태를 확인합니다.")
+    async def server_status(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        try:
+            server = JavaServer.lookup(MINECRAFT_SERVER_IP + ":25565")
+            status = server.status()
+
+            embed = discord.Embed(title="마인크래프트 서버 상태", color=0x00ff00)
+            embed.add_field(name="주소", value=MINECRAFT_SERVER_IP, inline=False)
+            embed.add_field(name="상태", value="✅ 온라인", inline=False)
+            embed.add_field(name="접속 인원", value=f"{status.players.online} / {status.players.max}", inline=True)
+            embed.add_field(name="지연 시간(Ping)", value=f"{round(status.latency, 2)}ms", inline=True)
+            embed.set_footer(text=f"서버 버전: {status.version.name}")
+            await interaction.followup.send(embed=embed)
+        except:
+            embed = discord.Embed(title="마인크래프트 서버 상태", color=0xff0000)
+            embed.add_field(name="상태", value="❌ 오프라인", inline=False)
+            await interaction.followup.send(embed=embed)
 async def setup(bot: commands.Bot) -> None:
     # await bot.add_cog(
     #     hello(bot),
