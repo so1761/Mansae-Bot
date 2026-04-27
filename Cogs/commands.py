@@ -2125,8 +2125,25 @@ class hello(commands.Cog):
             tps = round(float(s_data.get("tps", 0)), 1)
             
             # 시간 계산 (0~24000)
-            mc_time = w_data.get("time", 0) % 24000
-            time_status = "☀️ 낮" if 0 <= mc_time < 12000 else "🌙 밤"
+            # 1. 월드 데이터에서 현재 시간 가져오기
+            raw_time = w_data.get("time", 0)
+
+            # 2. 24,000으로 나눈 나머지가 '오늘의 시간'입니다.
+            # 마인크래프트 시간 기준: 
+            # 0~12000: 낮 (0: 일출, 6000: 정오)
+            # 12001~13800: 일몰 (해 질 녘)
+            # 13801~22200: 밤 (18000: 자정)
+            # 22201~24000: 일출 (해 뜰 녘)
+            daily_time = raw_time % 24000
+
+            if 0 <= daily_time <= 12000:
+                time_status = "☀️ 낮"
+            elif 12001 <= daily_time <= 13800:
+                time_status = "🌅 일몰"
+            elif 13801 <= daily_time <= 22200:
+                time_status = "🌙 밤"
+            else:
+                time_status = "🌄 일출"
             
             # 날씨
             weather = "🌧️ 비/뇌우" if w_data.get("storm", False) else "☀️ 맑음"
