@@ -2104,24 +2104,73 @@ class hello(commands.Cog):
             await interaction.response.send_message("권한이 없습니다",ephemeral=True)
 
 
-    @app_commands.command(name="마크", description="마크 서버의 상태를 확인합니다.")
+    @app_commands.command(name="마크", description="마크 서버의 상세 상태를 확인합니다.")
     async def server_status(self, interaction: discord.Interaction):
         await interaction.response.defer()
-        try:
-            server = JavaServer.lookup(MINECRAFT_SERVER_IP + ":25565")
-            status = server.status()
+        
+        # ServerTap API 주소 (이미 useKeyAuth를 끄셨으므로 헤더 없이 진행)
+        API_BASE = f"http://{MINECRAFT_SERVER_IP}:4567/v1"
 
-            embed = discord.Embed(title="마인크래프트 서버 상태", color=0x00ff00)
-            embed.add_field(name="주소", value=MINECRAFT_SERVER_IP, inline=False)
-            embed.add_field(name="상태", value="✅ 온라인", inline=False)
-            embed.add_field(name="접속 인원", value=f"{status.players.online} / {status.players.max}", inline=True)
-            embed.add_field(name="지연 시간(Ping)", value=f"{round(status.latency, 2)}ms", inline=True)
-            embed.set_footer(text=f"서버 버전: {status.version.name}")
+        try:
+            # 1. ServerTap 데이터 가져오기 (성능을 위해 3개를 동시에 부르는 것이 좋지만, 일단 기본 방식으로 처리)
+            server_req = requests.get(f"{API_BASE}/server", timeout=3)
+            world_req = requests.get(f"{API_BASE}/worlds/world", timeout=3) # 월드 이름이 'world'인 경우
+            player_req = requests.get(f"{API_BASE}/players", timeout=3)
+            
+            s_data = server_req.json()
+            w_data = world_req.json()
+            p_list = player_req.json()
+
+            # 2. 데이터 가공
+            tps = round(float(s_data.get("tps", 0)), 1)
+            
+            # 시간 계산 (0~24000)
+            mc_time = w_data.get("time", 0) % 24000
+            time_status = "☀️ 낮" if 0 <= mc_time < 12000 else "🌙 밤"
+            
+            # 날씨
+            weather = "🌧️ 비/뇌우" if w_data.get("storm", False) else "☀️ 맑음"
+            
+            # 3. 임베드 구성
+            # TPS에 따른 색상 변화 (18 이상 녹색, 15 이상 주황색, 그 미만 빨간색)
+            embed_color = 0x00ff00 if tps >= 18 else (0xffa500 if tps >= 15 else 0xff0000)
+            
+            embed = discord.Embed(title="🎮 마인크래프트 서버 실시간 상태", color=embed_color)
+            embed.add_field(name="📍 서버 주소", value=f"`{MINECRAFT_SERVER_IP}`", inline=False)
+            
+            # 서버 컨디션
+            status_val = f"✅ 온라인 | ⚡ **TPS: {tps}**"
+            embed.add_field(name="상태", value=status_val, inline=True)
+            embed.add_field(name="환경", value=f"{time_status} | {weather}", inline=True)
+
+            # 접속 인원 및 핑 정보
+            online_count = len(p_list)
+            max_players = s_data.get("maxPlayers", 20)
+            
+            if p_list:
+                player_info = ""
+                for p in p_list:
+                    # 개별 유저의 위치와 핑(있을 경우) 표시
+                    dim = "지옥" if p['dimension'] == "NETHER" else "엔드" if p['dimension'] == "THE_END" else "오버월드"
+                    player_info += f"👤 **{p['displayName']}** ({dim})\n└ 📍 ({int(p['location'][0])}, {int(p['location'][1])}, {int(p['location'][2])})\n"
+            else:
+                player_info = "현재 접속 중인 플레이어가 없습니다."
+
+            embed.add_field(name=f"접속 인원 ({online_count} / {max_players})", value=player_info, inline=False)
+            
+            # 푸터에 버전 및 가동 시간 표시
+            uptime = s_data['health']['uptime'] // 60
+            embed.set_footer(text=f"서버 버전: {s_data.get('version')} | 업타임: {uptime}분")
+            
             await interaction.followup.send(embed=embed)
-        except:
+
+        except Exception as e:
+            # 서버가 꺼져 있거나 API 응답이 없을 경우
             embed = discord.Embed(title="마인크래프트 서버 상태", color=0xff0000)
-            embed.add_field(name="상태", value="❌ 오프라인", inline=False)
+            embed.add_field(name="상태", value="❌ 오프라인 (또는 API 연결 실패)", inline=False)
+            embed.set_footer(text=f"Error: {str(e)}")
             await interaction.followup.send(embed=embed)
+
 async def setup(bot: commands.Bot) -> None:
     # await bot.add_cog(
     #     hello(bot),
