@@ -2114,7 +2114,7 @@ class hello(commands.Cog):
         try:
             # 1. ServerTap 데이터 가져오기 (성능을 위해 3개를 동시에 부르는 것이 좋지만, 일단 기본 방식으로 처리)
             server_req = requests.get(f"{API_BASE}/server", timeout=3)
-            world_req = requests.get(f"{API_BASE}/worlds/world", timeout=3) # 월드 이름이 'world'인 경우
+            world_req = requests.get(f"{API_BASE}/worlds", timeout=3) # 월드 이름이 'world'인 경우
             player_req = requests.get(f"{API_BASE}/players", timeout=3)
             
             s_data = server_req.json()
@@ -2126,7 +2126,7 @@ class hello(commands.Cog):
             
             # 시간 계산 (0~24000)
             # 1. 월드 데이터에서 현재 시간 가져오기
-            daily_time = w_data.get("time", 0)
+            daily_time = w_data[0].get("time", 0)
 
             if 0 <= daily_time <= 12000:
                 time_status = "☀️ 낮"
