@@ -2138,7 +2138,7 @@ class hello(commands.Cog):
                 time_status = "🌄 일출"
             
             # 날씨
-            weather = "🌧️ 비/뇌우" if w_data.get("storm", False) else "☀️ 맑음"
+            weather = "🌧️ 비/뇌우" if w_data[0].get("storm", False) else "☀️ 맑음"
             
             # 3. 임베드 구성
             # TPS에 따른 색상 변화 (18 이상 녹색, 15 이상 주황색, 그 미만 빨간색)
